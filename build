@@ -1,0 +1,80 @@
+#!/bin/bash -e
+CC=gcc
+if [ -z $INCPATH ]; then
+	echo "INCPATH: not defined" 1>&2
+	exit 1
+fi
+if [ -z $SMTPATH ]; then
+	echo "SMTPATH: not defined" 1>&2
+	exit 1
+fi
+cstd='-std=gnu99'
+CFLAGS="-Wall -Wextra -pedantic -pthread $cstd -I$INCPATH -O2 -ffast-math -g $*"
+libs='sdl2 glew freealut vorbisfile'
+if ! hash pkg-config 2>/dev/null; then
+	echo "pkg-config is missing" 1>&2
+	exit 1
+fi
+CFLAGS="$CFLAGS $(pkg-config --cflags $libs)"
+LDLIBS="$(pkg-config --libs $libs)"
+LLIBS='-lSDL2_image -lSDL2_mixer -lpthread -lm'
+CCM="$CC $cstd -MM"
+cat <<'EOF'>.gitignore
+.gitignore
+*.tmp
+# Make
+Makefile
+# CC
+*.o
+# VIM
+*.vim
+*.swp
+# valgrind
+*.valgrind
+*.log
+# archives
+*.tgz
+*.zip
+# binaries
+EOF
+cat <<EOF >Makefile
+.PHONY: default clean
+
+CC=$CC
+CFLAGS=$CFLAGS
+LDLIBS=$LDLIBS $LLIBS
+
+EOF
+printf 'MAIN=' >>Makefile
+MAIN=$(grep -r 'int main' | sed -e '/Binary.*/d' -e 's/:.*//g')
+for i in $MAIN; do
+	bin="${i/%.c/}"
+	echo "$bin" >>.gitignore
+	printf ' \\\n\t%s' "$bin" >>Makefile
+done
+printf '\nOBJECTS=' >>Makefile
+FILES=$(find . -name '*.c')
+FILES="${FILES//.\//}"
+for i in $FILES; do
+	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
+done
+for i in $MAIN; do
+	FILES="${FILES/$i/}"
+done
+printf '\nLIST=' >>Makefile
+for i in $FILES; do
+	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
+done
+cat <<'EOF' >>Makefile
+
+default: $(OBJECTS) $(MAIN)
+EOF
+for i in $MAIN; do
+	printf '%s: %s '$SMTPATH' $(LIST)\n' "${i/%.c/}" "${i/%.c/.o}" >>Makefile
+done
+cat <<'EOF' >>Makefile
+%.o: %.c
+	$(CC) -c $< -o $@ $(CFLAGS)
+clean:
+	rm -f $(MAIN) $(OBJECTS)
+EOF
