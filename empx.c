@@ -38,6 +38,7 @@ struct dmap {
 	char *drs_data;
 	struct dmap *next;
 	char filename[DMAPBUFSZ];
+	size_t length;
 } *drs_list = NULL;
 
 struct game;
@@ -94,6 +95,29 @@ static void hexdump(const void *buf, size_t n) {
 	}
 }
 
+static void dmap_init(struct dmap *map) {
+	map->dblk = map->drs_data = NULL;
+	map->filename[0] = '\0';
+	map->next = NULL;
+}
+
+static void dmap_free(struct dmap *map) {
+	assert((map->drs_data && !map->dblk) || map->drs_data == map->dblk);
+	if (map->drs_data) free(map->drs_data);
+	if (map->dblk && map->dblk != map->drs_data) free(map->dblk);
+	if (map) free(map);
+}
+
+static void cleanup(void) {
+	if (!drs_list) return;
+	struct dmap *next, *item = drs_list;
+	do {
+		next = item->next;
+		if (item) dmap_free(item);
+		item = next;
+	} while (item);
+}
+
 static inline void str2(char *buf, size_t n, const char *s1, const char *s2)
 {
 	snprintf(buf, n, "%s%s", s1, s2);
@@ -110,35 +134,38 @@ provides additional error checking compared to original dissassembly
 */
 int read_data_mapping(const char *filename, const char *directory, int no_stat)
 {
-	// data types that are read from drs files must honor 32 ABI
+	// data types that are read from drs files must honor WIN32 ABI
 	typedef uint32_t size32_t;
 	struct dbuf {
 		char data[60];
 		size32_t length;
 	} buf;
-	struct dmap map = {.dblk = NULL, .drs_data = NULL, .next = NULL};
+	struct dmap *map = NULL;
 	char name[DMAPBUFSZ];
 	int fd = -1;
 	int ret = -1;
 	ssize_t n;
-	stub
 	str2(name, sizeof name, directory, filename);
 	// deze twee regels komt dubbel voor in dissassembly
 	// aangezien ik niet van duplicated code hou staat het nu hier
 	fd = open(name, O_RDONLY); // XXX verify mode
 	if (fd == -1) goto fail;
+	map = malloc(sizeof *map);
+	if (!map) {
+		perror(__func__);
+		goto fail;
+	}
+	dmap_init(map);
 	if (!no_stat) {
 		struct stat st;
-		unsigned sz;
 		if (fstat(fd, &st)) goto fail;
-		sz = st.st_size;
-		printf("drssz: 0x%x (%u)\n", sz, sz);
-		map.dblk = malloc(st.st_size);
-		if (!map.dblk) {
+		map->length = st.st_size;
+		map->dblk = malloc(st.st_size);
+		if (!map->dblk) {
 			perror(__func__);
 			goto fail;
 		}
-		n = read(fd, map.dblk, st.st_size);
+		n = read(fd, map->dblk, st.st_size);
 		if (n != st.st_size) {
 			perror(__func__);
 			ret = n;
@@ -149,10 +176,11 @@ int read_data_mapping(const char *filename, const char *directory, int no_stat)
 		fprintf(stderr, "map: overflow: %s\n", name);
 		goto fail;
 	}
-	strcpy(map.filename, filename);
+	strcpy(map->filename, filename);
+	puts(name);
 	if (no_stat) {
-		map.fd = fd;
-		map.dblk = NULL;
+		map->fd = fd;
+		map->dblk = NULL;
 		lseek(fd, 0, SEEK_CUR);
 		n = read(fd, &buf, sizeof buf);
 		if (n != sizeof buf) {
@@ -160,36 +188,46 @@ int read_data_mapping(const char *filename, const char *directory, int no_stat)
 			ret = n;
 			goto fail;
 		}
-		printf("drssz: 0x%x (%u)\n", buf.length, buf.length);
-		map.drs_data = malloc(buf.length);
-		if (!map.drs_data) {
+		map->length = buf.length;
+		map->drs_data = malloc(buf.length);
+		if (!map->drs_data) {
 			perror(__func__);
 			goto fail;
 		}
 		lseek(fd, 0, SEEK_SET);
-		n = read(fd, map.drs_data, buf.length);
+		n = read(fd, map->drs_data, buf.length);
 		if (n != buf.length) {
 			fprintf(stderr, "%s: bad map\n", name);
 			ret = n;
 			goto fail;
 		}
 	} else {
-		map.fd = -1;
-		map.drs_data = map.dblk;
+		map->fd = -1;
+		map->drs_data = map->dblk;
 	}
-	assert(map.drs_data);
-	// TODO insert map into drs list
+	assert(map->drs_data);
+	// insert map into drs list
+	if (drs_list) {
+		struct dmap *last = drs_list;
+		while (last->next) last = last->next;
+		last->next = map;
+	} else {
+		drs_list = map;
+	}
 	// check for magic "1.00tribe"
-	ret = strcmp(&map.drs_data[0x2C], "tribe");
-	if (!ret) ret = strncmp(&map.drs_data[0x28], data_map_magic, sizeof data_map_magic);
-	printf("map: hdr valid: %d\n", ret == 0);
+	ret = strcmp(&map->drs_data[0x2C], "tribe");
+	if (!ret) ret = strncmp(&map->drs_data[0x28], data_map_magic, sizeof data_map_magic);
+	if (ret) fprintf(stderr, "%s: hdr invalid\n", filename);
+	// FIXME if no magic, dangling ptr in last item of drs list
 fail:
-	// TODO remove free's once they are used outside this function
-	assert(map.drs_data && !map.dblk || map.drs_data == map.dblk);
-	if (map.drs_data) free(map.drs_data);
-	if (map.dblk && map.dblk != map.drs_data) free(map.dblk);
+	assert((map->drs_data && !map->dblk) || map->drs_data == map->dblk);
 	if (fd != -1) close(fd);
-	if (ret) perror(name);
+	if (ret) {
+		if (map->drs_data) free(map->drs_data);
+		if (map->dblk && map->dblk != map->drs_data) free(map->dblk);
+		if (map) free(map);
+		perror(name);
+	}
 	return ret;
 }
 
@@ -391,6 +429,7 @@ static void parse_opt(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	struct game obj, *blk = &obj;
+	atexit(cleanup);
 	parse_opt(argc, argv);
 	ctor_game_4FDFA0(blk, 1);
 	return 0;
