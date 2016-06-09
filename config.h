@@ -1,8 +1,6 @@
 #ifndef AOE_CONFIG_H
 #define AOE_CONFIG_H
 
-#define CFG_ROOT 1
-
 #define PATHFIND_LOW 0
 #define PATHFIND_MEDIUM 1
 #define PATHFIND_HIGH 2
