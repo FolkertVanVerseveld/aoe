@@ -23,7 +23,7 @@ unsigned disable_terrain_sound = 0;
 unsigned midi_no_fill = 0;
 
 int game_vtbl_580D84, game_vtbl_56146C, game_vtbl_561474;
-int game_580DA0, game_580DA8;
+int game_580DA0, game_580DA8, game_580E24, game_580E28;
 struct logger *game_logger;
 unsigned game_580D98, game_580B6C;
 unsigned game_window;
@@ -61,14 +61,30 @@ struct dmap {
 
 struct game;
 
+int dtor_iobase(void*, char);
+static unsigned game_get_state(struct game*);
+unsigned game_loop(struct game *this);
+char *game_get_res_str(unsigned id, char *str, int n);
+char *game_strerror(struct game *this, int code, signed status, int a4, char *str, int n);
 int game_parse_opt(struct game *this);
 int game_parse_opt2(struct game *this);
 
 struct game_vtbl {
+	int (*dtor_io)(void*,char);
+	unsigned (*main)(struct game*);
+	// XXX consider inlining
+	unsigned (*get_state)(struct game*);
+	char *(*get_res_str)(unsigned, char*, int);
+	char *(*strerr)(struct game*, int, signed, int, char*, int);
 	int (*parse_opt)(struct game*);
 } g_vtbl = {
 	.parse_opt = game_parse_opt2
 }, g_vtbl2 = {
+	.dtor_io = dtor_iobase,
+	.main = game_loop,
+	.get_state = game_get_state,
+	.get_res_str = game_get_res_str,
+	.strerr = game_strerror,
 	.parse_opt = game_parse_opt
 };
 
@@ -151,6 +167,7 @@ struct game {
 	unsigned tbl1B8[4];
 	unsigned midi_sync;
 	unsigned num1CC, num1D0;
+	unsigned num1D8, num1DC;
 	unsigned cursor;
 	unsigned num1E0, num1E4;
 	char cwdbuf[CWDBUFSZ];
@@ -167,7 +184,7 @@ struct game {
 	char ch8FC;
 	char str8FD[128];
 	unsigned num97D_97E_is_zero, num97E_97D_is_zero;
-	uint8_t tbl97F[3];
+	uint8_t hsv[3];
 	uint8_t ch982, ch984, ch985, ch986, ch987, ch988, ch989;
 	uint8_t tbl98A[9];
 	uint8_t ch993;
@@ -179,8 +196,17 @@ struct game {
 	unsigned rollover_text;
 	float gamespeed;
 	unsigned difficulty;
+	unsigned brightness;
 	uint8_t tblA14[12];
 	unsigned numA20;
+	unsigned tblA24[4];
+	unsigned numA80, numA84;
+	char chAE8;
+	unsigned tblBEC[20];
+	char chC58, chD5C, chE64, chF68;
+	unsigned numE60;
+	char ch106C;
+	int num1250;
 } *game_ref;
 
 unsigned hInstance;
@@ -355,6 +381,52 @@ static int game_logger_init(struct game *this)
 	return 1;
 }
 
+unsigned game_get_state(struct game *this)
+{
+	return this->state;
+}
+
+unsigned game_loop(struct game *this)
+{
+	//while (1) {
+	while (this->running) {
+		unsigned ev;
+		while ((ev = smtPollev()) != SMT_EV_DONE) {
+			switch (ev) {
+			case SMT_EV_QUIT: return 0;
+			}
+		}
+		smtSwapgl(this->cfg.window);
+	}
+	//}
+	return 0;
+}
+
+char *game_get_res_str(unsigned id, char *str, int n)
+{
+	stub
+	return NULL;
+}
+
+char *game_strerror(struct game *this, int code, signed status, int a4, char *str, int n)
+{
+	char *error = NULL;
+	stub
+	*str = '\0';
+	switch (code) {
+	case 100:
+		switch (status) {
+		case 0:
+		case 15:
+		case 16:
+		case 17:
+			error = this->vtbl->get_res_str(4301, str, n);
+			break;
+		}
+	}
+	return error;
+}
+
 static inline char game_set_pathfind(struct game *this, char pathfind)
 {
 	return this->cfg.pathfind = pathfind;
@@ -363,6 +435,29 @@ static inline char game_set_pathfind(struct game *this, char pathfind)
 static inline char game_set_mp_pathfind(struct game *this, char mp_pathfind)
 {
 	return this->cfg.mp_pathfind = mp_pathfind;
+}
+
+static inline char game_set_hsv(struct game *this, unsigned char h, unsigned char s, unsigned char v)
+{
+	this->hsv[0] = h;
+	this->hsv[1] = s;
+	this->hsv[2] = v;
+	return v;
+}
+
+static inline char game_set_color(struct game *this, int brightness)
+{
+	stub
+	this->brightness = brightness;
+	switch (brightness) {
+	case 0: brightness = game_set_hsv(this, 72, 72, 8); break;
+	case 1: brightness = game_set_hsv(this, 96, 96, 8); break;
+	case 2: brightness = game_set_hsv(this, 120, 120, 8); break;
+	case 3: brightness = game_set_hsv(this, 144, 144, 8); break;
+	case 4: brightness = game_set_hsv(this, 200, 200, 8); break;
+	case 5: brightness = game_set_hsv(this, 250, 250, 8); break;
+	}
+	return brightness;
 }
 
 static inline char *game_str8FD(struct game *this, char *str)
@@ -402,14 +497,6 @@ static inline int game_set97E_97D(struct game *this, unsigned value)
 {
 	this->num97E_97D_is_zero = value;
 	return this->num97D_97E_is_zero = value == 0;
-}
-
-static inline char game_tbl97F(struct game *this, char v0, char v1, char v2)
-{
-	this->tbl97F[0] = v0;
-	this->tbl97F[1] = v1;
-	this->tbl97F[2] = v2;
-	return v2;
 }
 
 static inline char game_set982(struct game *this, char v)
@@ -470,6 +557,22 @@ static inline char game_tbl98A_3(struct game *this, int index, char value)
 static inline char game_tbl994(struct game *this, int index, char v)
 {
 	return this->tbl994[index] = v;
+}
+
+static inline unsigned game_setA80(struct game *this, unsigned v)
+{
+	return this->numA80 = v;
+}
+
+static inline unsigned game_setA84(struct game *this, unsigned v)
+{
+	return this->numA84 = v;
+}
+
+int dtor_iobase(void *this, char ch)
+{
+	// TODO verify no op
+	return printf("no op: dtor_iobase: %p, %d\n", this, (int)ch);
 }
 
 signed ctor_show_focus_screen(struct game *this)
@@ -607,7 +710,7 @@ struct game *game_vtbl_init(struct game *this, int should_start_game)
 	game_set9A4(this, 0);
 	game_set97D_97E(this, 1);
 	game_set97E_97D(this, 0);
-	game_tbl97F(this, 96, 96, 8);
+	game_set_hsv(this, 96, 96, 8);
 	game_set982(this, 0);
 	game_set984(this, 1);
 	game_set985(this, 0);
@@ -701,7 +804,23 @@ struct game *ctor_game_4FDFA0(struct game *this, int should_start_game)
 {
 	stub
 	game_vtbl_init(this, 0);
+	for (int i = 0; i < 15; ++i)
+		this->tblBEC[i] = 0;
+	this->tblBEC[1] = -1;
+	this->num1250 = 0;
 	this->vtbl = &g_vtbl2;
+	this->num1D8 = 1;
+	this->num1DC = 0;
+	this->chAE8 = 0;
+	this->chC58 = this->chD5C = this->chE64 = this->chF68 = 0;
+	this->numE60 = 0;
+	this->ch106C = 0;
+	disable_terrain_sound = 0;
+	game_580E24 = game_580E28 = 0;
+	this->tblA24[0] = this->tblA24[1] = this->tblA24[2] = this->tblA24[3] = 0;
+	game_set_color(this, 2);
+	game_setA80(this, 2);
+	game_setA84(this, 1);
 	if (should_start_game && !start_game(this) && !this->cfg.reg_state)
 		this->cfg.reg_state = 1;
 	return this;
@@ -838,5 +957,19 @@ int main(int argc, char **argv)
 	strcpy(c->dir_data_3, DIR_DATA2);
 	strcpy(c->dir_movies, "avi/");
 	ctor_game_4FDFA0(&AOE, 1);
+	unsigned error = AOE.vtbl->get_state(&AOE);
+	printf("error=%u\n", error);
+	if (!error) {
+		int status = AOE.vtbl->main(&AOE);
+		AOE.vtbl->get_state(&AOE);
+		AOE.vtbl->dtor_io(&AOE, 1);
+		return status;
+	}
+	if (error != 4) {
+		AOE.vtbl->get_res_str(2001, c->prompt_title, 256);
+		AOE.vtbl->strerr(&AOE, 1, error, 0, c->prompt_message, 256);
+		AOE.vtbl->dtor_io(&AOE, 1);
+		smtMsg(SMT_MSG_ERR, 0, c->prompt_title, c->prompt_message);
+	}
 	return 0;
 }
