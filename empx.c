@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <smt/smt.h>
 #include "config.h"
+#include "langx.h"
 #include "log.h"
 #include "todo.h"
 
@@ -164,7 +165,8 @@ struct game {
 	struct logger log;
 	unsigned logctl;
 	struct regpair rpair;
-	unsigned tbl1B8[4];
+	unsigned rpair_rootval;
+	unsigned tbl1BC[3];
 	unsigned midi_sync;
 	unsigned num1CC, num1D0;
 	unsigned num1D8, num1DC;
@@ -405,6 +407,8 @@ unsigned game_loop(struct game *this)
 char *game_get_res_str(unsigned id, char *str, int n)
 {
 	stub
+	if (loadstr(id, str, n))
+		str[n - 1] = '\0';
 	return NULL;
 }
 
@@ -746,7 +750,11 @@ struct game *game_vtbl_init(struct game *this, int should_start_game)
 	this->tbl80[0] = '\0';
 	for (int i = 0; i < 8; ++i)
 		this->tbl184[i] = 0;
-	this->tbl1B8[0] = this->tbl1B8[1] = this->tbl1B8[2] = this->tbl1B8[3] = 0;
+	this->logctl = 0;
+	this->rpair.root = this->rpair.value = 0;
+	this->rpair.next = NULL;
+	this->rpair_rootval = 0;
+	this->tbl1BC[0] = this->tbl1BC[1] = this->tbl1BC[2] = 0;
 	this->midi_sync = 0;
 	this->num1CC = this->num1D0 = 1;
 	this->cursor = SMT_CURS_ARROW;
@@ -800,7 +808,7 @@ struct game *game_vtbl_init(struct game *this, int should_start_game)
 	return this;
 }
 
-struct game *ctor_game_4FDFA0(struct game *this, int should_start_game)
+struct game *game_ctor(struct game *this, int should_start_game)
 {
 	stub
 	game_vtbl_init(this, 0);
@@ -956,7 +964,7 @@ int main(int argc, char **argv)
 	strcpy(c->dir_data_2, DIR_DATA2);
 	strcpy(c->dir_data_3, DIR_DATA2);
 	strcpy(c->dir_movies, "avi/");
-	ctor_game_4FDFA0(&AOE, 1);
+	game_ctor(&AOE, 1);
 	unsigned error = AOE.vtbl->get_state(&AOE);
 	printf("error=%u\n", error);
 	if (!error) {
