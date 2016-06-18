@@ -99,6 +99,7 @@ struct game_cfg {
 	char win_name[121];
 	char tr_world_txt[137];
 	unsigned window;
+	unsigned gl;
 	char dir_empires[261];
 	unsigned num404, num408, num40C;
 	unsigned hInst, hPrevInst;
@@ -202,8 +203,10 @@ struct game {
 	uint8_t tblA14[12];
 	unsigned numA20;
 	unsigned tblA24[4];
-	unsigned numA80, numA84;
-	char chAE8;
+	unsigned numA80, numA84, numA88, numA8C, numA90;
+	char tblAD6[6];
+	unsigned numADC, numAE0;
+	char chAE4, chAE8;
 	unsigned tblBEC[20];
 	char chC58, chD5C, chE64, chF68;
 	unsigned numE60;
@@ -573,13 +576,59 @@ static inline unsigned game_setA84(struct game *this, unsigned v)
 	return this->numA84 = v;
 }
 
+static inline unsigned game_setA88(struct game *this, unsigned v)
+{
+	return this->numA88 = v;
+}
+
+static inline unsigned game_setA8C_A90(struct game *this, unsigned v1, unsigned v2)
+{
+	this->numA90 = v2;
+	return this->numA8C = v1;
+}
+
+static inline char game_setAD6(struct game *this, char ch)
+{
+	return this->tblAD6[0] = ch;
+}
+
+static inline char game_setAD7(struct game *this, char ch)
+{
+	return this->tblAD6[1] = ch;
+}
+
+static inline char game_setAD8(struct game *this, char ch)
+{
+	return this->tblAD6[2] = ch;
+}
+
+static inline char game_setAD9(struct game *this, char ch)
+{
+	return this->tblAD6[3] = ch;
+}
+
+static inline char game_setADC(struct game *this, unsigned v)
+{
+	return this->numADC = v;
+}
+
+static inline char game_setAE0(struct game *this, unsigned v)
+{
+	return this->numAE0 = v;
+}
+
+static inline char game_setAE4(struct game *this, char ch)
+{
+	return this->chAE4 = ch;
+}
+
 int dtor_iobase(void *this, char ch)
 {
 	// TODO verify no op
 	return printf("no op: dtor_iobase: %p, %d\n", this, (int)ch);
 }
 
-signed ctor_show_focus_screen(struct game *this)
+signed game_show_focus_screen(struct game *this)
 {
 	struct timespec tp;
 	stub
@@ -635,8 +684,9 @@ struct game *start_game(struct game *this)
 	read_data_mapping(data_terrain  , directory_data, 0);
 	read_data_mapping(data_border   , directory_data, 0);
 	read_data_mapping(data_interface, directory_data, 0);
-	if (ctor_show_focus_screen(this)) {
+	if (game_show_focus_screen(this)) {
 		smtCreatewin(&this->cfg.window, 1, 1, NULL, 0);
+		smtCreategl(&this->cfg.gl, this->cfg.window);
 	}
 	return this;
 }
@@ -676,22 +726,28 @@ int game_parse_opt2(struct game *this)
 	}
 	if (!this->cfg.sfx_enable || strstr(buf, "NOMUSIC") || strstr(buf, "NO_MUSIC") || strstr(buf, "NO MUSIC"))
 		this->cfg.midi_enable = 0;
+	if (this->cfg.mouse_opts[2] == 1 && this->cfg.mouse_opts[0] == 1)
+		this->no_normal_mouse = 1;
+	if (strstr(buf, "NORMALMOUSE") || strstr(buf, "NORMAL_MOUSE") || strstr(buf, "NORMAL MOUSE"))
+		this->no_normal_mouse = 0;
 	printf(
 		"game options:\n"
 		"resolution: (%d,%d)\n"
 		"no_start: %d\n"
 		"sys_memmap: %d\n"
 		"midi: enable=%d, sync=%d, no_fill=%d\n"
-		"sfx_enable: %d\n",
+		"sfx_enable: %d\n"
+		"no_normal_mouse: %d\n",
 		this->cfg.width, this->cfg.height,
 		this->cfg.no_start,
 		this->cfg.sys_memmap,
 		this->cfg.midi_enable,
 		this->midi_sync,
 		midi_no_fill,
-		this->cfg.sfx_enable
+		this->cfg.sfx_enable,
+		this->no_normal_mouse
 	);
-	return 0;
+	return 1;
 }
 
 int game_parse_opt(struct game *this)
@@ -798,7 +854,7 @@ struct game *game_vtbl_init(struct game *this, int should_start_game)
 		game_hkey_root = this->rpair.root;
 		if (game_logger_init(this)) {
 			game_logger = &this->log;
-			if (should_start_game && !ctor_show_focus_screen(this) && !this->state)
+			if (should_start_game && !game_show_focus_screen(this) && !this->state)
 				this->state = 1;
 			this->num9D4 = 0;
 		} else
@@ -829,6 +885,13 @@ struct game *game_ctor(struct game *this, int should_start_game)
 	game_set_color(this, 2);
 	game_setA80(this, 2);
 	game_setA84(this, 1);
+	game_setA88(this, 1);
+	game_setA8C_A90(this, 1, 1);
+	game_setAD6(this, 1);
+	game_setAD7(this, 0);
+	game_setAD8(this, 0);
+	game_setAD9(this, 0);
+	game_setADC(this, 0);
 	if (should_start_game && !start_game(this) && !this->cfg.reg_state)
 		this->cfg.reg_state = 1;
 	return this;
