@@ -2,6 +2,7 @@
 #define AOE_GAME_H
 
 #include <stdint.h>
+#include "gfx.h"
 #include "log.h"
 
 struct game;
@@ -84,12 +85,6 @@ struct game_cfg {
 
 #define CWDBUFSZ 261
 
-struct pal_entry {
-	uint8_t r, g, b, flags;
-};
-
-extern struct pal_entry game_pal[256];
-
 struct game {
 	struct game_vtbl *vtbl;
 	unsigned num4, num8;
@@ -103,7 +98,9 @@ struct game {
 	unsigned tbl28[4];
 	unsigned num38, powersaving;
 	unsigned state;
-	unsigned tbl44[3];
+	unsigned num44;
+	struct video_mode mode;
+	unsigned num4C;
 	uint8_t ch50;
 	unsigned no_normal_mouse;
 	unsigned tbl58[4];

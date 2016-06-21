@@ -1,6 +1,25 @@
 #ifndef AOE_LANGX_H
 #define AOE_LANGX_H
 
+#define STR_ERR_INIT 2002
+#define STR_ERR_GFX 2003
+#define STR_ERR_SOUND 2004
+#define STR_ERR_DIRECTX 2005
+#define STR_ERR_OPENGL STR_ERR_DIRECTX
+#define STR_ERR_CREATE_GAME 2006
+#define STR_ERR_LOAD_DATA 2007
+#define STR_ERR_NO_CD 2008
+#define STR_ERR_MULTI_CD 2009
+#define STR_ERR_NO_CD_SCENARIO 2010
+#define STR_ERR_8BIT 2011
+#define STR_ERR_SYNC 2012
+
+#define STR_ERR_START 2401
+#define STR_ERR_SAVE_GAME 2402
+#define STR_ERR_SAVE_SCENARIO 2403
+#define STR_ERR_LOAD_GAME 2404
+#define STR_ERR_LOAD_SCENARIO 2405
+
 int loadstr(unsigned id, char *str, unsigned n);
 
 #endif

@@ -35,6 +35,8 @@ Makefile
 # archives
 *.tgz
 *.zip
+# documentation
+doc
 # binaries
 EOF
 cat <<EOF >Makefile
@@ -46,7 +48,7 @@ LDLIBS=$LDLIBS $LLIBS
 
 EOF
 printf 'MAIN=' >>Makefile
-MAIN=$(grep -r 'int main' | sed -e '/Binary.*/d' -e 's/:.*//g')
+MAIN=$(grep -r '^int main' | sed -e '/Binary.*/d' -e 's/:.*//g')
 for i in $MAIN; do
 	bin="${i/%.c/}"
 	echo "$bin" >>.gitignore

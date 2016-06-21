@@ -80,6 +80,34 @@ char *game_get_res_str(unsigned id, char *str, unsigned n)
 	return NULL;
 }
 
+static char *game_strerror2(struct game *this, int code, int status, int a4, char *str, unsigned n)
+{
+	char *error = NULL;
+	stub
+	*str = '\0';
+	if (code == 1) {
+		switch (status) {
+		case 1:
+		case 2:
+		case 4:
+		case 5:
+		case 6:
+		case 14:
+		case 15:
+			error = this->vtbl->get_res_str(STR_ERR_INIT, str, n);
+			break;
+		case 7:
+		case 8:
+		case 11:
+		case 13:
+		case 17:
+			error = this->vtbl->get_res_str(STR_ERR_GFX, str, n);
+			break;
+		}
+	}
+	return error;
+}
+
 char *game_strerror(struct game *this, int code, signed status, int a4, char *str, unsigned n)
 {
 	char *error = NULL;
@@ -95,6 +123,26 @@ char *game_strerror(struct game *this, int code, signed status, int a4, char *st
 			error = this->vtbl->get_res_str(4301, str, n);
 			break;
 		}
+		break;
+	case 1:
+		switch (status) {
+		case 100:
+		case 101:
+		case 102:
+			error = this->vtbl->get_res_str(STR_ERR_START, str, n);
+		case 103:
+			error = this->vtbl->get_res_str(STR_ERR_SAVE_GAME, str, n);
+		case 104:
+			error = this->vtbl->get_res_str(STR_ERR_SAVE_SCENARIO, str, n);
+		case 105:
+			error = this->vtbl->get_res_str(STR_ERR_LOAD_GAME, str, n);
+		case 106:
+			error = this->vtbl->get_res_str(STR_ERR_LOAD_SCENARIO, str, n);
+		default:
+			error = game_strerror2(this, code, status, a4, str, n);
+			break;
+		}
+		break;
 	}
 	return error;
 }
@@ -260,7 +308,8 @@ struct game *game_vtbl_init(struct game *this, struct game_cfg *cfg, int should_
 	hInstance = SMT_RES_INVALID;
 	this->num38 = 0;
 	this->state = 0;
-	this->tbl44[0] = this->tbl44[1] = this->tbl44[2] = 0;
+	this->num44 = 0;
+	this->num4C = 0;
 	this->ch50 = 2;
 	this->no_normal_mouse = 0;
 	this->tbl58[1] = this->tbl58[2] = this->tbl58[3] = 0;
@@ -477,8 +526,20 @@ static struct pal_entry *palette_init(char *palette, int a2)
 static int game_gfx_init(struct game *this)
 {
 	stub
-	int result = 1;
-	if (!result) return 0;
+	if (!video_mode_init(&this->mode))
+		return 0;
+	if (!direct_draw_init(
+		&this->mode,
+		this->cfg->hInst, this->window,
+		this->palette,
+		(this->cfg->gfx8bitchk != 0) + 1,
+		(this->cfg->mouse_opts[0] != 0) + 1,
+		this->cfg->width,
+		this->cfg->height,
+		this->cfg->sys_memmap != 0))
+	{
+		return 0;
+	}
 	this->palette = palette_init(this->cfg->palette, 50500);
 	return 1;
 }
@@ -548,6 +609,7 @@ static signed game_show_focus_screen(struct game *this)
 		return 0;
 	}
 	if (!this->vtbl->gfx_init(this)) {
+		fputs("gfx_init failed\n", stderr);
 		this->state = 7;
 		return 0;
 	}
