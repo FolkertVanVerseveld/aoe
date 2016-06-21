@@ -193,6 +193,11 @@ static inline char game_offsetA94(struct game *this, int index, char ch)
 	return this->tblA94[index] = ch;
 }
 
+static inline unsigned game_offsetAA0(struct game *this, int index, unsigned v)
+{
+	return this->tblAA0[index] = v;
+}
+
 static inline char game_offsetAC4(struct game *this, int index, char ch)
 {
 	return this->tblAC4[index] = ch;
@@ -201,6 +206,15 @@ static inline char game_offsetAC4(struct game *this, int index, char ch)
 static inline char game_offsetACD(struct game *this, int index, char ch)
 {
 	return this->tblACD[index] = ch;
+}
+
+static inline char game_offsetA24(struct game *this, int a2, int a3, int a4, int a5)
+{
+	this->tblA24[0] = a2;
+	this->tblA24[1] = a3;
+	this->tblA24[2] = a4;
+	this->tblA24[3] = a5;
+	return a4;
 }
 
 #endif

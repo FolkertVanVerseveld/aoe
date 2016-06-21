@@ -1,9 +1,11 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <smt/smt.h>
 #include "config.h"
+#include "dmap.h"
 #include "game.h"
 #include "langx.h"
 #include "todo.h"
@@ -38,7 +40,7 @@ extern int prng_seed;
 
 #define prng_init(t) prng_seed=t
 
-int read_data_mapping(const char *filename, const char *directory, int no_stat);
+struct pal_entry game_pal[256];
 
 int dtor_iobase(void *this, char ch)
 {
@@ -117,7 +119,6 @@ static inline char game_set_hsv(struct game *this, unsigned char h, unsigned cha
 
 static inline char game_set_color(struct game *this, int brightness)
 {
-	stub
 	this->brightness = brightness;
 	switch (brightness) {
 	case 0: brightness = game_set_hsv(this, 72, 72, 8); break;
@@ -132,7 +133,7 @@ static inline char game_set_color(struct game *this, int brightness)
 
 static inline void strup(char *buf, size_t n)
 {
-	for (size_t i = 0; *buf && i < n; ++i)
+	for (size_t i = 0; buf[i] && i < n; ++i)
 		buf[i] = toupper(buf[i]);
 }
 
@@ -176,7 +177,7 @@ static int game_parse_opt2(struct game *this)
 	}
 	if (!this->cfg->sfx_enable || strstr(buf, "NOMUSIC") || strstr(buf, "NO_MUSIC") || strstr(buf, "NO MUSIC"))
 		this->cfg->midi_enable = 0;
-	if (this->cfg->mouse_opts[2] == 1 && this->cfg->mouse_opts[0] == 1)
+	if (this->cfg->gfx8bitchk == 1 && this->cfg->mouse_opts[0] == 1)
 		this->no_normal_mouse = 1;
 	if (strstr(buf, "NORMALMOUSE") || strstr(buf, "NORMAL_MOUSE") || strstr(buf, "NORMAL MOUSE"))
 		this->no_normal_mouse = 0;
@@ -254,7 +255,8 @@ struct game *game_vtbl_init(struct game *this, struct game_cfg *cfg, int should_
 	this->window = SMT_RES_INVALID;
 	this->num14 = 0;
 	this->running = 1;
-	this->num1C = this->num24 = 0;
+	this->palette = NULL;
+	this->num24 = 0;
 	hInstance = SMT_RES_INVALID;
 	this->num38 = 0;
 	this->state = 0;
@@ -333,9 +335,21 @@ static int game_translate_event(struct game *this, unsigned *event)
 	return 1;
 }
 
+static signed game_init_icon(struct game *this)
+{
+	signed result;
+	stub
+	if (this->cfg->hPrevInst)
+		result = 1;
+	else {
+		// TODO load icon
+		result = 1;
+	}
+	return result;
+}
+
 struct game *game_ctor(struct game *this, struct game_cfg *cfg, int should_start_game)
 {
-	stub
 	game_vtbl_init(this, cfg, 0);
 	for (int i = 0; i < 15; ++i)
 		this->tblBEC[i] = 0;
@@ -375,10 +389,14 @@ struct game *game_ctor(struct game *this, struct game_cfg *cfg, int should_start
 	this->tblBEC[25] = this->tblBEC[26] = -1;
 	for (unsigned index = 0; index < 9; ++index) {
 		game_offsetA94(this, index, index + 1);
+		game_offsetAA0(this, index, index);
+		game_offsetAC4(this, index, 1);
+		game_offsetACD(this, index, 0);
 		players_connection_state[index] = 0;
 	}
-	game_ch988(this, 4);
 	memset(this->blk116C, 0, 36);
+	game_ch988(this, 4);
+	game_clear1198(this);
 	if (should_start_game && !start_game(this) && !this->cfg->reg_state)
 		this->cfg->reg_state = 1;
 	return this;
@@ -393,9 +411,82 @@ static int game_logger_init(struct game *this)
 	return 1;
 }
 
+static int game_cmp_time(struct game *this)
+{
+	time_t t0, t1;
+	struct tm tm_time;
+	memset(&tm_time, 0, sizeof(tm_time));
+	tm_time.tm_mon = this->cfg->time[0] - 1;
+	tm_time.tm_mday = this->cfg->time[1];
+	tm_time.tm_year = this->cfg->time[2];
+	t0 = mktime(&tm_time);
+	time(&t1);
+	return t1 <= t0;
+}
+
+/** check if option has been specified on startup ignoring case */
+static int game_opt_check(struct game *this, char *opt)
+{
+	char optbuf[OPTBUFSZ];
+	strncpy(optbuf, this->cfg->optbuf, OPTBUFSZ);
+	optbuf[OPTBUFSZ - 1] = '\0';
+	strup(optbuf, OPTBUFSZ - 1);
+	return strstr(optbuf, opt) != 0;
+}
+
+static int game_futex_window_request_focus(struct game *this)
+{
+	stub
+	this->mutex_state = 1;
+	return 1;
+}
+
+static int game_go_fullscreen(struct game *this)
+{
+	int x, y;
+	unsigned width, height, display_index = 0;
+	stub
+	// NOTE recycle this->cfg->window
+	this->window = this->cfg->window;
+	smtDisplaywin(this->window, &display_index);
+	smtDisplayBounds(display_index, &x, &y, &width, &height);
+	if (this->window == SMT_RES_INVALID)
+		return 0;
+	if (this->cfg->mouse_opts[0] || width == this->cfg->width && height == this->cfg->height)
+		smtMode(this->window, SMT_WIN_FULL_FAKE);
+	smtVisible(this->window, 1);
+	game_window = this->window;
+	return 1;
+}
+
+static struct pal_entry *palette_init(char *palette, int a2)
+{
+	char palette_path[260];
+	stub
+	palette_path[0] = '\0';
+	if (palette) {
+		if (strchr(palette, '.'))
+			strcpy(palette_path, palette);
+		else
+			sprintf(palette_path, "%s.pal", palette);
+		strup(palette_path, 260 - 1);
+	}
+	return game_pal;
+}
+
+static int game_gfx_init(struct game *this)
+{
+	stub
+	int result = 1;
+	if (!result) return 0;
+	this->palette = palette_init(this->cfg->palette, 50500);
+	return 1;
+}
+
 static signed game_show_focus_screen(struct game *this)
 {
 	struct timespec tp;
+	unsigned gamespeed;
 	stub
 	clock_gettime(CLOCK_REALTIME, &tp);
 	prng_init(tp.tv_nsec / 1000LU);
@@ -413,14 +504,14 @@ static signed game_show_focus_screen(struct game *this)
 		sw = 800;
 		sh = 600;
 	}
-	printf("screen size: (%u,%u)\n", sw, sh);
 	this->cfg->width = sw;
 	this->cfg->height = sh;
 	if (reg_cfg.mouse_style == 2)
 		this->cfg->mouse_style = 2;
 	else if (reg_cfg.mouse_style == 1)
 		this->cfg->mouse_style = 1;
-	this->cfg->gamespeed = reg_cfg.game_speed * 0.1;
+	gamespeed = reg_cfg.game_speed;
+	this->cfg->gamespeed = gamespeed * 0.1;
 	this->cfg->difficulty = reg_cfg.difficulty;
 	if (reg_cfg.pathfind >= PATHFIND_LOW + 1 && reg_cfg.pathfind <= PATHFIND_HIGH + 1)
 		game_set_pathfind(this, reg_cfg.pathfind - 1);
@@ -432,15 +523,71 @@ static signed game_show_focus_screen(struct game *this)
 		fprintf(stderr, "ignore mp_pathfind: %u\n", reg_cfg.mp_pathfind);
 	if (reg_cfg.scroll_speed >= 10 && reg_cfg.scroll_speed <= 200)
 		this->cfg->scroll1 = this->cfg->scroll0 = reg_cfg.scroll_speed;
-	if (!this->vtbl->parse_opt(this))
+	if (!this->vtbl->parse_opt(this)) {
 		this->state = 2;
+		return 0;
+	}
+	this->vtbl->init_mouse(this);
+	if (this->cfg->num87C) {
+		if (!game_cmp_time(this)) {
+			this->state = 3;
+			return 0;
+		}
+	}
+	if (this->cfg->num88C && !game_futex_window_request_focus(this)) {
+		this->state = 4;
+		return 0;
+	}
+	smtScreensave(SMT_SCREEN_SAVE_OFF);
+	if (!this->vtbl->init_icon(this)) {
+		this->state = 5;
+		return 0;
+	}
+	if (!this->vtbl->go_fullscreen(this)) {
+		this->state = 6;
+		return 0;
+	}
+	if (!this->vtbl->gfx_init(this)) {
+		this->state = 7;
+		return 0;
+	}
 	return 1;
+}
+
+static void update_palette(struct pal_entry *tbl, unsigned start, unsigned n, struct pal_entry *src)
+{
+	if (start + n >= 256) {
+		fprintf(stderr, "bad palette range: [%u,%u)\n", start, start + n);
+		return;
+	}
+	for (unsigned i_src = 0, i_dest = start; i_src < n; ++i_src, ++i_dest) {
+		tbl[i_dest].r = src[i_src].r;
+		tbl[i_dest].g = src[i_src].g;
+		tbl[i_dest].b = src[i_src].b;
+		tbl[i_dest].flags = src[i_src].flags;
+	}
+}
+
+static int game_mousestyle(struct game *this)
+{
+	// TODO resolve type a2 and a4
+	if (this->cfg->mouse_style == 1)
+		return game_offsetA24(this, 0x55B000, 0x28, 0x55B6E0, 0x28);
+	else
+		return game_offsetA24(this, 0x55A238, 0x28, 0x55A918, 0x28);
 }
 
 struct game *start_game(struct game *this)
 {
+	struct pal_entry p[7] = {
+		{23, 39, 124, 0},
+		{39, 63, 0x90, 0},
+		{63, 95, 0x9f, 0},
+		{87, 123, 0xb4, 0},
+		{95, 0xa0, 0, 0},
+		{23, 123, 0, 0}
+	};
 	stub
-	// FIXME initialize ((char*)this + 0xF26) == &this->cfg[1].gap1E0[5]
 	read_data_mapping(data_sounds   , "data2/"      , 1);
 	read_data_mapping(data_graphics , "data2/"      , 0);
 	read_data_mapping(data_interface, "data2/"      , 0);
@@ -450,7 +597,8 @@ struct game *start_game(struct game *this)
 	read_data_mapping(data_border   , directory_data, 0);
 	read_data_mapping(data_interface, directory_data, 0);
 	if (game_show_focus_screen(this)) {
-		smtCreatewin(&this->cfg->window, 1, 1, NULL, 0);
+		update_palette(this->palette, 24, 7, p);
+		smtCreatewin(&this->cfg->window, 640, 480, NULL, SMT_WIN_VISIBLE | SMT_WIN_BORDER);
 		smtCreategl(&this->cfg->gl, this->cfg->window);
 	}
 	return this;
@@ -471,6 +619,10 @@ struct game_vtbl g_vtbl = {
 	.get_res_str = game_get_res_str,
 	.strerr = game_strerror,
 	.parse_opt = game_parse_opt,
+	.init_icon = game_init_icon,
+	.go_fullscreen = game_go_fullscreen,
+	.gfx_init = game_gfx_init,
 	.translate_event = game_translate_event,
-	.handle_event = game_handle_event
+	.handle_event = game_handle_event,
+	.init_mouse = game_mousestyle,
 };

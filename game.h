@@ -19,9 +19,13 @@ struct game_vtbl {
 	char *(*get_res_str)(unsigned, char*, unsigned);
 	char *(*strerr)(struct game*, int, signed, int, char*, unsigned);
 	int (*parse_opt)(struct game*);
+	signed (*init_icon)(struct game*);
+	int (*go_fullscreen)(struct game*);
+	int (*gfx_init)(struct game*);
 	// XXX consider inlining
 	int (*translate_event)(struct game*, unsigned*);
 	void (*handle_event)(struct game*, unsigned);
+	int (*init_mouse)(struct game*);
 };
 
 extern struct game_vtbl g_vtbl, g_vtbl2;
@@ -48,10 +52,11 @@ struct game_cfg {
 	char palette[256];
 	char cursors[256];
 	unsigned num878, num87C;
-	short tbl880[3];
+	short time[3];
 	signed num888, num88C;
 	unsigned no_start;
-	unsigned mouse_opts[3];
+	unsigned mouse_opts[2];
+	unsigned gfx8bitchk;
 	unsigned sys_memmap;
 	unsigned midi_enable;
 	unsigned sfx_enable;
@@ -79,6 +84,12 @@ struct game_cfg {
 
 #define CWDBUFSZ 261
 
+struct pal_entry {
+	uint8_t r, g, b, flags;
+};
+
+extern struct pal_entry game_pal[256];
+
 struct game {
 	struct game_vtbl *vtbl;
 	unsigned num4, num8;
@@ -86,7 +97,9 @@ struct game {
 	unsigned window;
 	unsigned num14;
 	unsigned running;
-	unsigned num1C, num24;
+	struct pal_entry *palette;
+	unsigned mutex_state;
+	unsigned num24;
 	unsigned tbl28[4];
 	unsigned num38, powersaving;
 	unsigned state;
@@ -145,7 +158,8 @@ struct game {
 	unsigned numA20;
 	unsigned tblA24[4];
 	unsigned numA80, numA84, numA88, numA8C, numA90;
-	char tblA94[48];
+	char tblA94[12];
+	unsigned tblAA0[9];
 	char tblAC4[9], tblACD[9];
 	char tblAD6[6];
 	unsigned numADC, numAE0;

@@ -129,6 +129,7 @@ struct game_cfg cfg = {
 	.dir_data_2 = DIR_DATA2,
 	.dir_data_3 = DIR_DATA2,
 	.dir_movies = "avi/",
+	.time = {0, 0, 0},
 };
 
 int main(int argc, char **argv)
@@ -178,7 +179,6 @@ int main(int argc, char **argv)
 	cfg.num40C = 3;
 	cfg.num878 = 8;
 	cfg.num87C = 0;
-	cfg.tbl880[0] = cfg.tbl880[1] = cfg.tbl880[2] = 0;
 	cfg.num888 = cfg.num88C = 1;
 	cfg.num8CC = cfg.num8D4 = 4.0f;
 	cfg.num8D8 = 0.05f;
