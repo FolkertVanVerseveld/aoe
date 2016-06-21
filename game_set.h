@@ -152,9 +152,55 @@ static inline char game_setAE0(struct game *this, unsigned v)
 	return this->numAE0 = v;
 }
 
-static inline char game_setAE4(struct game *this, char ch)
+static inline char game_chAE4(struct game *this, char ch)
 {
 	return this->chAE4 = ch;
+}
+
+static inline char game_chAE5(struct game *this, char ch)
+{
+	return this->chAE5 = ch;
+}
+
+static inline char game_chAE6(struct game *this, char ch)
+{
+	return this->chAE6 = ch;
+}
+
+static inline char game_ch1190(struct game *this, char ch)
+{
+	return this->ch1190 = ch;
+}
+
+static inline char game_set1194(struct game *this, int v)
+{
+	return this->num1194 = v;
+}
+
+static inline char game_ch988(struct game *this, char ch)
+{
+	return this->ch988 = ch;
+}
+
+static inline int game_clear1198(struct game *this)
+{
+	memset(this->blk1198, 0, 160);
+	return 0;
+}
+
+static inline char game_offsetA94(struct game *this, int index, char ch)
+{
+	return this->tblA94[index] = ch;
+}
+
+static inline char game_offsetAC4(struct game *this, int index, char ch)
+{
+	return this->tblAC4[index] = ch;
+}
+
+static inline char game_offsetACD(struct game *this, int index, char ch)
+{
+	return this->tblACD[index] = ch;
 }
 
 #endif

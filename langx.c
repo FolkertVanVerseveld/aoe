@@ -4,7 +4,7 @@
 
 #define item(x,str) case x: res=str; break;
 
-int loadstr(unsigned id, char *str, int n)
+int loadstr(unsigned id, char *str, unsigned n)
 {
 	char *res = NULL;
 	// TODO scan language files for UTF16 string

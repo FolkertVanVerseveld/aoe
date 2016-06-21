@@ -16,9 +16,12 @@ struct game_vtbl {
 	unsigned (*main)(struct game*);
 	// XXX consider inlining
 	unsigned (*get_state)(struct game*);
-	char *(*get_res_str)(unsigned, char*, int);
-	char *(*strerr)(struct game*, int, signed, int, char*, int);
+	char *(*get_res_str)(unsigned, char*, unsigned);
+	char *(*strerr)(struct game*, int, signed, int, char*, unsigned);
 	int (*parse_opt)(struct game*);
+	// XXX consider inlining
+	int (*translate_event)(struct game*, unsigned*);
+	void (*handle_event)(struct game*, unsigned);
 };
 
 extern struct game_vtbl g_vtbl, g_vtbl2;
@@ -67,7 +70,6 @@ struct game_cfg {
 	char dir_data2[244];
 	float gamespeed;
 	unsigned difficulty;
-	char pathfind, mp_pathfind;
 	char dir_empty[261], dir_save[261], dir_scene[53];
 	char dir_camp[52], dir_sound[261];
 	char dir_data_2[261], dir_data_3[261];
@@ -80,7 +82,7 @@ struct game_cfg {
 struct game {
 	struct game_vtbl *vtbl;
 	unsigned num4, num8;
-	struct game_cfg cfg;
+	struct game_cfg *cfg;
 	unsigned window;
 	unsigned num14;
 	unsigned running;
@@ -96,7 +98,9 @@ struct game {
 	uint8_t ch70;
 	unsigned tbl74[3];
 	char tbl80[260];
-	unsigned tbl184[8];
+	unsigned tbl184[2];
+	unsigned *ptr18C;
+	unsigned tbl190[5];
 	struct logger log;
 	unsigned logctl;
 	struct regpair rpair;
@@ -122,7 +126,9 @@ struct game {
 	char str8FD[128];
 	unsigned num97D_97E_is_zero, num97E_97D_is_zero;
 	uint8_t hsv[3];
-	uint8_t ch982, ch984, ch985, ch986, ch987, ch988, ch989;
+	uint8_t ch982;
+	char mp_pathfind;
+	uint8_t ch984, ch985, ch986, ch987, ch988, ch989;
 	uint8_t tbl98A[9];
 	uint8_t ch993;
 	uint8_t tbl994[9];
@@ -133,21 +139,29 @@ struct game {
 	unsigned rollover_text;
 	float gamespeed;
 	unsigned difficulty;
+	char pathfind;
 	unsigned brightness;
 	uint8_t tblA14[12];
 	unsigned numA20;
 	unsigned tblA24[4];
 	unsigned numA80, numA84, numA88, numA8C, numA90;
+	char tblA94[48];
+	char tblAC4[9], tblACD[9];
 	char tblAD6[6];
 	unsigned numADC, numAE0;
-	char chAE4, chAE8;
-	unsigned tblBEC[20];
+	char chAE4, chAE5, chAE6, chAE8;
+	unsigned tblBEC[27];
 	char chC58, chD5C, chE64, chF68;
 	unsigned numE60;
 	char ch106C;
+	char blk116C[36];
+	char ch1190;
+	int num1194;
+	char blk1198[160];
 	int num1250;
 };
 
-struct game *game_ctor(struct game *this, int should_start_game);
+struct game *game_ctor(struct game *this, struct game_cfg *cfg, int should_start_game);
+void game_free(void);
 
 #endif

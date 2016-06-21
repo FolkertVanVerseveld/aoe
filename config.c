@@ -1,6 +1,6 @@
 #include "config.h"
 
-struct config cfg = {
+struct config reg_cfg = {
 	.screen_size = 1280,
 	.rollover_text = 1,
 	.mouse_style = 2,

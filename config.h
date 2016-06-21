@@ -17,6 +17,6 @@ struct config {
 	char pathfind, mp_pathfind;
 };
 
-extern struct config cfg;
+extern struct config reg_cfg;
 
 #endif

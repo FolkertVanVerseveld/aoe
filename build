@@ -9,7 +9,7 @@ if [ -z $SMTPATH ]; then
 	exit 1
 fi
 cstd='-std=gnu99'
-CFLAGS="-Wall -Wextra -pedantic -pthread $cstd -I$INCPATH -O2 -ffast-math -g $*"
+CFLAGS="-Wall -Wextra -pedantic -pthread $cstd -I$INCPATH $*"
 libs='sdl2 glew freealut vorbisfile'
 if ! hash pkg-config 2>/dev/null; then
 	echo "pkg-config is missing" 1>&2

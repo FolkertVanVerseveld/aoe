@@ -21,6 +21,8 @@
 #define TITLE "Age of Empires Expansion"
 #define VERSION "00.01.6.1006"
 
+#define DIR_DATA2 "data2/"
+
 int prng_seed;
 
 struct obj42BF80 {
@@ -44,6 +46,7 @@ static void hexdump(const void *buf, size_t n) {
 }
 
 static void cleanup(void) {
+	game_free();
 	drs_free();
 }
 
@@ -97,10 +100,39 @@ static int parse_opt(int argc, char **argv)
 	return optind;
 }
 
+struct game AOE;
+struct game_cfg cfg = {
+	.tr_world_txt = "tr_wrld.txt",
+	.dir_empires = "data2/empires.dat",
+	.reg_path = "Software/Microsoft/Games/Age of Empires/1.00",
+	.menu_name = "",
+	.icon = "AppIcon",
+	.palette = "palette",
+	.cursors = "mcursors",
+	.scroll0 = 84,
+	.scroll1 = 84,
+	.no_start = 0,
+	.mouse_opts = {1, 1, 1},
+	.sys_memmap = 0,
+	.midi_enable = 1,
+	.sfx_enable = 1,
+	.mouse_style = 2,
+	.midi_opts = {0, 0, 0, 0, 1, 1, 3},
+	.width = 800,
+	.height = 600,
+	.dir_empty = "",
+	.dir_data2 = DIR_DATA2,
+	.dir_sound = "sound/",
+	.dir_save = "savegame/",
+	.dir_scene = "scenario/",
+	.dir_camp = "campaign/",
+	.dir_data_2 = DIR_DATA2,
+	.dir_data_3 = DIR_DATA2,
+	.dir_movies = "avi/",
+};
+
 int main(int argc, char **argv)
 {
-	struct game AOE;
-	struct game_cfg *c = &AOE.cfg;
 	int argp;
 	char *optptr, options[OPTBUFSZ];
 	size_t optsz = 0;
@@ -125,61 +157,32 @@ int main(int argc, char **argv)
 	puts(options);
 	// original stuff
 	// see also fixme at game_cfg struct declaration
-	strcpy(c->title, TITLE);
-	strcpy(c->version, VERSION);
-	strcpy(c->win_name, TITLE);
-	strcpy(c->tr_world_txt, "tr_wrld.txt");
-	strcpy(c->dir_empires, "data2/empires.dat");
-	strcpy(c->reg_path, "Software/Microsoft/Games/Age of Empires/1.00");
-	strcpy(c->optbuf, options);
-	strcpy(c->icon, "AppIcon");
-	c->menu_name[0] = '\0';
-	strcpy(c->palette, "palette");
-	strcpy(c->cursors, "mcursors");
-	//strcpy(c->str2fd, (const char*)&off_557778);
-	c->hPrevInst = hPrevInst;
-	c->hInst = hInst;
-	c->nshowcmd = nShowCmd;
-	c->scroll0 = c->scroll1 = 84;
-	c->num8E8 = 0x8701C5C1;
-	c->tbl8EC[0] = 0x11D2337B;
-	c->tbl8EC[1] = 0x60009B83;
-	c->tbl8EC[2] = 0x08F50797;
-	c->num8F8 = c->num8E8 + 1;
-	c->tbl8FC[0] = c->tbl8EC[0];
-	c->tbl8FC[1] = c->tbl8EC[1];
-	c->tbl8FC[2] = c->tbl8EC[2];
-	c->num404 = 0;
-	c->num408 = 1;
-	c->num40C = 3;
-	c->num878 = 8;
-	c->num87C = 0;
-	c->tbl880[0] = c->tbl880[1] = c->tbl880[2] = 0;
-	c->num888 = c->num88C = 1;
-	c->no_start = 0;
-	c->mouse_opts[0] = c->mouse_opts[1] = c->mouse_opts[2] = 1;
-	c->sys_memmap = 0;
-	c->midi_enable = c->sfx_enable = 1;
-	c->midi_opts[4] = 1;
-	c->midi_opts[5] = 1;
-	c->midi_opts[6] = 3;
-	c->num8CC = c->num8D4 = 4.0f;
-	c->num8D8 = 0.05f;
-	c->mouse_style = 2;
-	c->midi_opts[0] = c->midi_opts[1] = c->midi_opts[2] = c->midi_opts[3] = 0;
-	c->width = 800;
-	c->height = 600;
-	#define DIR_DATA2 "data2/"
-	strcpy(c->dir_data2, DIR_DATA2);
-	strcpy(c->dir_sound, "sound/");
-	c->dir_empty[0] = '\0';
-	strcpy(c->dir_save, "savegame/");
-	strcpy(c->dir_scene, "scenario/");
-	strcpy(c->dir_camp, "campaign/");
-	strcpy(c->dir_data_2, DIR_DATA2);
-	strcpy(c->dir_data_3, DIR_DATA2);
-	strcpy(c->dir_movies, "avi/");
-	game_ctor(&AOE, 1);
+	strcpy(cfg.title, TITLE);
+	strcpy(cfg.version, VERSION);
+	strcpy(cfg.win_name, TITLE);
+	strcpy(cfg.optbuf, options);
+	//strcpy(cfg.str2fd, (const char*)&off_557778);
+	cfg.hPrevInst = hPrevInst;
+	cfg.hInst = hInst;
+	cfg.nshowcmd = nShowCmd;
+	cfg.num8E8 = 0x8701C5C1;
+	cfg.tbl8EC[0] = 0x11D2337B;
+	cfg.tbl8EC[1] = 0x60009B83;
+	cfg.tbl8EC[2] = 0x08F50797;
+	cfg.num8F8 = cfg.num8E8 + 1;
+	cfg.tbl8FC[0] = cfg.tbl8EC[0];
+	cfg.tbl8FC[1] = cfg.tbl8EC[1];
+	cfg.tbl8FC[2] = cfg.tbl8EC[2];
+	cfg.num404 = 0;
+	cfg.num408 = 1;
+	cfg.num40C = 3;
+	cfg.num878 = 8;
+	cfg.num87C = 0;
+	cfg.tbl880[0] = cfg.tbl880[1] = cfg.tbl880[2] = 0;
+	cfg.num888 = cfg.num88C = 1;
+	cfg.num8CC = cfg.num8D4 = 4.0f;
+	cfg.num8D8 = 0.05f;
+	game_ctor(&AOE, &cfg, 1);
 	unsigned error = AOE.vtbl->get_state(&AOE);
 	printf("error=%u\n", error);
 	if (!error) {
@@ -189,10 +192,10 @@ int main(int argc, char **argv)
 		return status;
 	}
 	if (error != 4) {
-		AOE.vtbl->get_res_str(2001, c->prompt_title, 256);
-		AOE.vtbl->strerr(&AOE, 1, error, 0, c->prompt_message, 256);
+		AOE.vtbl->get_res_str(2001, cfg.prompt_title, 256);
+		AOE.vtbl->strerr(&AOE, 1, error, 0, cfg.prompt_message, 256);
 		AOE.vtbl->dtor_io(&AOE, 1);
-		smtMsg(SMT_MSG_ERR, 0, c->prompt_title, c->prompt_message);
+		smtMsg(SMT_MSG_ERR, 0, cfg.prompt_title, cfg.prompt_message);
 	}
 	return 0;
 }
