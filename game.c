@@ -400,6 +400,10 @@ static signed game_init_icon(struct game *this)
 struct game *game_ctor(struct game *this, struct game_cfg *cfg, int should_start_game)
 {
 	game_vtbl_init(this, cfg, 0);
+	/* our stuff */
+	smtCreatewin(&this->cfg->window, 640, 480, NULL, SMT_WIN_VISIBLE | SMT_WIN_BORDER);
+	smtCreategl(&this->cfg->gl, this->cfg->window);
+	/* original stuff */
 	for (int i = 0; i < 15; ++i)
 		this->tblBEC[i] = 0;
 	this->tblBEC[1] = -1;
@@ -660,8 +664,6 @@ struct game *start_game(struct game *this)
 	read_data_mapping(data_interface, directory_data, 0);
 	if (game_show_focus_screen(this)) {
 		update_palette(this->palette, 24, 7, p);
-		smtCreatewin(&this->cfg->window, 640, 480, NULL, SMT_WIN_VISIBLE | SMT_WIN_BORDER);
-		smtCreategl(&this->cfg->gl, this->cfg->window);
 	}
 	return this;
 }
