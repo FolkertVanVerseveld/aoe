@@ -7,6 +7,9 @@
 #include "sfx.h"
 #include "log.h"
 
+#define GAME_LOGCTL_FILE 1
+#define GAME_LOGCTL_STDOUT 2
+
 typedef unsigned window_ctl2[4];
 
 struct game;
@@ -14,7 +17,7 @@ struct game;
 struct game_vtbl {
 	int (*dtor_io)(void*,char);
 	unsigned (*main)(struct game*);
-	// INLINE: unsigned (*get_state)(struct game*);
+	unsigned (*get_state)(struct game*);
 	char *(*get_res_str)(unsigned, char*, unsigned);
 	char *(*strerr)(struct game*, int, signed, int, char*, unsigned);
 	int (*parse_opt)(struct game*);
@@ -50,6 +53,7 @@ struct game_config {
 	char menu_name[41];
 	char palette[256];
 	char cursors[256];
+	unsigned chk_time;
 	short time[3];
 	unsigned no_start;
 	unsigned mouse_opts[2];
@@ -123,8 +127,6 @@ struct game {
 	struct map *map_area;
 	unsigned brightness;
 };
-
-#define game_get_state(g) (g)->state
 
 struct game *game_ctor(struct game *this, struct game_config *cfg, int should_start_game);
 void game_free(void);

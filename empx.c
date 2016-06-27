@@ -31,20 +31,6 @@ struct obj42BF80 {
 
 int dtor_iobase(void*, char);
 
-static void hexdump(const void *buf, size_t n) {
-	uint16_t i, j, p = 0;
-	const unsigned char *data = buf;
-	while (n) {
-		printf("%04hX", p & ~0xf);
-		for (j = p, i = 0; n && i < 0x10; ++i, --n)
-			printf(" %02hhX", data[p++]);
-		putchar(' ');
-		for (i = j; i < p; ++i)
-			putchar(isprint(data[i]) ? data[i] : '.');
-		putchar('\n');
-	}
-}
-
 static void cleanup(void) {
 	game_free();
 	drs_free();
@@ -109,9 +95,11 @@ struct game_config cfg = {
 	.icon = "AppIcon",
 	.palette = "palette",
 	.cursors = "mcursors",
+	.chk_time = 0,
+	.time = {0, 0, 0},
+	.no_start = 0,
 	.scroll0 = 84,
 	.scroll1 = 84,
-	.no_start = 0,
 	.mouse_opts = {1, 1},
 	.gfx8bitchk = 1,
 	.sys_memmap = 0,
@@ -130,7 +118,6 @@ struct game_config cfg = {
 	.dir_data_2 = DIR_DATA2,
 	.dir_data_3 = DIR_DATA2,
 	.dir_movies = "avi/",
-	.time = {0, 0, 0},
 };
 
 int main(int argc, char **argv)
@@ -163,19 +150,15 @@ int main(int argc, char **argv)
 	strcpy(cfg.version, VERSION);
 	strcpy(cfg.win_name, TITLE);
 	strcpy(cfg.optbuf, options);
-	//strcpy(cfg.str2fd, (const char*)&off_557778);
 	cfg.hPrevInst = hPrevInst;
 	cfg.hInst = hInst;
 	cfg.nshowcmd = nShowCmd;
 	game_ctor(&AOE, &cfg, 1);
-	unsigned error;
-	// INLINED error = AOE.vtbl->get_state(&AOE);
-	error = game_get_state(&AOE);
+	unsigned error = AOE.vtbl->get_state(&AOE);
 	printf("error=%u\n", error);
 	if (!error) {
 		int status = AOE.vtbl->main(&AOE);
-		// INLINED AOE.vtbl->get_state(&AOE);
-		game_get_state(&AOE);
+		AOE.vtbl->get_state(&AOE);
 		AOE.vtbl->dtor_io(&AOE, 1);
 		return status;
 	}

@@ -20,9 +20,13 @@ struct logger {
 };
 
 struct logger *logger_init(struct logger *this);
+/** print timestamp */
 void logger_elapsed_ms(struct logger *this);
 void logger_enable_timestamp(struct logger *this, int enable);
 void logger_write_log(struct logger *this, int write);
 void logger_write_stdout(struct logger *this, int write);
+/** just close log file and stop logging */
+int logger_free(struct logger *this);
+int logger_stop(struct logger *this);
 
 #endif

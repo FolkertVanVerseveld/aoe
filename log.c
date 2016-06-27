@@ -2,9 +2,13 @@
 This file is reconstructed from debug information from the original game.
 DO NOT modify strings constants in this file!
 */
+#include <stdio.h>
+#include <string.h>
 #include "log.h"
 #include "dbg.h"
 #include "todo.h"
+
+static FILE *file_logger;
 
 const char *logger_error_path = /*"C:\\"*/"APPLOGERR.TXT";
 
@@ -43,13 +47,27 @@ static inline void logger_sequence(struct logger *this, int sequence_number)
 
 static inline void logger_io_init(struct logger *this)
 {
-	stub
 	if (this->write_log && (!this->valid_log_opened || this->too_many_log_files)) {
 		time(&this->time_millis);
 		for (int i = 0; i < 24; ++i) {
-			// TODO look for log file
+			if (i == 0)
+				strcpy(this->path, "AOELOG.txt");
+			else
+				sprintf(this->path, "AOELOG%.2d.txt", i - 1);
+			file_logger = fopen(this->path, "w");
+			if (file_logger)
+				goto good;
 		}
+		this->too_many_log_files = 1;
+		this->valid_log_opened = 0;
+		return;
 	}
+good:
+#ifndef STRICT
+	// BUGFIX sanity
+	if (*this->path)
+#endif
+		dbgf("Log file %s is opened\n", this->path);
 	this->valid_log_opened = 1;
 	logger_elapsed_ms(this);
 }
@@ -60,14 +78,10 @@ struct logger *logger_init(struct logger *this)
 	// BUGFIX uninitialized
 	time(&this->time_millis);
 #endif
-#ifdef DEBUG
 	this->write_log = 0;
-#else
-	this->write_log = 0;
-#endif
 	this->write_stdout = 0;
-	this->valid_log_opened = 0;
 	this->too_many_log_files = 0;
+	this->valid_log_opened = 0;
 	logger_sequence(this, 0);
 	logger_enable_timestamp(this, 0);
 	logger_enable_datetime(this, 0);
@@ -76,6 +90,7 @@ struct logger *logger_init(struct logger *this)
 	// FIXME call logger local func
 	dbgs("===Logging===");
 	logger_elapsed_ms(this);
+	strcpy(this->path, logger_error_path);
 	return this;
 }
 
@@ -91,11 +106,29 @@ void logger_elapsed_ms(struct logger *this)
 void logger_write_log(struct logger *this, int write)
 {
 	this->write_log = write == 1;
-	printf("Logging to File %s\n", get_str_active(write));
+	dbgf("Logging to File %s\n", get_str_active(write));
 }
 
 void logger_write_stdout(struct logger *this, int write)
 {
 	this->write_log = write == 1;
-	printf("Logging to OUTPUT %s\n", get_str_active(write));
+	dbgf("Logging to OUTPUT %s\n", get_str_active(write));
+}
+
+int logger_free(struct logger *this)
+{
+	return logger_stop(this);
+}
+
+int logger_stop(struct logger *this)
+{
+	stub
+	int result = this->write_log;
+	if (result) {
+		// TODO call proper func with args this->writelog, "Closing debug log file '%s'"
+		dbgf("Closing debug log file '%s'\n", "???");
+		dbgs("Log file is closed");
+		result = fclose(file_logger);
+	}
+	return result;
 }

@@ -10,4 +10,6 @@
 #define dbgf(f,...) ((void)0)
 #endif
 
+void hexdump(const void *buf, size_t n);
+
 #endif

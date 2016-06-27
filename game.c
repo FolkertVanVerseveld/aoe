@@ -42,6 +42,11 @@ int dtor_iobase(void *this, char ch)
 	return printf("no op: dtor_iobase: %p, %d\n", this, (int)ch);
 }
 
+static unsigned game_get_state(struct game *this)
+{
+	return this->state;
+}
+
 unsigned game_loop(struct game *this)
 {
 	stub
@@ -272,7 +277,11 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	this->state = 0;
 	this->no_normal_mouse = 0;
 	this->ptr18C = NULL;
+#ifdef DEBUG
+	this->logctl = GAME_LOGCTL_STDOUT;
+#else
 	this->logctl = 0;
+#endif
 	this->rpair_root.left.key = 0;
 	this->rpair_root.value.dword = 0;
 	this->rpair_root.other = 0;
@@ -351,8 +360,8 @@ static int game_logger_init(struct game *this)
 		result = NULL;
 	this->log = result;
 	if (result) {
-		logger_write_log(result, this->logctl);
-		logger_write_stdout(this->log, this->logctl);
+		logger_write_log(result, this->logctl & GAME_LOGCTL_FILE);
+		logger_write_stdout(this->log, this->logctl & GAME_LOGCTL_STDOUT);
 		logger_enable_timestamp(this->log, 1);
 	}
 	return result != NULL;
@@ -478,15 +487,25 @@ static signed game_show_focus_screen(struct game *this)
 			sw = 1280;
 			sh = 1024;
 		}
-	} else if (w == 1024) {
-		sw = 1024;
-		sh = 768;
-	} else if (w == 800) {
-		sw = 800;
-		sh = 600;
+	} else {
+		switch (w) {
+		case 1024:
+			sw = 1024;
+			sh = 768;
+			break;
+		case 800:
+			sw = 800;
+			sh = 600;
+			break;
+		default:
+			sw = 640;
+			sh = 480;
+			break;
+		}
 	}
 	this->cfg->width = sw;
 	this->cfg->height = sh;
+	this->rollover_text = reg_cfg.rollover_text != 2;
 	if (reg_cfg.mouse_style == 2)
 		this->cfg->mouse_style = 2;
 	else if (reg_cfg.mouse_style == 1)
@@ -509,6 +528,10 @@ static signed game_show_focus_screen(struct game *this)
 		return 0;
 	}
 	this->vtbl->init_mouse(this);
+	if (this->cfg->chk_time && !game_cmp_time(this)) {
+		this->state = 3;
+		return 0;
+	}
 	smtScreensave(SMT_SCREEN_SAVE_OFF);
 	if (!this->vtbl->init_icon(this)) {
 		this->state = 5;
@@ -573,6 +596,7 @@ struct game_vtbl g_vtbl = {
 }, g_vtbl2 = {
 	.dtor_io = dtor_iobase,
 	.main = game_loop,
+	.get_state = game_get_state,
 	.get_res_str = game_get_res_str,
 	.strerr = game_strerror,
 	.parse_opt = game_parse_opt,
