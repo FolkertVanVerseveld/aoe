@@ -19,7 +19,7 @@ struct logger {
 	char path[32];
 };
 
-void logger_init(struct logger *this);
+struct logger *logger_init(struct logger *this);
 void logger_elapsed_ms(struct logger *this);
 void logger_enable_timestamp(struct logger *this, int enable);
 void logger_write_log(struct logger *this, int write);

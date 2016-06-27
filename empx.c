@@ -101,7 +101,7 @@ static int parse_opt(int argc, char **argv)
 }
 
 struct game AOE;
-struct game_cfg cfg = {
+struct game_config cfg = {
 	.tr_world_txt = "tr_wrld.txt",
 	.dir_empires = "data2/empires.dat",
 	.reg_path = "Software/Microsoft/Games/Age of Empires/1.00",
@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 	options[OPTBUFSZ - 1] = '\0';
 	puts(options);
 	// original stuff
-	// see also fixme at game_cfg struct declaration
+	// see also fixme at game_config struct declaration
 	strcpy(cfg.title, TITLE);
 	strcpy(cfg.version, VERSION);
 	strcpy(cfg.win_name, TITLE);
@@ -167,28 +167,15 @@ int main(int argc, char **argv)
 	cfg.hPrevInst = hPrevInst;
 	cfg.hInst = hInst;
 	cfg.nshowcmd = nShowCmd;
-	cfg.num8E8 = 0x8701C5C1;
-	cfg.tbl8EC[0] = 0x11D2337B;
-	cfg.tbl8EC[1] = 0x60009B83;
-	cfg.tbl8EC[2] = 0x08F50797;
-	cfg.num8F8 = cfg.num8E8 + 1;
-	cfg.tbl8FC[0] = cfg.tbl8EC[0];
-	cfg.tbl8FC[1] = cfg.tbl8EC[1];
-	cfg.tbl8FC[2] = cfg.tbl8EC[2];
-	cfg.num404 = 0;
-	cfg.num408 = 1;
-	cfg.num40C = 3;
-	cfg.num878 = 8;
-	cfg.num87C = 0;
-	cfg.num888 = cfg.num88C = 1;
-	cfg.num8CC = cfg.num8D4 = 4.0f;
-	cfg.num8D8 = 0.05f;
 	game_ctor(&AOE, &cfg, 1);
-	unsigned error = AOE.vtbl->get_state(&AOE);
+	unsigned error;
+	// INLINED error = AOE.vtbl->get_state(&AOE);
+	error = game_get_state(&AOE);
 	printf("error=%u\n", error);
 	if (!error) {
 		int status = AOE.vtbl->main(&AOE);
-		AOE.vtbl->get_state(&AOE);
+		// INLINED AOE.vtbl->get_state(&AOE);
+		game_get_state(&AOE);
 		AOE.vtbl->dtor_io(&AOE, 1);
 		return status;
 	}

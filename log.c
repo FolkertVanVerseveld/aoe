@@ -54,7 +54,7 @@ static inline void logger_io_init(struct logger *this)
 	logger_elapsed_ms(this);
 }
 
-void logger_init(struct logger *this)
+struct logger *logger_init(struct logger *this)
 {
 #ifndef STRICT
 	// BUGFIX uninitialized
@@ -73,8 +73,10 @@ void logger_init(struct logger *this)
 	logger_enable_datetime(this, 0);
 	logger_set_flushing(this, 0);
 	logger_io_init(this);
+	// FIXME call logger local func
 	dbgs("===Logging===");
 	logger_elapsed_ms(this);
+	return this;
 }
 
 void logger_elapsed_ms(struct logger *this)
