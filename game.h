@@ -23,6 +23,7 @@ struct game_vtbl {
 	signed (*init_icon)(struct game*);
 	int (*go_fullscreen)(struct game*);
 	int (*gfx_init)(struct game*);
+	int (*set_palette)(struct game*);
 	// XXX consider inlining
 	int (*translate_event)(struct game*, unsigned*);
 	void (*handle_event)(struct game*, unsigned);

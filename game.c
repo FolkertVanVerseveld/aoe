@@ -548,6 +548,28 @@ static int game_gfx_init(struct game *this)
 	return 1;
 }
 
+static int game_init_palette(struct game *this)
+{
+	return (this->palette = palette_init(this->cfg->palette, 50500)) != 0;
+}
+
+static int game_set_palette(struct game *this)
+{
+	struct pal_entry p[7] = {
+		{23, 39, 124, 0},
+		{39, 63, 0x90, 0},
+		{63, 95, 0x9f, 0},
+		{87, 123, 0xb4, 0},
+		{63, 95, 0xa0, 0},
+		{39, 63, 0x91, 0},
+		{23, 39, 123, 0}
+	};
+	if (!game_init_palette(this))
+		return 0;
+	update_palette(this->palette, 248, 7, p);
+	return 1;
+}
+
 static signed game_show_focus_screen(struct game *this)
 {
 	struct timespec tp;
@@ -617,21 +639,11 @@ static signed game_show_focus_screen(struct game *this)
 		this->state = 7;
 		return 0;
 	}
+	if (!this->vtbl->set_palette(this)) {
+		this->state = 17;
+		return 0;
+	}
 	return 1;
-}
-
-static void update_palette(struct pal_entry *tbl, unsigned start, unsigned n, struct pal_entry *src)
-{
-	if (start + n >= 256) {
-		fprintf(stderr, "bad palette range: [%u,%u)\n", start, start + n);
-		return;
-	}
-	for (unsigned i_src = 0, i_dest = start; i_src < n; ++i_src, ++i_dest) {
-		tbl[i_dest].r = src[i_src].r;
-		tbl[i_dest].g = src[i_src].g;
-		tbl[i_dest].b = src[i_src].b;
-		tbl[i_dest].flags = src[i_src].flags;
-	}
 }
 
 static int game_mousestyle(struct game *this)
@@ -662,9 +674,11 @@ struct game *start_game(struct game *this)
 	read_data_mapping(data_terrain  , directory_data, 0);
 	read_data_mapping(data_border   , directory_data, 0);
 	read_data_mapping(data_interface, directory_data, 0);
-	if (game_show_focus_screen(this)) {
-		update_palette(this->palette, 24, 7, p);
-	}
+	if (!game_show_focus_screen(this))
+		return 0;
+	update_palette(this->palette, 24, 7, p);
+	if (!game_opt_check(this, "LOBBY"))
+		return this;
 	return this;
 }
 
@@ -686,6 +700,7 @@ struct game_vtbl g_vtbl = {
 	.init_icon = game_init_icon,
 	.go_fullscreen = game_go_fullscreen,
 	.gfx_init = game_gfx_init,
+	.set_palette = game_set_palette,
 	.translate_event = game_translate_event,
 	.handle_event = game_handle_event,
 	.init_mouse = game_mousestyle,

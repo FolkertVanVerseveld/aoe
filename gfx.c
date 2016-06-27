@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <smt/smt.h>
 #include "todo.h"
 #include "gfx.h"
@@ -38,4 +39,18 @@ struct video_mode *video_mode_init(struct video_mode *this)
 	this->sys_memmap = 0;
 	this->state = 0;
 	return this;
+}
+
+void update_palette(struct pal_entry *tbl, unsigned start, unsigned n, struct pal_entry *src)
+{
+	if (start + n >= 256) {
+		fprintf(stderr, "bad palette range: [%u,%u)\n", start, start + n);
+		return;
+	}
+	for (unsigned i_src = 0, i_dest = start; i_src < n; ++i_src, ++i_dest) {
+		tbl[i_dest].r = src[i_src].r;
+		tbl[i_dest].g = src[i_src].g;
+		tbl[i_dest].b = src[i_src].b;
+		tbl[i_dest].flags = src[i_src].flags;
+	}
 }
