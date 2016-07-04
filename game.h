@@ -15,7 +15,7 @@ typedef unsigned window_ctl2[4];
 struct game;
 
 struct game_vtbl {
-	int (*dtor_io)(void*,char);
+	int (*dtor)(struct game*, unsigned);
 	unsigned (*main)(struct game*);
 	unsigned (*get_state)(struct game*);
 	char *(*get_res_str)(unsigned, char*, unsigned);
@@ -115,6 +115,7 @@ struct game {
 	unsigned apply_new_cursor;
 	// REMAP typeof(HCURSOR cursor) == void*
 	unsigned cursor;
+	unsigned window2;
 	char cwdbuf[261];
 	char libname[15];
 	char num97D_97E_is_zero, num97E_97D_is_zero;
@@ -129,6 +130,5 @@ struct game {
 };
 
 struct game *game_ctor(struct game *this, struct game_config *cfg, int should_start_game);
-void game_free(void);
 
 #endif

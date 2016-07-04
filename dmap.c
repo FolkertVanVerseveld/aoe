@@ -40,7 +40,7 @@ static inline void str2(char *buf, size_t n, const char *s1, const char *s2)
 	snprintf(buf, n, "%s%s", s1, s2);
 }
 
-int read_data_mapping(const char *filename, const char *directory, int no_stat)
+int read_data_mapping(const char *filename, const char *directory, int nommap)
 {
 	// data types that are read from drs files must honor WIN32 ABI
 	typedef uint32_t size32_t;
@@ -64,7 +64,7 @@ int read_data_mapping(const char *filename, const char *directory, int no_stat)
 		goto fail;
 	}
 	dmap_init(map);
-	if (!no_stat) {
+	if (!nommap) {
 		struct stat st;
 		if (fstat(fd, &st)) goto fail;
 		map->length = st.st_size;
@@ -86,7 +86,7 @@ int read_data_mapping(const char *filename, const char *directory, int no_stat)
 	}
 	strcpy(map->filename, filename);
 	puts(name);
-	if (no_stat) {
+	if (nommap) {
 		map->fd = fd;
 		map->dblk = NULL;
 		lseek(fd, 0, SEEK_CUR);
@@ -123,8 +123,7 @@ int read_data_mapping(const char *filename, const char *directory, int no_stat)
 		drs_list = map;
 	}
 	// check for magic "1.00tribe"
-	ret = strcmp(&map->drs_data[0x2C], "tribe");
-	if (!ret) ret = strncmp(&map->drs_data[0x28], data_map_magic, sizeof data_map_magic);
+	ret = strncmp(&map->drs_data[0x28], "1.00tribe", strlen("1.00tribe"));
 	if (ret) fprintf(stderr, "%s: hdr invalid\n", filename);
 	// FIXME if no magic, dangling ptr in last item of drs list
 fail:

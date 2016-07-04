@@ -47,6 +47,10 @@ static inline void logger_sequence(struct logger *this, int sequence_number)
 
 static inline void logger_io_init(struct logger *this)
 {
+#ifndef STRICT
+	// BUGFIX uninitialized
+	*this->path = '\0';
+#endif
 	if (this->write_log && (!this->valid_log_opened || this->too_many_log_files)) {
 		time(&this->time_millis);
 		for (int i = 0; i < 24; ++i) {
@@ -64,7 +68,7 @@ static inline void logger_io_init(struct logger *this)
 	}
 good:
 #ifndef STRICT
-	// BUGFIX sanity
+	// BUGFIX valid
 	if (*this->path)
 #endif
 		dbgf("Log file %s is opened\n", this->path);

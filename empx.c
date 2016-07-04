@@ -31,11 +31,6 @@ struct obj42BF80 {
 
 int dtor_iobase(void*, char);
 
-static void cleanup(void) {
-	game_free();
-	drs_free();
-}
-
 static const char data_map_magic[4] = {'1', '.', '0', '0'};
 
 static struct option long_opt[] = {
@@ -118,6 +113,9 @@ struct game_config cfg = {
 	.dir_data_2 = DIR_DATA2,
 	.dir_data_3 = DIR_DATA2,
 	.dir_movies = "avi/",
+	.title = TITLE,
+	.version = VERSION,
+	.win_name = TITLE,
 };
 
 int main(int argc, char **argv)
@@ -126,8 +124,8 @@ int main(int argc, char **argv)
 	char *optptr, options[OPTBUFSZ];
 	size_t optsz = 0;
 	unsigned hPrevInst = 0, hInst = 0, nShowCmd = 0;
-	// our stuff
-	atexit(cleanup);
+	/* < */
+	atexit(drs_free);
 	argp = parse_opt(argc, argv);
 	// construct lpCmdLine (i.e. options) from remaining args
 	options[0] = '\0';
@@ -144,11 +142,8 @@ int main(int argc, char **argv)
 	}
 	options[OPTBUFSZ - 1] = '\0';
 	puts(options);
-	// original stuff
+	/* > */
 	// see also fixme at game_config struct declaration
-	strcpy(cfg.title, TITLE);
-	strcpy(cfg.version, VERSION);
-	strcpy(cfg.win_name, TITLE);
 	strcpy(cfg.optbuf, options);
 	cfg.hPrevInst = hPrevInst;
 	cfg.hInst = hInst;
@@ -159,13 +154,13 @@ int main(int argc, char **argv)
 	if (!error) {
 		int status = AOE.vtbl->main(&AOE);
 		AOE.vtbl->get_state(&AOE);
-		AOE.vtbl->dtor_io(&AOE, 1);
+		AOE.vtbl->dtor(&AOE, 0);
 		return status;
 	}
 	if (error != 4) {
 		AOE.vtbl->get_res_str(2001, cfg.prompt_title, 256);
 		AOE.vtbl->strerr(&AOE, 1, error, 0, cfg.prompt_message, 256);
-		AOE.vtbl->dtor_io(&AOE, 1);
+		AOE.vtbl->dtor(&AOE, 0);
 		smtMsg(SMT_MSG_ERR, 0, cfg.prompt_title, cfg.prompt_message);
 	}
 	return 0;

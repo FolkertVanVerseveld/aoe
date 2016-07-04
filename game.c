@@ -36,10 +36,21 @@ extern int prng_seed;
 
 struct pal_entry game_pal[256];
 
-int dtor_iobase(void *this, char ch)
+static void game_free_ios_base(struct game *this)
 {
-	// TODO verify no op
-	return printf("no op: dtor_iobase: %p, %d\n", this, (int)ch);
+	stub
+	this->vtbl = &g_vtbl2;
+	if (this->window2 != SMT_RES_INVALID) {
+		smtFreewin(this->window2);
+		this->window2 = SMT_RES_INVALID;
+	}
+}
+
+static int game_dtor_ios_base(struct game *this, char free_this)
+{
+	game_free_ios_base(this);
+	if (free_this) free(this);
+	return 1;
 }
 
 static unsigned game_get_state(struct game *this)
@@ -585,16 +596,10 @@ struct game *start_game(struct game *this)
 	return this;
 }
 
-void game_free(void) {
-	if (!game_ref) return;
-	smtFreegl(game_ref->cfg->gl);
-	smtFreewin(game_ref->cfg->window);
-}
-
 struct game_vtbl g_vtbl = {
 	.parse_opt = game_parse_opt2
 }, g_vtbl2 = {
-	.dtor_io = dtor_iobase,
+	.dtor = game_dtor_ios_base,
 	.main = game_loop,
 	.get_state = game_get_state,
 	.get_res_str = game_get_res_str,
