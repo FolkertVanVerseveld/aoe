@@ -10,7 +10,9 @@
 #define GAME_LOGCTL_FILE 1
 #define GAME_LOGCTL_STDOUT 2
 
-typedef unsigned window_ctl2[4];
+struct window_ctl2 {
+	unsigned num0, num4, num8, numC;
+};
 
 struct game;
 
@@ -45,28 +47,36 @@ struct game_config {
 	unsigned window, gl;
 	char langpath[32];
 	char dir_empires[261];
+	char strAOE[263];
+	unsigned d0, d1p0, d3;
 	unsigned hInst, hPrevInst;
 	char reg_path[256];
 	char optbuf[OPTBUFSZ];
 	unsigned nshowcmd;
 	char icon[41];
 	char menu_name[41];
-	char palette[256];
-	char cursors[256];
+	char palette[261];
+	char cursors[251];
+	unsigned d8p0;
 	unsigned chk_time;
 	short time[3];
+	unsigned d1p1;
+	unsigned window_request_focus;
 	unsigned no_start;
-	unsigned mouse_opts[2];
+	unsigned window_show_focus_update;
+	unsigned mouse_opts;
 	unsigned gfx8bitchk;
 	unsigned sys_memmap;
 	unsigned midi_enable;
 	unsigned sfx_enable;
 	unsigned midi_opts[7];
 	int scroll0;
+	float f4_0p0;
 	int scroll1;
+	float f4_0p1, f0_5;
 	short mouse_style;
 	unsigned width, height;
-	window_ctl2 winctl;
+	struct window_ctl2 winctl, winctl2;
 	char dir_data2[244];
 	//HKEY root;
 	float gamespeed;
@@ -88,12 +98,13 @@ struct game {
 	struct game_config *cfg;
 	unsigned window;
 	unsigned running;
-	// REMAP: typeof(HPALETTE palette) == void*
+	// REMAP typeof(HPALETTE palette) == void*
 	struct pal_entry *palette;
-	// REMAP: typeof(HANDLE mutex) == void*
+	// REMAP typeof(HANDLE mutex) == void*
 	unsigned mutex_state;
+	unsigned vtbl28[4];
 	unsigned screensaver_state;
-	// REMAP: typeof(PVOID powersaving) == void*
+	// REMAP typeof(PVOID powersaving) == void*
 	unsigned powersaving;
 	unsigned state;
 	unsigned timer;
@@ -102,7 +113,7 @@ struct game {
 	short sfx_count;
 	struct clip **sfx_tbl;
 	unsigned cursor_old_state;
-	// REMAP: typeof(HCURSOR cursor_old) == void*
+	// REMAP typeof(HCURSOR cursor_old) == void*
 	unsigned cursor_old;
 	struct game18C *ptr18C;
 	struct logger *log;
@@ -120,11 +131,15 @@ struct game {
 	char libname[15];
 	char num97D_97E_is_zero, num97E_97D_is_zero;
 	char hsv[3];
+	float start_gamespeed;
 	char mp_pathfind;
+	unsigned vtbl9A8;
+	unsigned tbl9B0[9];
 	unsigned rollover_text;
 	float gamespeed;
 	unsigned difficulty;
 	char pathfind;
+	char tblA15[11];
 	struct map *map_area;
 	unsigned brightness;
 };

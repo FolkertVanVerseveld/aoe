@@ -1,16 +1,22 @@
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <smt/smt.h>
 #include "config.h"
+#include "dbg.h"
 #include "dmap.h"
 #include "game.h"
 #include "langx.h"
 #include "todo.h"
 
 static struct game *game_ref = NULL;
+static int game_vtbl_focus;
+static int game_vtbl56146C;
+static char game_fname_focus[256];
+static FILE *file_vtbl_focus;
 
 static struct logger *game_logger;
 static unsigned game_window;
@@ -231,7 +237,7 @@ static int game_parse_opt2(struct game *this)
 	}
 	if (!this->cfg->sfx_enable || strstr(buf, "NOMUSIC") || strstr(buf, "NO_MUSIC") || strstr(buf, "NO MUSIC"))
 		this->cfg->midi_enable = 0;
-	if (this->cfg->gfx8bitchk == 1 && this->cfg->mouse_opts[0] == 1)
+	if (this->cfg->gfx8bitchk == 1 && this->cfg->window_show_focus_update == 1)
 		this->no_normal_mouse = 1;
 	if (strstr(buf, "NORMALMOUSE") || strstr(buf, "NORMAL_MOUSE") || strstr(buf, "NORMAL MOUSE"))
 		this->no_normal_mouse = 0;
@@ -272,10 +278,26 @@ struct game *start_game(struct game *this);
 static int game_logger_init(struct game *this);
 static signed game_show_focus_screen(struct game *this);
 
+static inline void game_set_start_gamespeed(struct game *this, float gamespeed)
+{
+	this->start_gamespeed = gamespeed;
+}
+
 struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int should_start_game)
 {
 	stub
+	this->focus = NULL;
+	for (int i = 0; i < 4; ++i)
+		this->vtbl28[i] = -1;
+	this->vtbl9A8 = 0;
 	this->vtbl = &g_vtbl;
+	// setup some global vars
+	game_vtbl_focus = 0;
+	game_vtbl56146C = 0;
+	*game_fname_focus = '\0';
+	file_vtbl_focus = NULL;
+	// setup other members
+	game_set_start_gamespeed(this, 1.0f);
 	game_set_hsv(this, 96, 96, 8);
 	game_set_pathfind(this, 0);
 	game_set_mp_pathfind(this, 0);
@@ -308,7 +330,11 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	game_window = SMT_RES_INVALID;
 	cfg_hInst = this->cfg->hInst;
 	game_hkey_root = 0;
+	memset(this->tbl9B0, 0, 9 * sizeof(this->tbl9B0));
+	memset(this->tblA15, 0, 11);
 	this->rollover_text = 1;
+	this->rollover_text = 1;
+	this->map_area = NULL;
 	this->gamespeed = 1.0f;
 	this->difficulty = 2;
 	if (reg_init(this)) {
@@ -350,6 +376,7 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	// TODO move this
 	smtCreatewin(&this->cfg->window, 640, 480, NULL, SMT_WIN_VISIBLE | SMT_WIN_BORDER);
 	smtCreategl(&this->cfg->gl, this->cfg->window);
+	smtPos(this->cfg->window, 0, 0);
 	/* original stuff */
 	this->vtbl = &g_vtbl2;
 	disable_terrain_sound = 0;
@@ -410,8 +437,8 @@ static int game_futex_window_request_focus(struct game *this)
 
 static int game_go_fullscreen(struct game *this)
 {
-	int x, y;
-	unsigned width, height, display_index = 0;
+	int x, y, wx, wy;
+	unsigned width, height, ww, wh, display_index = 0;
 	stub
 	// NOTE recycle this->cfg->window
 	this->window = this->cfg->window;
@@ -419,9 +446,27 @@ static int game_go_fullscreen(struct game *this)
 	smtDisplayBounds(display_index, &x, &y, &width, &height);
 	if (this->window == SMT_RES_INVALID)
 		return 0;
-	if (this->cfg->mouse_opts[0] || width == this->cfg->width && height == this->cfg->height)
-		smtMode(this->window, SMT_WIN_FULL_FAKE);
-	smtVisible(this->window, 1);
+	if (this->cfg->window_show_focus_update || width == this->cfg->width && height == this->cfg->height) {
+		smtTitle(this->window, this->cfg->title);
+		smtBorder(this->window, 0);
+	}
+	smtMode(this->window, SMT_WIN_FULL_FAKE);
+	smtBoundsp(this->window, &wx, &wy, &ww, &wh);
+	if (wx + wh != width || wy + wh != this->cfg->height) {
+		int dx, dy;
+		unsigned dw, dh;
+		dx = x;
+		dy = y;
+		dw = x + width + this->cfg->width - x - wx - ww;
+		dh = y + height + this->cfg->height - y - wy - wh;
+		dbgf(
+			"move window to (%d,%d,%u,%u)\n",
+			dx, dy, dw, dh
+		);
+		smtBounds(this->window, dx, dy, dw, dh);
+	}
+	if (this->cfg->window_show_focus_update)
+		smtVisible(this->window, 1);
 	game_window = this->window;
 	return 1;
 }
@@ -451,7 +496,7 @@ static int game_gfx_init(struct game *this)
 		this->cfg->hInst, this->window,
 		this->palette,
 		(this->cfg->gfx8bitchk != 0) + 1,
-		(this->cfg->mouse_opts[0] != 0) + 1,
+		(this->cfg->window_show_focus_update != 0) + 1,
 		this->cfg->width,
 		this->cfg->height,
 		this->cfg->sys_memmap != 0))
@@ -540,15 +585,18 @@ static signed game_show_focus_screen(struct game *this)
 	}
 	this->vtbl->init_mouse(this);
 	if (this->cfg->chk_time && !game_cmp_time(this)) {
+		fputs("game_cmp_time failed\n", stderr);
 		this->state = 3;
 		return 0;
 	}
 	smtScreensave(SMT_SCREEN_SAVE_OFF);
 	if (!this->vtbl->init_icon(this)) {
+		fputs("init_icon failed\n", stderr);
 		this->state = 5;
 		return 0;
 	}
 	if (!this->vtbl->go_fullscreen(this)) {
+		fputs("go_fullscreen failed\n", stderr);
 		this->state = 6;
 		return 0;
 	}
@@ -558,6 +606,7 @@ static signed game_show_focus_screen(struct game *this)
 		return 0;
 	}
 	if (!this->vtbl->set_palette(this)) {
+		fputs("set_palette failed\n", stderr);
 		this->state = 17;
 		return 0;
 	}
