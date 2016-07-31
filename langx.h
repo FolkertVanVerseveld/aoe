@@ -1,6 +1,7 @@
 #ifndef AOE_LANGX_H
 #define AOE_LANGX_H
 
+#define STR_ERROR 2001
 #define STR_ERR_INIT 2002
 #define STR_ERR_GFX 2003
 #define STR_ERR_SOUND 2004

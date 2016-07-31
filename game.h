@@ -10,6 +10,23 @@
 #define GAME_LOGCTL_FILE 1
 #define GAME_LOGCTL_STDOUT 2
 
+#define GE_LIB 1
+#define GE_OPT 2
+#define GE_TIME 3
+#define GE_FOCUS 4
+#define GE_ICON 5
+#define GE_FULLSCREEN 6
+#define GE_GFX 7
+#define GE_MOUSE 8
+#define GE_WINCTL2 9
+#define GE_SFX 10
+#define GE_CTL 11
+#define GE_SFX2 12
+#define GE_WINCTL 16
+#define GE_PALETTE 17
+#define GE_LOWOS 20
+#define GE_LOWMEM 22
+
 struct window_ctl2 {
 	unsigned num0, num4, num8, numC;
 };

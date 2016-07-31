@@ -186,8 +186,8 @@ int main(int argc, char **argv)
 		AOE.vtbl->dtor(&AOE, 0);
 		return status;
 	}
-	if (error != 4) {
-		AOE.vtbl->get_res_str(2001, cfg.prompt_title, 256);
+	if (error != GE_FOCUS) {
+		AOE.vtbl->get_res_str(STR_ERROR, cfg.prompt_title, 256);
 		AOE.vtbl->strerr(&AOE, 1, error, 0, cfg.prompt_message, 256);
 		AOE.vtbl->dtor(&AOE, 0);
 		smtMsg(SMT_MSG_ERR, 0, cfg.prompt_title, cfg.prompt_message);

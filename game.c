@@ -580,34 +580,34 @@ static signed game_show_focus_screen(struct game *this)
 	if (reg_cfg.scroll_speed >= 10 && reg_cfg.scroll_speed <= 200)
 		this->cfg->scroll1 = this->cfg->scroll0 = reg_cfg.scroll_speed;
 	if (!this->vtbl->parse_opt(this)) {
-		this->state = 2;
+		this->state = GE_OPT;
 		return 0;
 	}
 	this->vtbl->init_mouse(this);
 	if (this->cfg->chk_time && !game_cmp_time(this)) {
 		fputs("game_cmp_time failed\n", stderr);
-		this->state = 3;
+		this->state = GE_TIME;
 		return 0;
 	}
 	smtScreensave(SMT_SCREEN_SAVE_OFF);
 	if (!this->vtbl->init_icon(this)) {
 		fputs("init_icon failed\n", stderr);
-		this->state = 5;
+		this->state = GE_ICON;
 		return 0;
 	}
 	if (!this->vtbl->go_fullscreen(this)) {
 		fputs("go_fullscreen failed\n", stderr);
-		this->state = 6;
+		this->state = GE_FULLSCREEN;
 		return 0;
 	}
 	if (!this->vtbl->gfx_init(this)) {
 		fputs("gfx_init failed\n", stderr);
-		this->state = 7;
+		this->state = GE_GFX;
 		return 0;
 	}
 	if (!this->vtbl->set_palette(this)) {
 		fputs("set_palette failed\n", stderr);
-		this->state = 17;
+		this->state = GE_PALETTE;
 		return 0;
 	}
 	return 1;
