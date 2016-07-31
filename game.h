@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "engine.h"
+#include "ship.h"
 #include "gfx.h"
 #include "sfx.h"
 #include "log.h"
@@ -44,6 +45,7 @@ struct game_vtbl {
 	int (*go_fullscreen)(struct game*);
 	int (*gfx_init)(struct game*);
 	int (*set_palette)(struct game*);
+	int (*shp)(struct game*);
 	// XXX consider inlining
 	int (*translate_event)(struct game*, unsigned*);
 	void (*handle_event)(struct game*, unsigned);
@@ -127,6 +129,8 @@ struct game {
 	unsigned timer;
 	struct video_mode *mode;
 	unsigned no_normal_mouse;
+	unsigned short shp_count;
+	struct ship_20 shptbl[3];
 	short sfx_count;
 	struct clip **sfx_tbl;
 	unsigned cursor_old_state;
@@ -151,6 +155,7 @@ struct game {
 	float start_gamespeed;
 	char mp_pathfind;
 	unsigned vtbl9A8;
+	unsigned num9AC;
 	unsigned tbl9B0[9];
 	unsigned rollover_text;
 	float gamespeed;

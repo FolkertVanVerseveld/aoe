@@ -12,6 +12,8 @@
 #include "langx.h"
 #include "todo.h"
 
+#define get_os_version(a) a=0x1000
+
 static struct game *game_ref = NULL;
 static int game_vtbl_focus;
 static int game_vtbl56146C;
@@ -99,20 +101,20 @@ static char *game_strerror2(struct game *this, int code, int status, int a4, cha
 	*str = '\0';
 	if (code == 1) {
 		switch (status) {
-		case 1:
-		case 2:
-		case 4:
-		case 5:
-		case 6:
+		case GE_LIB:
+		case GE_OPT:
+		case GE_FOCUS:
+		case GE_ICON:
+		case GE_FULLSCREEN:
 		case 14:
 		case 15:
 			error = this->vtbl->get_res_str(STR_ERR_INIT, str, n);
 			break;
-		case 7:
-		case 8:
-		case 11:
+		case GE_GFX:
+		case GE_MOUSE:
+		case GE_CTL:
 		case 13:
-		case 17:
+		case GE_PALETTE:
 			error = this->vtbl->get_res_str(STR_ERR_GFX, str, n);
 			break;
 		}
@@ -195,6 +197,35 @@ static inline void strup(char *buf, size_t n)
 {
 	for (size_t i = 0; buf[i] && i < n; ++i)
 		buf[i] = toupper(buf[i]);
+}
+
+static int game_comm_ctl(struct game *this, int a2)
+{
+	stub
+	int result = 1;
+	int v4, v5, v6;
+	if (this->cfg->d1p0) {
+		if (a2 <= 0)
+			result = 1;
+		else {
+			v4 = v5 = 0;
+			do {
+				v6 = v5 + 1;
+				++v5;
+			} while (v6 < 9);
+			result = a2 <= v4 * this->cfg->d3;
+		}
+	}
+	return result;
+}
+
+static int game_shp(struct game *this)
+{
+	this->shp_count = 3;
+	shp_init(&this->shptbl[0], "groupnum.shp", 50403);
+	shp_init(&this->shptbl[1], "waypoint.shp", 50404);
+	shp_init(&this->shptbl[2], "moveto.shp"  , 50405);
+	return 1;
 }
 
 static void game_handle_event(struct game *this, unsigned a2)
@@ -446,7 +477,7 @@ static int game_go_fullscreen(struct game *this)
 	smtDisplayBounds(display_index, &x, &y, &width, &height);
 	if (this->window == SMT_RES_INVALID)
 		return 0;
-	if (this->cfg->window_show_focus_update || width == this->cfg->width && height == this->cfg->height) {
+	if (this->cfg->window_show_focus_update || (width == this->cfg->width && height == this->cfg->height)) {
 		smtTitle(this->window, this->cfg->title);
 		smtBorder(this->window, 0);
 	}
@@ -589,7 +620,21 @@ static signed game_show_focus_screen(struct game *this)
 		this->state = GE_TIME;
 		return 0;
 	}
+	if (this->cfg->window_request_focus && !game_futex_window_request_focus(this)) {
+		fputs("game_futex_window_request_focus failed\n", stderr);
+		this->state = GE_FOCUS;
+		return 0;
+	}
+	if (!game_opt_check(this, "NODXCHECK")) {
+		unsigned os;
+		get_os_version(os);
+		if (os < 0x501) {
+			this->state = GE_LOWOS;
+			return 0;
+		}
+	}
 	smtScreensave(SMT_SCREEN_SAVE_OFF);
+	this->num9AC = game_comm_ctl(this, 0);
 	if (!this->vtbl->init_icon(this)) {
 		fputs("init_icon failed\n", stderr);
 		this->state = GE_ICON;
@@ -608,6 +653,11 @@ static signed game_show_focus_screen(struct game *this)
 	if (!this->vtbl->set_palette(this)) {
 		fputs("set_palette failed\n", stderr);
 		this->state = GE_PALETTE;
+		return 0;
+	}
+	if (!this->vtbl->shp(this)) {
+		fputs("shp failed\n", stderr);
+		this->state = GE_GFX;
 		return 0;
 	}
 	return 1;
@@ -646,7 +696,8 @@ struct game *start_game(struct game *this)
 }
 
 struct game_vtbl g_vtbl = {
-	.parse_opt = game_parse_opt2
+	.parse_opt = game_parse_opt2,
+	.shp = game_shp,
 }, g_vtbl2 = {
 	.dtor = game_dtor_ios_base,
 	.main = game_loop,
@@ -658,6 +709,7 @@ struct game_vtbl g_vtbl = {
 	.go_fullscreen = game_go_fullscreen,
 	.gfx_init = game_gfx_init,
 	.set_palette = game_set_palette,
+	.shp = game_shp,
 	.translate_event = game_translate_event,
 	.handle_event = game_handle_event,
 	.init_mouse = game_mousestyle,
