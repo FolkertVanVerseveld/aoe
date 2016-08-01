@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "engine.h"
 #include "ship.h"
+#include "map.h"
 #include "gfx.h"
 #include "sfx.h"
 #include "log.h"
@@ -35,20 +36,36 @@ struct window_ctl2 {
 struct game;
 
 struct game_vtbl {
-	int (*dtor)(struct game*, unsigned);
+	struct game *(*dtor)(struct game*, char);
 	unsigned (*main)(struct game*);
+	int (*process_intro)(struct game*, unsigned, unsigned, unsigned);
+	unsigned (*set_rpair)(struct game*, unsigned, int);
+	struct regpair *(*set_rpair_next)(struct game*, struct regpair*, int);
 	unsigned (*get_state)(struct game*);
 	char *(*get_res_str)(unsigned, char*, unsigned);
-	char *(*strerr)(struct game*, int, signed, int, char*, unsigned);
+	char *(*strerr)(struct game*, int, int, int, char*, unsigned);
+	void (*strerr2)(struct game*, int, int, unsigned, char*, unsigned);
+	int (*func)(struct game*);
+	int (*chat_send)(struct game*, unsigned, char*);
 	int (*parse_opt)(struct game*);
 	signed (*init_icon)(struct game*);
 	int (*go_fullscreen)(struct game*);
 	int (*gfx_init)(struct game*);
 	int (*set_palette)(struct game*);
+	int (*init_custom_mouse)(struct game*);
+	int (*window_ctl)(struct game*);
+	int (*window_ctl2)(struct game*);
+	int (*init_sfx)(struct game*);
+	int (*gfx_ctl)(struct game*);
+	int (*init_sfx2)(struct game*);
 	int (*shp)(struct game*);
+	int (*repaint)(struct game*);
+	int (*set_ones)(struct game*);
 	// XXX consider inlining
 	int (*translate_event)(struct game*, unsigned*);
 	void (*handle_event)(struct game*, unsigned);
+	int (*cfg_apply_video_mode)(struct game*, unsigned, int, int, unsigned);
+	struct map *(*map_save_area)(struct game*);
 	int (*init_mouse)(struct game*);
 };
 
@@ -89,6 +106,7 @@ struct game_config {
 	unsigned midi_enable;
 	unsigned sfx_enable;
 	unsigned midi_opts[7];
+	int scrollspeed;
 	int scroll0;
 	float f4_0p0;
 	int scroll1;

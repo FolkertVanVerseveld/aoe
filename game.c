@@ -54,6 +54,43 @@ static void game_free_ios_base(struct game *this)
 	}
 }
 
+static inline char game_get_pathfind(const struct game *this)
+{
+	return this->pathfind;
+}
+
+static inline char game_get_mp_pathfind(const struct game *this)
+{
+	return this->mp_pathfind;
+}
+
+static void game_free(struct game *this)
+{
+	stub
+	struct video_mode *videomode = this->mode;
+	this->vtbl = &g_vtbl;
+	if (videomode)
+		reg_cfg.screen_size = videomode->width;
+	reg_cfg.rollover_text = 2 - (this->rollover_text != 0);
+	if (this->cfg->mouse_style == 2)
+		reg_cfg.mouse_style = 2;
+	else
+		reg_cfg.mouse_style = 1;
+	reg_cfg.game_speed = (unsigned)(this->gamespeed * 10.0);
+	reg_cfg.difficulty = this->difficulty;
+	reg_cfg.pathfind = game_get_pathfind(this) + 1;
+	reg_cfg.mp_pathfind = game_get_mp_pathfind(this) + 1;
+	reg_cfg.scroll_speed = this->cfg->scrollspeed;
+}
+
+static struct game *game_dtor(struct game *this, char free_this)
+{
+	game_free(this);
+	if (free_this & 1)
+		free(this);
+	return this;
+}
+
 static int game_dtor_ios_base(struct game *this, char free_this)
 {
 	game_free_ios_base(this);
@@ -91,7 +128,15 @@ char *game_get_res_str(unsigned id, char *str, unsigned n)
 	stub
 	if (loadstr(id, str, n))
 		str[n - 1] = '\0';
-	return NULL;
+	return str;
+}
+
+char *get_res_str2(unsigned id, char *str, unsigned n)
+{
+	if (!loadstr(id, str, n))
+		*str = '\0';
+	str[n - 1] = '\0';
+	return str;
 }
 
 static char *game_strerror2(struct game *this, int code, int status, int a4, char *str, unsigned n)
@@ -179,6 +224,28 @@ static inline char game_set_hsv(struct game *this, unsigned char h, unsigned cha
 	return v;
 }
 
+static struct map *game_map_save_area(struct game *this)
+{
+	struct map *result, *map;
+	map = malloc(sizeof(struct map));
+	if (map)
+		result = map_init(map, "Diamond Map Save Area", 0);
+	else
+		result = NULL;
+	this->map_area = result;
+	if (result) {
+		if (0) {
+		} else {
+			if (this->map_area) {
+				map_free(this->map_area);
+				free(this->map_area);
+			}
+			result = this->map_area = NULL;
+		}
+	}
+	return result;
+}
+
 static inline char game_set_color(struct game *this, int brightness)
 {
 	this->brightness = brightness;
@@ -231,6 +298,12 @@ static int game_shp(struct game *this)
 static void game_handle_event(struct game *this, unsigned a2)
 {
 	stub
+}
+
+static int game_process_event(struct game *this, unsigned a2, unsigned msg, unsigned wparam, unsigned hWnd)
+{
+	stub
+	return 0;
 }
 
 static int game_parse_opt2(struct game *this)
@@ -660,6 +733,11 @@ static signed game_show_focus_screen(struct game *this)
 		this->state = GE_GFX;
 		return 0;
 	}
+	if (!this->vtbl->map_save_area(this)) {
+		fputs("map_save_area failed\n", stderr);
+		this->state = GE_GFX;
+		return 0;
+	}
 	return 1;
 }
 
@@ -696,6 +774,11 @@ struct game *start_game(struct game *this)
 }
 
 struct game_vtbl g_vtbl = {
+	.dtor = game_dtor,
+	.process_intro = game_process_event,
+	.get_state = game_get_state,
+	.get_res_str = get_res_str2,
+	.strerr2 = game_strerror2,
 	.parse_opt = game_parse_opt2,
 	.shp = game_shp,
 }, g_vtbl2 = {
@@ -712,5 +795,6 @@ struct game_vtbl g_vtbl = {
 	.shp = game_shp,
 	.translate_event = game_translate_event,
 	.handle_event = game_handle_event,
+	.map_save_area = game_map_save_area,
 	.init_mouse = game_mousestyle,
 };
