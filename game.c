@@ -109,7 +109,7 @@ unsigned game_loop(struct game *this)
 	while (this->running) {
 		unsigned ev, state;
 		state = this->rpair_root.value.dword;
-		if (state != 4 && state != 2) {
+		if (state != GE_FOCUS && state != GE_OPT) {
 			printf("stop: state == %u\n", state);
 			break;
 		}
@@ -611,6 +611,55 @@ static int game_gfx_init(struct game *this)
 	return 1;
 }
 
+static int game_process_intro(struct game *this, unsigned hwnd, unsigned msg, unsigned wparam, unsigned hWnd)
+{
+	stub
+	return 0;
+}
+
+static int game_init_custom_mouse(struct game *this)
+{
+	unsigned mouse = reg_cfg.custom_mouse;
+	if (reg_cfg.custom_mouse > 1) {
+		mouse = 0;
+		this->no_normal_mouse = 0;
+	}
+	return 1;
+}
+
+static int game_init_sfx(struct game *this)
+{
+	stub
+	if (!this->cfg->sfx_enable)
+		return 1;
+	return 1;
+}
+
+static int game_window_ctl(struct game *this)
+{
+	stub
+	return 0;
+}
+
+static int game_window_ctl2(struct game *this)
+{
+	stub
+	return 0;
+}
+
+static int game_gfx_ctl(struct game *this)
+{
+	stub
+	return 0;
+}
+
+static int game_init_sfx_tbl(struct game *this)
+{
+	stub
+	this->sfx_count = 17;
+	return 0;
+}
+
 static int game_init_palette(struct game *this)
 {
 	return (this->palette = palette_init(this->cfg->palette, 50500)) != 0;
@@ -738,6 +787,16 @@ static signed game_show_focus_screen(struct game *this)
 		this->state = GE_GFX;
 		return 0;
 	}
+	if (!this->vtbl->init_custom_mouse(this)) {
+		fputs("init_custom_mouse failed\n", stderr);
+		this->state = GE_MOUSE;
+		return 0;
+	}
+	if (!this->vtbl->init_sfx(this)) {
+		fputs("init_sfx failed\n", stderr);
+		this->state = GE_SFX;
+		return 0;
+	}
 	return 1;
 }
 
@@ -784,9 +843,10 @@ struct game_vtbl g_vtbl = {
 }, g_vtbl2 = {
 	.dtor = game_dtor_ios_base,
 	.main = game_loop,
+	.process_intro = game_process_intro,
 	.get_state = game_get_state,
-	.get_res_str = game_get_res_str,
 	.strerr = game_strerror,
+	.get_res_str = game_get_res_str,
 	.parse_opt = game_parse_opt,
 	.init_icon = game_init_icon,
 	.go_fullscreen = game_go_fullscreen,
@@ -796,5 +856,10 @@ struct game_vtbl g_vtbl = {
 	.translate_event = game_translate_event,
 	.handle_event = game_handle_event,
 	.map_save_area = game_map_save_area,
-	.init_mouse = game_mousestyle,
+	.init_mouse = game_init_custom_mouse,
+	.init_sfx = game_init_sfx,
+	.window_ctl = game_window_ctl,
+	.window_ctl2 = game_window_ctl2,
+	.gfx_ctl = game_gfx_ctl,
+	.init_sfx_tbl = game_init_sfx_tbl,
 };

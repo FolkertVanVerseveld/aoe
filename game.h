@@ -42,13 +42,13 @@ struct game_vtbl {
 	unsigned (*set_rpair)(struct game*, unsigned, int);
 	struct regpair *(*set_rpair_next)(struct game*, struct regpair*, int);
 	unsigned (*get_state)(struct game*);
-	char *(*get_res_str)(unsigned, char*, unsigned);
 	char *(*strerr)(struct game*, int, int, int, char*, unsigned);
+	char *(*get_res_str)(unsigned, char*, unsigned);
 	void (*strerr2)(struct game*, int, int, unsigned, char*, unsigned);
 	int (*func)(struct game*);
 	int (*chat_send)(struct game*, unsigned, char*);
 	int (*parse_opt)(struct game*);
-	signed (*init_icon)(struct game*);
+	int (*init_icon)(struct game*);
 	int (*go_fullscreen)(struct game*);
 	int (*gfx_init)(struct game*);
 	int (*set_palette)(struct game*);
@@ -57,7 +57,7 @@ struct game_vtbl {
 	int (*window_ctl2)(struct game*);
 	int (*init_sfx)(struct game*);
 	int (*gfx_ctl)(struct game*);
-	int (*init_sfx2)(struct game*);
+	int (*init_sfx_tbl)(struct game*);
 	int (*shp)(struct game*);
 	int (*repaint)(struct game*);
 	int (*set_ones)(struct game*);
@@ -131,7 +131,7 @@ struct game_config {
 struct game {
 	struct game_vtbl *vtbl;
 	struct game_focus *focus;
-	void *num8;
+	void *num8; // FIXME game8 *ptr8
 	struct game_config *cfg;
 	unsigned window;
 	unsigned running;
@@ -143,9 +143,11 @@ struct game {
 	unsigned screensaver_state;
 	// REMAP typeof(PVOID powersaving) == void*
 	unsigned powersaving;
+	// REMAP typeof(GERRNO state) == unsigned
 	unsigned state;
 	unsigned timer;
 	struct video_mode *mode;
+	//struct basegame *basegame;
 	unsigned no_normal_mouse;
 	unsigned short shp_count;
 	struct ship_20 shptbl[3];

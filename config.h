@@ -9,6 +9,8 @@ struct config {
 	unsigned screen_size;
 	unsigned rollover_text;
 	unsigned mouse_style;
+	unsigned custom_mouse;
+	unsigned sfx_volume;
 	unsigned game_speed;
 	unsigned difficulty;
 	unsigned scroll_speed;
