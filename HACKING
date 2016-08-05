@@ -1,0 +1,19 @@
+Interesting and useful information for modifying the source code is
+located here.
+
+Memory allocation
+Since there is a lot of c++ boilerplate code, we have replaced some
+allocations with fixed arrays. Most of them are marked with noptr.
+
+Markers
+Several markers are placed in code to make it easier to search for
+modifications in the codebase. Some of them include:
+
+todo  need to complete this task at some point in time
+xxx   not sure whether this is correct (may be a question)
+remap type of variable in original code is different in our port
+noptr converted dynamic memory to fixed array
+fixme bug/glitch that needs to be fixed
+
+Modified blocks of code are marked with `<' and `>'. The first is our
+own code and the latter indicates that the dissassembled code follows.

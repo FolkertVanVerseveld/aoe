@@ -1,0 +1,11 @@
+Linux native game port of windows game Age of Empires the Expansion
+
+All copyrighted material and trademarks belong to their respective
+owners.
+
+Most code is reconstructed from the dissassembly and we have written a
+couple of tools to inspect the original data files.
+
+You still need to have an original installed version of Age of Empires
+in order to run this program, since you need to specify the location of
+the original data directory.
