@@ -149,6 +149,12 @@ struct game_config cfg = {
 	.dir_movies = "avi/",
 };
 
+static void cleanup(void)
+{
+	drs_free();
+	config_free();
+}
+
 int main(int argc, char **argv)
 {
 	int argp;
@@ -156,7 +162,7 @@ int main(int argc, char **argv)
 	size_t optsz = 0;
 	unsigned hPrevInst = 0, hInst = 0, nShowCmd = 0;
 	/* < */
-	atexit(drs_free);
+	atexit(cleanup);
 	argp = parse_opt(argc, argv);
 	// construct lpCmdLine (i.e. options) from remaining args
 	options[0] = '\0';
@@ -173,6 +179,10 @@ int main(int argc, char **argv)
 	}
 	options[OPTBUFSZ - 1] = '\0';
 	puts(options);
+	if (!config_init()) {
+		fputs("config_init failed\n", stderr);
+		return 1;
+	}
 	/* > */
 	// see also fixme at game_config struct declaration
 	strcpy(cfg.optbuf, options);

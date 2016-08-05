@@ -379,9 +379,8 @@ int game_parse_opt(struct game *this)
 
 static int reg_init(struct game *this)
 {
-	stub
 	this->rpair_root.left.key = 1 | rand();
-	return 1;
+	return config_load();
 }
 
 struct game *start_game(struct game *this);

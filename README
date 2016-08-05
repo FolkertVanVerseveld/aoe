@@ -9,3 +9,12 @@ couple of tools to inspect the original data files.
 You still need to have an original installed version of Age of Empires
 in order to run this program, since you need to specify the location of
 the original data directory.
+
+RUNNING THE GAME
+
+If your original installed version of Age of Empires is located at e.g.
+/usr/local/games/aoe1 you can run it like this:
+
+./empx -r/usr/local/games/aoe1
+
+For more information about the commandline options, use ./empx -h
