@@ -2,6 +2,7 @@
 #define AOE_DMAP_H
 
 #include <stddef.h>
+#include <sys/types.h>
 
 #define DMAPBUFSZ 260
 struct dmap {
@@ -15,6 +16,7 @@ struct dmap {
 
 void dmap_init(struct dmap *map);
 void dmap_free(struct dmap *map);
+void *drs_get_item(const char *item, int fd, size_t *count, off_t *offset);
 void drs_free(void);
 
 /*

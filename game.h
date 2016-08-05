@@ -38,13 +38,13 @@ struct game;
 struct game_vtbl {
 	struct game *(*dtor)(struct game*, char);
 	unsigned (*main)(struct game*);
-	int (*process_intro)(struct game*, unsigned, unsigned, unsigned);
+	int (*process_intro)(struct game*, unsigned, unsigned, unsigned, unsigned);
 	unsigned (*set_rpair)(struct game*, unsigned, int);
 	struct regpair *(*set_rpair_next)(struct game*, struct regpair*, int);
 	unsigned (*get_state)(struct game*);
 	char *(*strerr)(struct game*, int, int, int, char*, unsigned);
 	char *(*get_res_str)(unsigned, char*, unsigned);
-	void (*strerr2)(struct game*, int, int, unsigned, char*, unsigned);
+	char *(*strerr2)(struct game*, int, int, int, char*, unsigned);
 	int (*func)(struct game*);
 	int (*chat_send)(struct game*, unsigned, char*);
 	int (*parse_opt)(struct game*);
@@ -62,7 +62,7 @@ struct game_vtbl {
 	int (*repaint)(struct game*);
 	int (*set_ones)(struct game*);
 	// XXX consider inlining
-	int (*translate_event)(struct game*, unsigned*);
+	int (*translate_event)(struct game*, int);
 	void (*handle_event)(struct game*, unsigned);
 	int (*cfg_apply_video_mode)(struct game*, unsigned, int, int, unsigned);
 	struct map *(*map_save_area)(struct game*);
@@ -84,7 +84,7 @@ struct game_config {
 	char langpath[32];
 	char dir_empires[261];
 	char strAOE[263];
-	unsigned d0, d1p0, d3;
+	int d0, d1p0, d3;
 	unsigned hInst, hPrevInst;
 	char reg_path[256];
 	char optbuf[OPTBUFSZ];
@@ -126,20 +126,28 @@ struct game_config {
 	char prompt_title[256], prompt_message[256];
 };
 
+struct game8 {
+	char pathname[260];
+	char *inf_hdr;
+	void *ptr;
+};
+
 #define CWDBUFSZ 261
 
 struct game {
 	struct game_vtbl *vtbl;
 	struct game_focus *focus;
-	void *num8; // FIXME game8 *ptr8
+	struct game8 *ptr8;
 	struct game_config *cfg;
 	unsigned window;
+	unsigned num14;
 	unsigned running;
 	// REMAP typeof(HPALETTE palette) == void*
 	struct pal_entry *palette;
 	// REMAP typeof(HANDLE mutex) == void*
 	unsigned mutex_state;
-	unsigned vtbl28[4];
+	unsigned num24;
+	unsigned tbl28[4];
 	unsigned screensaver_state;
 	// REMAP typeof(PVOID powersaving) == void*
 	unsigned powersaving;
@@ -147,15 +155,23 @@ struct game {
 	unsigned state;
 	unsigned timer;
 	struct video_mode *mode;
-	//struct basegame *basegame;
+	struct basegame *basegame;
+	char ch50;
+	char pad51[3];
 	unsigned no_normal_mouse;
 	unsigned short shp_count;
 	struct ship_20 shptbl[3];
+	struct sfx_engine *sfx;
+	unsigned num64;
 	short sfx_count;
 	struct clip **sfx_tbl;
 	unsigned cursor_old_state;
 	// REMAP typeof(HCURSOR cursor_old) == void*
+	char tbl88[4];
 	unsigned cursor_old;
+	char tbl90[80];
+	unsigned tbl184[2];
+	struct comm *nethandler;
 	struct game18C *ptr18C;
 	struct logger *log;
 	unsigned logctl;
@@ -167,13 +183,26 @@ struct game {
 	unsigned apply_new_cursor;
 	// REMAP typeof(HCURSOR cursor) == void*
 	unsigned cursor;
+	unsigned num1D8;
 	unsigned window2;
+	short num1E0;
+	char pad1E2[2];
+	unsigned num1E4;
 	char cwdbuf[261];
 	char libname[15];
 	char num97D_97E_is_zero, num97E_97D_is_zero;
 	char hsv[3];
 	float start_gamespeed;
 	char mp_pathfind;
+	char ch984;
+	char ch985;
+	char ch986;
+	char ch987;
+	char ch988;
+	char ch989;
+	char tbl98A[9];
+	unsigned difficulty2;
+	char tbl994[12];
 	unsigned vtbl9A8;
 	unsigned num9AC;
 	unsigned tbl9B0[9];
@@ -183,7 +212,48 @@ struct game {
 	char pathfind;
 	char tblA15[11];
 	struct map *map_area;
+	unsigned tblA24[4];
 	unsigned brightness;
+	unsigned numA80;
+	unsigned numA84;
+	unsigned numA88;
+	unsigned numA8C;
+	unsigned numA90;
+	char tblA94[12];
+	unsigned tblAA0[9];
+	char tblAC4[9];
+	char tblACD[9];
+	char chAD6;
+	char chAD7;
+	char chAD8;
+	char chAD9;
+	unsigned numADC;
+	unsigned numAE0;
+	char chAE4;
+	char chAE5;
+	char chAE6;
+	char chAE7;
+	char chAE8;
+	char padAE9[259];
+	unsigned tblBEC[27];
+	char chC58;
+	char padC59[259];
+	char chD5C;
+	char padD5D[259];
+	unsigned numE60;
+	char chE64;
+	char padE65[259];
+	char chF68;
+	char padF69[259];
+	char ch106C;
+	char pad106D[255];
+	char blk116C[36];
+	char ch1190;
+	char ch1191[3];
+	unsigned num1194;
+	char blk1198[160];
+	char pad1238[64];
+	int num1250;
 };
 
 struct game *game_ctor(struct game *this, struct game_config *cfg, int should_start_game);

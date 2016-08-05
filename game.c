@@ -9,6 +9,7 @@
 #include "dbg.h"
 #include "dmap.h"
 #include "game.h"
+#include "game_set.h"
 #include "langx.h"
 #include "todo.h"
 
@@ -29,6 +30,9 @@ static unsigned players_connection_state[9];
 
 static unsigned cfg_hInst;
 static unsigned hInstance;
+static unsigned hLibModule;
+static unsigned game_580E24;
+static unsigned game_580E28;
 
 static const char *data_interface = "Interfac.drs";
 static const char *data_border = "Border.drs";
@@ -91,11 +95,11 @@ static struct game *game_dtor(struct game *this, char free_this)
 	return this;
 }
 
-static int game_dtor_ios_base(struct game *this, char free_this)
+static struct game *game_dtor_ios_base(struct game *this, char free_this)
 {
 	game_free_ios_base(this);
 	if (free_this) free(this);
-	return 1;
+	return this;
 }
 
 static unsigned game_get_state(struct game *this)
@@ -115,7 +119,7 @@ unsigned game_loop(struct game *this)
 		}
 		while ((ev = smtPollev()) != SMT_EV_DONE) {
 			if (ev == SMT_EV_QUIT) return 0;
-			this->vtbl->translate_event(this, &ev);
+			this->vtbl->translate_event(this, ev);
 			this->vtbl->handle_event(this, 0);
 		}
 		smtSwapgl(this->cfg->window);
@@ -139,9 +143,10 @@ char *get_res_str2(unsigned id, char *str, unsigned n)
 	return str;
 }
 
-static char *game_strerror2(struct game *this, int code, int status, int a4, char *str, unsigned n)
+static char *game_strerror2(struct game *this, int code, int status, int a3, char *str, unsigned n)
 {
 	char *error = NULL;
+	(void)a3;
 	stub
 	*str = '\0';
 	if (code == 1) {
@@ -295,14 +300,29 @@ static int game_shp(struct game *this)
 	return 1;
 }
 
-static void game_handle_event(struct game *this, unsigned a2)
+static int game_handle_event_0(struct game *this)
 {
 	stub
+	int result = 0;
+	if (this->num14 && this->window)
+		result = 1;
+	return result;
 }
 
-static int game_process_event(struct game *this, unsigned a2, unsigned msg, unsigned wparam, unsigned hWnd)
+static void game_handle_event(struct game *this, unsigned a2)
+{
+	(void)a2;
+	game_handle_event_0(this);
+}
+
+static int game_process_event(struct game *this, unsigned hWnd_1, unsigned msg, unsigned wparam, unsigned hWnd)
 {
 	stub
+	(void)this;
+	(void)hWnd_1;
+	(void)msg;
+	(void)wparam;
+	(void)hWnd;
 	return 0;
 }
 
@@ -392,7 +412,7 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	stub
 	this->focus = NULL;
 	for (int i = 0; i < 4; ++i)
-		this->vtbl28[i] = -1;
+		this->tbl28[i] = -1;
 	this->vtbl9A8 = 0;
 	this->vtbl = &g_vtbl;
 	// setup some global vars
@@ -454,8 +474,10 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	return this;
 }
 
-static int game_translate_event(struct game *this, unsigned *event)
+static int game_duck_event(struct game *this, int event)
 {
+	(void)this;
+	(void)event;
 	return 1;
 }
 
@@ -482,14 +504,65 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	smtCreategl(&this->cfg->gl, this->cfg->window);
 	smtPos(this->cfg->window, 0, 0);
 	/* original stuff */
+	for (unsigned i = 0; i < 15; ++i)
+		this->tblBEC[i] = 0;
+	this->tblBEC[1] = -1;
+	this->num1250 = 0;
 	this->vtbl = &g_vtbl2;
+	this->num1D8 = 1;
+	this->window2 = 0;
+
+	this->chAE8 = 0;
+	hLibModule = 0;
+	this->chC58 = 0;
+	this->chD5C = 0;
+	this->chE64 = 0;
+	this->chF68 = 0;
+	this->numE60 = 0;
+	this->ch106C = 0;
 	disable_terrain_sound = 0;
+
+	game_580E24 = 0;
+	game_580E28 = 0;
+	for (unsigned i = 0; i < 4; ++i)
+		this->tblA24[i] = 0;
 	game_set_color(this, 2);
+
+	game_setA80(this, 2);
+	game_setA84(this, 1);
+	game_setA88(this, 1);
+	game_setA8C_A90(this, 1, 1);
+	game_setAD6(this, 1);
+	game_setAD7(this, 0);
+	game_setAD8(this, 0);
+	game_setAD9(this, 0);
+	game_setADC(this, 0);
+	game_setAE0(this, 0);
+	game_setAE4(this, 0);
+	game_setAE5(this, 0);
+	game_setAE6(this, 50);
+	game_set1190(this, 0);
+	game_set1194(this, -1);
+	for (unsigned i = 20 - 5; i < 20 - 5 + 5; ++i) {
+		this->tblBEC[i] = -1;
+		this->tblBEC[i + 5] = -1;
+	}
+	this->tblBEC[25] = this->tblBEC[26] = -1;
+	int v11 = 1;
 	for (unsigned index = 0; index < 9; ++index) {
+		game_offsetA94(this, index, v11);           // dbg: v11 stopt bij 9 (inclusief)
+		v11 = (v11 + 1) % 16;
+		game_offsetAA0(this, index, index);         // <-
+		game_offsetAC4(this, index, 1);
+		game_offsetACD(this, index, 0);
 		players_connection_state[index] = 0;
 	}
-	if (should_start_game && !start_game(this) && !this->cfg->reg_state)
-		this->cfg->reg_state = 1;
+
+	memset(this->blk116C, 0, sizeof(this->blk116C));
+	game_set988(this, 4);
+	game_clear1198(this);
+	if (should_start_game && !start_game(this) && this->state == 0)
+		this->state = 1;                            // game has stopped flag?
 	return this;
 }
 
@@ -575,10 +648,12 @@ static int game_go_fullscreen(struct game *this)
 	return 1;
 }
 
-static struct pal_entry *palette_init(char *palette, int a2)
+static struct pal_entry *palette_init(void *this, char *palette, int a2)
 {
 	char palette_path[260];
 	stub
+	(void)this;
+	(void)a2;
 	palette_path[0] = '\0';
 	if (palette) {
 		if (strchr(palette, '.'))
@@ -593,10 +668,12 @@ static struct pal_entry *palette_init(char *palette, int a2)
 static int game_gfx_init(struct game *this)
 {
 	stub
-	if (!video_mode_init(&this->mode))
+	struct video_mode *videomode = malloc(sizeof(struct video_mode));
+	if (!video_mode_init(videomode))
 		return 0;
+	this->mode = videomode;
 	if (!direct_draw_init(
-		&this->mode,
+		this->mode,
 		this->cfg->hInst, this->window,
 		this->palette,
 		(this->cfg->gfx8bitchk != 0) + 1,
@@ -607,19 +684,25 @@ static int game_gfx_init(struct game *this)
 	{
 		return 0;
 	}
-	this->palette = palette_init(this->cfg->palette, 50500);
+	this->palette = palette_init(NULL, this->cfg->palette, 50500);
 	return 1;
 }
 
 static int game_process_intro(struct game *this, unsigned hwnd, unsigned msg, unsigned wparam, unsigned hWnd)
 {
 	stub
+	(void)this;
+	(void)hwnd;
+	(void)msg;
+	(void)wparam;
+	(void)hWnd;
 	return 0;
 }
 
 static int game_init_custom_mouse(struct game *this)
 {
 	unsigned mouse = reg_cfg.custom_mouse;
+	(void)mouse;
 	if (reg_cfg.custom_mouse > 1) {
 		mouse = 0;
 		this->no_normal_mouse = 0;
@@ -638,18 +721,21 @@ static int game_init_sfx(struct game *this)
 static int game_window_ctl(struct game *this)
 {
 	stub
+	(void)this;
 	return 0;
 }
 
 static int game_window_ctl2(struct game *this)
 {
 	stub
+	(void)this;
 	return 0;
 }
 
 static int game_gfx_ctl(struct game *this)
 {
 	stub
+	(void)this;
 	return 0;
 }
 
@@ -662,19 +748,19 @@ static int game_init_sfx_tbl(struct game *this)
 
 static int game_init_palette(struct game *this)
 {
-	return (this->palette = palette_init(this->cfg->palette, 50500)) != 0;
+	return (this->palette = palette_init(NULL, this->cfg->palette, 50500)) != 0;
 }
 
 static int game_set_palette(struct game *this)
 {
 	struct pal_entry p[7] = {
-		{23, 39, 124, 0},
-		{39, 63, 0x90, 0},
-		{63, 95, 0x9f, 0},
+		{23,  39,  124, 0},
+		{39,  63, 0x90, 0},
+		{63,  95, 0x9f, 0},
 		{87, 123, 0xb4, 0},
-		{63, 95, 0xa0, 0},
-		{39, 63, 0x91, 0},
-		{23, 39, 123, 0}
+		{63,  95, 0xa0, 0},
+		{39,  63, 0x91, 0},
+		{23,  39,  123, 0}
 	};
 	if (!game_init_palette(this))
 		return 0;
@@ -803,6 +889,8 @@ static signed game_show_focus_screen(struct game *this)
 static int game_mousestyle(struct game *this)
 {
 	stub
+	(void)this;
+	return 0;
 }
 
 struct game *start_game(struct game *this)
@@ -853,7 +941,7 @@ struct game_vtbl g_vtbl = {
 	.gfx_init = game_gfx_init,
 	.set_palette = game_set_palette,
 	.shp = game_shp,
-	.translate_event = game_translate_event,
+	.translate_event = game_duck_event,
 	.handle_event = game_handle_event,
 	.map_save_area = game_map_save_area,
 	.init_mouse = game_init_custom_mouse,

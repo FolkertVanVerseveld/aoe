@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "dmap.h"
+#include "dbg.h"
+#include "todo.h"
 
 struct dmap *drs_list = NULL;
 static const char data_map_magic[4] = {'1', '.', '0', '0'};
@@ -136,4 +138,131 @@ fail:
 		perror(name);
 	}
 	return ret;
+}
+
+static int drs_map(const char *dest, int a2, int *fd, off_t *st_size, const char **dblk, size_t *count)
+{
+	stub
+	#if 1
+	(void)dest;
+	(void)a2;
+	(void)fd;
+	(void)st_size;
+	(void)dblk;
+	(void)count;
+	halt();
+	return 0;
+	#else
+	char *v8, *v9;
+	int v10, result;
+	struct dmap *map = drs_list, *map2;
+	*fd = -1;
+	*st_size = 0;
+	*dblk = NULL;
+	map2 = map;
+	int v7, a2a;
+	*count = 0;
+	if (map) {
+		v7 = a2;
+		while (1) {
+			v8 = map->drs_data;
+			a2a = 0;
+			if (*((int*)v8 + 14) > 0)
+				break;
+next:
+			map = map->next;
+			map2 = map;
+			if (!map)
+				goto fail;
+		}
+		// FIXME
+		v9 = v8 + 72;
+		while (1) {
+			if (v9[-2] == dest) {
+				v10 = 0;
+				if (*v9 > 0)
+					break;
+			}
+LABEL_11:
+			v9 += 12;
+			if (++a2a >= *((int*)v8 + 14))
+				goto next;
+		}
+		v11 = &v8[*((int*)v9 - 1)];
+		while ( *v11 != v7 )
+		{
+			++v10;
+			v11 += 12;
+			if ( v10 >= *v9 )
+			{
+				map = map2;
+				goto LABEL_11;
+			}
+		}
+		char *v13 = &v8[12 * v10] + *(v9 - 1);
+		*fd = map2->fd;
+		*st_size = *(v13 + 1);
+		*dblk = map2->dblk;
+		*count = *(v13 + 2);
+		result = 1;
+	} else
+		goto fail;
+	return 1;
+fail:
+	fprintf(stderr, "drs_map failed: a2=%d\n", a2);
+	return 0;
+	#endif
+}
+
+void *drs_get_item(const char *item, int fd, size_t *count, off_t *offset)
+{
+	stub
+	int v7, result;
+	#if 1
+	(void)item;
+	(void)fd;
+	(void)count;
+	(void)offset;
+	(void)result;
+	v7 = fd;
+	drs_map(item, v7, &fd, offset, &item, count);
+	halt();
+	return NULL;
+	#else
+	size_t *local_count;
+	const char *v9;
+	off_t *v5, v10;
+	size_t *v11, v13, *v14;
+	void *v12 = NULL;
+
+	local_count = count;                          // XXX can we remap this to count?
+	v5 = offset;
+	v7 = fd;
+	*count = -1;
+	*v5 = 0;
+	result = drs_map(item, v7, &fd, &offset, &item, &count);
+	if (result) {
+		v9 = item;
+		if (item) {
+			v10 = offset;
+			v11 = count;
+			*local_count = 0;
+			*v5 = v11;
+			return &v9[v10];
+		}
+		v13 = *count;
+		*local_count = 1;
+		v12 = malloc(v13);
+		assert(v12);
+		*v5 = count;
+		if (result) {
+			lseek(fd, *offset, SEEK_SET);
+			v14 = read(fd, v12, count);
+			if (v14 == count)
+				return v12;
+			result = 0;
+		}
+	}
+	return v12;
+	#endif
 }

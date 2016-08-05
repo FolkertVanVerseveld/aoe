@@ -7,6 +7,8 @@ int direct_draw_init(struct video_mode *this, unsigned hInst, unsigned window, s
 {
 	int ret;
 	stub
+	(void)opt0;
+	(void)opt1;
 	this->window = window;
 	this->palette = palette;
 	this->hInst = hInst;
