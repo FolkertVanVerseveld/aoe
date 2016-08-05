@@ -81,7 +81,9 @@ static int parse_opt(int argc, char **argv)
 	return optind;
 }
 
+// NOPTR typeof(game *AOE) == struct game
 struct game AOE;
+// NOPTR typeof(game_config *cfg) == struct game_config
 struct game_config cfg = {
 	.title = TITLE,
 	.version = VERSION,

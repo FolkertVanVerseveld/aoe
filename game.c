@@ -23,6 +23,10 @@ static FILE *file_vtbl_focus;
 
 static struct logger *game_logger;
 static unsigned game_window;
+static unsigned game_window_580DA0;
+static struct comm *comm_580DA8;
+static struct sfx_engine *sfx_engine_ref;
+static void *game_drive_ref;
 static unsigned disable_terrain_sound = 0;
 static unsigned midi_no_fill = 0;
 
@@ -211,24 +215,6 @@ char *game_strerror(struct game *this, int code, signed status, int a4, char *st
 	return error;
 }
 
-static inline char game_set_pathfind(struct game *this, char pathfind)
-{
-	return this->pathfind = pathfind;
-}
-
-static inline char game_set_mp_pathfind(struct game *this, char mp_pathfind)
-{
-	return this->mp_pathfind = mp_pathfind;
-}
-
-static inline char game_set_hsv(struct game *this, unsigned char h, unsigned char s, unsigned char v)
-{
-	this->hsv[0] = h;
-	this->hsv[1] = s;
-	this->hsv[2] = v;
-	return v;
-}
-
 static struct map *game_map_save_area(struct game *this)
 {
 	struct map *result, *map;
@@ -409,7 +395,6 @@ static inline void game_set_start_gamespeed(struct game *this, float gamespeed)
 
 struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int should_start_game)
 {
-	stub
 	this->focus = NULL;
 	for (int i = 0; i < 4; ++i)
 		this->tbl28[i] = -1;
@@ -422,41 +407,110 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	file_vtbl_focus = NULL;
 	// setup other members
 	game_set_start_gamespeed(this, 1.0f);
+	game_set_c0(this, 0);
+	game_set9A0(this, 0);
+	game_set9A4(this, 0);
+	game_set97D_97E(this, 1);
+	game_set97E_97D(this, 0);
 	game_set_hsv(this, 96, 96, 8);
+	game_set_cheats(this, 0);
+	game_set984(this, 1);
+	game_set985(this, 0);
+	game_set986(this, 1);
+	game_set987(this, 1);
+	game_set989(this, 0);
+	game_set_difficulty2(this, 0);
+	for (unsigned i = 0; i < 9; ++i) {
+		game_98A(this, i, 0);
+		game_98A_2(this, i, 0);
+		game_98A_3(this, i, 0);
+		game_tbl994(this, i, 1);
+	}
 	game_set_pathfind(this, 0);
 	game_set_mp_pathfind(this, 0);
+	game_set988(this, 4);
+	game_str_8FD(this, "");
+	// global reference
 	game_ref = this;
 	this->cfg = cfg;
 	this->window = SMT_RES_INVALID;
+	this->num14 = 0;
 	this->running = 1;
 	this->palette = NULL;
+	this->num24 = 0;
 	hInstance = SMT_RES_INVALID;
+	this->screensaver_state = 0;
 	this->state = 0;
+	this->timer = 0;
+	this->mode = NULL;
+	this->basegame = NULL;
 	this->no_normal_mouse = 0;
-	this->ptr18C = NULL;
+	//this->shptbl = NULL;
+	this->sfx = NULL;
+	this->num64 = 0;
+	this->sfx_count = 0;
+	this->sfx_tbl = NULL;
+	this->ch70 = 0;
+	this->tbl74[0] = 0;
+	this->tbl74[1] = 0;
+	this->tbl74[2] = 0;
+	this->ch80 = 0;
+	this->tbl184[0] = 0;
+	this->tbl184[1] = 0;
+	this->nethandler = 0;
+	this->log = 0;
 #ifdef DEBUG
 	this->logctl = GAME_LOGCTL_STDOUT;
 #else
 	this->logctl = 0;
 #endif
+	this->tbl190[0] = 0;
+	this->tbl190[2] = 0;
+	this->tbl190[3] = 0;
+	this->tbl190[4] = 1;
+	this->tbl190[1] = 0;
 	this->rpair_root.left.key = 0;
 	this->rpair_root.value.dword = 0;
 	this->rpair_root.other = 0;
 	this->rpair_rootval.dword = 0;
+	this->num1BC = 0;
+	this->curscfg = NULL;
+	this->num1C4 = 0;
 	this->midi_sync = 0;
 	this->cursor = SMT_CURS_ARROW;
 	if (smtCursor(SMT_CURS_ARROW, SMT_CURS_SHOW))
 		this->cursor = SMT_CURS_DEFAULT;
+	this->num1E0 = 0;
+	this->num1E4 = 0;
 	if (!getcwd(this->cwdbuf, CWDBUFSZ))
 		perror(__func__);
 	strcpy(this->libname, "language.dll");
+	this->tbl3FC[0] = -1;
+	this->tbl3FC[1] = -1;
+	this->tbl3FC[2] = -1;
+	this->ptr3F4 = NULL;
+	this->num3F8 = 1;
+	this->num402 = 1;
+	this->ch404 = 0;
+	this->num8F4 = 0;
+	for (unsigned i = 0; i < 249; ++i)
+		this->tbl504[i] = 0;
+	this->tbl8E8[0] = 0;
+	this->tbl8E8[1] = 0;
+	this->tbl8E8[2] = 0;
+	this->num9AC = 1;
 	game_logger = NULL;
 	game_window = SMT_RES_INVALID;
 	cfg_hInst = this->cfg->hInst;
+	game_window_580DA0 = SMT_RES_INVALID;
+	comm_580DA8 = 0;
 	game_hkey_root = 0;
-	memset(this->tbl9B0, 0, 9 * sizeof(this->tbl9B0));
-	memset(this->tblA15, 0, 11);
-	this->rollover_text = 1;
+	sfx_engine_ref = NULL;
+	game_drive_ref = NULL;
+	this->ptr8 = NULL;
+	for (unsigned i = 0; i < 9; ++i)
+		this->tbl9B0[i] = this->tblA15[i] = 0;
+	this->num9FC = 0;
 	this->rollover_text = 1;
 	this->map_area = NULL;
 	this->gamespeed = 1.0f;
@@ -467,6 +521,7 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 			game_logger = this->log;
 			if (should_start_game && !game_show_focus_screen(this) && !this->state)
 				this->state = 1;
+			this->state2 = 0;
 		} else
 			this->state = 15;
 	} else
@@ -496,22 +551,24 @@ static signed game_init_icon(struct game *this)
 
 struct game *game_ctor(struct game *this, struct game_config *cfg, int should_start_game)
 {
-	stub
 	game_vtbl_init(this, cfg, 0);
-	/* our stuff */
+	/* < */
 	// TODO move this
 	smtCreatewin(&this->cfg->window, 640, 480, NULL, SMT_WIN_VISIBLE | SMT_WIN_BORDER);
 	smtCreategl(&this->cfg->gl, this->cfg->window);
 	smtPos(this->cfg->window, 0, 0);
-	/* original stuff */
-	for (unsigned i = 0; i < 15; ++i)
-		this->tblBEC[i] = 0;
-	this->tblBEC[1] = -1;
+	/* > */
+	this->hwnd_mci = 0;
+	this->tblBF0[0] = -1;
+	this->tblBF0[1] = 0;
+	this->tblBF0[2] = 0;
+	this->time_mci = 0;
+	for (unsigned i = 0; i < 10; ++i)
+		this->tblC00[i] = 0;
 	this->num1250 = 0;
 	this->vtbl = &g_vtbl2;
 	this->num1D8 = 1;
 	this->window2 = 0;
-
 	this->chAE8 = 0;
 	hLibModule = 0;
 	this->chC58 = 0;
@@ -521,7 +578,6 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	this->numE60 = 0;
 	this->ch106C = 0;
 	disable_terrain_sound = 0;
-
 	game_580E24 = 0;
 	game_580E28 = 0;
 	for (unsigned i = 0; i < 4; ++i)
@@ -543,16 +599,12 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	game_setAE6(this, 50);
 	game_set1190(this, 0);
 	game_set1194(this, -1);
-	for (unsigned i = 20 - 5; i < 20 - 5 + 5; ++i) {
-		this->tblBEC[i] = -1;
-		this->tblBEC[i + 5] = -1;
-	}
-	this->tblBEC[25] = this->tblBEC[26] = -1;
-	int v11 = 1;
+	for (unsigned i = 10; i < 20; ++i)
+		this->tblC00[i] = -1;
+	this->tblC00[20] = this->tblC00[21] = -1;
 	for (unsigned index = 0; index < 9; ++index) {
-		game_offsetA94(this, index, v11);           // dbg: v11 stopt bij 9 (inclusief)
-		v11 = (v11 + 1) % 16;
-		game_offsetAA0(this, index, index);         // <-
+		game_offsetA94(this, index, index + 2);
+		game_offsetAA0(this, index, index);
 		game_offsetAC4(this, index, 1);
 		game_offsetACD(this, index, 0);
 		players_connection_state[index] = 0;

@@ -4,9 +4,93 @@
 #include <assert.h>
 #include <string.h>
 
+static inline char game_set_c0(struct game *this, char value)
+{
+	return this->c0 = value;
+}
+
+static inline char *game_str_8FD(struct game *this, const char *str)
+{
+	char *ptr = strncpy(this->str8FD, str, 128);
+	this->str8FD[127] = '\0';
+	return ptr;
+}
+
+static inline int game_set97D_97E(struct game *this, int value)
+{
+	this->num97D_97E_is_zero = value;
+	return this->num97E_97D_is_zero = value == 0;
+}
+
+static inline int game_set97E_97D(struct game *this, int value)
+{
+	this->num97E_97D_is_zero = value;
+	return this->num97D_97E_is_zero = value == 0;
+}
+
+static inline char game_set984(struct game *this, char value)
+{
+	return this->ch984 = value;
+}
+
+static inline char game_set985(struct game *this, char value)
+{
+	return this->ch985 = value;
+}
+
+static inline char game_set986(struct game *this, char value)
+{
+	return this->ch986 = value;
+}
+
+static inline char game_set987(struct game *this, char value)
+{
+	return this->ch987 = value;
+}
+
 static inline char game_set988(struct game *this, char value)
 {
 	return this->ch988 = value;
+}
+
+static inline char game_set989(struct game *this, char value)
+{
+	return this->ch989 = value;
+}
+
+static inline int game_set9A0(struct game *this, int value)
+{
+	return this->num9A0 = value;
+}
+
+static inline int game_set9A4(struct game *this, int value)
+{
+	return this->num9A4 = value;
+}
+
+static inline char game_98A(struct game *this, int index, char value)
+{
+	assert(index < 9);
+	return this->tbl98A[index] = value;
+}
+
+static inline char game_98A_2(struct game *this, int index, char mask)
+{
+	assert(index < 9);
+	this->tbl98A[index] = mask | (this->tbl98A[index] & 0xFE);
+	return index;
+}
+
+static inline char game_98A_3(struct game *this, int index, char value)
+{
+	assert(index < 9);
+	return this->tbl98A[index] = (2 * value) | (this->tbl98A[index] & 1);
+}
+
+static inline char game_tbl994(struct game *this, int index, char value)
+{
+	assert(index < 12);
+	return this->tbl994[index] = value;
 }
 
 static inline int game_setA80(struct game *this, int value)
@@ -114,6 +198,34 @@ static inline int game_clear1198(struct game *this)
 {
 	memset(this->blk1198, 0, 160);
 	return 0;
+}
+
+static inline char game_set_pathfind(struct game *this, char pathfind)
+{
+	return this->pathfind = pathfind;
+}
+
+static inline char game_set_mp_pathfind(struct game *this, char mp_pathfind)
+{
+	return this->mp_pathfind = mp_pathfind;
+}
+
+static inline char game_set_hsv(struct game *this, unsigned char h, unsigned char s, unsigned char v)
+{
+	this->hsv[0] = h;
+	this->hsv[1] = s;
+	this->hsv[2] = v;
+	return v;
+}
+
+static inline char game_set_cheats(struct game *this, char value)
+{
+	return this->cheats = value;
+}
+
+static inline char game_set_difficulty2(struct game *this, char value)
+{
+	return this->difficulty2 = value;
 }
 
 #endif
