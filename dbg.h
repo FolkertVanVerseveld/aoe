@@ -1,6 +1,8 @@
 #ifndef AOE_DBG_H
 #define AOE_DBG_H
 
+#include <stddef.h>
+
 #ifdef DEBUG
 #include <stdio.h>
 #define dbgs(s) puts(s)

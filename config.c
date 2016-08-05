@@ -44,6 +44,7 @@ static const char *cfg_default =
 void config_free(void)
 {
 	if (cfgname) {
+		config_save();
 		free(cfgname);
 		cfgname = NULL;
 	}
@@ -265,7 +266,39 @@ nuke:
 
 int config_save(void)
 {
-	if (!cfg_touch()) return 0;
-	dbgs("config saved");
-	return 1;
+	int ret = 0;
+	FILE *f = NULL;
+	if (!cfg_touch()) goto fail;
+	f = fopen(cfgname, "w");
+	if (!f) {
+		perror(cfgname);
+		goto fail;
+	}
+	fprintf(f,
+		"# Age of Empires configuration file\n"
+		"screen_size = %u\n"
+		"rollover_text = %u\n"
+		"mouse_style = %u\n"
+		"custom_mouse = %u\n"
+		"sfx_volume = %u\n"
+		"game_speed = %u\n"
+		"difficulty = %u\n"
+		"scroll_speed = %u\n"
+		"pathfind = %hhu\n"
+		"mp_pathfind = %hhu\n",
+		reg_cfg.screen_size,
+		reg_cfg.rollover_text,
+		reg_cfg.mouse_style,
+		reg_cfg.custom_mouse,
+		reg_cfg.sfx_volume,
+		reg_cfg.game_speed,
+		reg_cfg.difficulty,
+		reg_cfg.scroll_speed,
+		reg_cfg.pathfind,
+		reg_cfg.mp_pathfind
+	);
+	ret = 1;
+fail:
+	if (f) fclose(f);
+	return ret;
 }
