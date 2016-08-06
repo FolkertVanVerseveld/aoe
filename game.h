@@ -7,6 +7,7 @@
 #include "map.h"
 #include "gfx.h"
 #include "sfx.h"
+#include "comm.h"
 #include "log.h"
 
 #define GAME_LOGCTL_FILE 1
@@ -31,6 +32,14 @@
 
 struct window_ctl2 {
 	unsigned num0, num4, num8, numC;
+};
+
+struct game_drive {
+	unsigned driveno;
+	char buf[256];
+	unsigned driveno2;
+	char buf2[64];
+	char gap[300];
 };
 
 struct game;
@@ -225,7 +234,7 @@ struct game {
 	char ch987;
 	char ch988;
 	char ch989;
-	char tbl98A[9];
+	char player_tbl[9];
 	unsigned difficulty2;
 	char tbl994[12];
 	unsigned num9A0;

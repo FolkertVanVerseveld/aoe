@@ -68,25 +68,6 @@ static inline int game_set9A4(struct game *this, int value)
 	return this->num9A4 = value;
 }
 
-static inline char game_98A(struct game *this, int index, char value)
-{
-	assert(index < 9);
-	return this->tbl98A[index] = value;
-}
-
-static inline char game_98A_2(struct game *this, int index, char mask)
-{
-	assert(index < 9);
-	this->tbl98A[index] = mask | (this->tbl98A[index] & 0xFE);
-	return index;
-}
-
-static inline char game_98A_3(struct game *this, int index, char value)
-{
-	assert(index < 9);
-	return this->tbl98A[index] = (2 * value) | (this->tbl98A[index] & 1);
-}
-
 static inline char game_tbl994(struct game *this, int index, char value)
 {
 	assert(index < 12);
@@ -226,6 +207,31 @@ static inline char game_set_cheats(struct game *this, char value)
 static inline char game_set_difficulty2(struct game *this, char value)
 {
 	return this->difficulty2 = value;
+}
+
+static inline char game_init_player(struct game *this, int index, char value)
+{
+	assert(index < 9);
+	return this->player_tbl[index] = value;
+}
+
+static inline char game_player_ctl(struct game *this, int index, char mask)
+{
+	assert(index < 9);
+	this->player_tbl[index] = mask | (this->player_tbl[index] & 0xFE);
+	return index;
+}
+
+static inline char game_player_ctl2(struct game *this, int index, char value)
+{
+	assert(index < 9);
+	return this->player_tbl[index] = (2 * value) | (this->player_tbl[index] & 1);
+}
+
+static inline int game_player_is_alive(struct game *this, int player_id)
+{
+	assert(player_id < 9);
+	return this->player_tbl[player_id] & 1;
 }
 
 #endif

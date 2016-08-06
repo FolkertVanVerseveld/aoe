@@ -11,6 +11,7 @@
 #include "game.h"
 #include "game_set.h"
 #include "langx.h"
+#include "memmap.h"
 #include "todo.h"
 
 #define get_os_version(a) a=0x1000
@@ -26,7 +27,7 @@ static unsigned game_window;
 static unsigned game_window_580DA0;
 static struct comm *comm_580DA8;
 static struct sfx_engine *sfx_engine_ref;
-static void *game_drive_ref;
+static struct game_drive *game_drive_ref;
 static unsigned disable_terrain_sound = 0;
 static unsigned midi_no_fill = 0;
 
@@ -259,20 +260,18 @@ static inline void strup(char *buf, size_t n)
 
 static int game_comm_ctl(struct game *this, int a2)
 {
-	stub
 	int result = 1;
-	int v4, v5, v6;
+	int v4, player_id, v6;
 	if (this->cfg->d1p0) {
 		if (a2 <= 0)
-			result = 1;
-		else {
-			v4 = v5 = 0;
-			do {
-				v6 = v5 + 1;
-				++v5;
-			} while (v6 < 9);
-			result = a2 <= v4 * this->cfg->d3;
+			return 1;
+		v4 = player_id = 0;
+		for (player_id = 0, v6 = 1; v6 < 9; v6 = ++player_id) {
+			if (commhnd423D10(this->nethandler, player_id + 1) == 2)
+				if (game_player_is_alive(this, player_id))
+					++v4;
 		}
+		result = a2 <= v4 * this->cfg->d3;
 	}
 	return result;
 }
@@ -314,7 +313,6 @@ static int game_process_event(struct game *this, unsigned hWnd_1, unsigned msg, 
 
 static int game_parse_opt2(struct game *this)
 {
-	stub
 	char buf[OPTBUFSZ];
 	strncpy(buf, this->cfg->optbuf, OPTBUFSZ);
 	buf[OPTBUFSZ - 1] = '\0';
@@ -345,13 +343,14 @@ static int game_parse_opt2(struct game *this)
 		this->cfg->width = 1024;
 		this->cfg->height = 768;
 	}
+	ORIGDROP
 	if (!this->cfg->sfx_enable || strstr(buf, "NOMUSIC") || strstr(buf, "NO_MUSIC") || strstr(buf, "NO MUSIC"))
 		this->cfg->midi_enable = 0;
 	if (this->cfg->gfx8bitchk == 1 && this->cfg->window_show_focus_update == 1)
 		this->no_normal_mouse = 1;
 	if (strstr(buf, "NORMALMOUSE") || strstr(buf, "NORMAL_MOUSE") || strstr(buf, "NORMAL MOUSE"))
 		this->no_normal_mouse = 0;
-	printf(
+	dbgf(
 		"game options:\n"
 		"resolution: (%d,%d)\n"
 		"no_start: %d\n"
@@ -373,7 +372,14 @@ static int game_parse_opt2(struct game *this)
 
 int game_parse_opt(struct game *this)
 {
-	stub
+	char buf[256];
+	strncpy(buf, this->cfg->optbuf, 255u);
+	buf[255] = '\0';
+	strup(buf, 255);
+	ORIGDROP
+	if (strstr(buf, "NOTERRAINSOUND"))
+		disable_terrain_sound = 1;
+	ORIGDROP
 	return game_parse_opt2(this);
 }
 
@@ -420,9 +426,9 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	game_set989(this, 0);
 	game_set_difficulty2(this, 0);
 	for (unsigned i = 0; i < 9; ++i) {
-		game_98A(this, i, 0);
-		game_98A_2(this, i, 0);
-		game_98A_3(this, i, 0);
+		game_init_player(this, i, 0);
+		game_player_ctl(this, i, 0);
+		game_player_ctl2(this, i, 0);
 		game_tbl994(this, i, 1);
 	}
 	game_set_pathfind(this, 0);
@@ -934,6 +940,8 @@ static signed game_show_focus_screen(struct game *this)
 		this->state = GE_SFX;
 		return 0;
 	}
+	struct game_drive *drive = new(sizeof(struct game_drive));
+	game_drive_ref = drive;
 	return 1;
 }
 
@@ -955,6 +963,8 @@ struct game *start_game(struct game *this)
 		{23, 123, 0, 0}
 	};
 	stub
+	// sound drs files need to be available immediately,
+	// so these are not mmap'ed
 	read_data_mapping(data_sounds   , "data2/"      , 1);
 	read_data_mapping(data_graphics , "data2/"      , 0);
 	read_data_mapping(data_interface, "data2/"      , 0);

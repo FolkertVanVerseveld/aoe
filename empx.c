@@ -15,6 +15,7 @@
 #include "dmap.h"
 #include "game.h"
 #include "langx.h"
+#include "memmap.h"
 #include "log.h"
 #include "todo.h"
 
@@ -153,6 +154,8 @@ static void cleanup(void)
 {
 	drs_free();
 	config_free();
+	memchk();
+	memfree();
 }
 
 int main(int argc, char **argv)
@@ -162,6 +165,7 @@ int main(int argc, char **argv)
 	size_t optsz = 0;
 	unsigned hPrevInst = 0, hInst = 0, nShowCmd = 0;
 	/* < */
+	meminit();
 	atexit(cleanup);
 	argp = parse_opt(argc, argv);
 	// construct lpCmdLine (i.e. options) from remaining args
