@@ -22,4 +22,6 @@ struct regpair {
 	struct regpair *other;
 };
 
+int findfirst(const char *fname);
+
 #endif

@@ -198,15 +198,15 @@ char *game_strerror(struct game *this, int code, signed status, int a4, char *st
 		case 100:
 		case 101:
 		case 102:
-			error = this->vtbl->get_res_str(STR_ERR_START, str, n);
+			error = this->vtbl->get_res_str(STR_FAIL_START, str, n);
 		case 103:
-			error = this->vtbl->get_res_str(STR_ERR_SAVE_GAME, str, n);
+			error = this->vtbl->get_res_str(STR_FAIL_SAVE_GAME, str, n);
 		case 104:
-			error = this->vtbl->get_res_str(STR_ERR_SAVE_SCENARIO, str, n);
+			error = this->vtbl->get_res_str(STR_FAIL_SAVE_SCENARIO, str, n);
 		case 105:
-			error = this->vtbl->get_res_str(STR_ERR_LOAD_GAME, str, n);
+			error = this->vtbl->get_res_str(STR_FAIL_LOAD_GAME, str, n);
 		case 106:
-			error = this->vtbl->get_res_str(STR_ERR_LOAD_SCENARIO, str, n);
+			error = this->vtbl->get_res_str(STR_FAIL_LOAD_SCENARIO, str, n);
 		default:
 			error = game_strerror2(this, code, status, a4, str, n);
 			break;
@@ -389,7 +389,7 @@ static int reg_init(struct game *this)
 	return config_load();
 }
 
-struct game *start_game(struct game *this);
+int start_game(struct game *this);
 static int game_logger_init(struct game *this);
 static signed game_show_focus_screen(struct game *this);
 
@@ -952,7 +952,7 @@ static int game_mousestyle(struct game *this)
 	return 0;
 }
 
-struct game *start_game(struct game *this)
+int start_game(struct game *this)
 {
 	struct pal_entry p[7] = {
 		{23, 39, 124, 0},
@@ -963,6 +963,11 @@ struct game *start_game(struct game *this)
 		{23, 123, 0, 0}
 	};
 	stub
+	if (findfirst("empires.exe") == -1) {
+		this->state = 23;
+		fprintf(stderr, "%s: no such file\n", "empires.exe");
+		return 0;
+	}
 	// sound drs files need to be available immediately,
 	// so these are not mmap'ed
 	read_data_mapping(data_sounds   , "data2/"      , 1);
@@ -977,8 +982,8 @@ struct game *start_game(struct game *this)
 		return 0;
 	update_palette(this->palette, 24, 7, p);
 	if (!game_opt_check(this, "LOBBY"))
-		return this;
-	return this;
+		return 1;
+	return 1;
 }
 
 struct game_vtbl g_vtbl = {

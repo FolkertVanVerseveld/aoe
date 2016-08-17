@@ -104,7 +104,7 @@ void logger_elapsed_ms(struct logger *this)
 	time(&time_millis);
 	struct tm *tm0 = localtime(&time_millis);
 	float time_sec = (time_millis - this->time_millis) * 0.001;
-	if (tm0) dbgf(">>>TIME>>>  %s  %7.1f sec elapsed\n", asctime(tm0), time_sec);
+	if (tm0) dbgf(">>>TIME>>>  %s   [%7.1f sec elapsed]\n", tm0 ? asctime(tm0) : "?", time_sec);
 }
 
 void logger_write_log(struct logger *this, int write)
