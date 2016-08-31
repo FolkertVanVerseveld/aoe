@@ -1,12 +1,31 @@
 #include "menu.h"
+#include "memmap.h"
 #include "todo.h"
 #include "dbg.h"
 
 static struct menu_ctl_vtbl menu_ctl_vtbl = {
+	.dtor = menu_ctl_dtor,
 	// TODO populate
 }, menu_ctl_vtbl_0 = {
+	.dtor = menu_ctl_dtor_stdiobuf,
 	// TODO populate
 };
+
+struct menu_ctl *menu_ctl_dtor(struct menu_ctl *this, char a2)
+{
+	stub
+	(void)this;
+	(void)a2;
+	return this;
+}
+
+struct menu_ctl *menu_ctl_dtor_stdiobuf(struct menu_ctl *this, char call_this_dtor)
+{
+	stub
+	if (call_this_dtor & 1)
+		delete(this);
+	return this;
+}
 
 static struct menu_ctl *menu_ctl_vtbl_init_0(struct menu_ctl *this, const char *str)
 {

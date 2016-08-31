@@ -135,7 +135,7 @@ fail:
 		assert((map->drs_data && !map->dblk) || map->drs_data == map->dblk);
 		if (map->drs_data) free(map->drs_data);
 		if (map->dblk && map->dblk != map->drs_data) free(map->dblk);
-		if (map) free(map);
+		free(map);
 		perror(name);
 	}
 	return ret;
@@ -151,13 +151,16 @@ static int drs_map(unsigned type, int res_id, int *fd, off_t *st_size, unsigned 
 	(void)st_size;
 	(void)dblk;
 	(void)count;
-	int *count_ptr, *type_ptr;
+	// REMAP typeof(count_ptr) == typeof(type_ptr) == unsigned
+	unsigned *count_ptr, *type_ptr;
 	unsigned index2;
 	unsigned index;
 	struct drs_item *drs_data;
 	struct dmap *map = drs_list;
 	struct dmap *map2;
 	int result;
+	(void)index2;
+	(void)map2;
 	if (map) {
 		while (1) {
 			drs_data = map->drs_data;
@@ -179,6 +182,7 @@ static int drs_map(unsigned type, int res_id, int *fd, off_t *st_size, unsigned 
 				if (*count_ptr > 0)
 					break;
 			}
+			goto next_item;
 		next_item:
 			count_ptr += 3;
 			if (++index >= drs_data->count38)

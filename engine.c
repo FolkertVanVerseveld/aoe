@@ -12,7 +12,7 @@ int findfirst(const char *fname)
 	int found = -1;
 	d = opendir(".");
 	if (!d) goto fail;
-	while (entry = readdir(d)) {
+	while ((entry = readdir(d)) != NULL) {
 		if (!strcasecmp(entry->d_name, fname)) {
 			found = 0;
 			break;

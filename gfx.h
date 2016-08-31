@@ -18,7 +18,7 @@ struct video_mode {
 	unsigned window;
 	struct pal_entry *palette;
 	unsigned tblC[3];
-	// REMAPE typeof(LPDIRECTDRAW lplpDD) == unsigned
+	// REMAP typeof(LPDIRECTDRAW lplpDD) == unsigned
 	unsigned lplpDD;
 	unsigned tbl1C[3];
 	int sys_memmap;

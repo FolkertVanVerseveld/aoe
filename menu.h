@@ -17,6 +17,7 @@ struct menu_ctl_arg {
 };
 
 struct menu_ctl_vtbl {
+	struct menu_ctl *(*dtor)(struct menu_ctl*, char);
 	unsigned ptr[4];
 	void (*func10)(struct menu_ctl*, int);
 	unsigned ptr14;
@@ -119,5 +120,7 @@ struct menu_ctl {
 };
 
 struct menu_ctl *menu_ctl_init_title(struct menu_ctl *this, const char *title);
+struct menu_ctl *menu_ctl_dtor(struct menu_ctl *this, char a2);
+struct menu_ctl *menu_ctl_dtor_stdiobuf(struct menu_ctl *this, char call_this_dtor);
 
 #endif

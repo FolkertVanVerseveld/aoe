@@ -716,6 +716,9 @@ static struct pal_entry *palette_init(struct game *this, char *palette, int a2)
 	stub
 	(void)this;
 	(void)a2;
+	(void)v5;
+	(void)v6;
+	(void)v9;
 	palette_path[0] = '\0';
 	if (palette) {
 		if (strchr(palette, '.'))
@@ -733,7 +736,7 @@ static struct pal_entry *palette_init(struct game *this, char *palette, int a2)
 	halt();
 	do {
 		if (((unsigned*)v4)[-670]) {
-			if (a2 != -1 && *(unsigned*)v4 == a2 || !strcmp(v8, palette_path))
+			if ((a2 != -1 && *(int*)v4 == a2) || !strcmp(v8, palette_path))
 				return 0;
 		}
 	} while (0);
@@ -1038,6 +1041,7 @@ struct game_vtbl g_vtbl = {
 	.strerr2 = game_strerror2,
 	.parse_opt = game_parse_opt2,
 	.shp = game_shp,
+	.init_mouse = game_init_custom_mouse,
 }, g_vtbl2 = {
 	.dtor = game_dtor_ios_base,
 	.main = game_loop,
@@ -1054,7 +1058,7 @@ struct game_vtbl g_vtbl = {
 	.translate_event = game_duck_event,
 	.handle_event = game_handle_event,
 	.map_save_area = game_map_save_area,
-	.init_mouse = game_init_custom_mouse,
+	.init_mouse = game_mousestyle,
 	.init_sfx = game_init_sfx,
 	.window_ctl = game_window_ctl,
 	.window_ctl2 = game_window_ctl2,

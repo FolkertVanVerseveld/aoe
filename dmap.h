@@ -16,16 +16,18 @@ drs item types:
 struct drs_item {
 	char hdr[40];
 	char tribe[16];
-	int count38;
+	// REMAP typeof(count38) == unsigned
+	unsigned count38;
 	unsigned num3C;
 	unsigned type40;
 	unsigned num44;
-	int count48;
+	// REMAP typeof(count48) == unsigned
+	unsigned count48;
 };
 
 #define DMAPBUFSZ 260
 struct dmap {
-	char *dblk;
+	struct drs_item *dblk;
 	int fd;
 	struct drs_item *drs_data;
 	struct dmap *next;
@@ -33,10 +35,10 @@ struct dmap {
 	size_t length;
 };
 
-#define DT_BINARY 'bina'
-#define DT_AUDIO 'wav '
-#define DT_SLP 'slp '
-#define DT_SHP 'shp '
+#define DT_BINARY 0x616e6962
+#define DT_AUDIO 0x20766177
+#define DT_SLP 0x20706c73
+#define DT_SHP 0x20706873
 
 void dmap_init(struct dmap *map);
 void dmap_free(struct dmap *map);

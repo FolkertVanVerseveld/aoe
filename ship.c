@@ -59,7 +59,7 @@ struct ship_20 *shp_init(struct ship_20 *this, const char *fname, int res_id)
 	}
 	if (!this->slp_data && !this->file_slp_shp_data && res_id >= 0) {
 		++ship_count;
-		slp_data = drs_get_item("slp ", res_id, &this->num4, &this->filesize);
+		slp_data = drs_get_item(DT_SLP, res_id, &this->num4, &this->filesize);
 		this->file_slp_shp_data = slp_data;
 		if (slp_data) {
 			this->slp_data = slp_data;
@@ -67,7 +67,7 @@ struct ship_20 *shp_init(struct ship_20 *this, const char *fname, int res_id)
 			this->file_slp_shp_data = NULL;
 			goto end;
 		}
-		shp_data = drs_get_item("shp ", res_id, &this->num4, &this->filesize);
+		shp_data = drs_get_item(DT_SHP, res_id, &this->num4, &this->filesize);
 		this->file_slp_shp_data = shp_data;
 		if (shp_data) {
 			if (*((int*)shp_data) == shp_data554864) {

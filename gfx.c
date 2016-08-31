@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <smt/smt.h>
 #include "engine.h"
+#include "menu.h"
 #include "todo.h"
 #include "dbg.h"
 #include "gfx.h"
 
 int enum_display_modes(void *arg, int (*cmp)(struct display*, void*))
 {
-	stub
 	unsigned count, w, h;
 	int x, y;
 	struct display scr;
@@ -23,13 +23,13 @@ int enum_display_modes(void *arg, int (*cmp)(struct display*, void*))
 			scr.width = mode.width;
 			scr.height = mode.height;
 			scr.frequency = mode.frequency;
-			cmp(&scr, &mode);
+			cmp(&scr, arg);
 			if (mode.bitdepth > 16) {
 				// also fake 16 and 8 bit modes
 				mode.frequency = 16;
-				cmp(&scr, &mode);
+				cmp(&scr, arg);
 				mode.frequency = 8;
-				cmp(&scr, &mode);
+				cmp(&scr, arg);
 			}
 		}
 	}
