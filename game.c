@@ -346,7 +346,7 @@ static int game_parse_opt2(struct game *this)
 	ORIGDROP
 	if (!this->cfg->sfx_enable || strstr(buf, "NOMUSIC") || strstr(buf, "NO_MUSIC") || strstr(buf, "NO MUSIC"))
 		this->cfg->midi_enable = 0;
-	if (this->cfg->gfx8bitchk == 1 && this->cfg->window_show_focus_update == 1)
+	if (this->cfg->gfx8bitchk == 1 && this->cfg->window_query_dd_interface == 1)
 		this->no_normal_mouse = 1;
 	if (strstr(buf, "NORMALMOUSE") || strstr(buf, "NORMAL_MOUSE") || strstr(buf, "NORMAL MOUSE"))
 		this->no_normal_mouse = 0;
@@ -680,7 +680,7 @@ static int game_go_fullscreen(struct game *this)
 	smtDisplayBounds(display_index, &x, &y, &width, &height);
 	if (this->window == SMT_RES_INVALID)
 		return 0;
-	if (this->cfg->window_show_focus_update || (width == this->cfg->width && height == this->cfg->height)) {
+	if (this->cfg->window_query_dd_interface || (width == this->cfg->width && height == this->cfg->height)) {
 		smtTitle(this->window, this->cfg->title);
 		smtBorder(this->window, 0);
 	}
@@ -699,14 +699,19 @@ static int game_go_fullscreen(struct game *this)
 		);
 		smtBounds(this->window, dx, dy, dw, dh);
 	}
-	if (this->cfg->window_show_focus_update)
+	if (this->cfg->window_query_dd_interface)
 		smtVisible(this->window, 1);
 	game_window = this->window;
 	return 1;
 }
 
-static struct pal_entry *palette_init(void *this, char *palette, int a2)
+static struct pal_entry *palette_init(struct game *this, char *palette, int a2)
 {
+	char *v4;
+	int v5, v6;
+	struct pal_entry *pal;
+	const char *v8;
+	char *v9;
 	char palette_path[260];
 	stub
 	(void)this;
@@ -719,22 +724,36 @@ static struct pal_entry *palette_init(void *this, char *palette, int a2)
 			sprintf(palette_path, "%s.pal", palette);
 		strup(palette_path, 260 - 1);
 	}
-	return game_pal;
+	dbgf("palette: %s\n", palette);
+	v4 = this->tblA94;
+	v5 = -1;
+	v6 = 0;
+	v8 = (const char*)&this->timer;
+	v9 = this->tblA94;
+	halt();
+	do {
+		if (((unsigned*)v4)[-670]) {
+			if (a2 != -1 && *(unsigned*)v4 == a2 || !strcmp(v8, palette_path))
+				return 0;
+		}
+	} while (0);
+	return pal;
 }
 
 static int game_gfx_init(struct game *this)
 {
 	stub
-	struct video_mode *videomode = malloc(sizeof(struct video_mode));
+	struct video_mode *videomode = new(sizeof(struct video_mode));
 	if (!video_mode_init(videomode))
 		return 0;
 	this->mode = videomode;
+	video_mode_fetch_bounds(videomode, this->cfg->window_query_dd_interface);
 	if (!direct_draw_init(
 		this->mode,
 		this->cfg->hInst, this->window,
 		this->palette,
 		(this->cfg->gfx8bitchk != 0) + 1,
-		(this->cfg->window_show_focus_update != 0) + 1,
+		(this->cfg->window_query_dd_interface != 0) + 1,
 		this->cfg->width,
 		this->cfg->height,
 		this->cfg->sys_memmap != 0))
@@ -900,6 +919,7 @@ static signed game_show_focus_screen(struct game *this)
 	}
 	smtScreensave(SMT_SCREEN_SAVE_OFF);
 	this->num9AC = game_comm_ctl(this, 0);
+	// initialize all vtbl stuff
 	if (!this->vtbl->init_icon(this)) {
 		fputs("init_icon failed\n", stderr);
 		this->state = GE_ICON;
@@ -940,6 +960,26 @@ static signed game_show_focus_screen(struct game *this)
 		this->state = GE_SFX;
 		return 0;
 	}
+	if (!this->vtbl->window_ctl(this)) {
+		fputs("window_ctl failed\n", stderr);
+		this->state = GE_WINCTL;
+		return 0;
+	}
+	if (!this->vtbl->window_ctl2(this)) {
+		fputs("window_ctl2 failed\n", stderr);
+		this->state = GE_WINCTL2;
+		return 0;
+	}
+	if (!this->vtbl->gfx_ctl(this)) {
+		fputs("gfx_ctl failed\n", stderr);
+		this->state = GE_CTL;
+		return 0;
+	}
+	if (!this->vtbl->init_sfx_tbl(this)) {
+		fputs("init_sfx_tbl failed\n", stderr);
+		this->state = GE_SFX2;
+		return 0;
+	}
 	struct game_drive *drive = new(sizeof(struct game_drive));
 	game_drive_ref = drive;
 	return 1;
@@ -962,7 +1002,6 @@ int start_game(struct game *this)
 		{95, 0xa0, 0, 0},
 		{23, 123, 0, 0}
 	};
-	stub
 	if (findfirst("empires.exe") == -1) {
 		this->state = 23;
 		fprintf(stderr, "%s: no such file\n", "empires.exe");
@@ -980,9 +1019,14 @@ int start_game(struct game *this)
 	read_data_mapping(data_interface, directory_data, 0);
 	if (!game_show_focus_screen(this))
 		return 0;
-	update_palette(this->palette, 24, 7, p);
+	update_palette(this->palette, 248, 7, p);
+	this->window2 = this->window;
 	if (!game_opt_check(this, "LOBBY"))
 		return 1;
+	dbgs("lobby");
+	struct video_mode *mode = new2(sizeof(struct video_mode), "video_mode");
+	if (mode)
+		video_mode_start_init(mode, "Status Screen", 1215, "scr1", 50051);
 	return 1;
 }
 

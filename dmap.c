@@ -15,7 +15,8 @@ struct dmap *drs_list = NULL;
 static const char data_map_magic[4] = {'1', '.', '0', '0'};
 
 void dmap_init(struct dmap *map) {
-	map->dblk = map->drs_data = NULL;
+	map->dblk = NULL;
+	map->drs_data = NULL;
 	map->filename[0] = '\0';
 	map->next = NULL;
 }
@@ -125,7 +126,7 @@ int read_data_mapping(const char *filename, const char *directory, int nommap)
 		drs_list = map;
 	}
 	// check for magic "1.00tribe"
-	ret = strncmp(&map->drs_data[0x28], "1.00tribe", strlen("1.00tribe"));
+	ret = strncmp(map->drs_data->tribe, "1.00tribe", strlen("1.00tribe"));
 	if (ret) fprintf(stderr, "%s: hdr invalid\n", filename);
 	// FIXME if no magic, dangling ptr in last item of drs list
 fail:
@@ -140,18 +141,60 @@ fail:
 	return ret;
 }
 
-static int drs_map(const char *dest, int a2, int *fd, off_t *st_size, const char **dblk, size_t *count)
+static int drs_map(unsigned type, int res_id, int *fd, off_t *st_size, unsigned *dblk, size_t *count)
 {
 	stub
 	#if 1
-	(void)dest;
-	(void)a2;
+	(void)type;
+	(void)res_id;
 	(void)fd;
 	(void)st_size;
 	(void)dblk;
 	(void)count;
+	int *count_ptr, *type_ptr;
+	unsigned index2;
+	unsigned index;
+	struct drs_item *drs_data;
+	struct dmap *map = drs_list;
+	struct dmap *map2;
+	int result;
+	if (map) {
+		while (1) {
+			drs_data = map->drs_data;
+			index = 0;
+			dbgf("index=%u, count38=%d\n", index, drs_data->count38);
+			if (drs_data->count38 > 0)
+				break;
+		next_drs:
+			map = map->next;
+			map2 = map;
+			if (!map)
+				goto fail;
+		}
+		count_ptr = &drs_data->count48;
+		type_ptr = count_ptr - 2;
+		while (1) {
+			if (*type_ptr == type) {
+				index2 = 0;
+				if (*count_ptr > 0)
+					break;
+			}
+		next_item:
+			count_ptr += 3;
+			if (++index >= drs_data->count38)
+				goto next_drs;
+		}
+		// count_ptr[-1] == num44
+		dbgf("num44 = %d\n", count_ptr[-1]);
+		halt();
+	} else {
+	fail:
+		dbgf("%s: not found: type=%u, res_id=%d\n", __func__, type, res_id);
+		result = 0;
+	}
+	dbgf("result = %d\n", result);
 	halt();
-	return 0;
+	return result;
 	#else
 	char *v8, *v9;
 	int v10, result;
@@ -214,7 +257,7 @@ fail:
 	#endif
 }
 
-void *drs_get_item(const char *item, int fd, size_t *count, off_t *offset)
+void *drs_get_item(unsigned item, int fd, size_t *count, off_t *offset)
 {
 	stub
 	int v7, result;

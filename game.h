@@ -108,7 +108,7 @@ struct game_config {
 	unsigned d1p1;
 	unsigned window_request_focus;
 	unsigned no_start;
-	unsigned window_show_focus_update;
+	unsigned window_query_dd_interface;
 	unsigned mouse_opts;
 	unsigned gfx8bitchk;
 	unsigned sys_memmap;
