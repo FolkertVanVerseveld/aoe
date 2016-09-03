@@ -58,6 +58,33 @@ void drs_stat(char *data, size_t size)
 	drs_dump(drs);
 }
 
+#define WAVE_CHUNK_ID 0x46464952
+
+void drs_find_wave(char *data, size_t size)
+{
+	size_t off;
+	char *start;
+	uint32_t magic = WAVE_CHUNK_ID;
+	FILE *f = NULL;
+	uint32_t f_size;
+	char buf[256];
+	unsigned waves = 0;
+	for (off = 0; off < size - sizeof magic; ++off) {
+		if (*(uint32_t*)&data[off] == magic) {
+			f_size = *(uint32_t*)&data[off + sizeof(uint32_t)] + 8;
+			snprintf(buf, sizeof buf, "%zX.wav", off);
+			f = fopen(buf, "wb");
+			if (!f) return;
+			fwrite(&data[off], 1, f_size, f);
+			fclose(f);
+			f = NULL;
+			++waves;
+		}
+	}
+	printf("exported wave count: %u\n", waves);
+	if (f) fclose(f);
+}
+
 static int process(char *name)
 {
 	int ret = 1, fd = -1;
@@ -75,6 +102,7 @@ static int process(char *name)
 		goto fail;
 	}
 	drs_stat(map, mapsz);
+	drs_find_wave(map, mapsz);
 	ret = 0;
 fail:
 	if (map != MAP_FAILED)
