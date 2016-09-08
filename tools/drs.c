@@ -13,17 +13,10 @@
 #define DT_SLP    0x736c7020
 #define DT_BINARY 0x62696e61
 
-struct drs {
-	uint32_t v0, v1;
-	uint32_t v2;
-	uint32_t type;
-	uint32_t v4;
-};
-
 struct drs_list {
-	uint32_t size;
 	uint32_t type;
 	uint32_t offset;
+	uint32_t size;
 };
 
 struct drs_item {
@@ -34,10 +27,9 @@ struct drs_item {
 
 struct drsmap {
 	char copyright[40];
-	char version[12];
-	uint32_t num34;
-	uint32_t count38;
-	//struct drs_res res[]
+	char version[16];
+	uint32_t nlist;
+	uint32_t listend; // XXX go figure
 };
 
 static inline void dump_type(unsigned type)
@@ -59,32 +51,6 @@ static inline void dump_type(unsigned type)
 			printf("type = %x\n", type);
 			break;
 	}
-}
-
-void drs_dump(const struct drs *this)
-{
-	printf(
-		"v0 = %x\n"
-		"v1 = %x\n"
-		"v2 = %x\n",
-		this->v0, this->v1, this->v2
-	);
-	dump_type(this->type);
-	printf(
-		"v4 = %x\n",
-		this->v4
-	);
-}
-
-void drs_stat(char *data, size_t size)
-{
-	size_t n = strlen("1.00tribe");
-	if (n > size || strncmp("1.00tribe", &data[0x28], n)) {
-		fputs("invalid drs file\n", stderr);
-		return;
-	}
-	struct drs *drs = (void*)&data[0x34];
-	drs_dump(drs);
 }
 
 #define WAVE_CHUNK_ID 0x46464952
@@ -124,14 +90,14 @@ void drsmap_stat(char *data, size_t size)
 		fputs("invalid drs file\n", stderr);
 		return;
 	}
-	printf("num34: %u\n", drs->num34);
-	printf("count38: %u\n", drs->count38);
-	if (!drs->count38)
+	printf("lists: %u\n", drs->nlist);
+	printf("list end offset: %u\n", drs->listend);
+	if (!drs->nlist)
 		return;
 	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drsmap));
-	for (unsigned i = 0; i < drs->count38; ++i, ++list) {
-		printf("size: %x\n", list->size);
+	for (unsigned i = 0; i < drs->nlist; ++i, ++list) {
 		dump_type(list->type);
+		printf("items: %u\n", list->size);
 		printf("offset: %x\n", list->offset);
 		// resource offset or something
 		if (list->offset > size) {
