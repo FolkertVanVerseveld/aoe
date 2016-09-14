@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #define DOS_MAGIC 0x5a4d
+#define PE_MAGIC 0x00004550
 
 struct mz {
 	uint16_t e_magic;
@@ -35,6 +36,55 @@ struct dos {
 	uint16_t e_res2[10];
 	uint16_t e_lfanew;
 };
+
+struct pehdr {
+	uint32_t f_magic;
+	uint16_t f_mach;
+	uint16_t f_nscns;
+	uint32_t f_timdat;
+	uint32_t f_symptr;
+	uint32_t f_nsyms;
+	uint16_t f_opthdr;
+	uint16_t f_flags;
+};
+
+struct coffopthdr {
+	uint16_t o_magic;
+	uint16_t o_vstamp;
+	uint32_t o_tsize;
+	uint32_t o_dsize;
+	uint32_t o_bsize;
+	uint32_t o_entry;
+	uint32_t o_text;
+	uint32_t o_data;
+	uint32_t o_image;
+};
+
+struct peopthdr {
+	struct coffopthdr o_chdr;
+	uint32_t o_alnsec;
+	uint32_t o_alnfile;
+	uint16_t o_osmajor;
+	uint16_t o_osminor;
+	uint16_t o_imajor;
+	uint16_t o_iminor;
+	uint16_t o_smajor;
+	uint16_t o_sminor;
+	uint32_t o_vw32;
+	uint32_t o_isize;
+	uint32_t o_hsize;
+	uint32_t o_chksum;
+	uint16_t o_sub;
+	uint16_t o_dllflags;
+	uint32_t o_sres;
+	uint32_t o_scomm;
+	uint32_t o_hres;
+	uint32_t o_hcomm;
+	uint32_t o_ldflags;
+	uint32_t o_nrvasz;
+};
+
+#define NRVASZ_MAX 16
 
 void xstat(char *data, size_t size)
 {
@@ -63,14 +113,43 @@ void xstat(char *data, size_t size)
 		printf("dos start: %zX\n", start);
 		return;
 	}
+	if (start >= size) {
+		fputs("bad dos start: file too small\n", stderr);
+		return;
+	}
 	struct dos *dos = (struct dos*)data;
-	printf("dos stub: %zX\n", start);
+	printf("dos start: %zX\n", start);
 	size_t pe_start = dos->e_lfanew;
 	if (pe_start >= size) {
 		fprintf(stderr, "bad pe start: got %zX, max: %zX\n", start, size - 1);
 		return;
 	}
 	printf("pe start: %zX\n", pe_start);
+	if (size < sizeof(struct pehdr) + pe_start) {
+		fputs("bad pe/coff header: file too small\n", stderr);
+		return;
+	}
+	struct pehdr *phdr = (struct pehdr*)(data + pe_start);
+	if (phdr->f_magic != PE_MAGIC)
+		fprintf(stderr, "bad pe magic: got %X, expected %X\n", phdr->f_magic, PE_MAGIC);
+	if (!phdr->f_opthdr)
+		return;
+	struct peopthdr *pohdr = (struct peopthdr*)(data + pe_start + sizeof(struct pehdr));
+	printf("opthdr size: %hX\n", phdr->f_opthdr);
+	switch (pohdr->o_chdr.o_magic) {
+		case 0x10b:
+			puts("type: portable executable 32 bit");
+			break;
+		case 0x20b:
+			puts("type: portable executable 64 bit");
+			break;
+		default:
+			fprintf(stderr, "bad pe opt magic: %hX\n", pohdr->o_chdr.o_magic);
+			break;
+	}
+	if (pohdr->o_nrvasz > NRVASZ_MAX)
+		fputs("rva max exceeded\n", stderr);
+	printf("nrvasz: %X\n", pohdr->o_nrvasz);
 }
 
 static int process(char *name)
