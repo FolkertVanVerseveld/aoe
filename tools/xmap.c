@@ -84,15 +84,51 @@ struct peopthdr {
 	uint32_t o_nrvasz;
 };
 
+struct sechdr {
+	char s_name[8];
+	uint32_t s_paddr;
+	uint32_t s_vaddr;
+	uint32_t s_size;
+	uint32_t s_scnptr;
+	uint32_t s_relptr;
+	uint32_t s_lnnoptr;
+	uint16_t s_nreloc;
+	uint16_t s_nlnno;
+	uint32_t s_flags;
+};
+
 #define NRVASZ_MAX 16
 
-void xstat(char *data, size_t size)
+#define XT_UNKNOWN 0
+#define XT_MZ 1
+#define XT_DOS 2
+#define XT_PE 3
+#define XT_PEOPT 4
+
+struct xfile {
+	unsigned type;
+	char *data;
+	size_t size;
+	struct mz *mz;
+	struct dos *dos;
+	struct pehdr *pe;
+	struct peopthdr *peopt;
+};
+
+void xstat(struct xfile *this, char *data, size_t size)
 {
+	this->type = XT_UNKNOWN;
+	this->mz = NULL;
+	this->dos = NULL;
+	this->pe = NULL;
+	this->peopt = NULL;
 	if (size < sizeof(struct mz)) {
 		fputs("bad dos header: file too small\n", stderr);
 		return;
 	}
+	this->type = XT_MZ;
 	struct mz *mz = (struct mz*)data;
+	this->mz = mz;
 	if (mz->e_magic != DOS_MAGIC)
 		fprintf(stderr, "bad dos magic: got %hX, %hX expected\n", mz->e_magic, DOS_MAGIC);
 	size_t start = mz->e_cparhdr * 16;
@@ -117,7 +153,9 @@ void xstat(char *data, size_t size)
 		fputs("bad dos start: file too small\n", stderr);
 		return;
 	}
+	this->type = XT_DOS;
 	struct dos *dos = (struct dos*)data;
+	this->dos = dos;
 	printf("dos start: %zX\n", start);
 	size_t pe_start = dos->e_lfanew;
 	if (pe_start >= size) {
@@ -129,12 +167,20 @@ void xstat(char *data, size_t size)
 		fputs("bad pe/coff header: file too small\n", stderr);
 		return;
 	}
+	this->type = XT_PE;
 	struct pehdr *phdr = (struct pehdr*)(data + pe_start);
+	this->pe = phdr;
 	if (phdr->f_magic != PE_MAGIC)
 		fprintf(stderr, "bad pe magic: got %X, expected %X\n", phdr->f_magic, PE_MAGIC);
 	if (!phdr->f_opthdr)
 		return;
+	if (size < sizeof(struct pehdr) + pe_start + sizeof(struct peopthdr)) {
+		fputs("bad pe/coff header: file too small\n", stderr);
+		return;
+	}
+	this->type = XT_PEOPT;
 	struct peopthdr *pohdr = (struct peopthdr*)(data + pe_start + sizeof(struct pehdr));
+	this->peopt = pohdr;
 	printf("opthdr size: %hX\n", phdr->f_opthdr);
 	switch (pohdr->o_chdr.o_magic) {
 		case 0x10b:
@@ -144,7 +190,7 @@ void xstat(char *data, size_t size)
 			puts("type: portable executable 64 bit");
 			break;
 		default:
-			fprintf(stderr, "bad pe opt magic: %hX\n", pohdr->o_chdr.o_magic);
+			printf("type: unknown: %hX\n", pohdr->o_chdr.o_magic);
 			break;
 	}
 	if (pohdr->o_nrvasz > NRVASZ_MAX)
@@ -159,6 +205,7 @@ static int process(char *name)
 	char *map = MAP_FAILED;
 	fd = open(name, O_RDONLY);
 	struct stat st;
+	struct xfile x;
 	if (fd == -1 || fstat(fd, &st) == -1) {
 		perror(name);
 		goto fail;
@@ -168,7 +215,7 @@ static int process(char *name)
 		perror("mmap");
 		goto fail;
 	}
-	xstat(map, mapsz);
+	xstat(&x, map, mapsz);
 	ret = 0;
 fail:
 	if (map != MAP_FAILED)
