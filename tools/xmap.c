@@ -60,6 +60,40 @@ struct coffopthdr {
 	uint32_t o_image;
 };
 
+struct peddir {
+	uint32_t d_texp;
+	uint32_t d_nexp;
+	uint32_t d_timp;
+	uint32_t d_nimp;
+	uint32_t d_tres;
+	uint32_t d_nres;
+	uint32_t d_texc;
+	uint32_t d_nexc;
+	uint32_t d_tcrt;
+	uint32_t d_ncrt;
+	uint32_t d_trel;
+	uint32_t d_nrel;
+	uint32_t d_dbg;
+	uint32_t d_ndbg;
+	uint32_t d_arch;
+	uint32_t d_narch;
+	uint32_t d_glbl;
+	uint32_t d_gzero;
+	uint32_t d_ttls;
+	uint32_t d_ntls;
+	uint32_t d_tcfg;
+	uint32_t d_ncfg;
+	uint32_t d_bimp;
+	uint32_t d_nbimp;
+	uint32_t d_tiaddr;
+	uint32_t d_niaddr;
+	uint32_t d_did;
+	uint32_t d_ndid;
+	uint32_t d_crth;
+	uint32_t d_ncrth;
+	uint64_t d_end;
+};
+
 struct peopthdr {
 	struct coffopthdr o_chdr;
 	uint32_t o_alnsec;
@@ -82,6 +116,7 @@ struct peopthdr {
 	uint32_t o_hcomm;
 	uint32_t o_ldflags;
 	uint32_t o_nrvasz;
+	struct peddir o_ddir;
 };
 
 struct sechdr {
@@ -97,8 +132,6 @@ struct sechdr {
 	uint32_t s_flags;
 };
 
-#define NRVASZ_MAX 16
-
 #define XT_UNKNOWN 0
 #define XT_MZ 1
 #define XT_DOS 2
@@ -113,6 +146,9 @@ struct xfile {
 	struct dos *dos;
 	struct pehdr *pe;
 	struct peopthdr *peopt;
+	unsigned nrvasz;
+	unsigned nrvan;
+	struct sechdr *sec;
 };
 
 void xstat(struct xfile *this, char *data, size_t size)
@@ -122,6 +158,8 @@ void xstat(struct xfile *this, char *data, size_t size)
 	this->dos = NULL;
 	this->pe = NULL;
 	this->peopt = NULL;
+	this->nrvan = this->nrvasz = 0;
+	this->sec = NULL;
 	if (size < sizeof(struct mz)) {
 		fputs("bad dos header: file too small\n", stderr);
 		return;
@@ -193,9 +231,35 @@ void xstat(struct xfile *this, char *data, size_t size)
 			printf("type: unknown: %hX\n", pohdr->o_chdr.o_magic);
 			break;
 	}
-	if (pohdr->o_nrvasz > NRVASZ_MAX)
-		fputs("rva max exceeded\n", stderr);
+	this->nrvasz = pohdr->o_nrvasz;
 	printf("nrvasz: %X\n", pohdr->o_nrvasz);
+	size_t sec_start = pe_start + sizeof(struct pehdr) + phdr->f_opthdr;
+	if (pohdr->o_ddir.d_end) {
+		fprintf(stderr, "bad data dir end marker: %lX\n", pohdr->o_ddir.d_end);
+		// search for end marker
+		while (++sec_start <= size - sizeof(uint64_t) && *((uint64_t*)(data + sec_start)))
+			;
+		if (sec_start > size - sizeof(uint64_t)) {
+			fputs("data dir end marker not found\n", stderr);
+			return;
+		}
+		sec_start += sizeof(uint64_t);
+	}
+	if (sec_start + pohdr->o_nrvasz * sizeof(struct sechdr) > size) {
+		fputs("bad section table: file too small\n", stderr);
+		return;
+	}
+	struct sechdr *sec = this->sec = (struct sechdr*)(data + sec_start);
+	for (unsigned i = 0; i < pohdr->o_nrvasz; ++i, ++sec) {
+		char name[9];
+		strncpy(name, sec->s_name, 9);
+		name[8] = '\0';
+		if (!name[0] && !sec->s_scnptr) {
+			this->nrvan = i;
+			break;
+		}
+		printf("#%2u: %-8s %X\n", i, name, sec->s_scnptr);
+	}
 }
 
 static int process(char *name)
