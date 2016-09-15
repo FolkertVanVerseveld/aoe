@@ -119,6 +119,15 @@ struct peopthdr {
 	struct peddir o_ddir;
 };
 
+struct rsrcdir {
+	uint32_t r_flags;
+	uint32_t r_timdat;
+	uint16_t r_major;
+	uint16_t r_minor;
+	uint16_t r_nnment;
+	uint16_t r_nident;
+};
+
 struct sechdr {
 	char s_name[8];
 	uint32_t s_paddr;
@@ -140,6 +149,7 @@ struct sechdr {
 
 struct xfile {
 	unsigned type;
+	unsigned bits;
 	char *data;
 	size_t size;
 	struct mz *mz;
@@ -149,22 +159,39 @@ struct xfile {
 	unsigned nrvasz;
 	unsigned nrvan;
 	struct sechdr *sec;
+	struct rsrcdir *rsrc;
 };
+
+static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
+{
+	struct sechdr *sec, *rsrc;
+	sec = this->sec;
+	rsrc = &this->sec[i];
+	if (sec->s_scnptr + sizeof(struct rsrcdir) >= size) {
+		fputs("bad rsrc section: file too small\n", stderr);
+		return;
+	}
+	printf("raw: %X, virtual: %X, diff: %d\n", rsrc->s_scnptr, rsrc->s_vaddr, rsrc->s_scnptr - rsrc->s_vaddr);
+	printf("goto %u\n", rsrc->s_scnptr);
+}
 
 void xstat(struct xfile *this, char *data, size_t size)
 {
 	this->type = XT_UNKNOWN;
+	this->bits = 0;
 	this->mz = NULL;
 	this->dos = NULL;
 	this->pe = NULL;
 	this->peopt = NULL;
 	this->nrvan = this->nrvasz = 0;
 	this->sec = NULL;
+	this->rsrc = NULL;
 	if (size < sizeof(struct mz)) {
 		fputs("bad dos header: file too small\n", stderr);
 		return;
 	}
 	this->type = XT_MZ;
+	this->bits = 16;
 	struct mz *mz = (struct mz*)data;
 	this->mz = mz;
 	if (mz->e_magic != DOS_MAGIC)
@@ -205,6 +232,7 @@ void xstat(struct xfile *this, char *data, size_t size)
 		fputs("bad pe/coff header: file too small\n", stderr);
 		return;
 	}
+	this->bits = 32;
 	this->type = XT_PE;
 	struct pehdr *phdr = (struct pehdr*)(data + pe_start);
 	this->pe = phdr;
@@ -226,6 +254,7 @@ void xstat(struct xfile *this, char *data, size_t size)
 			break;
 		case 0x20b:
 			puts("type: portable executable 64 bit");
+			this->bits = 64;
 			break;
 		default:
 			printf("type: unknown: %hX\n", pohdr->o_chdr.o_magic);
@@ -259,6 +288,8 @@ void xstat(struct xfile *this, char *data, size_t size)
 			break;
 		}
 		printf("#%2u: %-8s %X\n", i, name, sec->s_scnptr);
+		if (!strcmp(name, ".rsrc"))
+			rsrc_stat(this, i, data, size);
 	}
 }
 
