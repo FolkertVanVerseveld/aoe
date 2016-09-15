@@ -8,6 +8,9 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#define TN_ID 0
+#define TN_NAME 1
+
 #define DOS_MAGIC 0x5a4d
 #define PE_MAGIC 0x00004550
 
@@ -128,6 +131,11 @@ struct rsrcdir {
 	uint16_t r_nident;
 };
 
+struct rsrcditem {
+	uint32_t r_id;
+	uint32_t r_rva;
+};
+
 struct sechdr {
 	char s_name[8];
 	uint32_t s_paddr;
@@ -162,17 +170,70 @@ struct xfile {
 	struct rsrcdir *rsrc;
 };
 
+#define RSRC_LMAX 4
+
+static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, unsigned level, unsigned type)
+{
+	struct sechdr *sec, *rsrc;
+	sec = this->sec;
+	rsrc = &this->sec[i];
+	++level;
+	printf("level=%u\n", level);
+	if (level > RSRC_LMAX) {
+		fprintf(stderr, "overflow: no more than %u levels supported\n", (unsigned)RSRC_LMAX);
+		return 1;
+	}
+	return 0;
+}
+
 static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 {
 	struct sechdr *sec, *rsrc;
 	sec = this->sec;
 	rsrc = &this->sec[i];
+	printf("raw: %X, virtual: %X, diff: %d\n", rsrc->s_scnptr, rsrc->s_vaddr, rsrc->s_scnptr - rsrc->s_vaddr);
 	if (sec->s_scnptr + sizeof(struct rsrcdir) >= size) {
 		fputs("bad rsrc section: file too small\n", stderr);
 		return;
 	}
-	printf("raw: %X, virtual: %X, diff: %d\n", rsrc->s_scnptr, rsrc->s_vaddr, rsrc->s_scnptr - rsrc->s_vaddr);
 	printf("goto %u\n", rsrc->s_scnptr);
+	struct rsrcdir *rdir = this->rsrc = (struct rsrcdir*)((char*)data + rsrc->s_scnptr);
+	unsigned n_name, n_id;
+	n_name = rdir->r_nnment;
+	n_id = rdir->r_nident;
+	printf("name entries: %hu\nid   entries: %hu\n", n_name, n_id);
+	size_t rdi_name_start = rsrc->s_scnptr + sizeof(struct rsrcdir);
+	struct rsrcditem *name, *id;
+	if (rdi_name_start + n_name * sizeof(struct rsrcditem) > size) {
+		fputs("bad rsrc name dir: file too small\n", stderr);
+		return;
+	}
+	printf("rdi_name_start = %zu\n", rdi_name_start);
+	size_t rdi_id_start = rdi_name_start + n_name * sizeof(struct rsrcditem);
+	if (rdi_id_start + n_id * sizeof(struct rsrcditem) > size) {
+		fputs("bad rsrc id dir: file too small\n", stderr);
+		return;
+	}
+	printf("rdi_id_start = %zu\n", rdi_id_start);
+	/*
+	XXX resources trees have at most four levels:
+	level 0: resource type
+	level 1: resource identifier
+	level 2: resource language ID
+	level 3: leaf nodes
+	*/
+	for (unsigned i = 0; i < n_name; ++i) {
+		if (rsrc_tstat(this, i, data, size, 0, TN_NAME)) {
+			fprintf(stderr, "bad src name tree %u\n", i);
+			return;
+		}
+	}
+	for (unsigned i = 0; i < n_id; ++i) {
+		if (rsrc_tstat(this, i, data, size, 0, TN_ID)) {
+			fprintf(stderr, "bad src id tree %u\n", i);
+			return;
+		}
+	}
 }
 
 void xstat(struct xfile *this, char *data, size_t size)
