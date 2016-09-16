@@ -122,6 +122,27 @@ struct peopthdr {
 	struct peddir o_ddir;
 };
 
+#define RT_UNKNOWN 0
+#define RT_CURSOR 1
+#define RT_BITMAP 2
+#define RT_ICON 3
+#define RT_MENU 4
+#define RT_DIALOG 5
+#define RT_STRING 6
+#define RT_FONTDIR 7
+#define RT_FONT 8
+#define RT_ACCELERATOR 9
+#define RT_RCDATA 10
+#define RT_MESSAGETABLE 11
+#define RT_GROUP_CURSOR 12
+#define RT_GROUP_ICON 14
+#define RT_VERSION 16
+#define RT_DLGINCLUDE 17
+#define RT_PLUGPLAY 19
+#define RT_VXD 20
+#define RT_ANICURSOR 21
+#define RT_ANIICON 22
+
 struct rsrcdir {
 	uint32_t r_flags;
 	uint32_t r_timdat;
@@ -172,7 +193,7 @@ struct xfile {
 
 #define RSRC_LMAX 4
 
-static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, unsigned level, unsigned type)
+static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, size_t offset, unsigned level, unsigned type)
 {
 	struct sechdr *sec, *rsrc;
 	sec = this->sec;
@@ -183,6 +204,19 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, u
 		fprintf(stderr, "overflow: no more than %u levels supported\n", (unsigned)RSRC_LMAX);
 		return 1;
 	}
+	long roffset = (long)rsrc->s_scnptr - rsrc->s_vaddr;
+	printf("%zu, %ld\n", offset, roffset);
+	if ((ssize_t)offset + roffset < (long)sizeof(struct rsrcditem) || offset + (size_t)roffset + sizeof(struct rsrcditem) > size) {
+		fprintf(stderr, "bad resource offset: %zd (max: %zu)\n", (ssize_t)offset + roffset, size);
+		return 1;
+	}
+	// FIXME compute offset properly
+	struct rsrcditem *ditem = (struct rsrcditem*)(data + offset + roffset);
+	unsigned rva = ditem->r_rva;
+	printf("rva_child = %u\n", rva);
+	if (rva & (1 << 31)) {
+		rva &= ~(1 << 31);
+	}
 	return 0;
 }
 
@@ -191,7 +225,7 @@ static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 	struct sechdr *sec, *rsrc;
 	sec = this->sec;
 	rsrc = &this->sec[i];
-	printf("raw: %X, virtual: %X, diff: %d\n", rsrc->s_scnptr, rsrc->s_vaddr, rsrc->s_scnptr - rsrc->s_vaddr);
+	printf("raw: %X, virtual: %X, diff: %d\n", rsrc->s_scnptr, rsrc->s_vaddr, (int)rsrc->s_scnptr - rsrc->s_vaddr);
 	if (sec->s_scnptr + sizeof(struct rsrcdir) >= size) {
 		fputs("bad rsrc section: file too small\n", stderr);
 		return;
@@ -203,18 +237,15 @@ static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 	n_id = rdir->r_nident;
 	printf("name entries: %hu\nid   entries: %hu\n", n_name, n_id);
 	size_t rdi_name_start = rsrc->s_scnptr + sizeof(struct rsrcdir);
-	struct rsrcditem *name, *id;
 	if (rdi_name_start + n_name * sizeof(struct rsrcditem) > size) {
 		fputs("bad rsrc name dir: file too small\n", stderr);
 		return;
 	}
-	printf("rdi_name_start = %zu\n", rdi_name_start);
 	size_t rdi_id_start = rdi_name_start + n_name * sizeof(struct rsrcditem);
 	if (rdi_id_start + n_id * sizeof(struct rsrcditem) > size) {
 		fputs("bad rsrc id dir: file too small\n", stderr);
 		return;
 	}
-	printf("rdi_id_start = %zu\n", rdi_id_start);
 	/*
 	XXX resources trees have at most four levels:
 	level 0: resource type
@@ -222,18 +253,16 @@ static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 	level 2: resource language ID
 	level 3: leaf nodes
 	*/
-	for (unsigned i = 0; i < n_name; ++i) {
-		if (rsrc_tstat(this, i, data, size, 0, TN_NAME)) {
-			fprintf(stderr, "bad src name tree %u\n", i);
+	for (unsigned j = 0; j < n_name; ++j)
+		if (rsrc_tstat(this, i, data, size, rdi_name_start + j * sizeof(struct rsrcdir), 0, TN_NAME)) {
+			fprintf(stderr, "bad src name tree %u\n", j);
 			return;
 		}
-	}
-	for (unsigned i = 0; i < n_id; ++i) {
-		if (rsrc_tstat(this, i, data, size, 0, TN_ID)) {
-			fprintf(stderr, "bad src id tree %u\n", i);
+	for (unsigned j = 0; j < n_id; ++j)
+		if (rsrc_tstat(this, i, data, size, rdi_id_start + j * sizeof(struct rsrcdir), 0, TN_ID)) {
+			fprintf(stderr, "bad src id tree %u\n", j);
 			return;
 		}
-	}
 }
 
 void xstat(struct xfile *this, char *data, size_t size)
