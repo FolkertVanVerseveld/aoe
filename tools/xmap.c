@@ -193,7 +193,7 @@ struct xfile {
 
 #define RSRC_LMAX 4
 
-static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, size_t offset, unsigned level, unsigned type)
+static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, size_t *pos, unsigned level, unsigned type)
 {
 	struct sechdr *sec, *rsrc;
 	sec = this->sec;
@@ -205,17 +205,18 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, s
 		return 1;
 	}
 	long roffset = (long)rsrc->s_scnptr - rsrc->s_vaddr;
-	printf("%zu, %ld\n", offset, roffset);
-	if ((ssize_t)offset + roffset < (long)sizeof(struct rsrcditem) || offset + (size_t)roffset + sizeof(struct rsrcditem) > size) {
-		fprintf(stderr, "bad resource offset: %zd (max: %zu)\n", (ssize_t)offset + roffset, size);
+	printf("subpos %zX, %ld\n", *pos, roffset);
+	if ((ssize_t)*pos + roffset < (long)sizeof(struct rsrcditem) || *pos + (size_t)roffset + sizeof(struct rsrcditem) > size) {
+		fprintf(stderr, "bad resource offset: %zd (max: %zu)\n", (ssize_t)*pos + roffset, size);
 		return 1;
 	}
-	// FIXME compute offset properly
-	struct rsrcditem *ditem = (struct rsrcditem*)(data + offset + roffset);
+	struct rsrcditem *ditem = (struct rsrcditem*)(data + *pos);
 	unsigned rva = ditem->r_rva;
 	printf("rva_child = %u\n", rva);
 	if (rva & (1 << 31)) {
 		rva &= ~(1 << 31);
+		*pos = rsrc->s_scnptr + rva;
+		printf("rva pos = %zX (%u), %zX\n", *pos, rva, (size_t)rsrc->s_scnptr);
 	}
 	return 0;
 }
@@ -253,13 +254,15 @@ static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 	level 2: resource language ID
 	level 3: leaf nodes
 	*/
-	for (unsigned j = 0; j < n_name; ++j)
-		if (rsrc_tstat(this, i, data, size, rdi_name_start + j * sizeof(struct rsrcdir), 0, TN_NAME)) {
+	size_t pos = rdi_name_start;
+	for (unsigned j = 0; j < n_name; ++j, pos += sizeof(struct rsrcdir))
+		if (rsrc_tstat(this, i, data, size, &pos, 0, TN_NAME)) {
 			fprintf(stderr, "bad src name tree %u\n", j);
 			return;
 		}
-	for (unsigned j = 0; j < n_id; ++j)
-		if (rsrc_tstat(this, i, data, size, rdi_id_start + j * sizeof(struct rsrcdir), 0, TN_ID)) {
+	pos = rdi_id_start;
+	for (unsigned j = 0; j < n_id; ++j, pos += sizeof(struct rsrcdir))
+		if (rsrc_tstat(this, i, data, size, &pos, 0, TN_ID)) {
 			fprintf(stderr, "bad src id tree %u\n", j);
 			return;
 		}
