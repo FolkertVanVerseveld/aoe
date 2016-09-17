@@ -119,7 +119,6 @@ int main(int argc, char **argv) {
 	if (fstat(fd, &sb) == -1) error("stat");
 	char *addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (addr == MAP_FAILED) error("mmap");
-	uint32_t *dd = (uint32_t*)addr;
 	uint16_t *dw = (uint16_t*)addr;
 	uint8_t  *db = (uint8_t *)addr, *end = (uint8_t*)addr + sb.st_size;
 	size_t res_count = 0;
@@ -128,12 +127,12 @@ int main(int argc, char **argv) {
 		uint8_t *end;
 		res_hdr_read(&res, db);
 		++res_count;
-		//res_hdr_dump(&res);
+		res_hdr_dump(&res);
 		db += res.HeaderSize;
 		end = db + res.DataSize;
 		while (db < end) {
 			dw = (uint16_t*)db;
-			//printf("length: %u\n", *dw);
+			printf("length: %u\n", *dw);
 			uint16_t *str, l;
 			putchar('"');
 			for (str = (uint16_t*)(db + 2), l = *dw; l > 0; --l, ++str) {
@@ -144,9 +143,9 @@ int main(int argc, char **argv) {
 			db += 2 + 2 * *dw;
 		}
 		db = end;
-	} while (db < end);// && res_count != 2);
-	//res_hdr_dump(&res);
-	//printf("resource count: %zu\n", res_count);
+	} while (db < end);
+	res_hdr_dump(&res);
+	printf("resource count: %zu\n", res_count);
 	close(fd);
 	return 0;
 }

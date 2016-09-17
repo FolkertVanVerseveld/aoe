@@ -199,7 +199,7 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, s
 {
 	printf("pos=%zX\n", *pos);
 	struct sechdr *rsrc = &this->sec[i];
-	printf("section_offset=%zX\n", rsrc->s_scnptr);
+	printf("section_offset=%X\n", rsrc->s_scnptr);
 	struct rsrcditem *name, *id;
 	unsigned n_name, n_id;
 	n_name = n_id = 0;
@@ -228,6 +228,9 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, s
 			return 1;
 		}
 	}
+	(void)name; // TODO use name
+	(void)id;   // TODO use id
+	(void)type; // TODO use type
 	return 0;
 }
 
