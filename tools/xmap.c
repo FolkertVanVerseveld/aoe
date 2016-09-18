@@ -216,18 +216,16 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, s
 	printf("dir pos=%zX (%u)\n", *pos, n_id);
 	*pos += n_id * sizeof(struct rsrcditem);
 	printf("num_id = %u\nnum_name = %u\n", n_id, n_name);
-	for (unsigned i = 0; i < n_name; ++i) {
+	for (unsigned i = 0; i < n_name; ++i)
 		if (rsrc_ststat(this, i, data, size, pos, level, TN_NAME)) {
 			fprintf(stderr, "bad node at level %u\n", level);
 			return 1;
 		}
-	}
-	for (unsigned i = 0; i < n_id; ++i) {
+	for (unsigned i = 0; i < n_id; ++i)
 		if (rsrc_ststat(this, i, data, size, pos, level, TN_ID)) {
 			fprintf(stderr, "bad node at level %u\n", level);
 			return 1;
 		}
-	}
 	(void)name; // TODO use name
 	(void)id;   // TODO use id
 	(void)type; // TODO use type
@@ -238,13 +236,13 @@ static int rsrc_ststat(struct xfile *this, unsigned i, char *data, size_t size, 
 {
 	struct sechdr *rsrc = &this->sec[i];
 	++level;
+	long roffset = (long)rsrc->s_scnptr - rsrc->s_vaddr;
+	printf("sub pos %zX, %ld\n", *pos, roffset);
 	printf("level=%u\n", level);
 	if (level > RSRC_LMAX) {
 		fprintf(stderr, "overflow: no more than %u levels supported\n", (unsigned)RSRC_LMAX);
 		return 1;
 	}
-	long roffset = (long)rsrc->s_scnptr - rsrc->s_vaddr;
-	printf("subpos %zX, %ld\n", *pos, roffset);
 	if ((ssize_t)*pos < 0 || *pos + sizeof(struct rsrcditem) > size) {
 		fprintf(stderr, "bad resource offset: %zd (max: %zu)\n", (ssize_t)*pos, size);
 		return 1;
@@ -305,13 +303,13 @@ static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 	level 3: leaf nodes
 	*/
 	size_t pos = rdi_name_start;
-	for (unsigned j = 0; j < n_name; ++j, pos += sizeof(struct rsrcdir))
+	for (unsigned j = 0; j < n_name; ++j)
 		if (rsrc_ststat(this, i, data, size, &pos, 0, TN_NAME)) {
 			fprintf(stderr, "bad src name tree %u\n", j);
 			return;
 		}
 	pos = rdi_id_start;
-	for (unsigned j = 0; j < n_id; ++j, pos += sizeof(struct rsrcdir))
+	for (unsigned j = 0; j < n_id; ++j)
 		if (rsrc_ststat(this, i, data, size, &pos, 0, TN_ID)) {
 			fprintf(stderr, "bad src id tree %u\n", j);
 			return;
