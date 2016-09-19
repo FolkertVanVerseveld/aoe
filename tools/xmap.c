@@ -197,6 +197,7 @@ static int rsrc_ststat(struct xfile *this, unsigned i, char *data, size_t size, 
 
 static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, size_t *pos, unsigned level, unsigned type)
 {
+	puts(__func__);
 	printf("pos=%zX\n", *pos);
 	struct sechdr *rsrc = &this->sec[i];
 	printf("section_offset=%X\n", rsrc->s_scnptr);
@@ -234,6 +235,7 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, s
 
 static int rsrc_ststat(struct xfile *this, unsigned i, char *data, size_t size, size_t *pos, unsigned level, unsigned type)
 {
+	puts(__func__);
 	struct sechdr *rsrc = &this->sec[i];
 	++level;
 	long roffset = (long)rsrc->s_scnptr - rsrc->s_vaddr;
@@ -285,7 +287,8 @@ static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 	n_name = rdir->r_nnment;
 	n_id = rdir->r_nident;
 	printf("name entries: %hu\nid   entries: %hu\n", n_name, n_id);
-	size_t rdi_name_start = rsrc->s_scnptr + sizeof(struct rsrcdir);
+	// pcrio's pos is before struct rsrcdir, so don't add it
+	size_t rdi_name_start = rsrc->s_scnptr;
 	if (rdi_name_start + n_name * sizeof(struct rsrcditem) > size) {
 		fputs("bad rsrc name dir: file too small\n", stderr);
 		return;
@@ -304,13 +307,13 @@ static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 	*/
 	size_t pos = rdi_name_start;
 	for (unsigned j = 0; j < n_name; ++j)
-		if (rsrc_ststat(this, i, data, size, &pos, 0, TN_NAME)) {
+		if (rsrc_tstat(this, i, data, size, &pos, 0, TN_NAME)) {
 			fprintf(stderr, "bad src name tree %u\n", j);
 			return;
 		}
 	pos = rdi_id_start;
 	for (unsigned j = 0; j < n_id; ++j)
-		if (rsrc_ststat(this, i, data, size, &pos, 0, TN_ID)) {
+		if (rsrc_tstat(this, i, data, size, &pos, 0, TN_ID)) {
 			fprintf(stderr, "bad src id tree %u\n", j);
 			return;
 		}
