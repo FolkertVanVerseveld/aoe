@@ -199,6 +199,10 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, s
 {
 	puts(__func__);
 	printf("pos=%zX\n", *pos);
+	if (*pos > size) {
+		fputs("internal error\n", stderr);
+		return 1;
+	}
 	struct sechdr *rsrc = &this->sec[i];
 	printf("section_offset=%X\n", rsrc->s_scnptr);
 	struct rsrcditem *name, *id;
@@ -208,22 +212,25 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, s
 	n_name = dir->r_nnment;
 	n_id = dir->r_nident;
 	*pos += sizeof(struct rsrcdir);
-	printf("name pos=%zX\n", *pos);
 	name = (struct rsrcditem*)(data + *pos);
-	printf("dir pos=%zX (%u)\n", *pos, n_name);
+	printf("name pos=%zX (%u)\n", *pos, n_name);
+	size_t rdi_name_start = *pos;
 	*pos += n_name * sizeof(struct rsrcditem);
-	printf("id pos=%zX\n", *pos);
 	id = (struct rsrcditem*)(data + *pos);
-	printf("dir pos=%zX (%u)\n", *pos, n_id);
+	printf("id   pos=%zX (%u)\n", *pos, n_id);
+	size_t rdi_id_start = *pos;
+	size_t dpos;
 	*pos += n_id * sizeof(struct rsrcditem);
 	printf("num_id = %u\nnum_name = %u\n", n_id, n_name);
-	for (unsigned i = 0; i < n_name; ++i)
-		if (rsrc_ststat(this, i, data, size, pos, level, TN_NAME)) {
+	dpos = rdi_name_start + sizeof(struct rsrcdir);
+	for (unsigned i = 0; i < n_name; ++i, rdi_name_start += sizeof(struct rsrcditem), dpos = rdi_name_start)
+		if (rsrc_ststat(this, i, data, size, &dpos, level, TN_NAME)) {
 			fprintf(stderr, "bad node at level %u\n", level);
 			return 1;
 		}
-	for (unsigned i = 0; i < n_id; ++i)
-		if (rsrc_ststat(this, i, data, size, pos, level, TN_ID)) {
+	dpos = rdi_id_start + sizeof(struct rsrcdir);
+	for (unsigned i = 0; i < n_id; ++i, rdi_id_start += sizeof(struct rsrcditem), dpos = rdi_id_start)
+		if (rsrc_ststat(this, i, data, size, &dpos, level, TN_ID)) {
 			fprintf(stderr, "bad node at level %u\n", level);
 			return 1;
 		}
@@ -249,6 +256,7 @@ static int rsrc_ststat(struct xfile *this, unsigned i, char *data, size_t size, 
 		fprintf(stderr, "bad resource offset: %zd (max: %zu)\n", (ssize_t)*pos, size);
 		return 1;
 	}
+	printf("rva item = %zX\n", *pos);
 	struct rsrcditem *ditem = (struct rsrcditem*)(data + *pos);
 	unsigned rva = ditem->r_rva;
 	printf("rva_child = %u\n", rva);
@@ -258,15 +266,17 @@ static int rsrc_ststat(struct xfile *this, unsigned i, char *data, size_t size, 
 	}
 	if (rva & (1 << 31)) {
 		rva &= ~(1 << 31);
-		*pos = rsrc->s_scnptr + rva;
-		printf("rva pos = %zX (%u), %zX\n", *pos, rva, (size_t)rsrc->s_scnptr);
+		size_t dpos = *pos;
+		*pos += rva;
+		printf("rva pos = %zX (%u), %zX\n", *pos, rva, dpos);
 		if (rsrc_tstat(this, i, data, size, pos, level, type)) {
 			fprintf(stderr, "bad node at level %u\n", level);
 			return 1;
 		}
 	} else {
-		*pos = rsrc->s_scnptr + rva;
+		*pos += rva;
 		// TODO read data entry
+		puts("TODO read data entry");
 	}
 	return 0;
 }
