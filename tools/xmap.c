@@ -203,8 +203,6 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, s
 		fputs("internal error\n", stderr);
 		return 1;
 	}
-	struct sechdr *rsrc = &this->sec[i];
-	printf("section_offset=%X\n", rsrc->s_scnptr);
 	struct rsrcditem *name, *id;
 	unsigned n_name, n_id;
 	n_name = n_id = 0;
@@ -221,19 +219,19 @@ static int rsrc_tstat(struct xfile *this, unsigned i, char *data, size_t size, s
 	size_t rdi_id_start = *pos;
 	size_t dpos;
 	*pos += n_id * sizeof(struct rsrcditem);
-	printf("num_id = %u\nnum_name = %u\n", n_id, n_name);
-	dpos = rdi_name_start + sizeof(struct rsrcdir);
-	for (unsigned i = 0; i < n_name; ++i, rdi_name_start += sizeof(struct rsrcditem), dpos = rdi_name_start)
+	dpos = rdi_name_start;
+	for (unsigned j = 0; j < n_name; ++j)
 		if (rsrc_ststat(this, i, data, size, &dpos, level, TN_NAME)) {
 			fprintf(stderr, "bad node at level %u\n", level);
 			return 1;
 		}
-	dpos = rdi_id_start + sizeof(struct rsrcdir);
-	for (unsigned i = 0; i < n_id; ++i, rdi_id_start += sizeof(struct rsrcditem), dpos = rdi_id_start)
+	dpos = rdi_id_start;
+	for (unsigned j = 0; j < n_id; ++j)
 		if (rsrc_ststat(this, i, data, size, &dpos, level, TN_ID)) {
 			fprintf(stderr, "bad node at level %u\n", level);
 			return 1;
 		}
+	*pos = dpos;
 	(void)name; // TODO use name
 	(void)id;   // TODO use id
 	(void)type; // TODO use type
@@ -264,11 +262,11 @@ static int rsrc_ststat(struct xfile *this, unsigned i, char *data, size_t size, 
 		puts("string");
 		type = RT_STRING;
 	}
+	*pos -= sizeof(struct rsrcdir);
 	if (rva & (1 << 31)) {
 		rva &= ~(1 << 31);
-		size_t dpos = *pos;
 		*pos += rva;
-		printf("rva pos = %zX (%u), %zX\n", *pos, rva, dpos);
+		printf("rva pos = %zX (%u)\n", *pos, rva);
 		if (rsrc_tstat(this, i, data, size, pos, level, type)) {
 			fprintf(stderr, "bad node at level %u\n", level);
 			return 1;
@@ -278,6 +276,36 @@ static int rsrc_ststat(struct xfile *this, unsigned i, char *data, size_t size, 
 		// TODO read data entry
 		puts("TODO read data entry");
 	}
+	return 0;
+}
+
+static int rsrc_rtstat(struct xfile *this, struct sechdr *rsrc, struct rsrcdir *root, char *data, size_t size)
+{
+	/*
+	XXX resources trees have at most four levels:
+	level 0: resource type
+	level 1: resource identifier
+	level 2: resource language ID
+	level 3: leaf nodes
+	*/
+	unsigned n_name, n_id;
+	n_name = root->r_nnment;
+	n_id = root->r_nident;
+	printf("name entries: %hu\nid   entries: %hu\n", n_name, n_id);
+	// pcrio's pos is before struct rsrcdir, so don't add it
+	size_t rdi_name_start = rsrc->s_scnptr + sizeof(struct rsrcdir);
+	if (rdi_name_start + (n_name + 1) * sizeof(struct rsrcditem) > size) {
+		fputs("bad rsrc name dir: file too small\n", stderr);
+		return 1;
+	}
+	size_t rdi_id_start = rdi_name_start + n_name * sizeof(struct rsrcditem);
+	if (rdi_id_start + (n_id + 1) * sizeof(struct rsrcditem) > size) {
+		fputs("bad rsrc id dir: file too small\n", stderr);
+		return 1;
+	}
+	printf("name pos = %zX\nid   pos = %zX\n", rdi_name_start, rdi_id_start);
+	(void)this; // TODO use this
+	(void)data; // TODO use data
 	return 0;
 }
 
@@ -293,40 +321,10 @@ static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 	}
 	printf("goto %X\n", rsrc->s_scnptr);
 	struct rsrcdir *rdir = this->rsrc = (struct rsrcdir*)((char*)data + rsrc->s_scnptr);
-	unsigned n_name, n_id;
-	n_name = rdir->r_nnment;
-	n_id = rdir->r_nident;
-	printf("name entries: %hu\nid   entries: %hu\n", n_name, n_id);
-	// pcrio's pos is before struct rsrcdir, so don't add it
-	size_t rdi_name_start = rsrc->s_scnptr;
-	if (rdi_name_start + n_name * sizeof(struct rsrcditem) > size) {
-		fputs("bad rsrc name dir: file too small\n", stderr);
+	if (rsrc_rtstat(this, rsrc, rdir, data, size)) {
+		fputs("corrupt rsrc\n", stderr);
 		return;
 	}
-	size_t rdi_id_start = rdi_name_start + n_name * sizeof(struct rsrcditem);
-	if (rdi_id_start + n_id * sizeof(struct rsrcditem) > size) {
-		fputs("bad rsrc id dir: file too small\n", stderr);
-		return;
-	}
-	/*
-	XXX resources trees have at most four levels:
-	level 0: resource type
-	level 1: resource identifier
-	level 2: resource language ID
-	level 3: leaf nodes
-	*/
-	size_t pos = rdi_name_start;
-	for (unsigned j = 0; j < n_name; ++j)
-		if (rsrc_tstat(this, i, data, size, &pos, 0, TN_NAME)) {
-			fprintf(stderr, "bad src name tree %u\n", j);
-			return;
-		}
-	pos = rdi_id_start;
-	for (unsigned j = 0; j < n_id; ++j)
-		if (rsrc_tstat(this, i, data, size, &pos, 0, TN_ID)) {
-			fprintf(stderr, "bad src id tree %u\n", j);
-			return;
-		}
 }
 
 void xstat(struct xfile *this, char *data, size_t size)
