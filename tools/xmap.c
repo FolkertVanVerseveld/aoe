@@ -247,7 +247,7 @@ static int rsrc_ristat(char *data, size_t size, size_t offset)
 		if (!(rva & 1 << 31))
 			fprintf(stderr, "bad lang node #%u\n", i);
 		rva &= ~(1 << 31);
-		printf("#%5u %8u %8u\n", i, item->r_id, rva);
+		printf("#%5u %8u %8X\n", i, item->r_id, rva);
 		if (rsrc_rlstat(data, size, offset + rva)) {
 			fprintf(stderr, "corrupt lang node #%u\n", i);
 			return 1;
@@ -261,7 +261,7 @@ static int rsrc_ristat(char *data, size_t size, size_t offset)
 		if (!(rva & 1 << 31))
 			fprintf(stderr, "bad lang node #%u\n", i);
 		rva &= ~(1 << 31);
-		printf("#%5u %8u %8u\n", i, item->r_id, rva);
+		printf("#%5u %8u %8X\n", i, item->r_id, rva);
 		if (rsrc_rlstat(data, size, offset + rva)) {
 			fprintf(stderr, "corrupt lang node #%u\n", i);
 			return 1;
@@ -294,7 +294,7 @@ static int rsrc_rtstat(struct sechdr *rsrc, struct rsrcdir *root, char *data, si
 		if (!(rva & 1 << 31))
 			fprintf(stderr, "bad id node #%u\n", i);
 		rva &= ~(1 << 31);
-		printf("#%5u %8u %8u\n", i, item->r_id, rva);
+		printf("#%5u %8u %8X\n", i, item->r_id, rva);
 		if (rsrc_ristat(data, size, root_offset + rva)) {
 			fprintf(stderr, "corrupt id node #%u\n", i);
 			return 1;
@@ -308,7 +308,7 @@ static int rsrc_rtstat(struct sechdr *rsrc, struct rsrcdir *root, char *data, si
 		if (!(rva & 1 << 31))
 			fprintf(stderr, "bad id node #%u\n", i);
 		rva &= ~(1 << 31);
-		printf("#%5u %8u %8u\n", i, item->r_id, rva);
+		printf("#%5u %8u %8X\n", i, item->r_id, rva);
 		if (rsrc_ristat(data, size, root_offset + rva)) {
 			fprintf(stderr, "corrupt id node #%u\n", i);
 			return 1;
