@@ -305,7 +305,26 @@ static int rsrc_rtstat(struct xfile *this, struct sechdr *rsrc, struct rsrcdir *
 	}
 	printf("name pos = %zX\nid   pos = %zX\n", rdi_name_start, rdi_id_start);
 	(void)this; // TODO use this
-	(void)data; // TODO use data
+	struct rsrcditem *item;
+	unsigned i, rva;
+	if (n_name)
+		puts("names:");
+	item = (struct rsrcditem*)(data + rdi_name_start);
+	for (i = 0; i < n_name; ++i, ++item) {
+		rva = item->r_rva;
+		if (rva & (1 << 31))
+			rva &= ~(1 << 31);
+		printf("#%5u %8u %8u\n", i, item->r_id, rva);
+	}
+	if (n_id)
+		puts("ids:");
+	item = (struct rsrcditem*)(data + rdi_id_start);
+	for (i = 0; i < n_id; ++i, ++item) {
+		rva = item->r_rva;
+		if (rva & (1 << 31))
+			rva &= ~(1 << 31);
+		printf("#%5u %8u %8u\n", i, item->r_id, rva);
+	}
 	return 0;
 }
 
