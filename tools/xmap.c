@@ -218,11 +218,93 @@ static int rsrc_dstat(char *data, size_t size, const char *name, size_t offset, 
 	return 0;
 }
 
+static int rsrc_lstat(char *data, size_t size, size_t offset)
+{
+	if (offset + sizeof(struct rsrcdir) > size) {
+		fputs("bad leaf\n", stderr);
+		return 1;
+	}
+	struct rsrcdir *root = (struct rsrcdir*)(data + offset);
+	unsigned n_name, n_id;
+	size_t rdi_name_start, rdi_id_start;
+	if (rsrc_dstat(data, size, "res leaf", offset, &n_name, &rdi_name_start, &n_id, &rdi_id_start))
+		return 1;
+	struct rsrcditem *item;
+	unsigned i, rva;
+	if (n_name) {
+		puts("names:");
+		printf("id start: %zX\n", rdi_id_start);
+	}
+	item = (struct rsrcditem*)(data + rdi_name_start);
+	for (i = 0; i < n_name; ++i, ++item) {
+		rva = item->r_rva;
+		if (rva & 1 << 31)
+			fprintf(stderr, "bad leaf #%u\n", i);
+		rva &= ~(1 << 31);
+		printf("#%5u %8X %8X\n", i, item->r_id, rva);
+	}
+	if (n_id) {
+		puts("ids:");
+		printf("sub pos: %zX\n", rdi_id_start + n_id * sizeof(struct rsrcditem));
+	}
+	item = (struct rsrcditem*)(data + rdi_id_start);
+	for (i = 0; i < n_id; ++i, ++item) {
+		rva = item->r_rva;
+		if (rva & 1 << 31)
+			fprintf(stderr, "bad leaf #%u\n", i);
+		rva &= ~(1 << 31);
+		printf("#%5u %8X %8X\n", i, item->r_id, rva);
+	}
+	return 0;
+}
+
 static int rsrc_rlstat(char *data, size_t size, size_t offset)
 {
-	(void)data;
-	(void)size;
-	(void)offset;
+	if (offset + sizeof(struct rsrcdir) > size) {
+		fputs("bad level 2 resnode\n", stderr);
+		return 1;
+	}
+	printf("lang pos=%zX\n", offset);
+	struct rsrcdir *root = (struct rsrcdir*)(data + offset);
+	unsigned n_name, n_id;
+	size_t rdi_name_start, rdi_id_start;
+	if (rsrc_dstat(data, size, "res lang node", offset, &n_name, &rdi_name_start, &n_id, &rdi_id_start))
+		return 1;
+	struct rsrcditem *item;
+	unsigned i, rva;
+	if (n_name) {
+		puts("names:");
+		printf("id start: %zX\n", rdi_id_start);
+	}
+	item = (struct rsrcditem*)(data + rdi_name_start);
+	//printf("rva item = %zX\n", rdi_name_start + 4);
+	for (i = 0; i < n_name; ++i, ++item) {
+		rva = item->r_rva;
+		if (rva & 1 << 31)
+			fprintf(stderr, "bad leaf #%u\n", i);
+		rva &= ~(1 << 31);
+		printf("#%5u %8u %8X\n", i, item->r_id, rva);
+		if (rsrc_lstat(data, size, rdi_name_start + rva)) {
+			fprintf(stderr, "corrupt leaf #%u\n", i);
+			return 1;
+		}
+	}
+	if (n_id) {
+		puts("ids:");
+		printf("sub pos: %zX\n", rdi_id_start + n_id * sizeof(struct rsrcditem));
+	}
+	item = (struct rsrcditem*)(data + rdi_id_start);
+	for (i = 0; i < n_id; ++i, ++item) {
+		rva = item->r_rva;
+		if (rva & 1 << 31)
+			fprintf(stderr, "bad leaf #%u\n", i);
+		rva &= ~(1 << 31);
+		printf("#%5u %8u %8X\n", i, item->r_id, rva);
+		if (rsrc_lstat(data, size, rdi_id_start + rva)) {
+			fprintf(stderr, "corrupt leaf #%u\n", i);
+			return 1;
+		}
+	}
 	return 0;
 }
 
@@ -239,8 +321,10 @@ static int rsrc_ristat(char *data, size_t size, size_t offset)
 		return 1;
 	struct rsrcditem *item;
 	unsigned i, rva;
-	if (n_name)
+	if (n_name) {
 		puts("names:");
+		printf("id start: %zX\n", rdi_id_start);
+	}
 	item = (struct rsrcditem*)(data + rdi_name_start);
 	for (i = 0; i < n_name; ++i, ++item) {
 		rva = item->r_rva;
@@ -248,13 +332,15 @@ static int rsrc_ristat(char *data, size_t size, size_t offset)
 			fprintf(stderr, "bad lang node #%u\n", i);
 		rva &= ~(1 << 31);
 		printf("#%5u %8u %8X\n", i, item->r_id, rva);
-		if (rsrc_rlstat(data, size, offset + rva)) {
+		if (rsrc_rlstat(data, size, rdi_name_start + rva)) {
 			fprintf(stderr, "corrupt lang node #%u\n", i);
 			return 1;
 		}
 	}
-	if (n_id)
+	if (n_id) {
 		puts("ids:");
+		printf("sub pos: %zX\n", rdi_id_start + n_id * sizeof(struct rsrcditem));
+	}
 	item = (struct rsrcditem*)(data + rdi_id_start);
 	for (i = 0; i < n_id; ++i, ++item) {
 		rva = item->r_rva;
@@ -262,7 +348,7 @@ static int rsrc_ristat(char *data, size_t size, size_t offset)
 			fprintf(stderr, "bad lang node #%u\n", i);
 		rva &= ~(1 << 31);
 		printf("#%5u %8u %8X\n", i, item->r_id, rva);
-		if (rsrc_rlstat(data, size, offset + rva)) {
+		if (rsrc_rlstat(data, size, rdi_id_start + rva)) {
 			fprintf(stderr, "corrupt lang node #%u\n", i);
 			return 1;
 		}
@@ -270,7 +356,7 @@ static int rsrc_ristat(char *data, size_t size, size_t offset)
 	return 0;
 }
 
-static int rsrc_rtstat(struct sechdr *rsrc, struct rsrcdir *root, char *data, size_t size)
+static int rsrc_rtstat(struct sechdr *rsrc, char *data, size_t size)
 {
 	/*
 	XXX resources trees have at most four levels:
@@ -280,14 +366,17 @@ static int rsrc_rtstat(struct sechdr *rsrc, struct rsrcdir *root, char *data, si
 	level 3: leaf nodes
 	*/
 	size_t root_offset, rdi_name_start, rdi_id_start;
-	root_offset = (size_t)((char*)root - data);
+	root_offset = rsrc->s_scnptr;
+	struct rsrcdir *root = (struct rsrcdir*)(data + root_offset);
 	unsigned n_name, n_id;
 	if (rsrc_dstat(data, size, "res type node", root_offset, &n_name, &rdi_name_start, &n_id, &rdi_id_start))
 		return 1;
 	struct rsrcditem *item;
 	unsigned i, rva;
-	if (n_name)
+	if (n_name) {
 		puts("names:");
+		printf("id start: %zX\n", rdi_id_start);
+	}
 	item = (struct rsrcditem*)(data + rdi_name_start);
 	for (i = 0; i < n_name; ++i, ++item) {
 		rva = item->r_rva;
@@ -300,8 +389,10 @@ static int rsrc_rtstat(struct sechdr *rsrc, struct rsrcdir *root, char *data, si
 			return 1;
 		}
 	}
-	if (n_id)
+	if (n_id) {
 		puts("ids:");
+		printf("sub pos: %zX\n", rdi_id_start + n_id * sizeof(struct rsrcditem));
+	}
 	item = (struct rsrcditem*)(data + rdi_id_start);
 	for (i = 0; i < n_id; ++i, ++item) {
 		rva = item->r_rva;
@@ -314,7 +405,6 @@ static int rsrc_rtstat(struct sechdr *rsrc, struct rsrcdir *root, char *data, si
 			return 1;
 		}
 	}
-	printf("name entries: %hu\nid   entries: %hu\n", n_name, n_id);
 	return 0;
 }
 
@@ -329,8 +419,7 @@ static void rsrc_stat(struct xfile *this, unsigned i, char *data, size_t size)
 		return;
 	}
 	printf("goto %X\n", rsrc->s_scnptr);
-	struct rsrcdir *rdir = this->rsrc = (struct rsrcdir*)((char*)data + rsrc->s_scnptr);
-	if (rsrc_rtstat(rsrc, rdir, data, size)) {
+	if (rsrc_rtstat(rsrc, data, size)) {
 		fputs("corrupt rsrc\n", stderr);
 		return;
 	}
