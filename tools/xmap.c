@@ -157,6 +157,16 @@ struct rsrcditem {
 	uint32_t r_rva;
 };
 
+#define SF_CODE   0x00000020
+#define SF_DATA   0x00000040
+#define SF_BSS    0x00000080
+#define SF_DIRECT 0x04000000
+#define SF_FIXED  0x08000000
+#define SF_SHARE  0x10000000
+#define SF_EXEC   0x20000000
+#define SF_READ   0x40000000
+#define SF_WRITE  0x80000000
+
 struct sechdr {
 	char s_name[8];
 	uint32_t s_paddr;
@@ -224,7 +234,6 @@ static int rsrc_lstat(char *data, size_t size, size_t offset)
 		fputs("bad leaf\n", stderr);
 		return 1;
 	}
-	struct rsrcdir *root = (struct rsrcdir*)(data + offset);
 	unsigned n_name, n_id;
 	size_t rdi_name_start, rdi_id_start;
 	if (rsrc_dstat(data, size, "res leaf", offset, &n_name, &rdi_name_start, &n_id, &rdi_id_start))
@@ -265,7 +274,6 @@ static int rsrc_rlstat(char *data, size_t size, size_t offset)
 		return 1;
 	}
 	printf("lang pos=%zX\n", offset);
-	struct rsrcdir *root = (struct rsrcdir*)(data + offset);
 	unsigned n_name, n_id;
 	size_t rdi_name_start, rdi_id_start;
 	if (rsrc_dstat(data, size, "res lang node", offset, &n_name, &rdi_name_start, &n_id, &rdi_id_start))
@@ -314,7 +322,6 @@ static int rsrc_ristat(char *data, size_t size, size_t offset)
 		fputs("bad level 1 resnode\n", stderr);
 		return 1;
 	}
-	struct rsrcdir *root = (struct rsrcdir*)(data + offset);
 	unsigned n_name, n_id;
 	size_t rdi_name_start, rdi_id_start;
 	if (rsrc_dstat(data, size, "res id node", offset, &n_name, &rdi_name_start, &n_id, &rdi_id_start))
@@ -367,7 +374,6 @@ static int rsrc_rtstat(struct sechdr *rsrc, char *data, size_t size)
 	*/
 	size_t root_offset, rdi_name_start, rdi_id_start;
 	root_offset = rsrc->s_scnptr;
-	struct rsrcdir *root = (struct rsrcdir*)(data + root_offset);
 	unsigned n_name, n_id;
 	if (rsrc_dstat(data, size, "res type node", root_offset, &n_name, &rdi_name_start, &n_id, &rdi_id_start))
 		return 1;
@@ -537,10 +543,52 @@ void xstat(struct xfile *this, char *data, size_t size)
 			this->nrvan = i;
 			break;
 		}
-		printf("#%2u: %-8s %X\n", i, name, sec->s_scnptr);
-		if (!strcmp(name, ".rsrc"))
-			rsrc_stat(this, i, data, size);
+		char buf[256];
+		uint32_t flags = sec->s_flags;
+		buf[0] = '\0';
+		if (flags & SF_CODE) {
+			flags &= ~SF_CODE;
+			strcat(buf, " code");
+		}
+		if (flags & SF_DATA) {
+			flags &= ~SF_DATA;
+			strcat(buf, " data");
+		}
+		if (flags & SF_BSS) {
+			flags &= ~SF_BSS;
+			strcat(buf, " bss");
+		}
+		if (flags & SF_DIRECT) {
+			flags &= ~SF_DIRECT;
+			strcat(buf, " direct");
+		}
+		if (flags & SF_FIXED) {
+			flags &= ~SF_FIXED;
+			strcat(buf, " fixed");
+		}
+		if (flags & SF_SHARE) {
+			flags &= ~SF_SHARE;
+			strcat(buf, " share");
+		}
+		if (flags & SF_EXEC) {
+			flags &= ~SF_EXEC;
+			strcat(buf, " exec");
+		}
+		if (flags & SF_READ) {
+			flags &= ~SF_READ;
+			strcat(buf, " read");
+		}
+		if (flags & SF_WRITE) {
+			flags &= ~SF_WRITE;
+			strcat(buf, " write");
+		}
+		if (flags)
+			strcat(buf, " ??");
+		printf("#%2u: %-8s %8X %8X%s\n", i, name, sec->s_scnptr, sec->s_flags, buf);
+		// TODO map sections
 	}
+	printf("section count: %u (occupied: %u)\n", pohdr->o_nrvasz, this->nrvan);
+	printf("text entry: %zX\n", (size_t)(pohdr->o_chdr.o_entry));
 }
 
 static int process(char *name)
