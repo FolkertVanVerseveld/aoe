@@ -19,6 +19,8 @@ int xstat(struct xfile *this, char *data, size_t size)
 	this->nrvan = this->nrvasz = 0;
 	this->sec = NULL;
 	this->rsrc = NULL;
+	this->data = data;
+	this->size = size;
 	if (size < sizeof(struct mz)) {
 		fputs("bad dos header: file too small\n", stderr);
 		return 1;
@@ -135,6 +137,18 @@ int xstat(struct xfile *this, char *data, size_t size)
 			flags &= ~SF_BSS;
 			strcat(buf, " bss");
 		}
+		if (flags & SF_DBG) {
+			flags &= ~SF_DBG;
+			strcat(buf, " dbg");
+		}
+		if (flags & SF_LINK) {
+			flags &= ~SF_LINK;
+			strcat(buf, " link");
+		}
+		if (flags & SF_STRIP) {
+			flags &= ~SF_STRIP;
+			strcat(buf, " strip");
+		}
 		if (flags & SF_DIRECT) {
 			flags &= ~SF_DIRECT;
 			strcat(buf, " direct");
@@ -162,7 +176,6 @@ int xstat(struct xfile *this, char *data, size_t size)
 		if (flags)
 			strcat(buf, " ??");
 		printf("#%2u: %-8s %8X %8X%s\n", i, name, sec->s_scnptr, sec->s_flags, buf);
-		// TODO map sections
 	}
 	printf("section count: %u (occupied: %u)\n", pohdr->o_nrvasz, this->nrvan);
 	printf("text entry: %zX\n", (size_t)(pohdr->o_chdr.o_entry));

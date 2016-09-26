@@ -156,6 +156,9 @@ struct rsrcditem {
 #define SF_CODE   0x00000020
 #define SF_DATA   0x00000040
 #define SF_BSS    0x00000080
+#define SF_DBG    0x00000200
+#define SF_LINK   0x00000800
+#define SF_STRIP  0x02000000
 #define SF_DIRECT 0x04000000
 #define SF_FIXED  0x08000000
 #define SF_SHARE  0x10000000
