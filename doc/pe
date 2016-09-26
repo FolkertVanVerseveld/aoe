@@ -1,0 +1,38 @@
+Gathered stuff that we know about Portable Executable's
+
+Portable Executables are ancient executable files designed when windows
+NT 3.1 was being developed. Due to the nature of Microsof, it has been
+inherited all up to OS'es like Windows 10. It is a real pain to parse it
+easily and efficiently.
+An in-depth article about the format from Redmond itself:
+https://msdn.microsoft.com/en-us/magazine/ms809762.aspx
+
+I recommend viewing the archived article since the current one has
+multiple formatting issues:
+http://web.archive.org/web/20080905063304/http://msdn.microsoft.com/en-us/magazine/ms809762.aspx
+
+-- pcrio --
+
+Mikko P (a.k.a. Tapsa) has been maintaining pcrio which is a very simple
+resource viewer/editor for pe/coff files. Unfortunately, it suffers a
+lot from fragmentation due to allocating each node in the resource
+section one at a time.
+His repository is here:
+https://github.com/Tapsa/pcrio
+
+-- tools/xmap --
+
+We have written an alternative to Tapsa's pcrio that takes fully
+advantage of posix functionality like mmap in order to dramatically
+reduce the amount of malloc's.
+All PE related structures have more unix like names (i.e. short and
+cryptic) to make it short, simple and easier to use.
+
+-- links --
+
+In-depth explanation of horrible PE format:
+primary source:
+http://web.archive.org/web/20080905063304/http://msdn.microsoft.com/en-us/magazine/ms809762.aspx
+secondary:
+http://www.csn.ul.ie/~caolan/publink/winresdump/winresdump/doc/pefile.html
+https://en.wikipedia.org/wiki/Portable_Executable
