@@ -153,6 +153,13 @@ struct rsrcditem {
 	uint32_t r_rva;
 };
 
+struct rsrcitem {
+	uint32_t d_rva;
+	uint32_t d_size;
+	uint32_t d_page;
+	uint32_t d_res;
+};
+
 #define SF_CODE   0x00000020
 #define SF_DATA   0x00000040
 #define SF_BSS    0x00000080

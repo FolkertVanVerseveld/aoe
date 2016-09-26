@@ -1,3 +1,4 @@
+#include <alloca.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -6,7 +7,63 @@
 #include <unistd.h>
 #include "xmap.h"
 
-static int rsrc_walk(struct xfile *x, unsigned level, size_t soff, size_t *off)
+static int rsrc_strtbl(struct xfile *x, unsigned level, off_t diff, size_t off)
+{
+	char *map = x->data;
+	size_t mapsz = x->size;
+	struct rsrcitem *i = (struct rsrcitem*)(map + off);
+	if (off + sizeof(struct rsrcitem) > mapsz) {
+		fprintf(stderr, "bad leaf at %zX: file too small\n", off);
+		return 1;
+	}
+	if (diff < 0 && diff + (ssize_t)i->d_rva < 0) {
+		fprintf(stderr, "bad leaf rva -%zX\n", (size_t)-diff);
+		return 1;
+	}
+	printf("%8zX ", off);
+	for (unsigned l = 0; l < level; ++l)
+		fputs("  ", stdout);
+	size_t pp, p = i->d_rva + diff;
+	pp = p;
+	printf("strtbl at %zX: %zX bytes\n", p, (size_t)i->d_size);
+	uint16_t j, n, w, *hw;
+	char *str, *buf;
+	for (buf = alloca(65536); p < pp + i->d_size;) {
+		hw = (uint16_t*)(map + p);
+		p += sizeof(uint16_t);
+		w = *hw;
+		if (w) {
+			printf("%8zX ", p);
+			for (str = map + p, j = 0, n = w; j < n; str += 2)
+				buf[j++] = *str;
+			buf[j++] = '\0';
+			puts(buf);
+		} else
+			printf("%8zX\n", p);
+		p += w * 2;
+	}
+	return 0;
+}
+
+static int rsrc_leaf(struct xfile *x, unsigned level, size_t soff, off_t diff, size_t *off)
+{
+	char *map = x->data;
+	size_t mapsz = x->size;
+	if (*off + sizeof(struct rsrcditem) > mapsz) {
+		fprintf(stderr, "bad leaf at %zX: file too small\n", *off);
+		return 1;
+	}
+	struct rsrcditem *ri = (struct rsrcditem*)(map + *off);
+	size_t loff = soff + ri->r_rva;
+	if (rsrc_strtbl(x, level, diff, loff)) {
+		fprintf(stderr, "corrupt strtbl at %zX\n", loff);
+		return 1;
+	}
+	*off += sizeof(struct rsrcditem);
+	return 0;
+}
+
+static int rsrc_walk(struct xfile *x, unsigned level, size_t soff, off_t diff, size_t *off)
 {
 	char *map = x->data;
 	size_t size = x->size;
@@ -36,11 +93,11 @@ static int rsrc_walk(struct xfile *x, unsigned level, size_t soff, size_t *off)
 	for (unsigned i = 0; i < n; ++i) {
 		struct rsrcditem *ri = (struct rsrcditem*)(map + *off);
 		if (dir) {
-			if (rsrc_walk(x, level + 1, soff, off))
+			if (rsrc_walk(x, level + 1, soff, diff, off))
 				return 1;
 		} else if ((ri->r_rva >> 31) & 1) {
 			size_t roff = soff + (ri->r_rva & ~(1 << 31));
-			if (rsrc_walk(x, level + 1, soff, &roff))
+			if (rsrc_walk(x, level + 1, soff, diff, &roff))
 				return 1;
 			*off = roff;
 			dir = 1;
@@ -49,8 +106,8 @@ static int rsrc_walk(struct xfile *x, unsigned level, size_t soff, size_t *off)
 			for (unsigned l = 0; l < level; ++l)
 				fputs("  ", stdout);
 			printf("#%u ID: %8X Offset: %8X\n", i, ri->r_id, ri->r_rva);
-			*off += sizeof(struct rsrcditem);
-			return 0;
+			if (rsrc_leaf(x, level + 1, soff, diff, off))
+				return 1;
 		}
 	}
 	return 0;
@@ -76,7 +133,8 @@ static int rsrc_stat(struct xfile *x)
 found:
 	printf("goto %u@%zX\n", i, (size_t)sec->s_scnptr);
 	size_t off = sec->s_scnptr;
-	return rsrc_walk(x, 0, sec->s_scnptr, &off);
+	off_t diff = (ssize_t)sec->s_scnptr - sec->s_vaddr;
+	return rsrc_walk(x, 0, sec->s_scnptr, diff, &off);
 }
 
 static int process(char *name)
