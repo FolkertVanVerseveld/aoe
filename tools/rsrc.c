@@ -33,13 +33,16 @@ static int rsrc_strtbl(struct xfile *x, unsigned level, off_t diff, size_t off)
 		p += sizeof(uint16_t);
 		w = *hw;
 		if (w) {
+			if (p + 2 * w > mapsz) {
+				fprintf(stderr, "bad leaft at %zX: file too small\n", off);
+				return 1;
+			}
 			printf("%8zX ", p);
 			for (str = map + p, j = 0, n = w; j < n; str += 2)
 				buf[j++] = *str;
 			buf[j++] = '\0';
 			puts(buf);
-		} else
-			printf("%8zX\n", p);
+		}
 		p += w * 2;
 	}
 	return 0;
