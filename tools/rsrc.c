@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include "xmap.h"
 
+#define RSRC_NLEAF 16
+
 static int rsrc_strtbl(struct xfile *x, unsigned level, off_t diff, size_t off)
 {
 	char *map = x->data;
@@ -26,23 +28,24 @@ static int rsrc_strtbl(struct xfile *x, unsigned level, off_t diff, size_t off)
 	size_t pp, p = i->d_rva + diff;
 	pp = p;
 	printf("strtbl at %zX: %zX bytes\n", p, (size_t)i->d_size);
-	uint16_t j, n, w, *hw;
+	uint16_t j, k, n, w, *hw;
 	char *str, *buf;
-	for (buf = alloca(65536); p < pp + i->d_size;) {
+	for (k = 0, buf = alloca(65536); p < pp + i->d_size; ++k) {
 		hw = (uint16_t*)(map + p);
 		p += sizeof(uint16_t);
 		w = *hw;
 		if (w) {
 			if (p + 2 * w > mapsz) {
-				fprintf(stderr, "bad leaft at %zX: file too small\n", off);
+				fprintf(stderr, "bad leaf at %zX: file too small\n", off);
 				return 1;
 			}
-			printf("%8zX ", p);
+			printf("%8zX #%2u ", p, k);
 			for (str = map + p, j = 0, n = w; j < n; str += 2)
 				buf[j++] = *str;
 			buf[j++] = '\0';
 			puts(buf);
-		}
+		} else
+			printf("%8zX #%2u\n", p, k);
 		p += w * 2;
 	}
 	return 0;
