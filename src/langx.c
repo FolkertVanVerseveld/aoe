@@ -1,14 +1,30 @@
 #include <stdio.h>
 #include <string.h>
 #include "langx.h"
+#include "rsrc.h"
 
 #define item(x,str) case x: res=str; break;
 
 int loadstr(unsigned id, char *str, unsigned n)
 {
 	char *res = NULL;
-	// TODO scan language files for UTF16 string
-	if (!res) fprintf(stderr, "bad str: %u\n", id);
-	else strncpy(str, res, n);
-	return res != NULL;
+	// naively scan language files for UTF16 string
+	unsigned i, tn;
+	for (i = 0, tn = strtbl.n; i < tn; ++i) {
+		struct rstrptr *ptr = &strtbl.a[i];
+		if (ptr->id == id) {
+			struct rsrcstr *rs = &ptr->str;
+			uint16_t j, sn = rs->length;
+			if (sn > n)
+				sn = n;
+			const char *s = rs->str;
+			for (j = 0; j < sn; s += 2)
+				str[j++] = *s;
+			if (n)
+				str[n - 1] = '\0';
+			return 1;
+		}
+	}
+	fprintf(stderr, "bad str: %u\n", id);
+	return 0;
 }

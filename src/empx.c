@@ -152,6 +152,7 @@ struct game_config cfg = {
 
 static void cleanup(void)
 {
+	eng_free();
 	drs_free();
 	config_free();
 	memchk();

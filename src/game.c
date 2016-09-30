@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,7 +36,7 @@ static unsigned players_connection_state[9];
 
 static unsigned cfg_hInst;
 static unsigned hInstance;
-static unsigned hLibModule;
+static int hLibModule = -1;
 static unsigned game_580E24;
 static unsigned game_580E28;
 
@@ -1005,6 +1006,28 @@ int start_game(struct game *this)
 		{95, 0xa0, 0, 0},
 		{23, 123, 0, 0}
 	};
+	// <
+	errno = 0;
+	fd_lang = loadlib("language.dll", &data_lang, &size_lang);
+	if (hLibModule == -1) {
+		if (errno)
+			perror("language.dll");
+		else
+			fprintf(stderr, "%s: bad language data\n", "language.dll");
+		this->state = 1;
+		return 0;
+	}
+	// >
+	errno = 0;
+	fd_langx = hLibModule = loadlib("languagex.dll", &data_langx, &size_langx);
+	if (hLibModule == -1) {
+		if (errno)
+			perror("languagex.dll");
+		else
+			fprintf(stderr, "%s: bad language data\n", "languagex.dll");
+		this->state = 1;
+		return 0;
+	}
 	if (findfirst("empires.exe") == -1) {
 		this->state = 23;
 		fprintf(stderr, "%s: no such file\n", "empires.exe");

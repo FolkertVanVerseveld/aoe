@@ -1,6 +1,12 @@
 #ifndef AOE_ENGINE_H
 #define AOE_ENGINE_H
 
+#include <stddef.h>
+
+extern int fd_langx, fd_lang;
+extern char *data_langx, *data_lang;
+extern size_t size_langx, size_lang;
+
 struct regpair;
 
 union regparent {
@@ -23,5 +29,9 @@ struct regpair {
 };
 
 int findfirst(const char *fname);
+int loadlib(const char *name, char **data, size_t *size);
+void libdump(void);
+
+void eng_free(void);
 
 #endif
