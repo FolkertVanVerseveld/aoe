@@ -1,4 +1,5 @@
 #include <alloca.h>
+#include <assert.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -8,6 +9,71 @@
 #include "xmap.h"
 
 #define RSRC_NLEAF 16
+
+#define HEAPSZ 65536
+
+struct rsrcstr {
+	const uint16_t length;
+	const char *str;
+};
+
+struct rstrptr {
+	unsigned id;
+	struct rsrcstr *str;
+};
+
+static struct strheap {
+	struct rstrptr a[HEAPSZ];
+	unsigned n;
+	unsigned str_id;
+} strtbl;
+
+#define parent(x) (((x)-1)/2)
+#define right(x) (2*((x)+1))
+#define left(x) (right(x)-1)
+
+static inline void swap(struct strheap *h, unsigned a, unsigned b)
+{
+	struct rstrptr tmp;
+	tmp = h->a[a];
+	h->a[a] = h->a[b];
+	h->a[b] = tmp;
+}
+
+static inline int rptrcmp(struct rstrptr *a, struct rstrptr *b)
+{
+	return a->id - b->id;
+}
+
+static inline void siftup(struct strheap *h, unsigned i)
+{
+	register unsigned j;
+	register int cmp;
+	while (i) {
+		j = parent(i);
+		if ((cmp = rptrcmp(&h->a[j], &h->a[i])) > 0)
+			swap(h, j, i);
+		else
+			break;
+		i = j;
+	}
+}
+
+static inline void put(struct strheap *h, struct rstrptr *i)
+{
+	assert(h->n < HEAPSZ);
+	h->a[h->n] = *i;
+	siftup(h, h->n++);
+}
+
+static void dump(const struct strheap *h)
+{
+	unsigned i;
+	printf("heap len=%d\n", h->n);
+	for (i = 0; i < h->n; ++i)
+		printf(" %d", h->a[i].id);
+	putchar('\n');
+}
 
 static int rsrc_strtbl(struct xfile *x, unsigned level, off_t diff, size_t off)
 {
@@ -47,6 +113,11 @@ static int rsrc_strtbl(struct xfile *x, unsigned level, off_t diff, size_t off)
 				buf[j++] = *str;
 			buf[j++] = '\0';
 			puts(buf);
+			struct rstrptr ptr;
+			ptr.id = strtbl.str_id + k;
+			ptr.str = (struct rsrcstr*)(map + p);
+			printf("rsrc heap: put (%u,%s) @%zX\n", ptr.id, buf, p);
+			put(&strtbl, &ptr);
 		} else
 			printf("#%2u\n", k);
 		p += w * 2;
@@ -121,11 +192,14 @@ static int rsrc_walk(struct xfile *x, unsigned level, size_t soff, off_t diff, s
 						return 1;
 					}
 					struct rsrcditem *m = (struct rsrcditem*)(map + poffp);
-					printf("resid=%u\n", (m->r_id - 1) * 16);
+					strtbl.str_id = (m->r_id - 1) * 16;
+					printf("resid=%u\n", strtbl.str_id);
 				}
 				++*sn;
-			} else if (level == 1)
-				printf("resid=%u\n", (ri->r_id - 1) * 16);
+			} else if (level == 1) {
+				strtbl.str_id = (ri->r_id - 1) * 16;
+				printf("resid=%u\n", strtbl.str_id);
+			}
 			poffp = *off + sizeof(struct rsrcditem);
 			if ((ri->r_rva >> 31) & 1) {
 				size_t roff = soff + (ri->r_rva & ~(1 << 31));
@@ -208,5 +282,6 @@ int main(int argc, char **argv)
 		if (process(argv[i]))
 			return 1;
 	}
+	dump(&strtbl);
 	return 0;
 }
