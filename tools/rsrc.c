@@ -72,7 +72,7 @@ static int rsrc_leaf(struct xfile *x, unsigned level, size_t soff, off_t diff, s
 	return 0;
 }
 
-static int rsrc_walk(struct xfile *x, unsigned level, size_t soff, off_t diff, size_t *off, unsigned tn_id)
+static int rsrc_walk(struct xfile *x, unsigned level, size_t soff, off_t diff, size_t *off, unsigned tn_id, size_t poff)
 {
 	char *map = x->data;
 	size_t size = x->size;
@@ -104,16 +104,17 @@ static int rsrc_walk(struct xfile *x, unsigned level, size_t soff, off_t diff, s
 		struct rsrcditem *ri = (struct rsrcditem*)(map + *off);
 		printf("rva item = %zX\n", *off);
 		if (dir) {
-			if (rsrc_walk(x, level + 1, soff, diff, off, i < d->r_nnment ? TN_NAME : TN_ID))
+			if (rsrc_walk(x, level + 1, soff, diff, off, i < d->r_nnment ? TN_NAME : TN_ID, poff))
 				return 1;
 		} else {
 			printf("%8zX ", *off);
 			for (unsigned l = 0; l < level; ++l)
 				fputs("  ", stdout);
-			printf("id=%u,rva=%X,type=%s\n", ri->r_id, ri->r_rva, tn_id == TN_ID ? "id" : "name");
+			printf("id=%u,rva=%X,type=%s,poff=%zX\n", ri->r_id, ri->r_rva, tn_id == TN_ID ? "id" : "name", poff);
+			poff = *off + sizeof(struct rsrcditem);
 			if ((ri->r_rva >> 31) & 1) {
 				size_t roff = soff + (ri->r_rva & ~(1 << 31));
-				if (rsrc_walk(x, level + 1, soff, diff, &roff, i < d->r_nnment ? TN_NAME : TN_ID))
+				if (rsrc_walk(x, level + 1, soff, diff, &roff, i < d->r_nnment ? TN_NAME : TN_ID, poff))
 					return 1;
 				*off = roff;
 				printf("roff=%zX\n", roff);
@@ -152,7 +153,7 @@ found:
 	printf("goto %u@%zX\n", i, (size_t)sec->s_scnptr);
 	size_t off = sec->s_scnptr;
 	off_t diff = (ssize_t)sec->s_scnptr - sec->s_vaddr;
-	return rsrc_walk(x, 0, sec->s_scnptr, diff, &off, 0);
+	return rsrc_walk(x, 0, sec->s_scnptr, diff, &off, 0, off);
 }
 
 static int process(char *name)
