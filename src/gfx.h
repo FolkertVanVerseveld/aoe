@@ -11,6 +11,21 @@ struct pal_entry {
 	uint8_t r, g, b, flags;
 };
 
+struct drs_pal {
+	// XXX 256 colors should be sufficient
+	struct pal_entry tbl[256];
+};
+
+struct colpalette {
+	unsigned ref_count;
+	char gap18[4];
+	// REMAP typeof(HPALETTE paltbl[10]) == struct drs_pal*[10]
+	struct drs_pal *paltbl[10];
+	char path_table[10][260];
+	unsigned refcnttbl[10];
+	int restbl[11];
+};
+
 extern struct pal_entry game_pal[256];
 
 struct video_mode {
@@ -61,5 +76,6 @@ unsigned video_mode_fetch_bounds(struct video_mode *this, int query_interface);
 int direct_draw_init(struct video_mode *this, unsigned hInst, unsigned window, struct pal_entry *palette, char opt0, char opt1, int width, int height, int sys_memmap);
 void update_palette(struct pal_entry *tbl, unsigned start, unsigned n, struct pal_entry *src);
 struct video_mode *video_mode_start_init(struct video_mode *this, const char *title, int a3, const char *a4, int a5);
+struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3);
 
 #endif

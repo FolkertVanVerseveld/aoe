@@ -47,6 +47,8 @@ static const char *data_graphics = "graphics.drs";
 static const char *data_sounds = "sounds.drs";
 static const char *directory_data = "data/";
 
+static struct colpalette game_col_palette;
+
 unsigned game_hkey_root;
 extern int prng_seed;
 
@@ -666,7 +668,7 @@ static int game_opt_check(struct game *this, char *opt)
 static int game_futex_window_request_focus(struct game *this)
 {
 	stub
-	this->mutex_state = 1;
+	this->mutex_main_error = 1;
 	return 1;
 }
 
@@ -706,42 +708,44 @@ static int game_go_fullscreen(struct game *this)
 	return 1;
 }
 
-static struct pal_entry *palette_init(struct game *this, char *palette, int a2)
+static struct drs_pal *palette_init(struct colpalette *this, char *palette, int res_id)
 {
-	char *v4;
-	int v5, v6;
-	struct pal_entry *pal;
-	const char *v8;
-	char *v9;
+	int v5;
 	char palette_path[260];
 	stub
 	(void)this;
-	(void)a2;
-	(void)v5;
-	(void)v6;
-	(void)v9;
 	palette_path[0] = '\0';
 	if (palette) {
 		if (strchr(palette, '.'))
 			strcpy(palette_path, palette);
 		else
 			sprintf(palette_path, "%s.pal", palette);
-		strup(palette_path, 260 - 1);
+		strup(palette_path, (sizeof palette_path) - 1);
 	}
 	dbgf("palette: %s\n", palette);
-	v4 = this->tblA94;
+	unsigned i, j, k;
+	j = k = 0;
 	v5 = -1;
-	v6 = 0;
-	v8 = (const char*)&this->timer;
-	v9 = this->tblA94;
-	halt();
-	do {
-		if (((unsigned*)v4)[-670]) {
-			if ((a2 != -1 && *(int*)v4 == a2) || !strcmp(v8, palette_path))
-				return 0;
-		}
-	} while (0);
-	return pal;
+	for (i = 0; i < 10; ++i) {
+		if (this->paltbl[j]) {
+			if ((res_id != -1 && this->restbl[j] == res_id) || !strcmp(this->path_table[i], palette_path)) {
+				dbgf("pal: add ref %u\n", j);
+				++this->refcnttbl[i];
+				halt();
+				return this->paltbl[i];
+			}
+			j = k;
+		} else if (v5 == -1)
+			v5 = i;
+		k = ++j;
+	}
+	dbgf("i=%u,v5=%d\n", i, v5);
+	if (v5 == -1)
+		return NULL;
+	this->paltbl[v5] = drs_palette(palette_path, res_id, 1);
+	if (!this->paltbl[v5])
+		return NULL;
+	return this->paltbl[v5];
 }
 
 static int game_gfx_init(struct game *this)
@@ -764,7 +768,7 @@ static int game_gfx_init(struct game *this)
 	{
 		return 0;
 	}
-	this->palette = palette_init(NULL, this->cfg->palette, 50500);
+	this->palette = palette_init(&game_col_palette, this->cfg->palette, 50500);
 	return 1;
 }
 
@@ -986,18 +990,25 @@ static signed game_show_focus_screen(struct game *this)
 	}
 	struct game_drive *drive = new(sizeof(struct game_drive));
 	game_drive_ref = drive;
+	halt();
+	// TODO initialize drive
+	// TODO parse game nfo
+	// TODO scenario.inf
+	// TODO fail label
 	return 1;
 }
 
 static int game_mousestyle(struct game *this)
 {
-	stub
-	(void)this;
-	return 0;
+	// FIXME update and figure out type of `0' arguments
+	return this->cfg->mouse_style == 1
+		? game_offsetA24(this, 0, 0x28, 0, 0x28)
+		: game_offsetA24(this, 0, 0x28, 0, 0x28);
 }
 
 int start_game(struct game *this)
 {
+	stub
 	struct pal_entry p[7] = {
 		{23, 39, 124, 0},
 		{39, 63, 0x90, 0},

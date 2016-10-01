@@ -96,6 +96,15 @@ static inline int game_setA8C_A90(struct game *this, int v0, int v1)
 	return v0;
 }
 
+static int game_offsetA24(struct game *this, int a2, int a3, int a4, int a5)
+{
+	this->tblA24[0] = a2;
+	this->tblA24[1] = a3;
+	this->tblA24[2] = a4;
+	this->tblA24[3] = a5;
+	return a4;
+}
+
 static int game_offsetAA0(struct game *this, int index, int value)
 {
 	assert(index < 12);

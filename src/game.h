@@ -151,10 +151,10 @@ struct game {
 	unsigned window;
 	unsigned num14;
 	unsigned running;
-	// REMAP typeof(HPALETTE palette) == void*
-	struct pal_entry *palette;
+	// REMAP typeof(HPALETTE palette) == drs_pal*
+	struct drs_pal *palette;
 	// REMAP typeof(HANDLE mutex) == void*
-	unsigned mutex_state;
+	unsigned mutex_main_error;
 	unsigned num24;
 	unsigned tbl28[4];
 	unsigned screensaver_state;

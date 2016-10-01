@@ -4,6 +4,7 @@
 #include "menu.h"
 #include "todo.h"
 #include "dbg.h"
+#include "dmap.h"
 #include "gfx.h"
 
 int enum_display_modes(void *arg, int (*cmp)(struct display*, void*))
@@ -144,4 +145,15 @@ void update_palette(struct pal_entry *tbl, unsigned start, unsigned n, struct pa
 		tbl[i_dest].b = src[i_src].b;
 		tbl[i_dest].flags = src[i_src].flags;
 	}
+}
+
+struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3)
+{
+	stub
+	if (res_id == -1)
+		return 0;
+	size_t count, offset;
+	char *drs_item = drs_get_item(DT_BINARY, res_id, &count, &offset);
+	halt();
+	return NULL;
 }

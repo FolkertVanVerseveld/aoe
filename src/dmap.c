@@ -193,7 +193,7 @@ static int drs_map(unsigned type, int res_id, int *fd, off_t *st_size, unsigned 
 		halt();
 	} else {
 	fail:
-		dbgf("%s: not found: type=%u, res_id=%d\n", __func__, type, res_id);
+		dbgf("%s: not found: type=%X, res_id=%d\n", __func__, type, res_id);
 		result = 0;
 	}
 	dbgf("result = %d\n", result);

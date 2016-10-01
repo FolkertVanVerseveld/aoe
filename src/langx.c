@@ -3,11 +3,8 @@
 #include "langx.h"
 #include "rsrc.h"
 
-#define item(x,str) case x: res=str; break;
-
 int loadstr(unsigned id, char *str, unsigned n)
 {
-	char *res = NULL;
 	// naively scan language files for UTF16 string
 	unsigned i, tn;
 	for (i = 0, tn = strtbl.n; i < tn; ++i) {
