@@ -11,34 +11,42 @@ drs item types:
 */
 
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/types.h>
 
-struct drs_item {
-	char hdr[40];
-	char tribe[16];
-	// REMAP typeof(count38) == unsigned
-	unsigned count38;
-	unsigned num3C;
-	unsigned type40;
-	unsigned num44;
-	// REMAP typeof(count48) == unsigned
-	unsigned count48;
+struct drsmap {
+	char copyright[40];
+	char version[16];
+	uint32_t nlist;
+	uint32_t listend; // XXX go figure
 };
 
 #define DMAPBUFSZ 260
 struct dmap {
-	struct drs_item *dblk;
+	struct drsmap *dblk;
 	int fd;
-	struct drs_item *drs_data;
+	struct drsmap *drs_data;
 	struct dmap *next;
 	char filename[DMAPBUFSZ];
 	size_t length;
 };
 
-#define DT_BINARY 0x616e6962
-#define DT_AUDIO 0x20766177
-#define DT_SLP 0x20706c73
-#define DT_SHP 0x20706873
+#define DT_BINARY 0x62696e61
+#define DT_SHP    0x73687020
+#define DT_SLP    0x736c7020
+#define DT_WAVE   0x77617620
+
+struct drs_list {
+	uint32_t type;
+	uint32_t offset;
+	uint32_t size;
+};
+
+struct drs_item {
+	uint32_t id;
+	uint32_t offset;
+	uint32_t size;
+};
 
 void dmap_init(struct dmap *map);
 void dmap_free(struct dmap *map);

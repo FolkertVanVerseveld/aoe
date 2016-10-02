@@ -112,8 +112,8 @@ void drsmap_stat(char *data, size_t size)
 			}
 			printf("#%u\n", j);
 			printf("item ID: %u\n", item->id);
-			printf("offset: %u\n", item->offset);
-			printf("size: %u\n", item->size);
+			printf("offset: %X\n", item->offset);
+			printf("size: %X\n", item->size);
 		}
 	}
 }

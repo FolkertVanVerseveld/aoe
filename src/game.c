@@ -1053,6 +1053,8 @@ int start_game(struct game *this)
 	read_data_mapping(data_graphics , directory_data, 0);
 	read_data_mapping(data_terrain  , directory_data, 0);
 	read_data_mapping(data_border   , directory_data, 0);
+	// FIXME hack to also include data/Interface.drs
+	read_data_mapping(data_interface, directory_data, 0);
 	read_data_mapping(data_interface, directory_data, 0);
 	if (!game_show_focus_screen(this))
 		return 0;

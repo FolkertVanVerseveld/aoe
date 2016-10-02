@@ -154,6 +154,15 @@ struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3)
 		return 0;
 	size_t count, offset;
 	char *drs_item = drs_get_item(DT_BINARY, res_id, &count, &offset);
+	char *palette = drs_item;
+	if (strtok(palette, "bina")) {
+		if (strtok(NULL, " ")) {
+			char *v10 = strtok(NULL, " ");
+			if (v10) {
+				dbgs("bingo");
+			}
+		}
+	}
 	halt();
 	return NULL;
 }

@@ -126,7 +126,7 @@ int read_data_mapping(const char *filename, const char *directory, int nommap)
 		drs_list = map;
 	}
 	// check for magic "1.00tribe"
-	ret = strncmp(map->drs_data->tribe, "1.00tribe", strlen("1.00tribe"));
+	ret = strncmp(map->drs_data->version, "1.00tribe", strlen("1.00tribe"));
 	if (ret) fprintf(stderr, "%s: hdr invalid\n", filename);
 	// FIXME if no magic, dangling ptr in last item of drs list
 fail:
@@ -141,124 +141,49 @@ fail:
 	return ret;
 }
 
-static int drs_map(unsigned type, int res_id, int *fd, off_t *st_size, unsigned *dblk, size_t *count)
+static int drs_map(unsigned type, int res_id, int *fd, off_t *offset, unsigned *dblk, size_t *count)
 {
-	stub
-	#if 1
-	(void)type;
-	(void)res_id;
-	(void)fd;
-	(void)st_size;
-	(void)dblk;
-	(void)count;
-	// REMAP typeof(count_ptr) == typeof(type_ptr) == unsigned
-	unsigned *count_ptr, *type_ptr;
-	unsigned index2;
-	unsigned index;
-	struct drs_item *drs_data;
+	struct drsmap *drs_data;
 	struct dmap *map = drs_list;
-	struct dmap *map2;
-	int result;
-	(void)index2;
-	(void)map2;
 	if (map) {
 		while (1) {
 			drs_data = map->drs_data;
-			index = 0;
-			dbgf("index=%u, count38=%d\n", index, drs_data->count38);
-			if (drs_data->count38 > 0)
-				break;
-		next_drs:
-			map = map->next;
-			map2 = map;
-			if (!map)
+			if (!map->next)
 				goto fail;
-		}
-		count_ptr = &drs_data->count48;
-		type_ptr = count_ptr - 2;
-		while (1) {
-			if (*type_ptr == type) {
-				index2 = 0;
-				if (*count_ptr > 0)
-					break;
-			}
-			goto next_item;
-		next_item:
-			count_ptr += 3;
-			if (++index >= drs_data->count38)
-				goto next_drs;
-		}
-		// count_ptr[-1] == num44
-		dbgf("num44 = %d\n", count_ptr[-1]);
-		halt();
-	} else {
-	fail:
-		dbgf("%s: not found: type=%X, res_id=%d\n", __func__, type, res_id);
-		result = 0;
-	}
-	dbgf("result = %d\n", result);
-	halt();
-	return result;
-	#else
-	char *v8, *v9;
-	int v10, result;
-	struct dmap *map = drs_list, *map2;
-	*fd = -1;
-	*st_size = 0;
-	*dblk = NULL;
-	map2 = map;
-	int v7, a2a;
-	*count = 0;
-	if (map) {
-		v7 = a2;
-		while (1) {
-			v8 = map->drs_data;
-			a2a = 0;
-			if (*((int*)v8 + 14) > 0)
-				break;
-next:
-			map = map->next;
-			map2 = map;
-			if (!map)
-				goto fail;
-		}
-		// FIXME
-		v9 = v8 + 72;
-		while (1) {
-			if (v9[-2] == dest) {
-				v10 = 0;
-				if (*v9 > 0)
-					break;
-			}
-LABEL_11:
-			v9 += 12;
-			if (++a2a >= *((int*)v8 + 14))
+			if (!drs_data->nlist)
 				goto next;
-		}
-		v11 = &v8[*((int*)v9 - 1)];
-		while ( *v11 != v7 )
-		{
-			++v10;
-			v11 += 12;
-			if ( v10 >= *v9 )
-			{
-				map = map2;
-				goto LABEL_11;
+			struct drs_list *list = (struct drs_list*)((char*)drs_data + sizeof(struct drsmap));
+			for (unsigned i = 0; i < drs_data->nlist; ++i, ++list) {
+				if (list->type != type)
+					continue;
+				if (list->offset > map->length) {
+					fputs("bad item offset\n", stderr);
+					goto fail;
+				}
+				struct drs_item *item = (struct drs_item*)((char*)drs_data + list->offset);
+				for (unsigned j = 0; j < list->size; ++j, ++item) {
+					if (list->offset + (j + 1) * sizeof(struct drs_item) > map->length) {
+						fputs("bad list\n", stderr);
+						goto fail;
+					}
+					if (item->id == (unsigned)res_id) {
+						dbgf("drs map: %u from %s\n", res_id, map->filename);
+						*fd = map->fd;
+						*offset = item->offset;
+						// XXX V bogus
+						//*dblk = map->dblk;
+						*count = item->size;
+						return 1;
+					}
+				}
 			}
+		next:
+			map = map->next;
 		}
-		char *v13 = &v8[12 * v10] + *(v9 - 1);
-		*fd = map2->fd;
-		*st_size = *(v13 + 1);
-		*dblk = map2->dblk;
-		*count = *(v13 + 2);
-		result = 1;
-	} else
-		goto fail;
-	return 1;
+	}
 fail:
-	fprintf(stderr, "drs_map failed: a2=%d\n", a2);
+	dbgf("%s: not found: type=%X, res_id=%d\n", __func__, type, res_id);
 	return 0;
-	#endif
 }
 
 void *drs_get_item(unsigned item, int fd, size_t *count, off_t *offset)
