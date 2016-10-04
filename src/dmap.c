@@ -141,7 +141,7 @@ fail:
 	return ret;
 }
 
-static int drs_map(unsigned type, int res_id, int *fd, off_t *offset, unsigned *dblk, size_t *count)
+static int drs_map(unsigned type, int res_id, int *fd, off_t *offset, char **dblk, size_t *count)
 {
 	struct drsmap *drs_data;
 	struct dmap *map = drs_list;
@@ -171,7 +171,7 @@ static int drs_map(unsigned type, int res_id, int *fd, off_t *offset, unsigned *
 						*fd = map->fd;
 						*offset = item->offset;
 						// XXX V bogus
-						//*dblk = map->dblk;
+						*dblk = (char*)map->dblk;
 						*count = item->size;
 						return 1;
 					}
@@ -186,55 +186,15 @@ fail:
 	return 0;
 }
 
-void *drs_get_item(unsigned item, int fd, size_t *count, off_t *offset)
+void *drs_get_item(unsigned type, int res_id, size_t *count, off_t *offset)
 {
-	stub
-	int v7, result;
-	#if 1
-	(void)item;
-	(void)fd;
-	(void)count;
-	(void)offset;
-	(void)result;
-	v7 = fd;
-	drs_map(item, v7, &fd, offset, &item, count);
-	halt();
-	return NULL;
-	#else
-	size_t *local_count;
-	const char *v9;
-	off_t *v5, v10;
-	size_t *v11, v13, *v14;
-	void *v12 = NULL;
-
-	local_count = count;                          // XXX can we remap this to count?
-	v5 = offset;
-	v7 = fd;
-	*count = -1;
-	*v5 = 0;
-	result = drs_map(item, v7, &fd, &offset, &item, &count);
-	if (result) {
-		v9 = item;
-		if (item) {
-			v10 = offset;
-			v11 = count;
-			*local_count = 0;
-			*v5 = v11;
-			return &v9[v10];
-		}
-		v13 = *count;
-		*local_count = 1;
-		v12 = malloc(v13);
-		assert(v12);
-		*v5 = count;
-		if (result) {
-			lseek(fd, *offset, SEEK_SET);
-			v14 = read(fd, v12, count);
-			if (v14 == count)
-				return v12;
-			result = 0;
-		}
+	char *data;
+	int dummy;
+	if (!drs_map(type, res_id, &dummy, offset, &data, count))
+		return NULL;
+	if (!data) {
+		fprintf(stderr, "no data for %u\n", res_id);
+		halt();
 	}
-	return v12;
-	#endif
+	return data + *offset;
 }

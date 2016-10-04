@@ -1,4 +1,4 @@
-#include "ship.h"
+#include "shp.h"
 #include "dmap.h"
 #include "dbg.h"
 #include "todo.h"

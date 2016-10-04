@@ -712,7 +712,6 @@ static struct drs_pal *palette_init(struct colpalette *this, char *palette, int 
 {
 	int v5;
 	char palette_path[260];
-	stub
 	(void)this;
 	palette_path[0] = '\0';
 	if (palette) {
@@ -731,7 +730,6 @@ static struct drs_pal *palette_init(struct colpalette *this, char *palette, int 
 			if ((res_id != -1 && this->restbl[j] == res_id) || !strcmp(this->path_table[i], palette_path)) {
 				dbgf("pal: add ref %u\n", j);
 				++this->refcnttbl[i];
-				halt();
 				return this->paltbl[i];
 			}
 			j = k;
@@ -745,6 +743,10 @@ static struct drs_pal *palette_init(struct colpalette *this, char *palette, int 
 	this->paltbl[v5] = drs_palette(palette_path, res_id, 1);
 	if (!this->paltbl[v5])
 		return NULL;
+	dbgf("pal: add ref %u\n", j);
+	++this->refcnttbl[v5];
+	strcpy(this->path_table[v5], palette_path);
+	this->restbl[v5] = res_id;
 	return this->paltbl[v5];
 }
 

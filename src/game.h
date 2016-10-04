@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "engine.h"
-#include "ship.h"
+#include "shp.h"
 #include "map.h"
 #include "gfx.h"
 #include "sfx.h"

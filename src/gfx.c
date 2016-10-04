@@ -155,14 +155,34 @@ struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3)
 	size_t count, offset;
 	char *drs_item = drs_get_item(DT_BINARY, res_id, &count, &offset);
 	char *palette = drs_item;
-	if (strtok(palette, "bina")) {
-		if (strtok(NULL, " ")) {
-			char *v10 = strtok(NULL, " ");
-			if (v10) {
-				dbgs("bingo");
-			}
-		}
+	const char *j_hdr = "JASC-PAL\r\n0100\r\n", *line = palette;
+	struct drs_pal *pal = NULL;
+	if (memcmp(palette, j_hdr, 16))
+		goto fail;
+	unsigned entries;
+	line = palette + 16;
+	if (sscanf(line, "%u", &entries) != 1)
+		goto fail;
+	printf("entries=%u\n", entries);
+	if (entries > 256) {
+		fprintf(stderr, "overflow: palette entries=%u (max: 256)\n", entries);
+		halt();
 	}
+	const char *next = strchr(line, '\n');
+	if (!next) goto fail;
+	line = next + 1;
+	pal = new(sizeof(struct drs_pal));
+	if (!pal) {
+		fputs("out of memory\n", stderr);
+		halt();
+	}
+	hexdump(line, 16);
+	goto fail;
+	return pal;
+fail:
+	fputs("bad palette\n", stderr);
+	hexdump(line, 16);
+	if (pal)
+		delete(pal);
 	halt();
-	return NULL;
 }
