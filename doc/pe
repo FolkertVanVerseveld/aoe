@@ -5,20 +5,16 @@ NT 3.1 was being developed. Due to the nature of Microsof, it has been
 inherited all up to OS'es like Windows 10. It is a real pain to parse it
 easily and efficiently.
 An in-depth article about the format from Redmond itself:
-https://msdn.microsoft.com/en-us/magazine/ms809762.aspx
-
-I recommend viewing the archived article since the current one has
-multiple formatting issues:
 http://web.archive.org/web/20080905063304/http://msdn.microsoft.com/en-us/magazine/ms809762.aspx
+The non-archived link is useless since they've fucked up the formatting.
 
 -- pcrio --
 
 Mikko P (a.k.a. Tapsa) has been maintaining pcrio which is a very simple
 resource viewer/editor for pe/coff files. Unfortunately, it suffers a
 lot from fragmentation due to allocating each node in the resource
-section one at a time.
-His repository is here:
-https://github.com/Tapsa/pcrio
+section one at a time and it keeps resizing strings until it fits.
+His repository is here: https://github.com/Tapsa/pcrio
 
 -- tools/xmap --
 

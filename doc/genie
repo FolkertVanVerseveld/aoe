@@ -1,0 +1,13 @@
+Genie game engine
+
+The Genie game engine has been in development since at least 1997 while
+the original Age of Empires was being developed. The engine has
+undergone multiple revisions in Rise of Rome and the sequels.
+
+All data files are custom formatted archives which mostly contain linked
+lists to data blocks which contain the raw resource data. These files
+are suffixes `drs'. In the file tree. We will can them Data Resource Set
+or just drs file when we refer to a drs archive.
+
+For a simple freestanding implementation that can extract wave files
+while traversing drs files, see tools/drs.c

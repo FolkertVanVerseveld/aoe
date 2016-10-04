@@ -1,0 +1,17 @@
+Color palettes
+
+In the ol' days, when 256 colors was pretty common, color palettes were
+used to represent which rgb values represent a indexed color in the
+palette.
+
+Age of Empires uses JASC palette that were probably made using something
+like Paintshop Pro. You can find the format description here:
+http://liero.nl/lierohack/docformats/other-jasc.html
+
+Basically, it is something like this (assuming CRLF line endings):
+text-only format starting with header: "JASC-PAL\r\n0100\r\n"
+followed by the number of entries (usually 256)
+and the rgb pairs separated by whitespace.
+
+The header looks like this:
+0000 4A 41 53 43 2D 50 41 4C 0D 0A 30 31 30 30 0D 0A JASC-PAL..0100..
