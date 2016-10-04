@@ -300,6 +300,8 @@ struct game {
 	int num1250;
 };
 
+extern struct colpalette game_col_palette;
+
 struct game *game_ctor(struct game *this, struct game_config *cfg, int should_start_game);
 
 #endif

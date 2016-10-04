@@ -5,6 +5,7 @@
 #include "todo.h"
 #include "dbg.h"
 #include "dmap.h"
+#include "memmap.h"
 #include "gfx.h"
 
 int enum_display_modes(void *arg, int (*cmp)(struct display*, void*))
@@ -159,13 +160,13 @@ struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3)
 	struct drs_pal *pal = NULL;
 	if (memcmp(palette, j_hdr, 16))
 		goto fail;
-	unsigned entries;
+	unsigned n;
 	line = palette + 16;
-	if (sscanf(line, "%u", &entries) != 1)
+	if (sscanf(line, "%u", &n) != 1)
 		goto fail;
-	printf("entries=%u\n", entries);
-	if (entries > 256) {
-		fprintf(stderr, "overflow: palette entries=%u (max: 256)\n", entries);
+	printf("n=%u\n", n);
+	if (n > 256) {
+		fprintf(stderr, "overflow: palette entries=%u (max: 256)\n", n);
 		halt();
 	}
 	const char *next = strchr(line, '\n');
@@ -176,8 +177,13 @@ struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3)
 		fputs("out of memory\n", stderr);
 		halt();
 	}
-	hexdump(line, 16);
-	goto fail;
+	for (unsigned i = 0; i < n; ++i) {
+		unsigned r, g, b;
+		if (sscanf(line, "%u %u %u", &r, &g, &b) != 3)
+			goto fail;
+		struct pal_entry *dst = &pal->tbl[i];
+		dst->r = r; dst->g = g; dst->b = b;
+	}
 	return pal;
 fail:
 	fputs("bad palette\n", stderr);

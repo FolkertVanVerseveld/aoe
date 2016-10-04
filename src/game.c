@@ -47,7 +47,7 @@ static const char *data_graphics = "graphics.drs";
 static const char *data_sounds = "sounds.drs";
 static const char *directory_data = "data/";
 
-static struct colpalette game_col_palette;
+struct colpalette game_col_palette;
 
 unsigned game_hkey_root;
 extern int prng_seed;
@@ -834,7 +834,7 @@ static int game_init_sfx_tbl(struct game *this)
 
 static int game_init_palette(struct game *this)
 {
-	return (this->palette = palette_init(NULL, this->cfg->palette, 50500)) != 0;
+	return (this->palette = palette_init(&game_col_palette, this->cfg->palette, 50500)) != 0;
 }
 
 static int game_set_palette(struct game *this)
