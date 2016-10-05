@@ -44,6 +44,8 @@ struct game_drive {
 
 struct game;
 
+extern struct game *game_ref;
+
 struct game_vtbl {
 	struct game *(*dtor)(struct game*, char);
 	unsigned (*main)(struct game*);
@@ -151,8 +153,8 @@ struct game {
 	unsigned window;
 	unsigned num14;
 	unsigned running;
-	// REMAP typeof(HPALETTE palette) == drs_pal*
-	struct drs_pal *palette;
+	// REMAP typeof(HPALETTE palette) == pal_entry*
+	struct pal_entry *palette;
 	// REMAP typeof(HANDLE mutex) == void*
 	unsigned mutex_main_error;
 	unsigned num24;
@@ -169,8 +171,8 @@ struct game {
 	char pad51[3];
 	unsigned no_normal_mouse;
 	unsigned short shp_count;
-	// NOPTR typeof(ship_20 *shptbl) == ship_20[3]
-	struct ship_20 shptbl[3];
+	// NOPTR typeof(shp *shptbl) == shp[3]
+	struct shp shptbl[3];
 	struct sfx_engine *sfx;
 	unsigned num64;
 	short sfx_count;

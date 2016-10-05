@@ -17,7 +17,8 @@
 
 #define get_os_version(a) a=0x1000
 
-static struct game *game_ref = NULL;
+struct game *game_ref = NULL;
+
 static int game_vtbl_focus;
 static int game_vtbl56146C;
 static char game_fname_focus[256];
@@ -708,7 +709,7 @@ static int game_go_fullscreen(struct game *this)
 	return 1;
 }
 
-static struct drs_pal *palette_init(struct colpalette *this, char *palette, int res_id)
+static struct pal_entry *palette_init(struct colpalette *this, char *palette, int res_id)
 {
 	int v5;
 	char palette_path[260];

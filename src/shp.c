@@ -10,13 +10,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-static char ship_7C0464;
+static char palette_shp;
 static unsigned ship_count;
 static int shp_data554864;
 
-struct ship_20 *shp_init(struct ship_20 *this, const char *fname, int res_id)
+struct shp *shp_init(struct shp *this, const char *fname, int res_id)
 {
-	stub
 	int fd = -1;
 	char filename[260];
 	off_t filesize;
@@ -26,7 +25,7 @@ struct ship_20 *shp_init(struct ship_20 *this, const char *fname, int res_id)
 	this->filedata2 = NULL;
 	this->filedata2_off8 = NULL;
 	this->slp_data = NULL;
-	if (ship_7C0464 || res_id < 0) {
+	if (palette_shp || res_id < 0) {
 		strcpy(filename, fname);
 		strcpy(&filename[strlen(filename)], "SLP");
 		++ship_count;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <smt/smt.h>
 #include "engine.h"
 #include "menu.h"
@@ -7,6 +8,7 @@
 #include "dmap.h"
 #include "memmap.h"
 #include "gfx.h"
+#include "game.h"
 
 int enum_display_modes(void *arg, int (*cmp)(struct display*, void*))
 {
@@ -148,7 +150,14 @@ void update_palette(struct pal_entry *tbl, unsigned start, unsigned n, struct pa
 	}
 }
 
-struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3)
+static void palette_apply(struct pal_entry *pal)
+{
+	stub
+	(void)pal;
+	//update_palette(NULL, 0, 256, pal);
+}
+
+struct pal_entry *drs_palette(char *pal_fname, int res_id, int a3)
 {
 	stub
 	if (res_id == -1)
@@ -157,7 +166,7 @@ struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3)
 	char *drs_item = drs_get_item(DT_BINARY, res_id, &count, &offset);
 	char *palette = drs_item;
 	const char *j_hdr = "JASC-PAL\r\n0100\r\n", *line = palette;
-	struct drs_pal *pal = NULL;
+	struct pal_entry *pal = NULL;
 	if (memcmp(palette, j_hdr, 16))
 		goto fail;
 	unsigned n;
@@ -172,7 +181,7 @@ struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3)
 	const char *next = strchr(line, '\n');
 	if (!next) goto fail;
 	line = next + 1;
-	pal = new(sizeof(struct drs_pal));
+	pal = new(n * sizeof(struct pal_entry));
 	if (!pal) {
 		fputs("out of memory\n", stderr);
 		halt();
@@ -181,8 +190,13 @@ struct drs_pal *drs_palette(char *pal_fname, int res_id, int a3)
 		unsigned r, g, b;
 		if (sscanf(line, "%u %u %u", &r, &g, &b) != 3)
 			goto fail;
-		struct pal_entry *dst = &pal->tbl[i];
+		struct pal_entry *dst = &pal[i];
 		dst->r = r; dst->g = g; dst->b = b;
+	}
+	if (a3) {
+		struct video_mode *mode = game_ref->mode;
+		if (mode->byte478 == 1 || mode->no_fullscreen == 1)
+			palette_apply(pal);
 	}
 	return pal;
 fail:

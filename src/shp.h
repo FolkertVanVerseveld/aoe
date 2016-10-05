@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-struct ship_20 {
+struct shp {
 	void *file_slp_shp_data;
 	size_t num4;
 	off_t filesize;
@@ -13,6 +13,6 @@ struct ship_20 {
 	void *slp_data, *slp_data_off20;
 };
 
-struct ship_20 *shp_init(struct ship_20 *this, const char *fname, int res_id);
+struct shp *shp_init(struct shp *this, const char *fname, int res_id);
 
 #endif
