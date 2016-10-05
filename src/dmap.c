@@ -88,7 +88,6 @@ int read_data_mapping(const char *filename, const char *directory, int nommap)
 		goto fail;
 	}
 	strcpy(map->filename, filename);
-	puts(name);
 	if (nommap) {
 		map->fd = fd;
 		map->dblk = NULL;

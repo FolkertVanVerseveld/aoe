@@ -8,6 +8,16 @@
 #include <unistd.h>
 #include "xmap.h"
 
+#ifdef XMAPDBG
+#define dbgs(s) puts(s)
+#define fdbgs(s,f) fputs(s,f)
+#define dbgf(f,...) printf(f, ##__VA_ARGS__)
+#else
+#define dbgs(s) ((void)0)
+#define fdbgs(s,f) ((void)0)
+#define dbgf(f,...) ((void)0)
+#endif
+
 int xstat(struct xfile *this, char *data, size_t size)
 {
 	this->type = XT_UNKNOWN;
@@ -44,9 +54,9 @@ int xstat(struct xfile *this, char *data, size_t size)
 			return 1;
 		}
 	}
-	printf("data start: %zX\n", data_start);
+	dbgf("data start: %zX\n", data_start);
 	if (start < sizeof(struct dos)) {
-		printf("dos start: %zX\n", start);
+		dbgf("dos start: %zX\n", start);
 		return 0;
 	}
 	if (start >= size) {
@@ -56,13 +66,13 @@ int xstat(struct xfile *this, char *data, size_t size)
 	this->type = XT_DOS;
 	struct dos *dos = (struct dos*)data;
 	this->dos = dos;
-	printf("dos start: %zX\n", start);
+	dbgf("dos start: %zX\n", start);
 	size_t pe_start = dos->e_lfanew;
 	if (pe_start >= size) {
 		fprintf(stderr, "bad pe start: got %zX, max: %zX\n", start, size - 1);
 		return 1;
 	}
-	printf("pe start: %zX\n", pe_start);
+	dbgf("pe start: %zX\n", pe_start);
 	if (size < sizeof(struct pehdr) + pe_start) {
 		fputs("bad pe/coff header: file too small\n", stderr);
 		return 1;
@@ -82,21 +92,21 @@ int xstat(struct xfile *this, char *data, size_t size)
 	this->type = XT_PEOPT;
 	struct peopthdr *pohdr = (struct peopthdr*)(data + pe_start + sizeof(struct pehdr));
 	this->peopt = pohdr;
-	printf("opthdr size: %hX\n", phdr->f_opthdr);
+	dbgf("opthdr size: %hX\n", phdr->f_opthdr);
 	switch (pohdr->o_chdr.o_magic) {
 		case 0x10b:
-			puts("type: portable executable 32 bit");
+			dbgs("type: portable executable 32 bit");
 			break;
 		case 0x20b:
-			puts("type: portable executable 64 bit");
+			dbgs("type: portable executable 64 bit");
 			this->bits = 64;
 			break;
 		default:
-			printf("type: unknown: %hX\n", pohdr->o_chdr.o_magic);
+			dbgf("type: unknown: %hX\n", pohdr->o_chdr.o_magic);
 			break;
 	}
 	this->nrvasz = pohdr->o_nrvasz;
-	printf("nrvasz: %X\n", pohdr->o_nrvasz);
+	dbgf("nrvasz: %X\n", pohdr->o_nrvasz);
 	size_t sec_start = pe_start + sizeof(struct pehdr) + phdr->f_opthdr;
 	if (pohdr->o_ddir.d_end) {
 		fprintf(stderr, "bad data dir end marker: %lX\n", pohdr->o_ddir.d_end);
@@ -175,10 +185,10 @@ int xstat(struct xfile *this, char *data, size_t size)
 		}
 		if (flags)
 			strcat(buf, " ??");
-		printf("#%2u: %-8s %8X %8X%s\n", i, name, sec->s_scnptr, sec->s_flags, buf);
+		dbgf("#%2u: %-8s %8X %8X%s\n", i, name, sec->s_scnptr, sec->s_flags, buf);
 	}
-	printf("section count: %u (occupied: %u)\n", pohdr->o_nrvasz, this->nrvan);
-	printf("text entry: %zX\n", (size_t)(pohdr->o_chdr.o_entry));
+	dbgf("section count: %u (occupied: %u)\n", pohdr->o_nrvasz, this->nrvan);
+	dbgf("text entry: %zX\n", (size_t)(pohdr->o_chdr.o_entry));
 	return 0;
 }
 
