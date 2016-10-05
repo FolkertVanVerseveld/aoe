@@ -53,6 +53,8 @@ struct colpalette game_col_palette;
 unsigned game_hkey_root;
 extern int prng_seed;
 
+struct pal_entry win_pal[256];
+
 #define prng_init(t) prng_seed=t
 
 struct pal_entry game_pal[256];

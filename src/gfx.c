@@ -153,8 +153,7 @@ void update_palette(struct pal_entry *tbl, unsigned start, unsigned n, struct pa
 static void palette_apply(struct pal_entry *pal)
 {
 	stub
-	(void)pal;
-	//update_palette(NULL, 0, 256, pal);
+	update_palette(win_pal, 0, 256, pal);
 }
 
 struct pal_entry *drs_palette(char *pal_fname, int res_id, int a3)

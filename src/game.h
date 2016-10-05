@@ -303,6 +303,7 @@ struct game {
 };
 
 extern struct colpalette game_col_palette;
+extern struct pal_entry win_pal[256];
 
 struct game *game_ctor(struct game *this, struct game_config *cfg, int should_start_game);
 
