@@ -154,11 +154,21 @@ char *get_res_str2(unsigned id, char *str, unsigned n)
 	return str;
 }
 
-static char *game_strerror2(struct game *this, int code, int status, int a3, char *str, unsigned n)
+static const char *game_strmap(struct game *this, int code, int type, int a4, char *str, unsigned n)
 {
-	char *error = NULL;
-	(void)a3;
 	stub
+	const char *error = NULL;
+	*str = '\0';
+	switch (code) {
+	}
+	return error;
+}
+
+static const char *game_strerror2(struct game *this, int code, int status, int a3, char *str, unsigned n)
+{
+	stub
+	const char *error = NULL;
+	(void)a3;
 	*str = '\0';
 	if (code == 1) {
 		switch (status) {
@@ -183,9 +193,9 @@ static char *game_strerror2(struct game *this, int code, int status, int a3, cha
 	return error;
 }
 
-char *game_strerror(struct game *this, int code, signed status, int a4, char *str, unsigned n)
+const char *game_strerror(struct game *this, int code, signed status, int a4, char *str, unsigned n)
 {
-	char *error = NULL;
+	const char *error = NULL;
 	stub
 	*str = '\0';
 	switch (code) {

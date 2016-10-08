@@ -1,6 +1,24 @@
 #ifndef AOE_SFX_H
 #define AOE_SFX_H
 
+#define SFX_BTN1     50300
+#define SFX_BTN2     50301
+#define SFX_CHATRECV 50302
+#define SFX_CANTDO   50303
+#define SFX_TRIBUTE  50304
+#define SFX_RESDONE  50305
+#define SFX_PKILLED  50306
+#define SFX_PDROPPED 50307
+#define SFX_MSTART   50308
+#define SFX_MDONE    50309
+#define SFX_MKILLED  50310
+#define SFX_ARTHELD  50311
+#define SFX_ARTLOST  50312
+#define SFX_CONVWARN 50313
+#define SFX_CONVDONE 50314
+#define SFX_RES      50315
+#define SFX_FARMDIE  50316
+
 struct sfx_engine;
 
 struct clip {

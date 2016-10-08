@@ -10,25 +10,129 @@
 #include "comm.h"
 #include "log.h"
 
-#define GAME_LOGCTL_FILE 1
+#define GAME_LOGCTL_FILE   1
 #define GAME_LOGCTL_STDOUT 2
 
-#define GE_LIB 1
-#define GE_OPT 2
-#define GE_TIME 3
-#define GE_FOCUS 4
-#define GE_ICON 5
+#define ACT_WORK          1
+#define ACT_MOVE          2
+#define ACT_BUILD         3
+#define ACT_TRADE         4
+#define ACT_STOP          5
+#define ACT_UNSELECT      6
+#define ACT_UNLOAD        7
+#define ACT_GROUP         8
+#define ACT_UNGROUP       9
+#define ACT_FORMATION     10
+#define ACT_CANCEL        11
+#define ACT_NEXT          12
+#define ACT_CHAT          13
+#define ACT_DIPLOMACY     14
+#define ACT_MENU          15
+#define ACT_TRADE_WITH    16
+#define ACT_RESEARCH      17
+#define ACT_CREATE        18
+#define ACT_BUILD2        19
+#define ACT_BUILD_ABORT   20
+#define ACT_HELP          21
+#define ACT_STANCE_GROUND 22
+#define ACT_STANCE_ATTACK 23
+// XXX 24 missing
+#define ACT_TRADE_FOOD    25
+#define ACT_TRADE_WOOD    26
+#define ACT_TRADE_STONE   27
+#define ACT_HEAL          28
+#define ACT_CONVERT       29
+#define ACT_ATTACK        30
+#define ACT_REPAIR        31
+#define ACT_QUEUE_INC     32
+#define ACT_QUEUE_DEC     33
+
+#define GE_LIB        1
+#define GE_OPT        2
+#define GE_TIME       3
+#define GE_FOCUS      4
+#define GE_ICON       5
 #define GE_FULLSCREEN 6
-#define GE_GFX 7
-#define GE_MOUSE 8
-#define GE_WINCTL2 9
-#define GE_SFX 10
-#define GE_CTL 11
-#define GE_SFX2 12
-#define GE_WINCTL 16
-#define GE_PALETTE 17
-#define GE_LOWOS 20
-#define GE_LOWMEM 22
+#define GE_GFX        7
+#define GE_MOUSE      8
+#define GE_WINCTL2    9
+#define GE_SFX        10
+#define GE_CTL        11
+#define GE_SFX2       12
+#define GE_WINCTL     16
+#define GE_PALETTE    17
+#define GE_LOWOS      20
+#define GE_LOWMEM     22
+
+#define TYPE_FAIL  1
+#define TYPE_RES   100
+#define TYPE_AGE   101
+#define TYPE_ACT   102
+#define TYPE_FAIL2 103
+#define TYPE_ATTR  104
+#define TYPE_CIV   105
+
+#define FAIL_START      100
+#define FAIL_START2     101
+#define FAIL_START3     102
+#define FAIL_SAVE_GAME  103
+#define FAIL_SAVE_SCENE 104
+#define FAIL_LOAD_GAME  105
+#define FAIL_LOAD_SCENE 106
+
+#define RES_FOOD  0
+#define RES_WOOD  1
+#define RES_STONE 2
+#define RES_GOLD  3
+#define RES_GOODS 9
+#define RES_FOOD2 15
+#define RES_FOOD3 16
+#define RES_FOOD4 17
+
+#define AGE_STONE  1
+#define AGE_TOOL   2
+#define AGE_BRONZE 3
+#define AGE_IRON   4
+
+#define CIV_EGYPT        1
+#define CIV_GREEK        2
+#define CIV_BABYLONIAN   3
+#define CIV_ASSYRIAN     4
+#define CIV_MINOAN       5
+#define CIV_HITTITE      6
+#define CIV_PHOENICIAN   7
+#define CIV_SUMERIAN     8
+#define CIV_PERSIAN      9
+#define CIV_SHANG        10
+#define CIV_YAMATO       11
+#define CIV_CHOSON       12
+#define CIV_ROMAN        13
+#define CIV_CARTHAGINIAN 14
+#define CIV_PALMYRIAN    15
+#define CIV_MACEDONIAN   16
+
+#define LOW_FOOD    0
+#define LOW_WOOD    1
+#define LOW_STONE   2
+#define LOW_GOLD    3
+#define LOW_POP     4
+#define LOW_POP_MAX 32
+
+#define ATTR_LOAD     1
+#define ATTR_HEALTH   2
+#define ATTR_ARMOR    3
+#define ATTR_ATTACK   4
+#define ATTR_RESEARCH 5
+#define ATTR_TRAIN    6
+#define ATTR_BUILD    7
+#define ATTR_SIGHT    8
+#define ATTR_POP      9
+#define ATTR_RANGE    10
+#define ATTR_SPEED    11
+
+#define SHIP_TRADE  101
+#define SHIP_LAND   102
+#define SHIP_UNLOAD 103
 
 struct window_ctl2 {
 	unsigned num0, num4, num8, numC;
@@ -53,9 +157,9 @@ struct game_vtbl {
 	unsigned (*set_rpair)(struct game*, unsigned, int);
 	struct regpair *(*set_rpair_next)(struct game*, struct regpair*, int);
 	unsigned (*get_state)(struct game*);
-	char *(*strerr)(struct game*, int, int, int, char*, unsigned);
+	const char *(*strerr)(struct game*, int, int, int, char*, unsigned);
 	char *(*get_res_str)(unsigned, char*, unsigned);
-	char *(*strerr2)(struct game*, int, int, int, char*, unsigned);
+	const char *(*strerr2)(struct game*, int, int, int, char*, unsigned);
 	int (*func)(struct game*);
 	int (*chat_send)(struct game*, unsigned, char*);
 	int (*parse_opt)(struct game*);

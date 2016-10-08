@@ -172,7 +172,6 @@ struct pal_entry *drs_palette(char *pal_fname, int res_id, int a3)
 	line = palette + 16;
 	if (sscanf(line, "%u", &n) != 1)
 		goto fail;
-	printf("n=%u\n", n);
 	if (n > 256) {
 		fprintf(stderr, "overflow: palette entries=%u (max: 256)\n", n);
 		halt();
