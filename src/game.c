@@ -998,8 +998,8 @@ static int game_futex_window_request_focus(struct game *this)
 static int game_go_fullscreen(struct game *this)
 {
 	stub
-	int x, y, wx, wy;
-	unsigned width, height, ww, wh;
+	int x, y, wx, wy, ww, wh;
+	unsigned width, height;
 	// NOTE recycle this->cfg->window
 	this->window = this->cfg->window;
 
@@ -1021,15 +1021,17 @@ static int game_go_fullscreen(struct game *this)
 		return 0;
 	wx = bounds.x; wy = bounds.y;
 	ww = bounds.w; wh = bounds.h;
+	x = wx; y = wy;
+	width = ww; height = wh;
 
 	if (this->cfg->window_query_dd_interface || (width == this->cfg->width && height == this->cfg->height)) {
 		SDL_SetWindowTitle(this->window, this->cfg->title);
 		SDL_SetWindowBordered(this->window, 0);
 	}
 	go_fullscreen(this->window);
-	SDL_GetWindowPosition(this->window, &s_x, &s_y);
+	SDL_GetWindowPosition(this->window, &wx, &wy);
 	SDL_GetWindowSize(this->window, &ww, &wh);
-	if (wx + wh != width || wy + wh != this->cfg->height) {
+	if (wx + wh != (int)width || wy + wh != (int)this->cfg->height) {
 		int dx, dy;
 		unsigned dw, dh;
 		dx = x;

@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "engine.h"
 #include "menu.h"
 #include "todo.h"
@@ -98,13 +100,12 @@ int direct_draw_init(struct video_mode *this, SDL_Window *hInst, SDL_Window *win
 		return 0;
 	if (this->no_fullscreen == 1) {
 		// TODO get display mode
-	} else {
-		if (go_fullscreen(this->window)) {
-			fprintf(stderr, "%s: no fullscreen available: error=%u\n", __func__, ret);
+	} else
+		if ((ret = go_fullscreen(this->window)) != 0) {
+			fprintf(stderr, "%s: no fullscreen available: error=%d\n", __func__, ret);
 			this->state = 1;
 			return 0;
 		}
-	}
 	return 1;
 }
 
@@ -154,10 +155,13 @@ static void palette_apply(struct pal_entry *pal)
 
 struct pal_entry *drs_palette(char *pal_fname, int res_id, int a3)
 {
-	stub
 	if (res_id == -1)
 		return 0;
-	size_t count, offset;
+	size_t count;
+	off_t offset;
+	struct stat st;
+	if (stat(pal_fname, &st))
+		fprintf(stderr, "unsupported: dynamic drs \"%s\"\n", pal_fname);
 	char *drs_item = drs_get_item(DT_BINARY, res_id, &count, &offset);
 	char *palette = drs_item;
 	const char *j_hdr = "JASC-PAL\r\n0100\r\n", *line = palette;
@@ -198,5 +202,5 @@ fail:
 	hexdump(line, 16);
 	if (pal)
 		delete(pal);
-	halt();
+	return pal;
 }

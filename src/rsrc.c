@@ -152,6 +152,7 @@ static int rsrc_walk(struct xfile *x, unsigned level, size_t soff, off_t diff, s
 {
 	char *map = x->data;
 	size_t size = x->size;
+	(void)tn_id;
 	dbgf("soff=%zX,off=%zX\n", soff, *off);
 	if (*off + sizeof(struct rsrcdir) > size) {
 		fprintf(stderr, "bad rsrc node at level %u: file too small\n", level);
