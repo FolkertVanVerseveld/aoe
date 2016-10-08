@@ -2,6 +2,7 @@
 #define AOE_GAME_H
 
 #include <stdint.h>
+#include <SDL2/SDL.h>
 #include "engine.h"
 #include "shp.h"
 #include "map.h"
@@ -177,7 +178,7 @@ struct game_vtbl {
 	int (*repaint)(struct game*);
 	int (*set_ones)(struct game*);
 	// XXX consider inlining
-	int (*translate_event)(struct game*, int);
+	int (*translate_event)(struct game*, SDL_Event*);
 	void (*handle_event)(struct game*, unsigned);
 	int (*cfg_apply_video_mode)(struct game*, unsigned, int, int, unsigned);
 	struct map *(*map_save_area)(struct game*);
@@ -195,12 +196,16 @@ struct game_config {
 	char version[21];
 	char win_name[121];
 	char tr_world_txt[137];
-	unsigned window, gl;
+	SDL_Window *window;
+	SDL_GLContext *gl;
 	char langpath[32];
 	char dir_empires[261];
 	char strAOE[263];
-	int d0, d1p0, d3;
-	unsigned hInst, hPrevInst;
+	int d0;
+	int d1p0;
+	int d3;
+	SDL_Window *hInst;
+	SDL_Window *hPrevInst;
 	char reg_path[256];
 	char optbuf[OPTBUFSZ];
 	unsigned nshowcmd;
@@ -254,7 +259,7 @@ struct game {
 	struct game_focus *focus;
 	struct game8 *ptr8;
 	struct game_config *cfg;
-	unsigned window;
+	SDL_Window *window;
 	unsigned num14;
 	unsigned running;
 	// REMAP typeof(HPALETTE palette) == pal_entry*
@@ -287,9 +292,9 @@ struct game {
 	unsigned tbl84[14];
 	char gapBC[108];
 	unsigned cursor_old_state;
-	// REMAP typeof(HCURSOR cursor_old) == void*
 	char tbl88[4];
-	unsigned cursor_old;
+	// REMAP typeof(HCURSOR cursor_old) == SDL_Cursor*
+	SDL_Cursor *cursor_old;
 	char tbl90[80];
 	unsigned tbl184[2];
 	struct comm *nethandler;
@@ -305,10 +310,10 @@ struct game {
 	unsigned midi_sync;
 	unsigned cursor_state;
 	unsigned apply_new_cursor;
-	// REMAP typeof(HCURSOR cursor) == void*
-	unsigned cursor;
+	// REMAP typeof(HCURSOR cursor) == SDL_Cursor*
+	SDL_Cursor *cursor;
 	unsigned num1D8;
-	unsigned window2;
+	SDL_Window *window2;
 	short num1E0;
 	char pad1E2[2];
 	unsigned num1E4;
@@ -410,5 +415,6 @@ extern struct colpalette game_col_palette;
 extern struct pal_entry win_pal[256];
 
 struct game *game_ctor(struct game *this, struct game_config *cfg, int should_start_game);
+int go_fullscreen(SDL_Window *scr);
 
 #endif

@@ -34,4 +34,6 @@ void libdump(void);
 
 void eng_free(void);
 
+void show_error(const char *title, const char *msg);
+
 #endif

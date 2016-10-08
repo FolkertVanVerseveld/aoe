@@ -10,7 +10,6 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <smt/smt.h>
 #include "config.h"
 #include "dmap.h"
 #include "game.h"
@@ -98,8 +97,8 @@ struct game_config cfg = {
 	.palette = "palette",
 	.cursors = "mcursors",
 	.strAOE = "AOE",
-	.hPrevInst = SMT_RES_INVALID,
-	.hInst = SMT_RES_INVALID,
+	.hPrevInst = NULL,
+	.hInst = NULL,
 	.nshowcmd = 0,
 	.scroll0 = 84,
 	.scroll1 = 84,
@@ -164,7 +163,8 @@ int main(int argc, char **argv)
 	int argp;
 	char *optptr, options[OPTBUFSZ];
 	size_t optsz = 0;
-	unsigned hPrevInst = 0, hInst = 0, nShowCmd = 0;
+	SDL_Window *hPrevInst = NULL, *hInst = NULL;
+	unsigned nShowCmd = 0;
 	/* < */
 	meminit();
 	atexit(cleanup);
@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 		AOE.vtbl->get_res_str(STR_ERROR, cfg.prompt_title, 256);
 		AOE.vtbl->strerr(&AOE, 1, error, 0, cfg.prompt_message, 256);
 		AOE.vtbl->dtor(&AOE, 0);
-		smtMsg(SMT_MSG_ERR, 0, cfg.prompt_title, cfg.prompt_message);
+		show_error(cfg.prompt_title, cfg.prompt_message);
 	}
 	return 0;
 }

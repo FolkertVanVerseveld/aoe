@@ -1,23 +1,15 @@
 #!/bin/bash -e
 CC=gcc
-if [ -z $INCPATH ]; then
-	echo "INCPATH: not defined" 1>&2
-	exit 1
-fi
-if [ -z $SMTPATH ]; then
-	echo "SMTPATH: not defined" 1>&2
-	exit 1
-fi
 cstd='-std=gnu99'
-CFLAGS="-Wall -Wextra -pedantic -pthread $cstd -I$INCPATH $*"
-libs='sdl2 glew freealut vorbisfile'
+CFLAGS="-Wall -Wextra -pedantic $cstd $*"
+libs='sdl2'
 if ! hash pkg-config 2>/dev/null; then
 	echo "pkg-config is missing" 1>&2
 	exit 1
 fi
 CFLAGS="$CFLAGS $(pkg-config --cflags $libs)"
 LDLIBS="$(pkg-config --libs $libs)"
-LLIBS='-lSDL2_image -lSDL2_mixer -lpthread -lm'
+LLIBS='-lSDL2_image -lm'
 CCM="$CC $cstd -MM"
 cat <<'EOF'>.gitignore
 .gitignore
@@ -72,7 +64,7 @@ cat <<'EOF' >>Makefile
 default: $(OBJECTS) $(MAIN)
 EOF
 for i in $MAIN; do
-	printf '%s: %s '$SMTPATH' $(LIST)\n' "${i/%.c/}" "${i/%.c/.o}" >>Makefile
+	printf '%s: %s $(LIST)\n' "${i/%.c/}" "${i/%.c/.o}" >>Makefile
 done
 cat <<'EOF' >>Makefile
 %.o: %.c

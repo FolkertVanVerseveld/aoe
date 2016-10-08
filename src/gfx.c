@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <smt/smt.h>
 #include "engine.h"
 #include "menu.h"
 #include "todo.h"
@@ -12,27 +11,25 @@
 
 int enum_display_modes(void *arg, int (*cmp)(struct display*, void*))
 {
-	unsigned count, w, h;
-	int x, y;
+	int count;
 	struct display scr;
-	count = smtDisplayCount();
-	for (unsigned i = 0; i < count; ++i) {
-		smtDisplayBounds(i, &x, &y, &w, &h);
-		struct smtMode mode;
-		unsigned m = smtModeCount(i);
-		for (unsigned j = 0; j < m; ++j) {
-			if (smtModeBounds(i, j, &mode))
+	count = SDL_GetNumVideoDisplays();
+	for (int i = 0; i < count; ++i) {
+		int m = SDL_GetNumDisplayModes(i);
+		for (int j = 0; j < m; ++j) {
+			SDL_DisplayMode dmode = {SDL_PIXELFORMAT_UNKNOWN, 0, 0, 0, 0};
+			if (SDL_GetDisplayMode(i, j, &dmode))
 				continue;
-			scr.bitdepth = mode.bitdepth;
-			scr.width = mode.width;
-			scr.height = mode.height;
-			scr.frequency = mode.frequency;
+			scr.bitdepth  = SDL_BITSPERPIXEL(dmode.format);
+			scr.width     = dmode.w;
+			scr.height    = dmode.h;
+			scr.frequency = dmode.refresh_rate;
 			cmp(&scr, arg);
-			if (mode.bitdepth > 16) {
+			if (scr.bitdepth > 16) {
 				// also fake 16 and 8 bit modes
-				mode.frequency = 16;
+				scr.frequency = 16;
 				cmp(&scr, arg);
-				mode.frequency = 8;
+				scr.frequency = 8;
 				cmp(&scr, arg);
 			}
 		}
@@ -85,7 +82,7 @@ unsigned video_mode_fetch_bounds(struct video_mode *this, int query_interface)
 	return 0;
 }
 
-int direct_draw_init(struct video_mode *this, unsigned hInst, unsigned window, struct pal_entry *palette, char opt0, char opt1, int width, int height, int sys_memmap)
+int direct_draw_init(struct video_mode *this, SDL_Window *hInst, SDL_Window *window, struct pal_entry *palette, char opt0, char opt1, int width, int height, int sys_memmap)
 {
 	int ret;
 	stub
@@ -102,9 +99,8 @@ int direct_draw_init(struct video_mode *this, unsigned hInst, unsigned window, s
 	if (this->no_fullscreen == 1) {
 		// TODO get display mode
 	} else {
-		ret = smtMode(this->window, SMT_WIN_FULL_FAKE);
-		if (ret) {
-			fprintf(stderr, "%s: no fullscreen available: smt error=%u\n", __func__, ret);
+		if (go_fullscreen(this->window)) {
+			fprintf(stderr, "%s: no fullscreen available: error=%u\n", __func__, ret);
 			this->state = 1;
 			return 0;
 		}
@@ -115,7 +111,7 @@ int direct_draw_init(struct video_mode *this, unsigned hInst, unsigned window, s
 struct video_mode *video_mode_init(struct video_mode *this)
 {
 	stub
-	this->window = SMT_RES_INVALID;
+	this->window = NULL;
 	this->palette = NULL;
 	this->state = 0;
 	this->no_fullscreen = 0;

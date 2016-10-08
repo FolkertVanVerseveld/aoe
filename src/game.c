@@ -5,7 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <smt/smt.h>
+#include <SDL2/SDL.h>
 #include "config.h"
 #include "dbg.h"
 #include "dmap.h"
@@ -25,8 +25,8 @@ static char game_fname_focus[256];
 static FILE *file_vtbl_focus;
 
 static struct logger *game_logger;
-static unsigned game_window;
-static unsigned game_window_580DA0;
+static SDL_Window *game_window;
+static SDL_Window *game_window_580DA0;
 static struct comm *comm_580DA8;
 static struct sfx_engine *sfx_engine_ref;
 static struct game_drive *game_drive_ref;
@@ -35,8 +35,8 @@ static unsigned midi_no_fill = 0;
 
 static unsigned players_connection_state[9];
 
-static unsigned cfg_hInst;
-static unsigned hInstance;
+static SDL_Window *cfg_hInst;
+static SDL_Window *hInstance;
 static int hLibModule = -1;
 static unsigned game_580E24;
 static unsigned game_580E28;
@@ -63,9 +63,9 @@ static void game_free_ios_base(struct game *this)
 {
 	stub
 	this->vtbl = &g_vtbl2;
-	if (this->window2 != SMT_RES_INVALID) {
-		smtFreewin(this->window2);
-		this->window2 = SMT_RES_INVALID;
+	if (this->window2) {
+		SDL_DestroyWindow(this->window2);
+		this->window2 = NULL;
 	}
 }
 
@@ -122,18 +122,21 @@ unsigned game_loop(struct game *this)
 {
 	stub
 	while (this->running) {
-		unsigned ev, state;
+		unsigned state;
 		state = this->rpair_root.value.dword;
 		if (state != GE_FOCUS && state != GE_OPT) {
 			printf("stop: state == %u\n", state);
 			break;
 		}
-		while ((ev = smtPollev()) != SMT_EV_DONE) {
-			if (ev == SMT_EV_QUIT) return 0;
-			this->vtbl->translate_event(this, ev);
+		SDL_Event ev;
+		while (1) {
+			if (!SDL_PollEvent(&ev))
+				break;
+			if (ev.type == SDL_QUIT) return 0;
+			this->vtbl->translate_event(this, &ev);
 			this->vtbl->handle_event(this, 0);
 		}
-		smtSwapgl(this->cfg->window);
+		SDL_GL_SwapWindow(this->cfg->window);
 	}
 	return 0;
 }
@@ -615,6 +618,7 @@ static int game_handle_event_0(struct game *this)
 
 static void game_handle_event(struct game *this, unsigned a2)
 {
+	stub
 	(void)a2;
 	game_handle_event_0(this);
 }
@@ -757,12 +761,12 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	// global reference
 	game_ref = this;
 	this->cfg = cfg;
-	this->window = SMT_RES_INVALID;
+	this->window = NULL;
 	this->num14 = 0;
 	this->running = 1;
 	this->palette = NULL;
 	this->num24 = 0;
-	hInstance = SMT_RES_INVALID;
+	hInstance = NULL;
 	this->screensaver_state = 0;
 	this->state = 0;
 	this->timer = 0;
@@ -801,9 +805,13 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	this->curscfg = NULL;
 	this->num1C4 = 0;
 	this->midi_sync = 0;
-	this->cursor = SMT_CURS_ARROW;
-	if (smtCursor(SMT_CURS_ARROW, SMT_CURS_SHOW))
-		this->cursor = SMT_CURS_DEFAULT;
+	SDL_Cursor *curs = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+	SDL_SetCursor(this->cursor);
+	if (SDL_ShowCursor(1) != 1) {
+		SDL_FreeCursor(curs);
+		this->cursor = SDL_GetDefaultCursor();
+	} else
+		this->cursor = curs;
 	this->num1E0 = 0;
 	this->num1E4 = 0;
 	if (!getcwd(this->cwdbuf, CWDBUFSZ))
@@ -824,9 +832,9 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	this->tbl8E8[2] = 0;
 	this->num9AC = 1;
 	game_logger = NULL;
-	game_window = SMT_RES_INVALID;
+	game_window = NULL;
 	cfg_hInst = this->cfg->hInst;
-	game_window_580DA0 = SMT_RES_INVALID;
+	game_window_580DA0 = NULL;
 	comm_580DA8 = 0;
 	game_hkey_root = 0;
 	sfx_engine_ref = NULL;
@@ -853,7 +861,7 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	return this;
 }
 
-static int game_duck_event(struct game *this, int event)
+static int game_duck_event(struct game *this, SDL_Event *event)
 {
 	(void)this;
 	(void)event;
@@ -878,9 +886,8 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	game_vtbl_init(this, cfg, 0);
 	/* < */
 	// TODO move this
-	smtCreatewin(&this->cfg->window, 640, 480, NULL, SMT_WIN_VISIBLE | SMT_WIN_BORDER);
-	smtCreategl(&this->cfg->gl, this->cfg->window);
-	smtPos(this->cfg->window, 0, 0);
+	this->cfg->window = SDL_CreateWindow("AoE", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+	this->cfg->gl = SDL_GL_CreateContext(this->cfg->window);
 	/* > */
 	this->hwnd_mci = 0;
 	this->tblBF0[0] = -1;
@@ -990,21 +997,38 @@ static int game_futex_window_request_focus(struct game *this)
 
 static int game_go_fullscreen(struct game *this)
 {
-	int x, y, wx, wy;
-	unsigned width, height, ww, wh, display_index = 0;
 	stub
+	int x, y, wx, wy;
+	unsigned width, height, ww, wh;
 	// NOTE recycle this->cfg->window
 	this->window = this->cfg->window;
-	smtDisplaywin(this->window, &display_index);
-	smtDisplayBounds(display_index, &x, &y, &width, &height);
-	if (this->window == SMT_RES_INVALID)
+
+	if (!this->window)
 		return 0;
-	if (this->cfg->window_query_dd_interface || (width == this->cfg->width && height == this->cfg->height)) {
-		smtTitle(this->window, this->cfg->title);
-		smtBorder(this->window, 0);
+	SDL_Rect bounds;
+	int i, s_i, s_x, s_y, s_w, s_h, s_n;
+	SDL_GetWindowSize(this->window, &s_w, &s_h);
+	SDL_GetWindowPosition(this->window, &s_x, &s_y);
+	s_n = SDL_GetNumVideoDisplays();
+	for (s_i = i = 0; i < s_n; ++i) {
+		SDL_GetDisplayBounds(i, &bounds);
+		if (s_x >= bounds.x && s_y >= bounds.y && s_x < bounds.x + bounds.w && s_y < bounds.y + bounds.h) {
+			s_i = i;
+			break;
+		}
 	}
-	smtMode(this->window, SMT_WIN_FULL_FAKE);
-	smtBoundsp(this->window, &wx, &wy, &ww, &wh);
+	if (SDL_GetDisplayBounds(s_i, &bounds))
+		return 0;
+	wx = bounds.x; wy = bounds.y;
+	ww = bounds.w; wh = bounds.h;
+
+	if (this->cfg->window_query_dd_interface || (width == this->cfg->width && height == this->cfg->height)) {
+		SDL_SetWindowTitle(this->window, this->cfg->title);
+		SDL_SetWindowBordered(this->window, 0);
+	}
+	go_fullscreen(this->window);
+	SDL_GetWindowPosition(this->window, &s_x, &s_y);
+	SDL_GetWindowSize(this->window, &ww, &wh);
 	if (wx + wh != width || wy + wh != this->cfg->height) {
 		int dx, dy;
 		unsigned dw, dh;
@@ -1016,10 +1040,11 @@ static int game_go_fullscreen(struct game *this)
 			"move window to (%d,%d,%u,%u)\n",
 			dx, dy, dw, dh
 		);
-		smtBounds(this->window, dx, dy, dw, dh);
+		SDL_SetWindowPosition(this->window, dx, dy);
+		SDL_SetWindowSize(this->window, dw, dh);
 	}
 	if (this->cfg->window_query_dd_interface)
-		smtVisible(this->window, 1);
+		SDL_ShowWindow(this->window);
 	game_window = this->window;
 	return 1;
 }
@@ -1243,7 +1268,7 @@ static signed game_show_focus_screen(struct game *this)
 			return 0;
 		}
 	}
-	smtScreensave(SMT_SCREEN_SAVE_OFF);
+	SDL_DisableScreenSaver();
 	this->num9AC = game_comm_ctl(this, 0);
 	// initialize all vtbl stuff
 	if (!this->vtbl->init_icon(this)) {

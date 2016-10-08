@@ -5,7 +5,9 @@
 #include <dirent.h>
 #include <strings.h>
 #include <unistd.h>
+#include <SDL2/SDL.h>
 #include "xmap.h"
+#include "todo.h"
 
 int fd_langx = -1, fd_lang = -1;
 char *data_langx = NULL, *data_lang = NULL;
@@ -39,4 +41,19 @@ void eng_free(void)
 		xunmap(fd_lang, data_lang, size_lang);
 		fd_lang = -1;
 	}
+}
+
+void show_error(const char *title, const char *msg)
+{
+	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, msg, NULL);
+}
+
+int go_fullscreen(SDL_Window *scr)
+{
+	SDL_Rect bounds;
+	SDL_GetDisplayBounds(0, &bounds);
+	SDL_SetWindowBordered(scr, SDL_FALSE);
+	SDL_SetWindowPosition(scr, bounds.x, bounds.y);
+	SDL_SetWindowSize(scr, bounds.w, bounds.h);
+	return 0;
 }
