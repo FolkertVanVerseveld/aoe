@@ -154,17 +154,7 @@ char *get_res_str2(unsigned id, char *str, unsigned n)
 	return str;
 }
 
-static const char *game_strmap(struct game *this, int code, int type, int a4, char *str, unsigned n)
-{
-	stub
-	const char *error = NULL;
-	*str = '\0';
-	switch (code) {
-	}
-	return error;
-}
-
-static const char *game_strerror2(struct game *this, int code, int status, int a3, char *str, unsigned n)
+static const char *game_strerror(struct game *this, int code, int status, int a3, char *str, unsigned n)
 {
 	stub
 	const char *error = NULL;
@@ -193,7 +183,7 @@ static const char *game_strerror2(struct game *this, int code, int status, int a
 	return error;
 }
 
-const char *game_strerror(struct game *this, int code, signed status, int a4, char *str, unsigned n)
+static const char *game_strerror2(struct game *this, int code, signed status, int a4, char *str, unsigned n)
 {
 	const char *error = NULL;
 	stub
@@ -230,6 +220,319 @@ const char *game_strerror(struct game *this, int code, signed status, int a4, ch
 		break;
 	}
 	return error;
+}
+
+static const char *game_strmap(struct game *this, int code, int type, int a4, char *str, unsigned n)
+{
+	const char *msg = NULL;
+	*str = '\0';
+	switch (code) {
+	case TYPE_RES:
+		switch (type) {
+		case RES_FOOD:
+		case RES_FOOD2:
+		case RES_FOOD3:
+		case RES_FOOD4:
+			msg = this->vtbl->get_res_str(STR_FOOD, str, n);
+			break;
+		case RES_WOOD:
+			msg = this->vtbl->get_res_str(STR_WOOD, str, n);
+			break;
+		case RES_STONE:
+			msg = this->vtbl->get_res_str(STR_STONE, str, n);
+			break;
+		case RES_GOLD:
+			msg = this->vtbl->get_res_str(STR_GOLD, str, n);
+			break;
+		case RES_GOODS:
+			msg = this->vtbl->get_res_str(STR_GOODS, str, n);
+			break;
+		}
+		break;
+	case TYPE_AGE:
+		switch (type) {
+		case AGE_STONE:
+			msg = this->vtbl->get_res_str(STR_AGE_STONE, str, n);
+			break;
+		case AGE_TOOL:
+			msg = this->vtbl->get_res_str(STR_AGE_TOOL, str, n);
+			break;
+		case AGE_BRONZE:
+			msg = this->vtbl->get_res_str(STR_AGE_BRONZE, str, n);
+			break;
+		case AGE_IRON:
+			msg = this->vtbl->get_res_str(STR_AGE_IRON, str, n);
+			break;
+		}
+		break;
+	case TYPE_CIV:
+		switch (type) {
+		case CIV_EGYPT:
+			msg = this->vtbl->get_res_str(STR_CIV_EGYPT, str, n);
+			break;
+		case CIV_GREEK:
+			msg = this->vtbl->get_res_str(STR_CIV_GREEK, str, n);
+			break;
+		case CIV_BABYLONIAN:
+			msg = this->vtbl->get_res_str(STR_CIV_BABYLONIAN, str, n);
+			break;
+		case CIV_ASSYRIAN:
+			msg = this->vtbl->get_res_str(STR_CIV_ASSYRIAN, str, n);
+			break;
+		case CIV_MINOAN:
+			msg = this->vtbl->get_res_str(STR_CIV_MINOAN, str, n);
+			break;
+		case CIV_HITTITE:
+			msg = this->vtbl->get_res_str(STR_CIV_HITTITE, str, n);
+			break;
+		case CIV_PHOENICIAN:
+			msg = this->vtbl->get_res_str(STR_CIV_PHOENICIAN, str, n);
+			break;
+		case CIV_SUMERIAN:
+			msg = this->vtbl->get_res_str(STR_CIV_SUMERIAN, str, n);
+			break;
+		case CIV_PERSIAN:
+			msg = this->vtbl->get_res_str(STR_CIV_PERSIAN, str, n);
+			break;
+		case CIV_SHANG:
+			msg = this->vtbl->get_res_str(STR_CIV_SHANG, str, n);
+			break;
+		case CIV_YAMATO:
+			msg = this->vtbl->get_res_str(STR_CIV_YAMATO, str, n);
+			break;
+		case CIV_CHOSON:
+			msg = this->vtbl->get_res_str(STR_CIV_CHOSON, str, n);
+			break;
+		case CIV_ROMAN:
+			msg = this->vtbl->get_res_str(STR_CIV_ROMAN, str, n);
+			break;
+		case CIV_CARTHAGINIAN:
+			msg = this->vtbl->get_res_str(STR_CIV_CARTHAGINIAN, str, n);
+			break;
+		case CIV_PALMYRIAN:
+			msg = this->vtbl->get_res_str(STR_CIV_PALMYRIAN, str, n);
+			break;
+		case CIV_MACEDONIAN:
+			msg = this->vtbl->get_res_str(STR_CIV_MACEDONIAN, str, n);
+			break;
+		}
+	case TYPE_ACT:
+		switch (type) {
+		case ACT_WORK:
+			msg = this->vtbl->get_res_str(STR_ACT_WORK, str, n);
+			break;
+		case ACT_MOVE:
+			msg = this->vtbl->get_res_str(STR_ACT_MOVE, str, n);
+			break;
+		case ACT_BUILD:
+			msg = this->vtbl->get_res_str(STR_ACT_BUILD, str, n);
+			break;
+		case ACT_TRADE:
+			msg = this->vtbl->get_res_str(STR_ACT_TRADE, str, n);
+			break;
+		case ACT_STOP:
+			msg = this->vtbl->get_res_str(STR_ACT_STOP, str, n);
+			break;
+		case ACT_UNSELECT:
+			msg = this->vtbl->get_res_str(STR_ACT_UNSELECT, str, n);
+			break;
+		case ACT_UNLOAD:
+			msg = this->vtbl->get_res_str(STR_ACT_UNLOAD, str, n);
+			break;
+		case ACT_GROUP:
+			msg = this->vtbl->get_res_str(STR_ACT_GROUP, str, n);
+			break;
+		case ACT_UNGROUP:
+			msg = this->vtbl->get_res_str(STR_ACT_UNGROUP, str, n);
+			break;
+		case ACT_FORMATION:
+			msg = this->vtbl->get_res_str(STR_ACT_FORMATION, str, n);
+			break;
+		case ACT_CANCEL:
+			msg = this->vtbl->get_res_str(STR_ACT_CANCEL, str, n);
+			break;
+		case ACT_NEXT:
+			msg = this->vtbl->get_res_str(STR_ACT_NEXT, str, n);
+			break;
+		case ACT_CHAT:
+			msg = this->vtbl->get_res_str(STR_ACT_CHAT, str, n);
+			break;
+		case ACT_DIPLOMACY:
+			msg = this->vtbl->get_res_str(STR_ACT_DIPLOMACY, str, n);
+			break;
+		case ACT_MENU:
+			msg = this->vtbl->get_res_str(STR_ACT_MENU, str, n);
+			break;
+		case ACT_TRADE_WITH:
+			msg = this->vtbl->get_res_str(STR_ACT_TRADE_WITH, str, n);
+			break;
+		case ACT_RESEARCH:
+			msg = this->vtbl->get_res_str(STR_ACT_RESEARCH, str, n);
+			break;
+		case ACT_CREATE:
+			msg = this->vtbl->get_res_str(STR_ACT_CREATE, str, n);
+			break;
+		case ACT_BUILD2:
+			msg = this->vtbl->get_res_str(STR_ACT_BUILD2, str, n);
+			break;
+		case ACT_BUILD_ABORT:
+			msg = this->vtbl->get_res_str(STR_ACT_BUILD_ABORT, str, n);
+			break;
+		case ACT_HELP:
+			msg = this->vtbl->get_res_str(STR_ACT_HELP, str, n);
+			break;
+		case ACT_STANCE_GROUND:
+			msg = this->vtbl->get_res_str(STR_ACT_STANCE_GROUND, str, n);
+			break;
+		case ACT_STANCE_ATTACK:
+			msg = this->vtbl->get_res_str(STR_ACT_STANCE_ATTACK, str, n);
+			break;
+		case ACT_HEAL:
+			msg = this->vtbl->get_res_str(STR_ACT_HEAL, str, n);
+			break;
+		case ACT_CONVERT:
+			msg = this->vtbl->get_res_str(STR_ACT_CONVERT, str, n);
+			break;
+		case ACT_ATTACK:
+			msg = this->vtbl->get_res_str(STR_ACT_ATTACK, str, n);
+			break;
+		case ACT_REPAIR:
+			msg = this->vtbl->get_res_str(STR_ACT_REPAIR, str, n);
+			break;
+		case ACT_TRADE_FOOD:
+			msg = this->vtbl->get_res_str(STR_ACT_TRADE_FOOD, str, n);
+			break;
+		case ACT_TRADE_WOOD:
+			msg = this->vtbl->get_res_str(STR_ACT_TRADE_WOOD, str, n);
+			break;
+		case ACT_TRADE_STONE:
+			msg = this->vtbl->get_res_str(STR_ACT_TRADE_STONE, str, n);
+			break;
+		case ACT_QUEUE_INC:
+			msg = this->vtbl->get_res_str(STR_ACT_QUEUE_INC, str, n);
+			break;
+		case ACT_QUEUE_DEC:
+			msg = this->vtbl->get_res_str(STR_ACT_QUEUE_DEC, str, n);
+			break;
+		}
+	case TYPE_FAIL:
+		switch (type) {
+		case FAIL_START:
+		case FAIL_START2:
+		case FAIL_START3:
+			msg = this->vtbl->get_res_str(STR_FAIL_START, str, n);
+			break;
+		case FAIL_SAVE_GAME:
+			msg = this->vtbl->get_res_str(STR_FAIL_SAVE_GAME, str, n);
+			break;
+		case FAIL_SAVE_SCENE:
+			msg = this->vtbl->get_res_str(STR_FAIL_SAVE_SCENARIO, str, n);
+			break;
+		case FAIL_LOAD_GAME:
+			msg = this->vtbl->get_res_str(STR_FAIL_LOAD_GAME, str, n);
+			break;
+		case FAIL_LOAD_SCENE:
+			msg = this->vtbl->get_res_str(STR_FAIL_LOAD_SCENARIO, str, n);
+			break;
+		default:
+			msg = game_strerror(this, code, type, a4, str, n);
+			break;
+		}
+		break;
+	case TYPE_FAIL2:
+		if (type > 104)
+			switch (type) {
+			case 105:
+				msg = this->vtbl->get_res_str(STR_FAIL_TRADE, str, n);
+				break;
+			case 106:
+				msg = this->vtbl->get_res_str(STR_FAIL_REPAIR, str, n);
+				break;
+			case 1000:
+				msg = this->vtbl->get_res_str(STR_FAIL_PLACE, str, n);
+				break;
+			}
+		else if (type == 104)
+			msg = this->vtbl->get_res_str(3009, str, n);
+		else
+			switch (type) {
+			case 1:
+				switch (a4) {
+				case LOW_POP:
+					msg = this->vtbl->get_res_str(STR_LOW_POP, str, n);
+					break;
+				case LOW_FOOD:
+					msg = this->vtbl->get_res_str(STR_LOW_FOOD, str, n);
+					break;
+				case LOW_WOOD:
+					msg = this->vtbl->get_res_str(STR_LOW_WOOD, str, n);
+					break;
+				case LOW_STONE:
+					msg = this->vtbl->get_res_str(STR_LOW_STONE, str, n);
+					break;
+				case LOW_GOLD:
+					msg = this->vtbl->get_res_str(STR_LOW_GOLD, str, n);
+					break;
+				case LOW_POP_MAX:
+					msg = this->vtbl->get_res_str(STR_LOW_POP_MAX, str, n);
+					break;
+				}
+				break;
+			case SHIP_TRADE:
+				msg = this->vtbl->get_res_str(STR_SHIP_TRADE, str, n);
+				break;
+			case SHIP_LAND:
+				msg = this->vtbl->get_res_str(STR_SHIP_LAND, str, n);
+				break;
+			case SHIP_UNLOAD:
+				msg = this->vtbl->get_res_str(STR_SHIP_UNLOAD, str, n);
+				break;
+			}
+		break;
+	case TYPE_ATTR:
+		switch (type) {
+		case ATTR_HEALTH:
+			msg = this->vtbl->get_res_str(STR_ATTR_HEALTH, str, n);
+			break;
+		case ATTR_ARMOR:
+			msg = this->vtbl->get_res_str(STR_ATTR_ARMOR, str, n);
+			break;
+		case ATTR_ATTACK:
+			msg = this->vtbl->get_res_str(STR_ATTR_ATTACK, str, n);
+			break;
+		case ATTR_LOAD:
+			msg = this->vtbl->get_res_str(STR_ATTR_LOAD, str, n);
+			break;
+		case ATTR_RESEARCH:
+			msg = this->vtbl->get_res_str(STR_ATTR_RESEARCH, str, n);
+			break;
+		case ATTR_TRAIN:
+			msg = this->vtbl->get_res_str(STR_ATTR_TRAIN, str, n);
+			break;
+		case ATTR_BUILD:
+			msg = this->vtbl->get_res_str(STR_ATTR_BUILD, str, n);
+			break;
+		case ATTR_SIGHT:
+			msg = this->vtbl->get_res_str(STR_ATTR_SIGHT, str, n);
+			break;
+		case ATTR_POP:
+			msg = this->vtbl->get_res_str(STR_ATTR_POP, str, n);
+			break;
+		case ATTR_RANGE:
+			msg = this->vtbl->get_res_str(STR_ATTR_RANGE, str, n);
+			break;
+		case ATTR_SPEED:
+			msg = this->vtbl->get_res_str(STR_ATTR_SPEED, str, n);
+			break;
+		}
+	default:
+		return game_strerror(this, code, type, a4, str, n);
+	}
+	if (!msg) {
+		str[n - 1] = '\0';
+		return str;
+	}
+	return msg;
 }
 
 static struct map *game_map_save_area(struct game *this)
@@ -1100,6 +1403,7 @@ struct game_vtbl g_vtbl = {
 	.get_state = game_get_state,
 	.strerr = game_strerror,
 	.get_res_str = game_get_res_str,
+	.strerr2 = game_strmap,
 	.parse_opt = game_parse_opt,
 	.init_icon = game_init_icon,
 	.go_fullscreen = game_go_fullscreen,
