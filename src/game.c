@@ -1006,18 +1006,9 @@ static int game_go_fullscreen(struct game *this)
 	if (!this->window)
 		return 0;
 	SDL_Rect bounds;
-	int i, s_i, s_x, s_y, s_w, s_h, s_n;
-	SDL_GetWindowSize(this->window, &s_w, &s_h);
-	SDL_GetWindowPosition(this->window, &s_x, &s_y);
-	s_n = SDL_GetNumVideoDisplays();
-	for (s_i = i = 0; i < s_n; ++i) {
-		SDL_GetDisplayBounds(i, &bounds);
-		if (s_x >= bounds.x && s_y >= bounds.y && s_x < bounds.x + bounds.w && s_y < bounds.y + bounds.h) {
-			s_i = i;
-			break;
-		}
-	}
-	if (SDL_GetDisplayBounds(s_i, &bounds))
+	unsigned display;
+	get_display(this->window, &display);
+	if (SDL_GetDisplayBounds(display, &bounds))
 		return 0;
 	wx = bounds.x; wy = bounds.y;
 	ww = bounds.w; wh = bounds.h;

@@ -48,10 +48,29 @@ void show_error(const char *title, const char *msg)
 	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, msg, NULL);
 }
 
+int get_display(SDL_Window *scr, unsigned *display)
+{
+	int i, n, x, y, w, h;
+	SDL_Rect bounds;
+	SDL_GetWindowSize(scr, &w, &h);
+	SDL_GetWindowPosition(scr, &x, &y);
+	for (i = 0, n = SDL_GetNumVideoDisplays(); i < n; ++i) {
+		SDL_GetDisplayBounds(i, &bounds);
+		if (x >= bounds.x && y >= bounds.y && x < bounds.x + bounds.w && y < bounds.y + bounds.h) {
+			*display = i;
+			return 0;
+		}
+	}
+	return 1;
+}
+
 int go_fullscreen(SDL_Window *scr)
 {
 	SDL_Rect bounds;
-	SDL_GetDisplayBounds(0, &bounds);
+	unsigned display;
+	if (get_display(scr, &display))
+		return 1;
+	SDL_GetDisplayBounds(display, &bounds);
 	SDL_SetWindowBordered(scr, SDL_FALSE);
 	SDL_SetWindowPosition(scr, bounds.x, bounds.y);
 	SDL_SetWindowSize(scr, bounds.w, bounds.h);

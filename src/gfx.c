@@ -76,12 +76,20 @@ static int parse_video_modes(struct display *display, void *arg)
 
 unsigned video_mode_fetch_bounds(struct video_mode *this, int query_interface)
 {
-	stub
-	(void)this;
 	if (query_interface)
 		return enum_display_modes(this, parse_video_modes);
-	halt();
-	return 0;
+	SDL_Rect bounds;
+	unsigned display;
+	if (get_display(this->window, &display))
+		return 0;
+	SDL_GetDisplayBounds(display, &bounds);
+	if (bounds.w >= 800)
+		this->mode8_800_600 = 1;
+	if (bounds.w >= 1024)
+		this->mode8_1024_768 = 1;
+	if (bounds.w >= 1280)
+		this->mode8_1280_1024 = 1;
+	return 1;
 }
 
 int direct_draw_init(struct video_mode *this, SDL_Window *hInst, SDL_Window *window, struct pal_entry *palette, char opt0, char opt1, int width, int height, int sys_memmap)
@@ -98,6 +106,7 @@ int direct_draw_init(struct video_mode *this, SDL_Window *hInst, SDL_Window *win
 	this->sys_memmap = sys_memmap;
 	if (opt0 == 1)
 		return 0;
+	video_mode_fetch_bounds(this, 1);
 	if (this->no_fullscreen == 1) {
 		// TODO get display mode
 	} else
@@ -160,7 +169,7 @@ struct pal_entry *drs_palette(char *pal_fname, int res_id, int a3)
 	size_t count;
 	off_t offset;
 	struct stat st;
-	if (stat(pal_fname, &st))
+	if (!stat(pal_fname, &st))
 		fprintf(stderr, "unsupported: dynamic drs \"%s\"\n", pal_fname);
 	char *drs_item = drs_get_item(DT_BINARY, res_id, &count, &offset);
 	char *palette = drs_item;

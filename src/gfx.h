@@ -73,5 +73,6 @@ int direct_draw_init(struct video_mode *this, SDL_Window *hInst, SDL_Window *win
 void update_palette(struct pal_entry *tbl, unsigned start, unsigned n, struct pal_entry *src);
 struct video_mode *video_mode_start_init(struct video_mode *this, const char *title, int a3, const char *a4, int a5);
 struct pal_entry *drs_palette(char *pal_fname, int res_id, int a3);
+int get_display(SDL_Window *scr, unsigned *display);
 
 #endif
