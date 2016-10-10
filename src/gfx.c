@@ -236,6 +236,9 @@ struct pal_entry *drs_palette(char *pal_fname, int res_id, int a3)
 			goto fail;
 		struct pal_entry *dst = &pal[i];
 		dst->r = r; dst->g = g; dst->b = b;
+		next = strchr(line, '\n');
+		if (!next) goto fail;
+		line = next + 1;
 	}
 	if (a3) {
 		struct video_mode *mode = game_ref->mode;
