@@ -1,6 +1,7 @@
 #ifndef AOE_GFX_H
 #define AOE_GFX_H
 
+#include "map.h"
 #include <stdint.h>
 #include <SDL2/SDL.h>
 
@@ -28,7 +29,10 @@ struct video_mode {
 	SDL_Window *hInst;
 	SDL_Window *window;
 	struct pal_entry *palette;
-	unsigned tblC[3];
+	// REMAP typeof(LPDIRECTDRAWSURFACE ddrawsurf) == unsigned
+	unsigned ddrawsurf;
+	struct map *map10;
+	unsigned num14;
 	// REMAP typeof(LPDIRECTDRAW lplpDD) == unsigned
 	unsigned lplpDD;
 	unsigned tbl1C[3];

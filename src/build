@@ -2,7 +2,7 @@
 CC=gcc
 cstd='-std=gnu99'
 CFLAGS="-Wall -Wextra -pedantic $cstd $*"
-libs='sdl2'
+libs='sdl2 gl'
 if ! hash pkg-config 2>/dev/null; then
 	echo "pkg-config is missing" 1>&2
 	exit 1

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <GL/gl.h>
 #include "engine.h"
 #include "menu.h"
 #include "todo.h"
@@ -92,6 +93,29 @@ unsigned video_mode_fetch_bounds(struct video_mode *this, int query_interface)
 	return 1;
 }
 
+static int video_mode_map_init(struct video_mode *this)
+{
+	if (this->byte478 == 2) {
+		if (!this->ddrawsurf) {
+			this->ddrawsurf = 1;
+			if (this->no_fullscreen) {
+				glClearColor(0, 0, 0, 0);
+				glClear(GL_COLOR_BUFFER_BIT);
+			}
+		}
+		if (!this->map10) {
+			struct map *pmap, *map = new(sizeof(struct map));
+			pmap = map ? map_init(map, "Primary Surface", 0) : NULL;
+			this->map10 = pmap;
+			if (!pmap)
+				return 0;
+			halt();
+		}
+	}
+	halt();
+	return 1;
+}
+
 int direct_draw_init(struct video_mode *this, SDL_Window *hInst, SDL_Window *window, struct pal_entry *palette, char opt0, char opt1, int width, int height, int sys_memmap)
 {
 	int ret;
@@ -109,12 +133,25 @@ int direct_draw_init(struct video_mode *this, SDL_Window *hInst, SDL_Window *win
 	video_mode_fetch_bounds(this, 1);
 	if (this->no_fullscreen == 1) {
 		// TODO get display mode
-	} else
+		unsigned display;
+		if (get_display(window, &display)) {
+			fputs("ddraw: bad display\n", stderr);
+			this->state = 1;
+			return 0;
+		}
+	} else {
 		if ((ret = go_fullscreen(this->window)) != 0) {
 			fprintf(stderr, "%s: no fullscreen available: error=%d\n", __func__, ret);
 			this->state = 1;
 			return 0;
 		}
+		this->mode0 = 1;
+	}
+	if (!video_mode_map_init(this)) {
+		fputs("ddraw: map error\n", stderr);
+		this->state = 1;
+		return 0;
+	}
 	return 1;
 }
 
