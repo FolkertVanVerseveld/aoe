@@ -2,12 +2,9 @@
 #define AOE_GFX_H
 
 #include "map.h"
+#include "view.h"
 #include <stdint.h>
 #include <SDL2/SDL.h>
-
-struct rect {
-	int left, right, top, bottom;
-};
 
 struct pal_entry {
 	uint8_t r, g, b, flags;
