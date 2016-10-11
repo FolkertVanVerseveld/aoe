@@ -3,16 +3,25 @@
 
 #include "gfx.h"
 #include "view.h"
+#include <SDL2/SDL.h>
+
+struct map;
 
 struct map_0 {
 	void *ptr14;
 };
 
+struct map_blit {
+	struct map *map;
+	struct map_blit *end;
+	struct map_blit *next;
+};
+
 #define MAPBLKSZ 108
 
 struct map {
-	struct map_0 *obj0;
-	unsigned num4;
+	struct video_mode *vmode;
+	SDL_Window *window;
 	unsigned num8;
 	void *ptrC;
 	// REMAP (HGDIOBJ gfx_object) == unsigned
@@ -32,7 +41,7 @@ struct map {
 	void *ptr50;
 	char blk54[84];
 	void *ptrA8;
-	void *ptrAC;
+	struct map_blit *blit;
 	char *name;
 	unsigned numB4;
 	unsigned numB8;
@@ -47,7 +56,7 @@ struct map {
 	unsigned numE4;
 	unsigned numE8;
 	unsigned numEC;
-	unsigned numF0;
+	unsigned blit_y;
 	unsigned numF4;
 	unsigned numF8;
 	char chFC;
@@ -56,5 +65,6 @@ struct map {
 
 struct map *map_init(struct map *this, const char *map_name, int a2);
 void map_free(struct map *this);
+int map_blit(struct map *this, struct video_mode *vmode, int w, int h, int x, int y);
 
 #endif

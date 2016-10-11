@@ -103,13 +103,19 @@ static int video_mode_map_init(struct video_mode *this)
 				glClear(GL_COLOR_BUFFER_BIT);
 			}
 		}
-		if (!this->map10) {
+		if (!this->map) {
 			struct map *pmap, *map = new(sizeof(struct map));
 			pmap = map ? map_init(map, "Primary Surface", 0) : NULL;
-			this->map10 = pmap;
+			this->map = pmap;
 			if (!pmap)
 				return 0;
-			halt();
+			if (this->no_fullscreen == 1) {
+				int w, h;
+				SDL_GetWindowSize(this->window, &w, &h);
+				if (!map_blit(this->map, this, w, h, 0, 1))
+					return 0;
+			} else if (!map_blit(this->map, this, this->width, this->height, 0, 1))
+				return 0;
 		}
 	}
 	halt();

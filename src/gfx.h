@@ -28,7 +28,8 @@ struct video_mode {
 	struct pal_entry *palette;
 	// REMAP typeof(LPDIRECTDRAWSURFACE ddrawsurf) == unsigned
 	unsigned ddrawsurf;
-	struct map *map10;
+	struct map *map;
+	struct map_blit *blit;
 	unsigned num14;
 	// REMAP typeof(LPDIRECTDRAW lplpDD) == unsigned
 	unsigned lplpDD;

@@ -1,13 +1,14 @@
 #include "map.h"
 #include "dbg.h"
 #include "todo.h"
+#include "memmap.h"
 #include <stdlib.h>
 #include <string.h>
 
 struct map *map_init(struct map *this, const char *map_name, int a2)
 {
-	this->obj0 = NULL;
-	this->num4 = 0;
+	this->vmode = NULL;
+	this->window = NULL;
 	this->num3C = 0;
 	this->numEC = 0;
 	this->hdc38 = 0;
@@ -22,9 +23,9 @@ struct map *map_init(struct map *this, const char *map_name, int a2)
 	this->chFC = -1;
 	this->numEC = 0;
 	this->chFC = -1;
-	this->numAC = 0;
+	this->blit = NULL;
 	this->numF4 = 0;
-	this->numF0 = 0;
+	this->blit_y = 0;
 	this->numE4 = a2;
 	this->rect.left = 0;
 	this->rect.top = 0;
@@ -52,11 +53,21 @@ struct map *map_init(struct map *this, const char *map_name, int a2)
 void map_free(struct map *this)
 {
 	stub
-	if (this->ptrAC) {
-		if (this->obj0 && this->ptrAC == this->obj0->ptr14)
-			this->obj0->ptr14 = NULL;
-		free(this->ptrAC);
-		this->ptrAC = NULL;
+	if (this->blit) {
+		if (this->vmode && this->blit == this->vmode->blit)
+			this->vmode->blit = this->blit->next;
+		delete(this->blit);
+		this->blit = NULL;
+	}
+	if (this->vmode && this->vmode->byte478 == 1) {
+		if (this->hdc38) {
+			if (this->gfx_object) {
+				if (this->gfx_sel_object)
+					this->gfx_sel_object = 0;
+				this->gfx_object = 0;
+			}
+			this->hdc38 = 0;
+		}
 	}
 	if (this->ptrC)
 		free(this->ptrC);
@@ -66,4 +77,45 @@ void map_free(struct map *this)
 		free(this->ptrC4);
 	if (this->name)
 		free(this->name);
+}
+
+static int map_blit_no_y(struct map *this, int w, int h, int x)
+{
+	stub
+	halt();
+	return 0;
+}
+
+int map_blit(struct map *this, struct video_mode *vmode, int w, int h, int x, int y)
+{
+	stub
+	this->vmode = vmode;
+	this->blit_y = y;
+	if (!vmode)
+		goto no_vmode;
+	struct map_blit *blit = this->blit;
+	this->window = vmode->window;
+	if (!blit) {
+		this->blit = new(sizeof(struct map_blit));
+		if (!this->blit)
+			return 0;
+		this->blit->end = NULL;
+		this->blit->next = NULL;
+		struct map_blit *b = this->vmode->blit;
+		if (b) {
+			struct map_blit *i;
+			for (i = b->next; i; i = i->next)
+				b = i;
+			b->next = this->blit;
+			this->blit->end = b;
+		} else
+			this->vmode->blit = this->blit;
+	}
+	if (this->vmode->byte478 == 1)
+		return 0;
+	else {
+no_vmode:
+		map_blit_no_y(this, w, h, x);
+		return 1;
+	}
 }
