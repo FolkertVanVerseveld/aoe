@@ -82,6 +82,10 @@ void map_free(struct map *this)
 static int map_blit_no_y(struct map *this, int w, int h, int x)
 {
 	stub
+	(void)this;
+	(void)w;
+	(void)h;
+	(void)x;
 	halt();
 	return 0;
 }

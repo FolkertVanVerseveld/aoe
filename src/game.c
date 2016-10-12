@@ -1166,6 +1166,23 @@ static int game_init_sfx_tbl(struct game *this)
 	return 0;
 }
 
+static unsigned game_set_rpair(struct game *this, unsigned value)
+{
+	return this->rpair_root.value.dword = value;
+}
+
+static int game_set_ones(struct game *this)
+{
+	this->tbl504[20] = 1;
+	this->tbl504[28] = 1;
+	this->tbl504[36] = 1;
+	this->tbl504[92] = 1;
+	this->tbl504[116] = 1;
+	this->tbl504[13] = 1;
+	this->tbl504[45] = 1;
+	return 1;
+}
+
 static int game_init_palette(struct game *this)
 {
 	return (this->palette = palette_init(&game_col_palette, this->cfg->palette, 50500)) != 0;
@@ -1326,8 +1343,20 @@ static signed game_show_focus_screen(struct game *this)
 	}
 	struct game_drive *drive = new(sizeof(struct game_drive));
 	game_drive_ref = drive;
+	if (!drive) {
+		fputs("no game drive\n", stderr);
+		return 0;
+	}
+	game_drive_init(drive);
+	if (!this->vtbl->repaint(this)) {
+		fputs("repaint failed\n", stderr);
+		this->state = 13;
+		return 0;
+	}
+	this->vtbl->set_rpair(this, 0);
+	this->vtbl->set_ones(this);
+	this->vtbl->cfg_apply_video_mode(this, this->window, 0, 0, 0);
 	halt();
-	// TODO initialize drive
 	// TODO parse game nfo
 	// TODO scenario.inf
 	// TODO fail label
@@ -1340,6 +1369,20 @@ static int game_mousestyle(struct game *this)
 	return this->cfg->mouse_style == 1
 		? game_offsetA24(this, 0, 0x28, 0, 0x28)
 		: game_offsetA24(this, 0, 0x28, 0, 0x28);
+}
+
+static int game_cfg_apply_video_mode(struct game *this, SDL_Window *window, int a3, int spurious, int a5)
+{
+	stub
+	(void)window;
+	(void)a3;
+	(void)a5;
+	if (spurious == 1)
+		return 1;
+	if (this->mode) {
+		halt();
+	}
+	return 0;
 }
 
 int start_game(struct game *this)
@@ -1418,6 +1461,7 @@ struct game_vtbl g_vtbl = {
 	.dtor = game_dtor_ios_base,
 	.main = game_loop,
 	.process_intro = game_process_intro,
+	.set_rpair = game_set_rpair,
 	.get_state = game_get_state,
 	.strerr = game_strerror,
 	.get_res_str = game_get_res_str,
@@ -1437,4 +1481,6 @@ struct game_vtbl g_vtbl = {
 	.window_ctl2 = game_window_ctl2,
 	.gfx_ctl = game_gfx_ctl,
 	.init_sfx_tbl = game_init_sfx_tbl,
+	.set_ones = game_set_ones,
+	.cfg_apply_video_mode = game_cfg_apply_video_mode,
 };

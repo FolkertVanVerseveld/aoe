@@ -26,11 +26,11 @@ struct video_mode {
 	SDL_Window *hInst;
 	SDL_Window *window;
 	struct pal_entry *palette;
-	// REMAP typeof(LPDIRECTDRAWSURFACE ddrawsurf) == unsigned
-	unsigned ddrawsurf;
+	struct map *map2;
 	struct map *map;
 	struct map_blit *blit;
-	unsigned num14;
+	// REMAP typeof(LPDIRECTDRAWSURFACE ddrawsurf) == unsigned
+	unsigned ddrawsurf;
 	// REMAP typeof(LPDIRECTDRAW lplpDD) == unsigned
 	unsigned lplpDD;
 	unsigned tbl1C[3];
@@ -76,5 +76,6 @@ void update_palette(struct pal_entry *tbl, unsigned start, unsigned n, struct pa
 struct video_mode *video_mode_start_init(struct video_mode *this, const char *title, int a3, const char *a4, int a5);
 struct pal_entry *drs_palette(char *pal_fname, int res_id, int a3);
 int get_display(SDL_Window *scr, unsigned *display);
+int vmode_map_blit(struct video_mode *this, SDL_Window *window, int a3, int spurious, int a5);
 
 #endif

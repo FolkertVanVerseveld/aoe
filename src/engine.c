@@ -76,3 +76,12 @@ int go_fullscreen(SDL_Window *scr)
 	SDL_SetWindowSize(scr, bounds.w, bounds.h);
 	return 0;
 }
+
+struct game_drive *game_drive_init(struct game_drive *this)
+{
+	int driveno = 1;
+	this->driveno = this->driveno2 = driveno;
+	strcpy(this->buf, "Z:/");
+	strcpy(this->buf2, "Z:/");
+	return this;
+}

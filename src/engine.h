@@ -36,4 +36,14 @@ void eng_free(void);
 
 void show_error(const char *title, const char *msg);
 
+struct game_drive {
+	unsigned driveno;
+	char buf[256];
+	unsigned driveno2;
+	char buf2[64];
+	char gap[300];
+};
+
+struct game_drive *game_drive_init(struct game_drive *this);
+
 #endif

@@ -176,10 +176,11 @@ struct video_mode *video_mode_init(struct video_mode *this)
 
 struct video_mode *video_mode_start_init(struct video_mode *this, const char *title, int a3, const char *a4, int a5)
 {
+	stub
+	struct menu_ctl *v5 = (struct menu_ctl*)this;
 	(void)a3;
 	(void)a4;
 	(void)a5;
-	struct menu_ctl *v5 = (struct menu_ctl*)this;
 	menu_ctl_init_title(v5, title);
 	halt();
 	return NULL;
@@ -258,4 +259,15 @@ fail:
 	if (pal)
 		delete(pal);
 	return pal;
+}
+
+int vmode_map_blit(struct video_mode *this, SDL_Window *window, int a3, int spurious, int a5)
+{
+	stub
+	(void)this;
+	(void)window;
+	(void)a3;
+	(void)spurious;
+	(void)a5;
+	return 0;
 }

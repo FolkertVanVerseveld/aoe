@@ -139,14 +139,6 @@ struct window_ctl2 {
 	unsigned num0, num4, num8, numC;
 };
 
-struct game_drive {
-	unsigned driveno;
-	char buf[256];
-	unsigned driveno2;
-	char buf2[64];
-	char gap[300];
-};
-
 struct game;
 
 extern struct game *game_ref;
@@ -155,7 +147,7 @@ struct game_vtbl {
 	struct game *(*dtor)(struct game*, char);
 	unsigned (*main)(struct game*);
 	int (*process_intro)(struct game*, unsigned, unsigned, unsigned, unsigned);
-	unsigned (*set_rpair)(struct game*, unsigned, int);
+	unsigned (*set_rpair)(struct game*, unsigned);
 	struct regpair *(*set_rpair_next)(struct game*, struct regpair*, int);
 	unsigned (*get_state)(struct game*);
 	const char *(*strerr)(struct game*, int, int, int, char*, unsigned);
@@ -180,7 +172,7 @@ struct game_vtbl {
 	// XXX consider inlining
 	int (*translate_event)(struct game*, SDL_Event*);
 	void (*handle_event)(struct game*, unsigned);
-	int (*cfg_apply_video_mode)(struct game*, unsigned, int, int, unsigned);
+	int (*cfg_apply_video_mode)(struct game*, SDL_Window*, int, int, int);
 	struct map *(*map_save_area)(struct game*);
 	int (*init_mouse)(struct game*);
 };
