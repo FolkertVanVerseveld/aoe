@@ -208,12 +208,14 @@ static inline void blkdump(const struct blkhdr *this)
 		fprintf(stderr, "%p: %s\n", ptr, this->desc);
 }
 
+#ifdef DEBUG
 void memstat(void)
 {
 	fprintf(stderr, "vmem: allocated blocks: %u\n", heap.n);
 	for (unsigned i = 0; i < heap.n; ++i)
 		blkdump(heap.a[i]);
 }
+#endif
 
 void memfree(void)
 {
