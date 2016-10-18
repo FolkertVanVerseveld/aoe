@@ -224,10 +224,11 @@ fail:
 
 int xunmap(int fd, char *map, size_t mapsz)
 {
-	int ret;
-	if (map != MAP_FAILED)
+	int ret = 0;
+	if (map != MAP_FAILED) {
 		ret = munmap(map, mapsz);
-	if (ret) return ret;
+		if (ret) return ret;
+	}
 	if (fd != -1)
 		ret = close(fd);
 	return ret;

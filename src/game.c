@@ -13,6 +13,7 @@
 #include "game_set.h"
 #include "langx.h"
 #include "memmap.h"
+#include "menu.h"
 #include "todo.h"
 
 #define get_os_version(a) a=0x1000
@@ -22,6 +23,7 @@ struct game *game_ref = NULL;
 static int game_vtbl_focus;
 static int game_vtbl56146C;
 static char game_fname_focus[256];
+static char game_str_buf[512];
 static FILE *file_vtbl_focus;
 
 static struct logger *game_logger;
@@ -139,6 +141,12 @@ unsigned game_loop(struct game *this)
 		SDL_GL_SwapWindow(this->cfg->window);
 	}
 	return 0;
+}
+
+static char *game_res_buf_str(struct game *this, unsigned res_id)
+{
+	this->vtbl->get_res_str(res_id, game_str_buf, sizeof game_str_buf);
+	return game_str_buf;
 }
 
 char *game_get_res_str(unsigned id, char *str, unsigned n)
@@ -930,9 +938,9 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	game_setAE6(this, 50);
 	game_set1190(this, 0);
 	game_set1194(this, -1);
-	for (unsigned i = 10; i < 20; ++i)
-		this->tblC00[i] = -1;
-	this->tblC00[20] = this->tblC00[21] = -1;
+	for (unsigned i = 5; i < 10; ++i)
+		this->tblC28[i] = -1;
+	this->tblC28[10] = this->tblC28[11] = -1;
 	for (unsigned index = 0; index < 9; ++index) {
 		game_offsetA94(this, index, index + 2);
 		game_offsetAA0(this, index, index);
@@ -1166,9 +1174,66 @@ static int game_init_sfx_tbl(struct game *this)
 	return 0;
 }
 
+static struct regpair *game_add_rpair(struct game *this, struct regpair *pair, int v)
+{
+	this->rpair_root.other = pair;
+	this->rpair_rootval.dword = v;
+	return pair;
+}
+
 static unsigned game_set_rpair(struct game *this, unsigned value)
 {
 	return this->rpair_root.value.dword = value;
+}
+
+static struct regpair *game_set_rpair_next(struct game *this, struct regpair *a2, int a3)
+{
+	struct regpair *next, *ret = NULL;
+	next = this->rpair_root.other;
+	ret = game_add_rpair(this, a2, a3);
+	if (this->menu)
+		return menu_gameC24(this->menu, next, this->rpair_root.other);
+	return ret;
+}
+
+static struct game434 *game_player_ctl3(struct game *this, int player_id)
+{
+	stub
+	if (!this->ptr3F4)
+		return NULL;
+	if (player_id < this->ptr3F4->player_count) {
+		this->ptr3F4->player_id = player_id;
+		return NULL;
+	}
+	return NULL;
+}
+
+int game_scenario_editor_stat(struct game *this)
+{
+	stub
+	int v1 = this->rpair_root.value.dword;
+	if ((v1 == 4 || v1 == 6 || v1 == 5) && this->menu)
+		return this->menu->pad49C[3];
+	return 0;
+}
+
+int game_scenario_editor_stat2(struct game *this)
+{
+	stub
+	int v1 = this->rpair_root.value.dword;
+	if ((v1 == 4 || v1 == 6 || v1 == 5) && this->menu)
+		return this->menu->pad49C[4];
+	return 0;
+}
+
+static struct game3F4 *game_menu_init(struct game *this, int player_id)
+{
+	stub
+	int v4 = this->ptr3F4 ? this->ptr3F4->player_id : 0;
+	game_player_ctl3(this, player_id);
+	if (this->ptr3F4 && this->menu)
+		return ui_ctl(this->menu, v4, this->ptr3F4->player_id);
+	return this->ptr3F4;
 }
 
 static int game_set_ones(struct game *this)
@@ -1181,6 +1246,21 @@ static int game_set_ones(struct game *this)
 	this->tbl504[13] = 1;
 	this->tbl504[45] = 1;
 	return 1;
+}
+
+static struct game15C *game15C_init(int a1)
+{
+	stub
+	(void)a1;
+	return NULL;
+}
+
+static struct game15C *game_init_struct(void *this, size_t n)
+{
+	stub
+	(void)this;
+	(void)n;
+	return NULL;
 }
 
 static int game_init_palette(struct game *this)
@@ -1462,10 +1542,17 @@ struct game_vtbl g_vtbl = {
 	.main = game_loop,
 	.process_intro = game_process_intro,
 	.set_rpair = game_set_rpair,
+	.set_rpair_next = game_set_rpair_next,
+	.menu_init = game_menu_init,
 	.get_state = game_get_state,
 	.strerr = game_strerror,
 	.get_res_str = game_get_res_str,
+	.res_buf_str = game_res_buf_str,
 	.strerr2 = game_strmap,
+	.scenario_stat = game_scenario_editor_stat,
+	.scenario_stat2 = game_scenario_editor_stat2,
+	.g15C_init = game15C_init,
+	.g15C_init2 = game_init_struct,
 	.parse_opt = game_parse_opt,
 	.init_icon = game_init_icon,
 	.go_fullscreen = game_go_fullscreen,

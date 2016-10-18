@@ -1,6 +1,7 @@
 #ifndef AOE_MENU_H
 #define AOE_MENU_H
 
+#include "engine.h"
 #include "gfx.h"
 
 struct menu_ctl;
@@ -122,5 +123,7 @@ struct menu_ctl {
 struct menu_ctl *menu_ctl_init_title(struct menu_ctl *this, const char *title);
 struct menu_ctl *menu_ctl_dtor(struct menu_ctl *this, char a2);
 struct menu_ctl *menu_ctl_dtor_stdiobuf(struct menu_ctl *this, char call_this_dtor);
+struct regpair *menu_gameC24(struct menu_ctl *this, struct regpair *a2, struct regpair *a3);
+struct game3F4 *ui_ctl(struct menu_ctl *this, int v4, int player_id);
 
 #endif

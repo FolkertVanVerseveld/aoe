@@ -56,3 +56,23 @@ struct menu_ctl *menu_ctl_init_title(struct menu_ctl *this, const char *title)
 	this->vtbl = &menu_ctl_vtbl;
 	return this;
 }
+
+struct regpair *menu_gameC24(struct menu_ctl *this, struct regpair *a2, struct regpair *a3)
+{
+	stub
+	(void)this;
+	(void)a2;
+	(void)a3;
+	halt();
+	return NULL;
+}
+
+struct game3F4 *ui_ctl(struct menu_ctl *this, int v4, int player_id)
+{
+	stub
+	(void)this;
+	(void)v4;
+	(void)player_id;
+	halt();
+	return NULL;
+}

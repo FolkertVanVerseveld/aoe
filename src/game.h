@@ -149,10 +149,16 @@ struct game_vtbl {
 	int (*process_intro)(struct game*, unsigned, unsigned, unsigned, unsigned);
 	unsigned (*set_rpair)(struct game*, unsigned);
 	struct regpair *(*set_rpair_next)(struct game*, struct regpair*, int);
+	struct game3F4 *(*menu_init)(struct game*, int a2);
 	unsigned (*get_state)(struct game*);
 	const char *(*strerr)(struct game*, int, int, int, char*, unsigned);
 	char *(*get_res_str)(unsigned, char*, unsigned);
+	char *(*res_buf_str)(struct game*, unsigned);
 	const char *(*strerr2)(struct game*, int, int, int, char*, unsigned);
+	int (*scenario_stat)(struct game*);
+	int (*scenario_stat2)(struct game*);
+	struct game15C*(*g15C_init)(int a1);
+	struct game15C*(*g15C_init2)(void*, size_t);
 	int (*func)(struct game*);
 	int (*chat_send)(struct game*, unsigned, char*);
 	int (*parse_opt)(struct game*);
@@ -173,8 +179,11 @@ struct game_vtbl {
 	int (*translate_event)(struct game*, SDL_Event*);
 	void (*handle_event)(struct game*, unsigned);
 	int (*cfg_apply_video_mode)(struct game*, SDL_Window*, int, int, int);
+	unsigned tblEC[14];
+	unsigned tbl128[7];
 	struct map *(*map_save_area)(struct game*);
 	int (*init_mouse)(struct game*);
+	unsigned tbl14C[4];
 };
 
 extern struct game_vtbl g_vtbl, g_vtbl2;
@@ -242,6 +251,29 @@ struct game8 {
 	char pathname[260];
 	char *inf_hdr;
 	void *ptr;
+};
+
+struct game434 {
+	char gap0[8];
+	unsigned num8;
+	unsigned numC;
+	char gap10[36220];
+	unsigned num8D8C;
+};
+
+struct game3F4_vtbl {
+	unsigned ptr[40];
+	void (*func)(int);
+};
+
+struct game3F4 {
+	struct game3F4 *vtbl;
+	char pad4[36];
+	struct game434 *ptr;
+	char pad2C[16];
+	short player_count;
+	char pad3E[62];
+	short player_id;
 };
 
 #define CWDBUFSZ 261
@@ -382,7 +414,9 @@ struct game {
 	unsigned hwnd_mci;
 	unsigned tblBF0[3];
 	unsigned time_mci;
-	unsigned tblC00[22];
+	unsigned tblC00[9];
+	struct menu_ctl *menu;
+	unsigned tblC28[12];
 	char chC58;
 	char padC59[259];
 	char chD5C;
