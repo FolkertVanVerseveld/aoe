@@ -1,6 +1,8 @@
 #ifndef AOE_COMM_H
 #define AOE_COMM_H
 
+#include "config.h"
+
 struct comm14C4 {
 	unsigned dword0;
 	unsigned dword4;
@@ -42,10 +44,13 @@ struct comm_v7 {
 	unsigned int num18;
 };
 
-
 struct comm {
 	char char0;
-	char gap1[23];
+	char gap1[3];
+	struct game_settings *opt;
+	unsigned num8;
+	unsigned numC;
+	char gap10[8];
 	unsigned dword18;
 	unsigned dword1C;
 	char gap20[4005];
@@ -103,13 +108,17 @@ struct comm {
 	short player_id_plus_1;
 	char gap1714[4];
 	unsigned int num1718;
-	unsigned int num171C;
+	unsigned int opt_size;
 	char gap1720[40];
 	unsigned int num1748;
 	char gap174C[4];
 	unsigned int tbl1750[8];
 };
 
+extern struct comm *comm_580DA8;
+
 int commhnd423D10(struct comm *this, unsigned int player_id);
+int comm_no_msg_slot(struct comm *this);
+int comm_opt_grow(struct comm *this, struct game_settings *opt, unsigned size);
 
 #endif

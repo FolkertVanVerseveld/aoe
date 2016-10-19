@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <SDL2/SDL.h>
 #include "config.h"
+#include "comm.h"
 #include "dbg.h"
 #include "dmap.h"
 #include "game.h"
@@ -29,7 +30,6 @@ static FILE *file_vtbl_focus;
 static struct logger *game_logger;
 static SDL_Window *game_window;
 static SDL_Window *game_window_580DA0;
-static struct comm *comm_580DA8;
 static struct sfx_engine *sfx_engine_ref;
 static struct game_drive *game_drive_ref;
 static unsigned disable_terrain_sound = 0;
@@ -682,6 +682,27 @@ static int game_process_message(struct game *this, int message_type, int player_
 		return 0;
 	}
 	return 0;
+}
+
+static int game_no_msg_slot(struct game *this)
+{
+	struct comm *comm = this->nethandler;
+	if (comm) {
+		comm_no_msg_slot(comm);
+		delete(comm);
+		this->nethandler = NULL;
+		comm_580DA8 = NULL;
+	}
+	return this->vtbl->window_ctl2(this);
+}
+
+static int game_comm_opt_grow(struct game *this)
+{
+	struct comm *comm = this->nethandler;
+	struct game_settings opt;
+	if (!comm)
+		return 0;
+	return comm_opt_grow(this->nethandler, &opt, sizeof opt);
 }
 
 static struct game15C_obj *game15C_obj_vtbl_init(struct game15C_obj *this, int fd, int a3)
@@ -1623,6 +1644,8 @@ struct game_vtbl g_vtbl = {
 	.g15C_init2 = game_init_struct,
 	.init_game15C_obj = game_init_game15C_obj,
 	.process_message = game_process_message,
+	.no_msg_slot = game_no_msg_slot,
+	.comm_opt_grow = game_comm_opt_grow,
 	.parse_opt = game_parse_opt,
 	.init_icon = game_init_icon,
 	.go_fullscreen = game_go_fullscreen,

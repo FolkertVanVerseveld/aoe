@@ -162,7 +162,8 @@ struct game_vtbl {
 	struct game15C *(*g15C_init2)(void*, size_t);
 	struct game15C_obj *(*init_game15C_obj)(int);
 	int (*process_message)(struct game*, int, int, int, int, int);
-	int (*func)(struct game*);
+	int (*no_msg_slot)(struct game*);
+	int (*comm_opt_grow)(struct game*);
 	int (*chat_send)(struct game*, unsigned, char*);
 	int (*parse_opt)(struct game*);
 	int (*init_icon)(struct game*);
