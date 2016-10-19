@@ -57,4 +57,7 @@ struct sfx_engine {
 	unsigned dword698;
 };
 
+int clip4A3440(struct clip *this);
+int clip_ctl(struct clip *this);
+
 #endif

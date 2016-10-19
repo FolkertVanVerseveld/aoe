@@ -631,6 +631,33 @@ static void game_handle_event(struct game *this, unsigned a2)
 	game_handle_event_0(this);
 }
 
+static int game_sfx_play(struct game *this, int index)
+{
+	if (this->sfx_tbl && this->sfx_tbl[index]) {
+		if (clip4A3440(this->sfx_tbl[index]))
+			return 1;
+		else
+			return clip_ctl(this->sfx_tbl[index]);
+	}
+	return 0;
+}
+
+static int game_res_ctl(struct game *this, int a2, int a3)
+{
+	int v3 = this->restbl[10];
+	int v4;
+	int v;
+	if (v3 >= 0 && this->restbl[v3] == a2 && this->restbl[v3 + 5] == a3)
+		return this->restbl[11] = this->restbl[10];
+	v4 = v3 + 1;
+	this->restbl[10] = v4 % 5;
+	this->restbl[this->restbl[10]] = a2;
+	v = this->restbl[10];
+	this->restbl[v + 5] = a3;
+	this->restbl[11] = this->restbl[10];
+	return v;
+}
+
 static int game_process_event(struct game *this, unsigned hWnd_1, unsigned msg, unsigned wparam, unsigned hWnd)
 {
 	stub
@@ -640,6 +667,47 @@ static int game_process_event(struct game *this, unsigned hWnd_1, unsigned msg, 
 	(void)wparam;
 	(void)hWnd;
 	return 0;
+}
+
+static int game_process_message(struct game *this, int message_type, int player_id, int a4, int a5, int resource_amount)
+{
+	stub
+	(void)a4;
+	switch (message_type - 1) {
+	case 126:
+		if (player_id == this->ptr3F4->player_id && this->menu) {
+			game_sfx_play(this, 16);
+			return game_res_ctl(this, a5, resource_amount);
+		}
+		return 0;
+	}
+	return 0;
+}
+
+static struct game15C_obj *game15C_obj_vtbl_init(struct game15C_obj *this, int fd, int a3)
+{
+	stub
+	(void)fd;
+	(void)a3;
+	return this;
+}
+
+static struct game15C_obj *game15C_obj_ctor(struct game15C_obj *this, int fd, int dest)
+{
+	stub
+	game15C_obj_vtbl_init(this, fd, dest);
+	this->num5140 = 0;
+	this->num5144 = 900;
+	this->num5148 = 9000;
+	this->num4BE8 = 0;
+	this->dword4BF0 = 0;
+	return this;
+}
+
+static struct game15C_obj *game_init_game15C_obj(int a1)
+{
+	struct game15C_obj *obj = new(sizeof(struct game15C_obj));
+	return obj ? game15C_obj_ctor(obj, a1, 0) : NULL;
 }
 
 static int game_parse_opt2(struct game *this)
@@ -939,8 +1007,8 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	game_set1190(this, 0);
 	game_set1194(this, -1);
 	for (unsigned i = 5; i < 10; ++i)
-		this->tblC28[i] = -1;
-	this->tblC28[10] = this->tblC28[11] = -1;
+		this->restbl[i] = -1;
+	this->restbl[10] = this->restbl[11] = -1;
 	for (unsigned index = 0; index < 9; ++index) {
 		game_offsetA94(this, index, index + 2);
 		game_offsetAA0(this, index, index);
@@ -1553,6 +1621,8 @@ struct game_vtbl g_vtbl = {
 	.scenario_stat2 = game_scenario_editor_stat2,
 	.g15C_init = game15C_init,
 	.g15C_init2 = game_init_struct,
+	.init_game15C_obj = game_init_game15C_obj,
+	.process_message = game_process_message,
 	.parse_opt = game_parse_opt,
 	.init_icon = game_init_icon,
 	.go_fullscreen = game_go_fullscreen,

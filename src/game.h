@@ -2,6 +2,7 @@
 #define AOE_GAME_H
 
 #include <stdint.h>
+#include <time.h>
 #include <SDL2/SDL.h>
 #include "engine.h"
 #include "shp.h"
@@ -157,8 +158,10 @@ struct game_vtbl {
 	const char *(*strerr2)(struct game*, int, int, int, char*, unsigned);
 	int (*scenario_stat)(struct game*);
 	int (*scenario_stat2)(struct game*);
-	struct game15C*(*g15C_init)(int a1);
-	struct game15C*(*g15C_init2)(void*, size_t);
+	struct game15C *(*g15C_init)(int a1);
+	struct game15C *(*g15C_init2)(void*, size_t);
+	struct game15C_obj *(*init_game15C_obj)(int);
+	int (*process_message)(struct game*, int, int, int, int, int);
 	int (*func)(struct game*);
 	int (*chat_send)(struct game*, unsigned, char*);
 	int (*parse_opt)(struct game*);
@@ -251,6 +254,42 @@ struct game8 {
 	char pathname[260];
 	char *inf_hdr;
 	void *ptr;
+};
+
+struct game15C_vtbl {
+	unsigned ptr[1];
+};
+
+struct game15C {
+	struct game15C_vtbl *vtbl;
+	time_t timers[3];
+	unsigned tbl10[3];
+};
+
+struct game15C_obj {
+	unsigned vtbl;
+	char gap4[8];
+	char byteC;
+	char charD;
+	char gapE[6266];
+	float float1888;
+	char buf188C[260];
+	char buf1990[256];
+	char buf1A90[24];
+	char buf1AA8[11519];
+	char buf47A8[1024];
+	char buf4BA8[64];
+	unsigned num4BE8;
+	unsigned num4BEC;
+	int dword4BF0;
+	char buf4BF4[1280];
+	unsigned num50F4;
+	int dword50F8;
+	int dword50FC;
+	char buf5100[64];
+	unsigned num5140;
+	unsigned num5144;
+	unsigned num5148;
 };
 
 struct game434 {
@@ -416,7 +455,7 @@ struct game {
 	unsigned time_mci;
 	unsigned tblC00[9];
 	struct menu_ctl *menu;
-	unsigned tblC28[12];
+	int restbl[12];
 	char chC58;
 	char padC59[259];
 	char chD5C;
