@@ -120,5 +120,6 @@ extern struct comm *comm_580DA8;
 int commhnd423D10(struct comm *this, unsigned int player_id);
 int comm_no_msg_slot(struct comm *this);
 int comm_opt_grow(struct comm *this, struct game_settings *opt, unsigned size);
+struct game_settings *comm_get_settings(struct comm *this, unsigned *opt_size);
 
 #endif

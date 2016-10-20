@@ -76,9 +76,9 @@ static inline char game_get_pathfind(const struct game *this)
 	return this->pathfind;
 }
 
-static inline char game_get_mp_pathfind(const struct game *this)
+static inline char game_settings_get_mp_pathfind(const struct game *this)
 {
-	return this->mp_pathfind;
+	return this->settings.mp_pathfind;
 }
 
 static void game_free(struct game *this)
@@ -96,7 +96,7 @@ static void game_free(struct game *this)
 	reg_cfg.game_speed = (unsigned)(this->gamespeed * 10.0);
 	reg_cfg.difficulty = this->difficulty;
 	reg_cfg.pathfind = game_get_pathfind(this) + 1;
-	reg_cfg.mp_pathfind = game_get_mp_pathfind(this) + 1;
+	reg_cfg.mp_pathfind = game_settings_get_mp_pathfind(this) + 1;
 	reg_cfg.scroll_speed = this->cfg->scrollspeed;
 }
 
@@ -568,16 +568,16 @@ static struct map *game_map_save_area(struct game *this)
 	return result;
 }
 
-static inline char game_set_color(struct game *this, int brightness)
+static inline char game_settings_set_color(struct game *this, int brightness)
 {
 	this->brightness = brightness;
 	switch (brightness) {
-	case 0: brightness = game_set_hsv(this, 72, 72, 8); break;
-	case 1: brightness = game_set_hsv(this, 96, 96, 8); break;
-	case 2: brightness = game_set_hsv(this, 120, 120, 8); break;
-	case 3: brightness = game_set_hsv(this, 144, 144, 8); break;
-	case 4: brightness = game_set_hsv(this, 200, 200, 8); break;
-	case 5: brightness = game_set_hsv(this, 250, 250, 8); break;
+	case 0: brightness = game_settings_set_hsv(this, 72, 72, 8); break;
+	case 1: brightness = game_settings_set_hsv(this, 96, 96, 8); break;
+	case 2: brightness = game_settings_set_hsv(this, 120, 120, 8); break;
+	case 3: brightness = game_settings_set_hsv(this, 144, 144, 8); break;
+	case 4: brightness = game_settings_set_hsv(this, 200, 200, 8); break;
+	case 5: brightness = game_settings_set_hsv(this, 250, 250, 8); break;
 	}
 	return brightness;
 }
@@ -598,7 +598,7 @@ static int game_comm_ctl(struct game *this, int a2)
 		v4 = player_id = 0;
 		for (player_id = 0, v6 = 1; v6 < 9; v6 = ++player_id) {
 			if (commhnd423D10(this->nethandler, player_id + 1) == 2)
-				if (game_player_is_alive(this, player_id))
+				if (game_settings_player_is_alive(this, player_id))
 					++v4;
 		}
 		result = a2 <= v4 * this->cfg->d3;
@@ -731,6 +731,32 @@ static struct game15C_obj *game_init_game15C_obj(int a1)
 	return obj ? game15C_obj_ctor(obj, a1, 0) : NULL;
 }
 
+static char game_apply_settings(struct game *this, struct game_settings *cfg);
+
+static char game_color_ctl(struct game *this, struct color_cfg *cfg)
+{
+	stub
+	game_settings_set_color(this, cfg->brightness);
+	return 0;
+}
+
+static void game_comm_settings_ctl(struct game *this)
+{
+	struct comm *comm = this->nethandler;
+	if (!comm)
+		return;
+	unsigned opt_size = 0;
+	struct game_settings *opt = comm_get_settings(comm, &opt_size);
+	if (!opt)
+		return;
+	dbgf("opt_size: %u\n", opt_size);
+	// FIXME compute correct size
+	if (opt_size == 276) {
+		game_apply_settings(this, opt);
+		game_color_ctl(this, &opt->colcfg);
+	}
+}
+
 static int game_parse_opt2(struct game *this)
 {
 	char buf[OPTBUFSZ];
@@ -813,9 +839,30 @@ int start_game(struct game *this);
 static int game_logger_init(struct game *this);
 static signed game_show_focus_screen(struct game *this);
 
-static inline void game_set_start_gamespeed(struct game *this, float gamespeed)
+static inline void game_settings_set_gamespeed(struct game *this, float gamespeed)
 {
-	this->start_gamespeed = gamespeed;
+	this->settings.gamespeed = gamespeed;
+}
+
+static char game_apply_settings(struct game *this, struct game_settings *cfg)
+{
+	game_settings_set_gamespeed(this, cfg->gamespeed);
+	game_settings_set_c0(this, cfg->c0);
+	game_settings_set_str(this, cfg->str);
+	game_settings_set97D_97E(this, cfg->num97D_97E_is_zero);
+	game_settings_set97E_97D(this, cfg->num97E_97D_is_zero);
+	game_settings_set_hsv(this, cfg->hsv[0], cfg->hsv[1], cfg->hsv[2]);
+	game_settings_set_cheats(this, cfg->cheats);
+	game_settings_set90(this, cfg->ch90);
+	game_settings_set91(this, cfg->ch91);
+	game_settings_set_difficulty(this, cfg->difficulty);
+	game_settings_set_mp_pathfind(this, cfg->mp_pathfind);
+	char result;
+	for (unsigned i = 0; i < 9; ++i) {
+		game_settings_init_player(this, i, cfg->player_tbl[i]);
+		result = game_settings_tbl(this, i, cfg->tbl.array[i]);
+	}
+	return result;
 }
 
 struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int should_start_game)
@@ -831,30 +878,30 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	*game_fname_focus = '\0';
 	file_vtbl_focus = NULL;
 	// setup other members
-	game_set_start_gamespeed(this, 1.0f);
-	game_set_c0(this, 0);
+	game_settings_set_gamespeed(this, 1.0f);
+	game_settings_set_c0(this, 0);
 	game_set9A0(this, 0);
 	game_set9A4(this, 0);
-	game_set97D_97E(this, 1);
-	game_set97E_97D(this, 0);
-	game_set_hsv(this, 96, 96, 8);
-	game_set_cheats(this, 0);
-	game_set984(this, 1);
-	game_set985(this, 0);
-	game_set986(this, 1);
-	game_set987(this, 1);
-	game_set989(this, 0);
-	game_set_difficulty2(this, 0);
+	game_settings_set97D_97E(this, 1);
+	game_settings_set97E_97D(this, 0);
+	game_settings_set_hsv(this, 96, 96, 8);
+	game_settings_set_cheats(this, 0);
+	game_settings_set8C(this, 1);
+	game_settings_set8D(this, 0);
+	game_settings_set8E(this, 1);
+	game_settings_set8F(this, 1);
+	game_settings_set91(this, 0);
+	game_settings_set_difficulty(this, 0);
 	for (unsigned i = 0; i < 9; ++i) {
-		game_init_player(this, i, 0);
-		game_player_ctl(this, i, 0);
-		game_player_ctl2(this, i, 0);
-		game_tbl994(this, i, 1);
+		game_settings_init_player(this, i, 0);
+		game_settings_player_ctl(this, i, 0);
+		game_settings_player_ctl2(this, i, 0);
+		game_settings_tbl(this, i, 1);
 	}
 	game_set_pathfind(this, 0);
-	game_set_mp_pathfind(this, 0);
-	game_set988(this, 4);
-	game_str_8FD(this, "");
+	game_settings_set_mp_pathfind(this, 0);
+	game_settings_set90(this, 4);
+	game_settings_set_str(this, "");
 	// global reference
 	game_ref = this;
 	this->cfg = cfg;
@@ -1010,7 +1057,7 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	game_580E28 = 0;
 	for (unsigned i = 0; i < 4; ++i)
 		this->tblA24[i] = 0;
-	game_set_color(this, 2);
+	game_settings_set_color(this, 2);
 
 	game_setA80(this, 2);
 	game_setA84(this, 1);
@@ -1039,7 +1086,7 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	}
 
 	memset(this->blk116C, 0, sizeof(this->blk116C));
-	game_set988(this, 4);
+	game_settings_set90(this, 4);
 	game_clear1198(this);
 	if (should_start_game && !start_game(this) && this->state == 0)
 		this->state = 1;                            // game has stopped flag?
@@ -1419,7 +1466,7 @@ static signed game_show_focus_screen(struct game *this)
 	else
 		fprintf(stderr, "ignore pathfind: %u\n", reg_cfg.pathfind);
 	if (reg_cfg.mp_pathfind >= PATHFIND_LOW + 1 && reg_cfg.mp_pathfind <= PATHFIND_HIGH + 1)
-		game_set_mp_pathfind(this, reg_cfg.mp_pathfind - 1);
+		game_settings_set_mp_pathfind(this, reg_cfg.mp_pathfind - 1);
 	else
 		fprintf(stderr, "ignore mp_pathfind: %u\n", reg_cfg.mp_pathfind);
 	if (reg_cfg.scroll_speed >= 10 && reg_cfg.scroll_speed <= 200)
@@ -1646,6 +1693,7 @@ struct game_vtbl g_vtbl = {
 	.process_message = game_process_message,
 	.no_msg_slot = game_no_msg_slot,
 	.comm_opt_grow = game_comm_opt_grow,
+	.comm_settings_ctl = game_comm_settings_ctl,
 	.parse_opt = game_parse_opt,
 	.init_icon = game_init_icon,
 	.go_fullscreen = game_go_fullscreen,

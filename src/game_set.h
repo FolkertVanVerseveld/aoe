@@ -4,58 +4,58 @@
 #include <assert.h>
 #include <string.h>
 
-static inline char game_set_c0(struct game *this, char value)
+static inline char game_settings_set_c0(struct game *this, char value)
 {
-	return this->c0 = value;
+	return this->settings.c0 = value;
 }
 
-static inline char *game_str_8FD(struct game *this, const char *str)
+static inline char *game_settings_set_str(struct game *this, const char *str)
 {
-	char *ptr = strncpy(this->str8FD, str, 128);
-	this->str8FD[127] = '\0';
+	char *ptr = strncpy(this->settings.str, str, 128);
+	this->settings.str[127] = '\0';
 	return ptr;
 }
 
-static inline int game_set97D_97E(struct game *this, int value)
+static inline int game_settings_set97D_97E(struct game *this, int value)
 {
-	this->num97D_97E_is_zero = value;
-	return this->num97E_97D_is_zero = value == 0;
+	this->settings.num97D_97E_is_zero = value;
+	return this->settings.num97E_97D_is_zero = value == 0;
 }
 
-static inline int game_set97E_97D(struct game *this, int value)
+static inline int game_settings_set97E_97D(struct game *this, int value)
 {
-	this->num97E_97D_is_zero = value;
-	return this->num97D_97E_is_zero = value == 0;
+	this->settings.num97E_97D_is_zero = value;
+	return this->settings.num97D_97E_is_zero = value == 0;
 }
 
-static inline char game_set984(struct game *this, char value)
+static inline char game_settings_set8C(struct game *this, char value)
 {
-	return this->ch984 = value;
+	return this->settings.ch8C = value;
 }
 
-static inline char game_set985(struct game *this, char value)
+static inline char game_settings_set8D(struct game *this, char value)
 {
-	return this->ch985 = value;
+	return this->settings.ch8D = value;
 }
 
-static inline char game_set986(struct game *this, char value)
+static inline char game_settings_set8E(struct game *this, char value)
 {
-	return this->ch986 = value;
+	return this->settings.ch8E = value;
 }
 
-static inline char game_set987(struct game *this, char value)
+static inline char game_settings_set8F(struct game *this, char value)
 {
-	return this->ch987 = value;
+	return this->settings.ch8F = value;
 }
 
-static inline char game_set988(struct game *this, char value)
+static inline char game_settings_set90(struct game *this, char value)
 {
-	return this->ch988 = value;
+	return this->settings.ch90 = value;
 }
 
-static inline char game_set989(struct game *this, char value)
+static inline char game_settings_set91(struct game *this, char value)
 {
-	return this->ch989 = value;
+	return this->settings.ch91 = value;
 }
 
 static inline int game_set9A0(struct game *this, int value)
@@ -68,10 +68,10 @@ static inline int game_set9A4(struct game *this, int value)
 	return this->num9A4 = value;
 }
 
-static inline char game_tbl994(struct game *this, int index, char value)
+static inline char game_settings_tbl(struct game *this, int index, char value)
 {
 	assert(index < 12);
-	return this->tbl994[index] = value;
+	return this->settings.tbl.array[index] = value;
 }
 
 static inline int game_setA80(struct game *this, int value)
@@ -195,52 +195,52 @@ static inline char game_set_pathfind(struct game *this, char pathfind)
 	return this->pathfind = pathfind;
 }
 
-static inline char game_set_mp_pathfind(struct game *this, char mp_pathfind)
+static inline char game_settings_set_mp_pathfind(struct game *this, char mp_pathfind)
 {
-	return this->mp_pathfind = mp_pathfind;
+	return this->settings.mp_pathfind = mp_pathfind;
 }
 
-static inline char game_set_hsv(struct game *this, unsigned char h, unsigned char s, unsigned char v)
+static inline char game_settings_set_hsv(struct game *this, unsigned char h, unsigned char s, unsigned char v)
 {
-	this->hsv[0] = h;
-	this->hsv[1] = s;
-	this->hsv[2] = v;
+	this->settings.hsv[0] = h;
+	this->settings.hsv[1] = s;
+	this->settings.hsv[2] = v;
 	return v;
 }
 
-static inline char game_set_cheats(struct game *this, char value)
+static inline char game_settings_set_cheats(struct game *this, char value)
 {
-	return this->cheats = value;
+	return this->settings.cheats = value;
 }
 
-static inline char game_set_difficulty2(struct game *this, char value)
+static inline char game_settings_set_difficulty(struct game *this, char value)
 {
-	return this->difficulty2 = value;
+	return this->settings.difficulty = value;
 }
 
-static inline char game_init_player(struct game *this, int index, char value)
+static inline char game_settings_init_player(struct game *this, int index, char value)
 {
 	assert(index < 9);
-	return this->player_tbl[index] = value;
+	return this->settings.player_tbl[index] = value;
 }
 
-static inline char game_player_ctl(struct game *this, int index, char mask)
+static inline char game_settings_player_ctl(struct game *this, int index, char mask)
 {
 	assert(index < 9);
-	this->player_tbl[index] = mask | (this->player_tbl[index] & 0xFE);
+	this->settings.player_tbl[index] = mask | (this->settings.player_tbl[index] & 0xFE);
 	return index;
 }
 
-static inline char game_player_ctl2(struct game *this, int index, char value)
+static inline char game_settings_player_ctl2(struct game *this, int index, char value)
 {
 	assert(index < 9);
-	return this->player_tbl[index] = (2 * value) | (this->player_tbl[index] & 1);
+	return this->settings.player_tbl[index] = (2 * value) | (this->settings.player_tbl[index] & 1);
 }
 
-static inline int game_player_is_alive(struct game *this, int player_id)
+static inline int game_settings_player_is_alive(struct game *this, int player_id)
 {
 	assert(player_id < 9);
-	return this->player_tbl[player_id] & 1;
+	return this->settings.player_tbl[player_id] & 1;
 }
 
 #endif

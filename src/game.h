@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <SDL2/SDL.h>
+#include "config.h"
 #include "engine.h"
 #include "shp.h"
 #include "map.h"
@@ -164,6 +165,7 @@ struct game_vtbl {
 	int (*process_message)(struct game*, int, int, int, int, int);
 	int (*no_msg_slot)(struct game*);
 	int (*comm_opt_grow)(struct game*);
+	void (*comm_settings_ctl)(struct game*);
 	int (*chat_send)(struct game*, unsigned, char*);
 	int (*parse_opt)(struct game*);
 	int (*init_icon)(struct game*);
@@ -395,23 +397,7 @@ struct game {
 	unsigned int tbl504[249];
 	unsigned int tbl8E8[3];
 	unsigned int num8F4;
-	float start_gamespeed;
-	char c0;
-	char str8FD[128];
-	char num97D_97E_is_zero;
-	char num97E_97D_is_zero;
-	char hsv[3];
-	char cheats;
-	char mp_pathfind;
-	char ch984;
-	char ch985;
-	char ch986;
-	char ch987;
-	char ch988;
-	char ch989;
-	char player_tbl[9];
-	unsigned difficulty2;
-	char tbl994[12];
+	struct game_settings settings;
 	unsigned num9A0;
 	unsigned num9A4;
 	unsigned vtbl9A8;

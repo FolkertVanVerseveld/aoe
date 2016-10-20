@@ -50,3 +50,9 @@ int comm_opt_grow(struct comm *this, struct game_settings *opt, unsigned size)
 	dbgf("Host Set Options to size %d\n", size);
 	return 1;
 }
+
+struct game_settings *comm_get_settings(struct comm *this, unsigned *opt_size)
+{
+	*opt_size = this->opt_size;
+	return this->opt;
+}
