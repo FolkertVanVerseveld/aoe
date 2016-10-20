@@ -166,6 +166,8 @@ struct game_vtbl {
 	int (*no_msg_slot)(struct game*);
 	int (*comm_opt_grow)(struct game*);
 	void (*comm_settings_ctl)(struct game*);
+	char *(*get_ptr)(void);
+	int (*cheat_ctl)(struct game*, int, const char*);
 	int (*chat_send)(struct game*, unsigned, char*);
 	int (*parse_opt)(struct game*);
 	int (*init_icon)(struct game*);

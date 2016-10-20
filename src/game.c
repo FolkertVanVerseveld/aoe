@@ -1664,6 +1664,62 @@ int start_game(struct game *this)
 	return 1;
 }
 
+static char *str_weird_convert(const char *str, char *dest, int n)
+{
+	const int strtbl[] = {
+		//   @,      A,      B,      C,      D,      E,      F,      G
+		//  1-,     xh,     _*,     C3,     >?,     mA,     mJ,     Z1
+		0x2d31, 0x6878, 0x2a5f, 0x3343, 0x3f3e, 0x416d, 0x4a6d, 0x315a,
+		//   H,      I,      J,      K,      L,      M,      N,      O
+		//  )@,     L#,     {},     Wc,     !+,     c%,     Wd,     ^%
+		0x4029, 0x234c, 0x7d7b, 0x6357, 0x2b21, 0x2563, 0x6457, 0x255e,
+		//   P,      Q,      R,      S,      T,      U,      V,      W
+		//  >w,     xh,     %%,     $1,     ^ ,     j_,     T&,     34
+		0x773e, 0x6878, 0x2525, 0x3124, 0x205e, 0x5f6a, 0x2654, 0x3433,
+		//   X,      Y,      Z,      [,      \,      ],      ^,      _
+		//  (),     ::,     ?S,     K&,     yR,     X7,     i;,     &*
+		0x2928, 0x3a3a, 0x533f, 0x264b, 0x5279, 0x3758, 0x3b69, 0x2a26
+	};
+	char *result;
+	int ch, i, index;
+	for (i = index = 0, result = dest; (ch = str[i]) != '\0'; ++i) {
+		if (index >= n)
+			break;
+		if (ch < 'A' || ch > '_') {
+			*result++ = ch;
+			++index;
+		} else {
+			int item = strtbl[ch - '@'];
+			*result++ = item >> 8;
+			*result++ = item & 0xff;
+			index += 2;
+		}
+	}
+	*result = '\0';
+	return (char*)str;
+}
+
+static int game_cheat_ctl(struct game *this, int a2, const char *str)
+{
+	stub
+	(void)a2;
+	char str_weird[512];
+	char cheat_upper[256];
+	if (!str || a2 < 0 || a2 >= this->ptr3F4->player_count)
+		return 0;
+	strcpy(cheat_upper, str);
+	strup(cheat_upper, 256);
+	str_weird_convert(cheat_upper, str_weird, 512);
+	return 0;
+}
+
+static inline char *game_get_ptr(void)
+{
+	static char byte_7C04F8;
+	byte_7C04F8 = 0;
+	return &byte_7C04F8;
+}
+
 struct game_vtbl g_vtbl = {
 	.dtor = game_dtor,
 	.process_intro = game_process_event,
@@ -1694,6 +1750,8 @@ struct game_vtbl g_vtbl = {
 	.no_msg_slot = game_no_msg_slot,
 	.comm_opt_grow = game_comm_opt_grow,
 	.comm_settings_ctl = game_comm_settings_ctl,
+	.get_ptr = game_get_ptr,
+	.cheat_ctl = game_cheat_ctl,
 	.parse_opt = game_parse_opt,
 	.init_icon = game_init_icon,
 	.go_fullscreen = game_go_fullscreen,
