@@ -1,0 +1,34 @@
+BUILDING THE GAME
+
+All code that actually mimicks Age of Empires Rise of Rome (AoE RoR) is
+located in src/. You can build this using:
+
+./configure && make
+
+Then you can run the game by specifying the directory where your AoE RoR
+installation is located using:
+
+./empx -r/usr/local/games/aoe1
+
+Assuming the game is located at /usr/local/games/aoe1. The specified
+path may be relative.
+
+INSTALLING THE GAME
+
+You should not install the game in /usr/local/ or something similar yet,
+since this project is not stable at all.
+
+INSTALLATION RECIPIES
+
+Xubuntu 14:
+
+This project has been built primarly on a Xubuntu 14 machine. You can
+install the packages using:
+
+$ sudo -s
+# apt-get update
+# apt-get install pkg-config libsdl2-dev libsdl2-image-dev
+# exit
+$ cd src/
+$ ./configure && make
+$ ./empx -r/usr/local/games/aoe1

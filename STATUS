@@ -1,0 +1,10 @@
+The current state of the project is documented here. At the moment, it
+cannot do anything meaningful yet. It can load and parse game assets,
+parse command line options provided by the original game and some
+additional ones, and it loads and parses string tables located in the
+language .dll files from the original game.
+
+Working:
+* read and locate game assets in data resource sets (drs).
+* fetch utf7 strings from original language files (utf8 is planned).
+* load and save default game configuration settings.
