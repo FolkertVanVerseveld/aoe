@@ -10,6 +10,15 @@ drs item types:
 'shp '
 */
 
+#define DRS_UI "Interfac.drs"
+#define DRS_BORDER "Border.drs"
+#define DRS_MAP "Terrain.drs"
+#define DRS_GFX "graphics.drs"
+#define DRS_SFX "sounds.drs"
+
+#define DRS_XDATA "data2/"
+#define DRS_DATA "data/"
+
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>

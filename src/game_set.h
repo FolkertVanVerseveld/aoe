@@ -18,14 +18,14 @@ static inline char *game_settings_set_str(struct game *this, const char *str)
 
 static inline int game_settings_set97D_97E(struct game *this, int value)
 {
-	this->settings.num97D_97E_is_zero = value;
+	this->settings.game_running = value;
 	return this->settings.num97E_97D_is_zero = value == 0;
 }
 
 static inline int game_settings_set97E_97D(struct game *this, int value)
 {
 	this->settings.num97E_97D_is_zero = value;
-	return this->settings.num97D_97E_is_zero = value == 0;
+	return this->settings.game_running = value == 0;
 }
 
 static inline char game_settings_set8C(struct game *this, char value)

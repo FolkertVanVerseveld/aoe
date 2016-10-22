@@ -43,13 +43,6 @@ static int hLibModule = -1;
 static unsigned game_580E24;
 static unsigned game_580E28;
 
-static const char *data_interface = "Interfac.drs";
-static const char *data_border = "Border.drs";
-static const char *data_terrain = "Terrain.drs";
-static const char *data_graphics = "graphics.drs";
-static const char *data_sounds = "sounds.drs";
-static const char *directory_data = "data/";
-
 struct colpalette game_col_palette;
 
 unsigned game_hkey_root;
@@ -849,7 +842,7 @@ static char game_apply_settings(struct game *this, struct game_settings *cfg)
 	game_settings_set_gamespeed(this, cfg->gamespeed);
 	game_settings_set_c0(this, cfg->c0);
 	game_settings_set_str(this, cfg->str);
-	game_settings_set97D_97E(this, cfg->num97D_97E_is_zero);
+	game_settings_set97D_97E(this, cfg->game_running);
 	game_settings_set97E_97D(this, cfg->num97E_97D_is_zero);
 	game_settings_set_hsv(this, cfg->hsv[0], cfg->hsv[1], cfg->hsv[2]);
 	game_settings_set_cheats(this, cfg->cheats);
@@ -1641,16 +1634,16 @@ int start_game(struct game *this)
 	}
 	// sound drs files need to be available immediately,
 	// so these are not mmap'ed
-	read_data_mapping(data_sounds   , "data2/"      , 1);
-	read_data_mapping(data_graphics , "data2/"      , 0);
-	read_data_mapping(data_interface, "data2/"      , 0);
-	read_data_mapping(data_sounds   , directory_data, 1);
-	read_data_mapping(data_graphics , directory_data, 0);
-	read_data_mapping(data_terrain  , directory_data, 0);
-	read_data_mapping(data_border   , directory_data, 0);
+	read_data_mapping(DRS_SFX   , DRS_XDATA, 1);
+	read_data_mapping(DRS_GFX   , DRS_XDATA, 0);
+	read_data_mapping(DRS_UI    , DRS_XDATA, 0);
+	read_data_mapping(DRS_SFX   , DRS_DATA , 1);
+	read_data_mapping(DRS_GFX   , DRS_DATA , 0);
+	read_data_mapping(DRS_MAP   , DRS_DATA , 0);
+	read_data_mapping(DRS_BORDER, DRS_DATA , 0);
 	// FIXME hack to also include data/Interface.drs
-	read_data_mapping(data_interface, directory_data, 0);
-	read_data_mapping(data_interface, directory_data, 0);
+	read_data_mapping(DRS_UI    , DRS_DATA , 0);
+	read_data_mapping(DRS_UI    , DRS_DATA , 0);
 	if (!game_show_focus_screen(this))
 		return 0;
 	update_palette(this->palette, 248, 7, p);
@@ -1664,52 +1657,183 @@ int start_game(struct game *this)
 	return 1;
 }
 
-static char *str_weird_convert(const char *str, char *dest, int n)
+static inline char game_is_cheats_enabled(struct game *this)
 {
-	const int strtbl[] = {
-		//   @,      A,      B,      C,      D,      E,      F,      G
-		//  1-,     xh,     _*,     C3,     >?,     mA,     mJ,     Z1
-		0x2d31, 0x6878, 0x2a5f, 0x3343, 0x3f3e, 0x416d, 0x4a6d, 0x315a,
-		//   H,      I,      J,      K,      L,      M,      N,      O
-		//  )@,     L#,     {},     Wc,     !+,     c%,     Wd,     ^%
-		0x4029, 0x234c, 0x7d7b, 0x6357, 0x2b21, 0x2563, 0x6457, 0x255e,
-		//   P,      Q,      R,      S,      T,      U,      V,      W
-		//  >w,     xh,     %%,     $1,     ^ ,     j_,     T&,     34
-		0x773e, 0x6878, 0x2525, 0x3124, 0x205e, 0x5f6a, 0x2654, 0x3433,
-		//   X,      Y,      Z,      [,      \,      ],      ^,      _
-		//  (),     ::,     ?S,     K&,     yR,     X7,     i;,     &*
-		0x2928, 0x3a3a, 0x533f, 0x264b, 0x5279, 0x3758, 0x3b69, 0x2a26
-	};
-	char *result;
-	int ch, i, index;
-	for (i = index = 0, result = dest; (ch = str[i]) != '\0'; ++i) {
-		if (index >= n)
-			break;
-		if (ch < 'A' || ch > '_') {
-			*result++ = ch;
-			++index;
-		} else {
-			int item = strtbl[ch - '@'];
-			*result++ = item >> 8;
-			*result++ = item & 0xff;
-			index += 2;
-		}
-	}
-	*result = '\0';
-	return (char*)str;
+	return this->settings.cheats;
+}
+
+static inline int game_still_running(struct game *this)
+{
+	return this->settings.num97E_97D_is_zero;
+}
+
+static struct cheat_action *game3F4_cheat(struct game3F4 *this, int id)
+{
+	stub
+	(void)this;
+	(void)id;
+	return NULL;
+}
+
+static void *menu_player_stat(struct game *this)
+{
+	struct game3F4 *ptr = this->ptr3F4;
+	return ptr && ptr->player_count && ptr->player_id < ptr->player_count ? NULL/*FIXME magic*/ : NULL;
 }
 
 static int game_cheat_ctl(struct game *this, int a2, const char *str)
 {
 	stub
 	(void)a2;
-	char str_weird[512];
 	char cheat_upper[256];
 	if (!str || a2 < 0 || a2 >= this->ptr3F4->player_count)
 		return 0;
 	strcpy(cheat_upper, str);
 	strup(cheat_upper, 256);
-	str_weird_convert(cheat_upper, str_weird, 512);
+	if (!game_is_cheats_enabled(this))
+		return 0;
+	if (!strcmp(cheat_upper, "HOME RUN") && game_still_running(this)) {
+		game3F4_cheat(this->ptr3F4, 102);
+		return 1;
+	}
+	if (strstr(cheat_upper, "STORMBILLY")) {
+		game3F4_cheat(this->ptr3F4, 14);
+		return 1;
+	}
+	if (strstr(cheat_upper, "CONVERT THIS!")) {
+		game3F4_cheat(this->ptr3F4, 15);
+		return 1;
+	}
+	if (strstr(cheat_upper, "BIG MOMMA")) {
+		game3F4_cheat(this->ptr3F4, 16);
+		return 1;
+	}
+	if (strstr(cheat_upper, "POW")) {
+		game3F4_cheat(this->ptr3F4, 16);
+		return 1;
+	}
+	if (strstr(cheat_upper, "GRANTLINKSPENCE")) {
+		game3F4_cheat(this->ptr3F4, 18);
+		return 1;
+	}
+	if (strstr(cheat_upper, "KING ARTHUR")) {
+		game3F4_cheat(this->ptr3F4, 19);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "PHOTON MAN")) {
+		game3F4_cheat(this->ptr3F4, 0);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "E=MC2 TROOPER")) {
+		game3F4_cheat(this->ptr3F4, 1);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "JACK BE NIMBLE")) {
+		game3F4_cheat(this->ptr3F4, 2);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "BIG BERTHA")) {
+		game3F4_cheat(this->ptr3F4, 3);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "FLYING DUTCHMAN")) {
+		game3F4_cheat(this->ptr3F4, 4);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "UPSIDFLINTMOBILE")) {
+		game3F4_cheat(this->ptr3F4, 7);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "HOYOHOYO")) {
+		game3F4_cheat(this->ptr3F4, 8);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "DARK RAIN")) {
+		game3F4_cheat(this->ptr3F4, 10);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "BLACK RIDER")) {
+		game3F4_cheat(this->ptr3F4, 11);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "MEDUSA")) {
+		game3F4_cheat(this->ptr3F4, 12);
+		return 1;
+	}
+	if (!strcmp(cheat_upper, "ICBM")) {
+		game3F4_cheat(this->ptr3F4, 13);
+		return 1;
+	}
+	if (game_still_running(this)) {
+		if (!strcmp(cheat_upper, "DIEDIEDIE")) {
+			game3F4_cheat(this->ptr3F4, 100);
+			return 1;
+		}
+		for (unsigned i = 0; i < 8; ++i) {
+			char str[] = "kill1";
+			str[4] = '1' + i;
+			if (!strcmp(cheat_upper, str)) {
+				game3F4_cheat(this->ptr3F4, 201 + i);
+				return 1;
+			}
+		}
+		if (!strcmp(cheat_upper, "HARIKARI")) {
+			game3F4_cheat(this->ptr3F4, 101);
+			return 1;
+		}
+		if (!strcmp(cheat_upper, "RESIGN")) {
+			game3F4_cheat(this->ptr3F4, 103);
+			return 1;
+		}
+		if (strcmp(cheat_upper, "GAIA")) {
+			if (!strcmp(cheat_upper, "PEPPERONI PIZZA")) {
+				game3F4_cheat(this->ptr3F4, 20);
+				return 1;
+			}
+			if (!strcmp(cheat_upper, "COINAGE")) {
+				game3F4_cheat(this->ptr3F4, 21);
+				return 1;
+			}
+			if (!strcmp(cheat_upper, "WOODSTOCK")) {
+				game3F4_cheat(this->ptr3F4, 23);
+				return 1;
+			}
+			if (!strcmp(cheat_upper, "QUARRY")) {
+				game3F4_cheat(this->ptr3F4, 22);
+				return 1;
+			}
+			if (!strcmp(cheat_upper, "STEROIDS")) {
+				game3F4_cheat(this->ptr3F4, 24);
+				return 1;
+			}
+no_gaia:
+			if (!strcmp(cheat_upper, "BIGDADDY")) {
+				game3F4_cheat(this->ptr3F4, 220);
+				return 1;
+			}
+			if (!strcmp(cheat_upper, "REVEAL MAP")) {
+				game3F4_cheat(this->ptr3F4, 230);
+				return 1;
+			}
+			if (!strcmp(cheat_upper, "NO FOG")) {
+				game3F4_cheat(this->ptr3F4, 231);
+				return 1;
+			}
+			if (!strcmp(cheat_upper, "ZEUS")) {
+				// TODO implement
+				fputs("no zeus yet\n", stderr);
+				return 1;
+			}
+		}
+		return 0;
+	}
+	if (!game_still_running(game_ref))
+		goto no_gaia;
+	menu_player_stat(this);
+	// FIXME doesn't make sense
+	if (this->rpair_root.other && this->rpair_rootval.dword == 1)
+		this->vtbl->set_rpair_next(this, 0, 0);
+	this->vtbl->menu_init(this, 0);
 	return 0;
 }
 

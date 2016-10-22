@@ -47,7 +47,7 @@ struct game_settings {
 	float gamespeed;
 	char c0;
 	char str[128];
-	char num97D_97E_is_zero;
+	char game_running;
 	char num97E_97D_is_zero;
 	char hsv[3];
 	char cheats;
