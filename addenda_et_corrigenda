@@ -1,6 +1,6 @@
 This document contains things we would like to add to the original game
 (i.e. addenda) and things we would like to fix in the original game
-(i.e. corrigenda). There is not guarantee that these items will be
+(i.e. corrigenda). There is no guarantee that these items will be
 implemented though.
 All items are in random order. We may assign them a priority in the
 future.
@@ -9,7 +9,7 @@ ADDENDA
 
 Achievements
 It would be nice to add more items to the achievements menu after a game
-has ended. For example, it the military tab you can see which player has
+has ended. For example, in the military tab you can see which player has
 the largest army, but it does not tell the amount of army units.
 A kill ratio, e.g. ratio = killed_units / lots_units, would be nice.
 
