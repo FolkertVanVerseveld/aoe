@@ -58,10 +58,6 @@ static void game_free_ios_base(struct game *this)
 {
 	stub
 	this->vtbl = &g_vtbl2;
-	if (this->window2) {
-		SDL_DestroyWindow(this->window2);
-		this->window2 = NULL;
-	}
 }
 
 static inline char game_get_pathfind(const struct game *this)
@@ -1021,11 +1017,6 @@ static signed game_init_icon(struct game *this)
 struct game *game_ctor(struct game *this, struct game_config *cfg, int should_start_game)
 {
 	game_vtbl_init(this, cfg, 0);
-	/* < */
-	// TODO move this
-	this->cfg->window = SDL_CreateWindow("AoE", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-	this->cfg->gl = SDL_GL_CreateContext(this->cfg->window);
-	/* > */
 	this->hwnd_mci = 0;
 	this->tblBF0[0] = -1;
 	this->tblBF0[1] = 0;

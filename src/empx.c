@@ -10,6 +10,8 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "empx.h"
+#include "engine.h"
 #include "config.h"
 #include "configure.h"
 #include "dmap.h"
@@ -25,6 +27,7 @@
 #define DIR_DATA2 "data2/"
 
 int prng_seed;
+static char *path = NULL;
 
 struct obj42BF80 {
 	unsigned time_millis;
@@ -89,8 +92,9 @@ static int parse_opt(int argc, char **argv)
 			exit(0);
 			break;
 		case 'r':
-			if (chdir(optarg)) {
-				perror(optarg);
+			path = strdup(optarg);
+			if (!path) {
+				fputs("out of memory\n", stderr);
 				exit(1);
 			}
 			break;
@@ -176,29 +180,8 @@ static void cleanup(void)
 	config_free();
 	memchk();
 	memfree();
-}
-
-static int envcheck(void)
-{
-	struct stat st;
-	const char *data [] = {DRS_SFX, DRS_GFX, DRS_MAP, DRS_BORDER};
-	const char *xdata[] = {DRS_SFX, DRS_GFX, DRS_UI};
-	char buf[256];
-	for (unsigned i = 0; i < 4; ++i) {
-		sprintf(buf, "%s%s", DRS_DATA, data[i]);
-		if (stat(buf, &st)) {
-			perror(buf);
-			return 1;
-		}
-	}
-	for (unsigned i = 0; i < 3; ++i) {
-		sprintf(buf, "%s%s", DRS_XDATA, xdata[i]);
-		if (stat(buf, &st)) {
-			perror(buf);
-			return 1;
-		}
-	}
-	return 0;
+	if (path)
+		free(path);
 }
 
 int main(int argc, char **argv)
@@ -231,8 +214,8 @@ int main(int argc, char **argv)
 		fputs("config_init failed\n", stderr);
 		return 1;
 	}
-	if (envcheck()) {
-		fputs("bad runtime path or missing files\n", stderr);
+	if (eng_init(path)) {
+		fputs("engine died\n", stderr);
 		return 1;
 	}
 	/* > */
