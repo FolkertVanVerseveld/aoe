@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "config.h"
+#include "configure.h"
 #include "dmap.h"
 #include "game.h"
 #include "langx.h"
@@ -36,6 +37,7 @@ static const char data_map_magic[4] = {'1', '.', '0', '0'};
 static struct option long_opt[] = {
 	{"help", no_argument, 0, 0},
 	{"root", required_argument, 0, 0},
+	{"version", no_argument, 0, 0},
 	{0, 0, 0, 0}
 };
 
@@ -44,13 +46,30 @@ static int parse_opt(int argc, char **argv)
 	int c;
 	while (1) {
 		int option_index;
-		c = getopt_long(argc, argv, "hr:", long_opt, &option_index);
+		c = getopt_long(argc, argv, "hr:v", long_opt, &option_index);
 		if (c == -1) break;
 		switch (c) {
+		case 'v':
+			puts(
+				TITLE " - Rise of Rome\n"
+				"version" VERSION "\n"
+				"commit: " GIT_SHA "\n"
+				"origin: " GIT_ORIGIN "\n"
+				"configured with: " BUILD_OPTIONS
+#if CFG_TAUNTED
+				"\nconfiguration is taunted\n"
+				"no support will be provided"
+#endif
+			);
+			exit(0);
+			break;
 		case 'h':
 			puts(
 				TITLE " - Rise of Rome\n"
 				"version " VERSION "\n"
+#ifdef DEBUG
+				"commit " GIT_SHA "\n"
+#endif
 				"common options:\n"
 				"ch long  description\n"
 				" h help  this help\n"
@@ -65,8 +84,9 @@ static int parse_opt(int argc, char **argv)
 				"midimusic    enable midi music\n"
 				"msync        sync midi playback\n"
 				"nosound      disable sound\n"
-				"nomusic      disable music\n"
+				"nomusic      disable music"
 			);
+			exit(0);
 			break;
 		case 'r':
 			if (chdir(optarg)) {

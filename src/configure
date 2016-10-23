@@ -29,7 +29,34 @@ Makefile
 *.zip
 # documentation
 doc
+# configure
+configure.h
 # binaries
+EOF
+cat <<EOF >configure.h
+#ifndef CONFIGURE
+#define CONFIGURE
+
+EOF
+if ! hash git 2>/dev/null; then
+	echo 'No git available, falling back to defaults' 2>&1
+	echo 'configuration is taunted' 2>&1
+cat <<EOF >>configure.h
+#define GIT_SHA "??"
+#define CFG_TAUNTED 1
+EOF
+else
+cat <<EOF >>configure.h
+#define GIT_SHA "$(git rev-parse HEAD)"
+#define CFG_TAUNTED 0
+EOF
+fi
+cat <<EOF >>configure.h
+
+#define BUILD_OPTIONS "$*"
+#define GIT_ORIGIN "https://www.github.com/FolkertVanVerseveld/aoe.git"
+
+#endif
 EOF
 cat <<EOF >Makefile
 .PHONY: default clean
