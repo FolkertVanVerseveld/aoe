@@ -1,18 +1,16 @@
 Linux native game port of windows game Age of Empires Rise of Rome
 
-All copyrighted material and trademarks belong to their respective
-owners. This is an educational non-profit project we are writing in our
-free time.
+All copyrighted material and trademarks belong to their respective owners. This
+is an educational non-profit project we are writing in our free time.
 
-It tries to take fully advantage of POSIX while mimicking the windows
-API and the genie game engine for compatibility reasons. In order to
-achieve this, some code is reconstructed from the dissassembly. We have
-provided a couple of tools that verify, test, and inspect the original
-data files.
+It tries to take fully advantage of POSIX while mimicking the windows API and
+the genie game engine for compatibility reasons. In order to achieve this, some
+code is reconstructed from the dissassembly. We have provided a couple of tools
+that verify, test, and inspect the original data files.
 
-You still need to have an original installed version of Age of Empires
-in order to run this program, since you need to specify the location of
-the original data directory.
+You still need to have an original installed version of Age of Empires in order
+to run this program, since you need to specify the location of the original
+data directory.
 
 BUILDING THE GAME
 
@@ -38,3 +36,7 @@ If your original installed version of Age of Empires is located at e.g.
 
 For more information about the commandline options, use ./empx -h
 See also INSTALL for more details.
+
+TROUBLESHOOTING
+Make sure you own a legal version of Age of Empires Rise of Rome and you have
+specified the root directory to AoE RoR correctly. See BUGS for more details.
