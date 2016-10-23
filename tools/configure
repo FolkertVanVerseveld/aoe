@@ -3,7 +3,14 @@
 CC=gcc
 cstd='-std=gnu99'
 CFLAGS="-Wall -Wextra -pedantic $cstd $*"
+libs='openal'
 INCS=
+if ! hash pkg-config 2>/dev/null; then
+	echo "pkg-config is missing" 1>&2
+	exit 1
+fi
+CFLAGS="$CFLAGS $(pkg-config --cflags $libs)"
+LDLIBS="$(pkg-config --libs $libs)"
 cat <<END >.gitignore
 # Created by build script. Modifications are lost when rerun.
 .gitignore
@@ -22,6 +29,7 @@ cat <<END >Makefile
 
 CC?=$CC
 CFLAGS=$CFLAGS
+LDLIBS=$LDLIBS
 
 END
 
