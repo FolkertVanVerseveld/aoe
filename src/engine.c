@@ -11,6 +11,7 @@
 #include <GL/gl.h>
 #include "empx.h"
 #include "dmap.h"
+#include "gfx.h"
 #include "xmap.h"
 #include "todo.h"
 
@@ -61,6 +62,7 @@ void eng_free(void)
 		xunmap(fd_lang, data_lang, size_lang);
 		fd_lang = -1;
 	}
+	gfx_free();
 	if (init & INIT_SDL) {
 		SDL_Quit();
 		init &= ~INIT_SDL;
@@ -94,12 +96,11 @@ static int envcheck(char *buf)
 int eng_init(const char *path)
 {
 	int ret = 1;
-	if (SDL_Init(SDL_INIT_VIDEO)) {
-		show_error("SDL failed", SDL_GetError());
-		goto fail;
-	}
+	if (SDL_Init(SDL_INIT_VIDEO))
+		goto sdl_error;
 	init |= INIT_SDL;
 	if (SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1)) {
+sdl_error:
 		show_error("SDL failed", SDL_GetError());
 		goto fail;
 	}
@@ -113,8 +114,10 @@ int eng_init(const char *path)
 		show_error("Engine failed", "no OpenGL");
 		goto fail;
 	}
+	if (gfx_init())
+		goto fail;
 	char buf[256];
-	if (chdir(path)) {
+	if (path && chdir(path)) {
 		snprintf(buf, sizeof buf, "%s: %s", path, strerror(errno));
 		show_error("Engine failed", buf);
 		goto fail;
@@ -139,6 +142,19 @@ int eng_init(const char *path)
 		}
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_COLOR_BUFFER_BIT);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, 1, 1, 0, -1, 1);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glEnable(GL_TEXTURE_2D);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0, 0); glVertex2f(0, 0);
+		glTexCoord2f(1, 0); glVertex2f(1, 0);
+		glTexCoord2f(1, 1); glVertex2f(1, 1);
+		glTexCoord2f(0, 1); glVertex2f(0, 1);
+		glEnd();
 		SDL_GL_SwapWindow(win);
 	}
 end:
@@ -149,7 +165,10 @@ fail:
 
 void show_error(const char *title, const char *msg)
 {
-	fprintf(stderr, "%s\n", msg);
+	if (title)
+		fprintf(stderr, "%s: %s\n", title, msg);
+	else
+		fprintf(stderr, "%s\n", msg);
 	if (init || !isatty(fileno(stdin)))
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, msg, win);
 }

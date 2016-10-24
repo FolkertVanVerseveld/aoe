@@ -78,4 +78,14 @@ struct pal_entry *drs_palette(char *pal_fname, int res_id, int a3);
 int get_display(SDL_Window *scr, unsigned *display);
 int vmode_map_blit(struct video_mode *this, SDL_Window *window, int a3, int spurious, int a5);
 
+#define FONT_WIDTH 144
+#define FONT_HEIGHT 256
+
+GLuint tex;
+unsigned spr_w;
+unsigned spr_h;
+
+void gfx_free(void);
+int gfx_init(void);
+
 #endif

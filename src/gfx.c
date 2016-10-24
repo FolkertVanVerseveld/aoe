@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <GL/gl.h>
+#include <SDL2/SDL_image.h>
 #include "engine.h"
 #include "menu.h"
 #include "todo.h"
@@ -11,6 +12,12 @@
 #include "memmap.h"
 #include "gfx.h"
 #include "game.h"
+
+#define INIT_IMG 1
+#define INIT_TEX 2
+#define INIT_GFX 4
+
+static int init = 0;
 
 int enum_display_modes(void *arg, int (*cmp)(struct display*, void*))
 {
@@ -270,4 +277,55 @@ int vmode_map_blit(struct video_mode *this, SDL_Window *window, int a3, int spur
 	(void)spurious;
 	(void)a5;
 	return 0;
+}
+
+void gfx_free(void)
+{
+	if (init & INIT_TEX) {
+		glDeleteTextures(1, &tex);
+		tex = 0;
+		init &= ~INIT_TEX;
+	}
+	if (init & INIT_IMG) {
+		IMG_Quit();
+		init &= ~INIT_IMG;
+	}
+	init &= ~INIT_GFX;
+}
+
+int gfx_init(void)
+{
+	int ret = 1, flags = IMG_INIT_PNG;
+	SDL_Surface *surf = NULL;
+	if ((IMG_Init(flags) & flags) != flags)
+		goto img_error;
+	surf = IMG_Load("font.png");
+	if (!surf) {
+img_error:
+		show_error("IMG failed", IMG_GetError());
+		goto fail;
+	}
+	if (surf->format->palette) {
+		show_error("Bad font", "Color palette not supported");
+		goto fail;
+	}
+	if (surf->w != FONT_WIDTH || surf->h != FONT_HEIGHT) {
+		char buf[256];
+		snprintf(buf, sizeof buf, "Dimensions should be (%d,%d), but got (%d,%d)\n", FONT_WIDTH, FONT_HEIGHT, surf->w, surf->h);
+		show_error("Bad font", buf);
+		goto fail;
+	}
+	GLenum format = (!surf->format->Amask || surf->format->BitsPerPixel == 24) ? GL_RGB : GL_RGBA;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, format, surf->w, surf->h, 0, format, GL_UNSIGNED_BYTE, surf->pixels);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	spr_w = surf->w;
+	spr_h = surf->h;
+	ret = 0;
+fail:
+	if (surf)
+		SDL_FreeSurface(surf);
+	return ret;
 }
