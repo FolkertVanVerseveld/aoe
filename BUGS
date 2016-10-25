@@ -1,0 +1,36 @@
+TROUBLESHOOTING
+In general, if you experience odd or erroneous behavior, you should try building
+from source with debug options enabled. This can be achieved by navigating to
+the root directory and issuing these commands:
+$ cd src && make clean
+$ ./configure -g -DDEBUG && make
+
+REPORTING BUGS
+Remember that at the moment this project is very unstable and lacks lots of
+functionality compared to the original game. Before reporting bugs make sure the
+following conditions are satisfied:
+
+Bug description
+Provide a description of the bug and how it is triggered. If it is not
+reproducable on your site, it probably is not on our side either. You have to
+provide all output that is printed when running ./empx -v
+
+Unique bug
+Duplicates or similar bugs that are already reported are ignored. If you are
+sure it is not a duplicate you have to tell why you think it is unique.
+
+Example
+This is an example of a good bug report:
+
+  Subject: aoe crash on missing language files
+  aoe crashes when the specified root path does not contain language files. One
+  can reproduce this by moving the language files language.dll and languagex.dll
+  to another directory and running the game using: ./empx -r/root/path
+
+Use your common sense when filing a bug report. This will save time for both
+parties. If you are really willing to help improve development you can fix the
+bugs yourself and submit a pull request or patch so we can apply the changes. It
+goes without saying that you provide a good description *why* we should merge a
+particular contribution.
+
+See also HACKING for more information about contributing to this project.
