@@ -329,3 +329,35 @@ fail:
 		SDL_FreeSurface(surf);
 	return ret;
 }
+
+#define TW 16
+#define TH 16
+
+void draw_str(GLfloat x, GLfloat y, const char *str)
+{
+	GLfloat tx0, tx1, ty0, ty1, xp = x;
+	GLfloat vx0, vx1, vy0, vy1;
+	unsigned gx, gy;
+	int ch;
+	for (; *str; ++str, x += FONT_GW) {
+		ch = *str;
+		while (ch == '\n') {
+			x = xp;
+			y += FONT_GH;
+			ch = *++str;
+		}
+		if (!ch) break;
+		gy = ch / TW;
+		gx = ch % TH;
+		tx0 = 1.0f * gx / TW;
+		tx1 = 1.0f * (gx + 1) / TW;
+		ty0 = 1.0f * gy / TH;
+		ty1 = 1.0f * (gy + 1) / TH;
+		vx0 = x; vx1 = x + FONT_GW;
+		vy0 = y; vy1 = y + FONT_GH;
+		glTexCoord2f(tx0, ty0); glVertex2f(vx0, vy0);
+		glTexCoord2f(tx1, ty0); glVertex2f(vx1, vy0);
+		glTexCoord2f(tx1, ty1); glVertex2f(vx1, vy1);
+		glTexCoord2f(tx0, ty1); glVertex2f(vx0, vy1);
+	}
+}

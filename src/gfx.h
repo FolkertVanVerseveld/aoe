@@ -5,6 +5,7 @@
 #include "view.h"
 #include <stdint.h>
 #include <SDL2/SDL.h>
+#include <GL/gl.h>
 
 struct pal_entry {
 	uint8_t r, g, b, flags;
@@ -80,6 +81,8 @@ int vmode_map_blit(struct video_mode *this, SDL_Window *window, int a3, int spur
 
 #define FONT_WIDTH 144
 #define FONT_HEIGHT 256
+#define FONT_GW 9
+#define FONT_GH 16
 
 GLuint tex;
 unsigned spr_w;
@@ -87,5 +90,6 @@ unsigned spr_h;
 
 void gfx_free(void);
 int gfx_init(void);
+void draw_str(GLfloat x, GLfloat y, const char *str);
 
 #endif

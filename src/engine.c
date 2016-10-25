@@ -93,6 +93,154 @@ static int envcheck(char *buf)
 	return 0;
 }
 
+static int scr_init(unsigned *nscr, SDL_Rect **bnds)
+{
+	SDL_Rect *ptr = NULL;
+	int d, ret = 1;
+	d = SDL_GetNumVideoDisplays();
+	*nscr = d < 0 ? 0 : d;
+	if (!*nscr) {
+		fputs("no display found\n", stderr);
+		goto fail;
+	}
+	if (!(ptr = realloc(*bnds, *nscr * sizeof(SDL_Rect)))) {
+		fputs("out of memory\n", stderr);
+		goto fail;
+	}
+	*bnds = ptr;
+	for (unsigned i = 0; i < *nscr; ++i)
+		if (SDL_GetDisplayBounds(i, &(*bnds)[i])) {
+			fprintf(stderr, "Display error: %s\n", SDL_GetError());
+			goto fail;
+		}
+	ret = 0;
+fail:
+	return ret;
+}
+
+#define CFG_WIDTH 400
+#define CFG_HEIGHT 300
+
+#define MODESZ 64
+static unsigned nmode;
+static SDL_DisplayMode modes[MODESZ];
+
+// FIXME fails if display count has changed since scr_init
+static int scr_fetch_modes(unsigned scr)
+{
+	int d, ret = 1;
+	d = SDL_GetNumDisplayModes(scr);
+	nmode = d < 1 ? 1 : d;
+	if (d < 1) {
+		show_error("Display mode error", "Bad display");
+		goto fail;
+	}
+	unsigned max = MODESZ;
+	if (max > nmode) max = nmode;
+	for (unsigned i = 0; i < max; ++i)
+		if (SDL_GetDisplayMode(scr, i, &modes[i])) {
+			show_error("Display mode error", SDL_GetError());
+			goto fail;
+		}
+	ret = 0;
+fail:
+	return ret;
+}
+
+static int cfg_loop(void)
+{
+	unsigned nscr, mode = 0, display = 0;
+	int ret = 1;
+	SDL_Rect *bnds = NULL;
+	if (scr_init(&nscr, &bnds)) {
+		show_error("Display failed", "Cannot fetch dimensions");
+		goto fail;
+	}
+	if (scr_fetch_modes(display))
+		goto fail;
+	unsigned shift = 0, ymax = CFG_HEIGHT / FONT_GH - 8;
+	while (1) {
+		SDL_Event ev;
+		char buf[256];
+		while (SDL_PollEvent(&ev)) {
+			switch (ev.type) {
+			case SDL_QUIT:
+				exit(0);
+			case SDL_KEYDOWN:
+				switch (ev.key.keysym.sym) {
+				case 'h':
+				case SDLK_LEFT:
+					display = (display + nscr - 1) % nscr;
+					if (scr_fetch_modes(display))
+						goto fail;
+					if (mode >= nmode)
+						shift = mode = 0;
+					break;
+				case 'l':
+				case SDLK_RIGHT:
+					display = (display + 1) % nscr;
+					if (scr_fetch_modes(display))
+						goto fail;
+					if (mode >= nmode)
+						shift = mode = 0;
+					break;
+				case 'j':
+				case SDLK_DOWN:
+					mode = (mode + 1) % nmode;
+					break;
+				case 'k':
+				case SDLK_UP:
+					mode = (mode + nmode - 1) % nmode;
+					break;
+				case 27:
+				case '\r':
+				case '\n':
+				case ' ':
+					printf("%4dx%4d %dHz\n", modes[mode].w, modes[mode].h, modes[mode].refresh_rate);
+					goto end;
+				}
+				break;
+			}
+		}
+		if (shift > mode)
+			shift = mode;
+		if (mode - shift >= ymax)
+			shift = mode - ymax;
+		glClearColor(0, 0, 0, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, CFG_WIDTH, CFG_HEIGHT, 0, -1, 1);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glEnable(GL_TEXTURE_2D);
+		glBegin(GL_QUADS);
+		draw_str(
+			3 * FONT_GW, FONT_GH,
+			"Age of Empires screen setup\n"
+		);
+		snprintf(buf, sizeof buf, "Display: \x11%u\x10 of %u (max %dx%d)\n", display + 1, nscr, bnds[display].w, bnds[display].h);
+		draw_str(3 * FONT_GW, 3 * FONT_GH, buf);
+		unsigned max = nmode <= shift + ymax + 1 ? nmode : shift + ymax + 1;
+		for (unsigned i = shift; i < max; ++i) {
+			SDL_DisplayMode *m = &modes[i];
+			snprintf(buf, sizeof buf, "%4dx%4d %dHz", m->w, m->h, m->refresh_rate);
+			draw_str(6 * FONT_GW, (5 + i - shift) * FONT_GH, buf);
+		}
+		draw_str(4 * FONT_GW, (5 + mode - shift) * FONT_GH, "\x10");
+		draw_str(3 * FONT_GW, FONT_GW * (300 - 3 * FONT_GW) / FONT_GW, "Choose your resolution and press ENTER");
+		glEnd();
+		SDL_GL_SwapWindow(win);
+	}
+end:
+	ret = 0;
+fail:
+	if (bnds)
+		free(bnds);
+	return ret;
+}
+
 int eng_init(const char *path)
 {
 	int ret = 1;
@@ -104,7 +252,7 @@ sdl_error:
 		show_error("SDL failed", SDL_GetError());
 		goto fail;
 	}
-	win = SDL_CreateWindow("AoE", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 240, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+	win = SDL_CreateWindow("AoE", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 300, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	if (!win) {
 		show_error("Engine failed", "no window");
 		goto fail;
@@ -130,35 +278,7 @@ sdl_error:
 	cfg.window = win;
 	cfg.gl = gl;
 	init |= INIT_ENG;
-	while (1) {
-		SDL_Event ev;
-		while (SDL_PollEvent(&ev)) {
-			switch (ev.type) {
-			case SDL_QUIT:
-				exit(0);
-			case SDL_KEYDOWN:
-				goto end;
-			}
-		}
-		glClearColor(0, 0, 0, 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0, 1, 1, 0, -1, 1);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glBindTexture(GL_TEXTURE_2D, tex);
-		glEnable(GL_TEXTURE_2D);
-		glBegin(GL_QUADS);
-		glTexCoord2f(0, 0); glVertex2f(0, 0);
-		glTexCoord2f(1, 0); glVertex2f(1, 0);
-		glTexCoord2f(1, 1); glVertex2f(1, 1);
-		glTexCoord2f(0, 1); glVertex2f(0, 1);
-		glEnd();
-		SDL_GL_SwapWindow(win);
-	}
-end:
-	ret = 0;
+	ret = cfg_loop();
 fail:
 	return ret;
 }
