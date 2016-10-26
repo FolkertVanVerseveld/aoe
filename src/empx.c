@@ -210,11 +210,7 @@ int main(int argc, char **argv)
 	}
 	options[OPTBUFSZ - 1] = '\0';
 	puts(options);
-	if (!config_init()) {
-		fputs("config_init failed\n", stderr);
-		return 1;
-	}
-	if (eng_init(path)) {
+	if (eng_init(&path)) {
 		fputs("engine died\n", stderr);
 		return 1;
 	}

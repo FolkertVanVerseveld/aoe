@@ -241,9 +241,15 @@ fail:
 	return ret;
 }
 
-int eng_init(const char *path)
+int eng_init(char **path)
 {
 	int ret = 1;
+	if (!config_init()) {
+		fputs("config_init failed\n", stderr);
+		goto fail;
+	}
+	if (!config_load(path))
+		fputs("bad configuration settings\n", stderr);
 	if (SDL_Init(SDL_INIT_VIDEO))
 		goto sdl_error;
 	init |= INIT_SDL;
@@ -265,8 +271,8 @@ sdl_error:
 	if (gfx_init())
 		goto fail;
 	char buf[256];
-	if (path && chdir(path)) {
-		snprintf(buf, sizeof buf, "%s: %s", path, strerror(errno));
+	if (*path && chdir(*path)) {
+		snprintf(buf, sizeof buf, "%s: %s", *path, strerror(errno));
 		show_error("Engine failed", buf);
 		goto fail;
 	}

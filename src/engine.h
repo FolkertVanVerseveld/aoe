@@ -32,7 +32,7 @@ int findfirst(const char *fname);
 int loadlib(const char *name, char **data, size_t *size);
 void libdump(void);
 
-int eng_init(const char *path);
+int eng_init(char **path);
 void eng_free(void);
 
 void show_error(const char *title, const char *msg);

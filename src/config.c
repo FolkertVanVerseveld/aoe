@@ -14,6 +14,8 @@
 
 static const char *homedir = NULL;
 static char *cfgname = NULL;
+static int custom_root = 0;
+static char *root = NULL;
 
 struct config reg_cfg = {
 	.screen_size = 1280,
@@ -58,6 +60,7 @@ static int cfg_touch(void)
 	if (stat(cfgname, &st)) {
 		fd = creat(cfgname, 0600);
 		if (fd == -1) goto fail;
+		dbgs("create/replace config file");
 		size_t n = strlen(cfg_default);
 		ssize_t out = write(fd, cfg_default, n);
 		if (out < 0 || (size_t)out != n) {
@@ -93,7 +96,7 @@ int config_init(void)
 }
 
 /* NOTE we have about 10 options so we don't have to optimize this */
-static int cfg_update(unsigned i, const char *arg, const char *val)
+static int cfg_update(unsigned i, const char *arg, const char *val, char **path)
 {
 	char err[256] = "internal error";
 	if (!strcmp(arg, "screen_size")) {
@@ -194,6 +197,12 @@ static int cfg_update(unsigned i, const char *arg, const char *val)
 			goto fail;
 		}
 		reg_cfg.mp_pathfind = find;
+	} else if (!strcmp(arg, "root_path")) {
+		if (!*path) {
+			root = *path = strdup(val);
+			custom_root = 1;
+			dbgf("root_path: %s\n", val);
+		}
 	} else {
 		snprintf(err, 256, "invalid option: %s", arg);
 fail:
@@ -213,7 +222,7 @@ format is very simple:
 errors are printed to stderr and the file will
 be recreated if syntax errors have occurred.
 */
-int config_load(void)
+int config_load(char **path)
 {
 	int ret = 0;
 	char *line = NULL;
@@ -244,7 +253,7 @@ int config_load(void)
 		while (val < n && isspace(line[val]))
 			++val;
 		line[arg_end] = '\0';
-		if (!cfg_update(i, line + arg, line + val))
+		if (!cfg_update(i, line + arg, line + val, path))
 			goto nuke;
 	}
 end:
@@ -297,6 +306,8 @@ int config_save(void)
 		reg_cfg.pathfind,
 		reg_cfg.mp_pathfind
 	);
+	if (custom_root)
+		fprintf(f, "root_path = %s\n", root);
 	ret = 1;
 fail:
 	if (f) fclose(f);

@@ -73,7 +73,7 @@ struct game_settings {
 
 void config_free(void);
 int config_init(void);
-int config_load(void);
+int config_load(char **path);
 int config_save(void);
 
 #endif
