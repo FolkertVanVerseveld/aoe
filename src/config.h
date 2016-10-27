@@ -17,6 +17,7 @@ struct config {
 	unsigned flags;
 	unsigned width, height;
 	char pathfind, mp_pathfind;
+	unsigned display;
 };
 
 extern struct config reg_cfg;

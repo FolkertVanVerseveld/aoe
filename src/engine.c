@@ -152,6 +152,7 @@ static int cfg_loop(void)
 	unsigned nscr, mode = 0, display = 0;
 	int ret = 1;
 	SDL_Rect *bnds = NULL;
+	SDL_DisplayMode *cfg_mode = NULL;
 	if (scr_init(&nscr, &bnds)) {
 		show_error("Display failed", "Cannot fetch dimensions");
 		goto fail;
@@ -234,6 +235,10 @@ static int cfg_loop(void)
 		SDL_GL_SwapWindow(win);
 	}
 end:
+	cfg_mode = &modes[mode];
+	reg_cfg.display = display;
+	reg_cfg.screen_size = reg_cfg.width = cfg_mode->w;
+	reg_cfg.height = cfg_mode->h;
 	ret = 0;
 fail:
 	if (bnds)
