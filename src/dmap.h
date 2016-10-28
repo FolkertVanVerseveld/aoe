@@ -1,15 +1,6 @@
 #ifndef AOE_DMAP_H
 #define AOE_DMAP_H
 
-/*
-drs item types:
-
-'bina'
-'wav '
-'slp '
-'shp '
-*/
-
 #define DRS_UI "Interfac.drs"
 #define DRS_BORDER "Border.drs"
 #define DRS_MAP "Terrain.drs"
@@ -23,12 +14,7 @@ drs item types:
 #include <stdint.h>
 #include <sys/types.h>
 
-struct drsmap {
-	char copyright[40];
-	char version[16];
-	uint32_t nlist;
-	uint32_t listend; // XXX go figure
-};
+#include "../genie/drs.h"
 
 #define DMAPBUFSZ 260
 struct dmap {
@@ -37,23 +23,6 @@ struct dmap {
 	struct drsmap *drs_data;
 	char filename[DMAPBUFSZ];
 	size_t length;
-};
-
-#define DT_BINARY 0x62696e61
-#define DT_SHP    0x73687020
-#define DT_SLP    0x736c7020
-#define DT_WAVE   0x77617620
-
-struct drs_list {
-	uint32_t type;
-	uint32_t offset;
-	uint32_t size;
-};
-
-struct drs_item {
-	uint32_t id;
-	uint32_t offset;
-	uint32_t size;
 };
 
 void dmap_init(struct dmap *map);
