@@ -35,8 +35,6 @@ struct obj42BF80 {
 
 int dtor_iobase(void*, char);
 
-static const char data_map_magic[4] = {'1', '.', '0', '0'};
-
 static struct option long_opt[] = {
 	{"help", no_argument, 0, 0},
 	{"root", required_argument, 0, 0},

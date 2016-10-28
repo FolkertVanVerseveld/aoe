@@ -229,6 +229,8 @@ int config_load(char **path)
 	FILE *f = NULL;
 	size_t len;
 	ssize_t read;
+	if (*path)
+		custom_root = 1;
 	if (!cfg_touch())
 		goto fail;
 	f = fopen(cfgname, "r");

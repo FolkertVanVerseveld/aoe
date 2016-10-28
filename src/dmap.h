@@ -35,7 +35,6 @@ struct dmap {
 	struct drsmap *dblk;
 	int fd;
 	struct drsmap *drs_data;
-	struct dmap *next;
 	char filename[DMAPBUFSZ];
 	size_t length;
 };
@@ -67,7 +66,5 @@ read data file from specified path and save all data in drs_list.
 provides additional error checking compared to original dissassembly
 */
 int read_data_mapping(const char *filename, const char *directory, int no_stat);
-
-extern struct dmap *drs_list;
 
 #endif

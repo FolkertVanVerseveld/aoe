@@ -11,31 +11,27 @@
 #include "dbg.h"
 #include "todo.h"
 
-struct dmap *drs_list = NULL;
-static const char data_map_magic[4] = {'1', '.', '0', '0'};
+#define DRS_LISTSZ 8
+
+static struct dmap drs_list[DRS_LISTSZ];
+static unsigned drs_count = 0;
 
 void dmap_init(struct dmap *map) {
 	map->dblk = NULL;
 	map->drs_data = NULL;
 	map->filename[0] = '\0';
-	map->next = NULL;
 }
 
 void dmap_free(struct dmap *map) {
 	assert((map->drs_data && !map->dblk) || map->drs_data == map->dblk);
 	if (map->drs_data) free(map->drs_data);
 	if (map->dblk && map->dblk != map->drs_data) free(map->dblk);
-	if (map) free(map);
 }
 
 void drs_free(void) {
-	if (!drs_list) return;
-	struct dmap *next, *item = drs_list;
-	do {
-		next = item->next;
-		if (item) dmap_free(item);
-		item = next;
-	} while (item);
+	for (unsigned i = 0; i < drs_count; ++i)
+		dmap_free(&drs_list[i]);
+	drs_count = 0;
 }
 
 static inline void str2(char *buf, size_t n, const char *s1, const char *s2)
@@ -45,27 +41,25 @@ static inline void str2(char *buf, size_t n, const char *s1, const char *s2)
 
 int read_data_mapping(const char *filename, const char *directory, int nommap)
 {
-	// data types that are read from drs files must honor WIN32 ABI
-	typedef uint32_t size32_t;
 	struct dbuf {
 		char data[60];
-		size32_t length;
+		uint32_t length;
 	} buf;
 	struct dmap *map = NULL;
 	char name[DMAPBUFSZ];
 	int fd = -1;
 	int ret = -1;
 	ssize_t n;
+	if (drs_count == DRS_LISTSZ) {
+		fputs("overflow: drs_list\n", stderr);
+		goto fail;
+	}
+	map = &drs_list[drs_count];
 	str2(name, sizeof name, directory, filename);
 	// deze twee regels komt dubbel voor in dissassembly
 	// aangezien ik niet van duplicated code hou staat het nu hier
 	fd = open(name, O_RDONLY); // XXX verify mode
 	if (fd == -1) goto fail;
-	map = malloc(sizeof *map);
-	if (!map) {
-		perror(__func__);
-		goto fail;
-	}
 	dmap_init(map);
 	if (!nommap) {
 		struct stat st;
@@ -116,25 +110,17 @@ int read_data_mapping(const char *filename, const char *directory, int nommap)
 		map->drs_data = map->dblk;
 	}
 	assert(map->drs_data);
-	// insert map into drs list
-	if (drs_list) {
-		struct dmap *last = drs_list;
-		while (last->next) last = last->next;
-		last->next = map;
-	} else {
-		drs_list = map;
-	}
 	// check for magic "1.00tribe"
 	ret = strncmp(map->drs_data->version, "1.00tribe", strlen("1.00tribe"));
 	if (ret) fprintf(stderr, "%s: hdr invalid\n", filename);
-	// FIXME if no magic, dangling ptr in last item of drs list
+	// insert map into drs list
+	++drs_count;
 fail:
 	if (fd != -1) close(fd);
 	if (ret && map) {
 		assert((map->drs_data && !map->dblk) || map->drs_data == map->dblk);
 		if (map->drs_data) free(map->drs_data);
 		if (map->dblk && map->dblk != map->drs_data) free(map->dblk);
-		free(map);
 		perror(name);
 	}
 	return ret;
@@ -144,13 +130,13 @@ static int drs_map(unsigned type, int res_id, int *fd, off_t *offset, char **dbl
 {
 	struct drsmap *drs_data;
 	struct dmap *map = drs_list;
-	if (map) {
-		while (1) {
+	unsigned drs_i = 0;
+	if (drs_count) {
+		for (drs_i = 0; drs_i < drs_count; ++drs_i) {
 			drs_data = map->drs_data;
-			if (!map->next)
-				goto fail;
+			map = &drs_list[drs_i];
 			if (!drs_data->nlist)
-				goto next;
+				continue;
 			struct drs_list *list = (struct drs_list*)((char*)drs_data + sizeof(struct drsmap));
 			for (unsigned i = 0; i < drs_data->nlist; ++i, ++list) {
 				if (list->type != type)
@@ -169,15 +155,12 @@ static int drs_map(unsigned type, int res_id, int *fd, off_t *offset, char **dbl
 						dbgf("drs map: %u from %s\n", res_id, map->filename);
 						*fd = map->fd;
 						*offset = item->offset;
-						// XXX V bogus
 						*dblk = (char*)map->dblk;
 						*count = item->size;
 						return 1;
 					}
 				}
 			}
-		next:
-			map = map->next;
 		}
 	}
 fail:

@@ -1632,8 +1632,6 @@ int start_game(struct game *this)
 	read_data_mapping(DRS_GFX   , DRS_DATA , 0);
 	read_data_mapping(DRS_MAP   , DRS_DATA , 0);
 	read_data_mapping(DRS_BORDER, DRS_DATA , 0);
-	// FIXME hack to also include data/Interface.drs
-	read_data_mapping(DRS_UI    , DRS_DATA , 0);
 	read_data_mapping(DRS_UI    , DRS_DATA , 0);
 	if (!game_show_focus_screen(this))
 		return 0;
