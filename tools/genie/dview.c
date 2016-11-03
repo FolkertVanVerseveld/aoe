@@ -6,6 +6,13 @@
 #include <getopt.h>
 #include <unistd.h>
 #include "../../genie/drs.h"
+#include "../../src/dbg.h"
+#include "../../src/dbg.c"
+
+#define OPT_LIST 1
+#define OPT_DUMP 2
+
+static unsigned opts = 0;
 
 static struct option long_opt[] = {
 	{"help", no_argument, 0, 0},
@@ -27,12 +34,20 @@ static int walk(char *data, size_t size, size_t offset)
 	for (unsigned j = 0; j < list->size; ++j, ++item) {
 		if (list->offset + (j + 1) * sizeof(struct drs_item) > size) {
 			fputs("bad list\n", stderr);
-			return;
+			return 1;
 		}
-		printf("#%u\n", j);
-		printf("item ID: %u\n", item->id);
-		printf("offset: %X\n", item->offset);
-		printf("size: %X\n", item->size);
+		const char *type = "?";
+		switch (list->type) {
+		case DT_WAVE  : type = "audio";  break;
+		case DT_SHP   : type = "shape";  break;
+		case DT_SLP   : type = "model";  break;
+		case DT_BINARY: type = "object"; break;
+		}
+		if (opts & OPT_DUMP) {
+			printf("%5u %8X %8X %8s ", item->id, item->offset, item->size, type);
+			hexdump(data + item->offset, item->size > 16 ? 16 : item->size);
+		} else
+			printf("%5u %8X %8X %8s\n", item->id, item->offset, item->size, type);
 	}
 	return 0;
 }
@@ -44,7 +59,7 @@ static int drsmap_stat(char *data, size_t size)
 	struct drsmap *drs = (struct drsmap*)data;
 	if (strncmp("1.00tribe", drs->version, strlen("1.00tribe"))) {
 bad_hdr:
-		fputs("invalid drs files\n", stderr);
+		fputs("invalid drs file\n", stderr);
 		return 1;
 	}
 	if (!drs->nlist) {
@@ -79,13 +94,10 @@ bad_hdr:
 		}
 	}
 	list = (struct drs_list*)((char*)drs + sizeof(struct drsmap));
-	for (unsigned i = 0; i < drs->nlist; ++i, ++list)
-		switch (list->type) {
-		default:
+	if (opts & OPT_LIST)
+		for (unsigned i = 0; i < drs->nlist; ++i, ++list)
 			if (walk(data, size, (size_t)((char*)list - data)))
 				return 1;
-			break;
-		}
 	return 0;
 }
 
@@ -96,11 +108,17 @@ static int parse_opt(int argc, char **argv)
 	int c;
 	while (1) {
 		int option_index;
-		c = getopt_long(argc, argv, "h", long_opt, &option_index);
+		c = getopt_long(argc, argv, "htd", long_opt, &option_index);
 		if (c == -1) break;
 		switch (c) {
 		case 'h':
 			usage(stdout, argc > 0 ? argv[0] : "view");
+			break;
+		case 't':
+			opts |= OPT_LIST;
+			break;
+		case 'd':
+			opts |= OPT_DUMP;
 			break;
 		default:
 			fprintf(stderr, "?? getopt returned character code 0%o ??\n", c);
