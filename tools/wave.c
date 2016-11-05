@@ -10,7 +10,7 @@ Simple wave inspector for data resource sets.
 #include <sys/stat.h>
 #include <AL/al.h>
 #include <AL/alc.h>
-#include "drs.h"
+#include "../genie/drs.h"
 
 #define RIFF_MAGIC 0x46464952
 #define WAVE_MAGIC 0x45564157
