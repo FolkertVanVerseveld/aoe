@@ -1,0 +1,1294 @@
+All files packed in data resource sets are described here. Use tools/genie/dview
+to create your own drs files if you want to create your own mods or if you do
+not own a legal copy of Age of Empires. You should be able to use this tool even
+for the original game.
+
+Original data assets:
+
+data/Border.drs
+models: 6
+ID        type description
+20000    model ??
+20001    model ??
+20002    model ??
+20003    model ??
+20004    model ??
+20006    model ??
+
+Graphics:
+data/graphics.drs
+models: 683
+ID        type description
+    0    model ??
+    1    model ??
+    2    model ??
+    3    model ??
+    4    model ??
+    5    model ??
+    8    model ??
+    9    model ??
+   10    model ??
+   11    model ??
+   12    model ??
+   13    model ??
+   15    model ??
+   16    model ??
+   17    model ??
+   18    model ??
+   19    model ??
+   20    model ??
+   21    model ??
+   22    model ??
+   23    model ??
+   24    model ??
+   25    model ??
+   26    model ??
+   27    model ??
+   28    model ??
+   29    model ??
+   30    model ??
+   31    model ??
+   32    model ??
+   33    model ??
+   34    model ??
+   35    model ??
+   36    model ??
+   37    model ??
+   38    model ??
+   39    model ??
+   40    model ??
+   41    model ??
+   42    model ??
+   43    model ??
+   44    model ??
+   45    model ??
+   46    model ??
+   47    model ??
+   48    model ??
+   50    model ??
+   51    model ??
+   52    model ??
+   53    model ??
+   54    model ??
+   55    model ??
+   56    model ??
+   57    model ??
+   59    model ??
+   60    model ??
+   61    model ??
+   62    model ??
+   63    model ??
+   64    model ??
+   65    model ??
+   66    model ??
+   67    model ??
+   68    model ??
+   69    model ??
+   70    model ??
+   71    model ??
+   72    model ??
+   73    model ??
+   75    model ??
+   76    model ??
+   77    model ??
+   78    model ??
+   79    model ??
+   80    model ??
+   81    model ??
+   82    model ??
+   83    model ??
+   84    model ??
+   85    model ??
+   86    model ??
+   87    model ??
+   88    model ??
+   89    model ??
+   90    model ??
+   91    model ??
+   92    model ??
+   94    model ??
+   95    model ??
+   96    model ??
+   97    model ??
+   98    model ??
+   99    model ??
+  100    model ??
+  101    model ??
+  103    model ??
+  104    model ??
+  105    model ??
+  106    model ??
+  107    model ??
+  108    model ??
+  109    model ??
+  110    model ??
+  111    model ??
+  112    model ??
+  113    model ??
+  114    model ??
+  115    model ??
+  116    model ??
+  117    model ??
+  119    model ??
+  120    model ??
+  121    model ??
+  122    model ??
+  123    model ??
+  124    model ??
+  125    model ??
+  126    model ??
+  127    model ??
+  128    model ??
+  129    model ??
+  131    model ??
+  133    model ??
+  134    model ??
+  135    model ??
+  136    model ??
+  138    model ??
+  139    model ??
+  140    model ??
+  141    model ??
+  142    model ??
+  143    model ??
+  144    model ??
+  145    model ??
+  149    model ??
+  150    model ??
+  151    model ??
+  152    model ??
+  153    model ??
+  154    model ??
+  155    model ??
+  156    model ??
+  157    model ??
+  159    model ??
+  160    model ??
+  161    model ??
+  162    model ??
+  163    model ??
+  164    model ??
+  165    model ??
+  166    model ??
+  167    model ??
+  168    model ??
+  169    model ??
+  170    model ??
+  171    model ??
+  172    model ??
+  173    model ??
+  175    model ??
+  176    model ??
+  177    model ??
+  178    model ??
+  179    model ??
+  180    model ??
+  181    model ??
+  182    model ??
+  183    model ??
+  184    model ??
+  185    model ??
+  186    model ??
+  187    model ??
+  188    model ??
+  189    model ??
+  190    model ??
+  191    model ??
+  192    model ??
+  194    model ??
+  195    model ??
+  196    model ??
+  197    model ??
+  198    model ??
+  199    model ??
+  200    model ??
+  201    model ??
+  202    model ??
+  203    model ??
+  204    model ??
+  205    model ??
+  206    model ??
+  207    model ??
+  208    model ??
+  209    model ??
+  210    model ??
+  211    model ??
+  212    model ??
+  213    model ??
+  214    model ??
+  215    model ??
+  216    model ??
+  217    model ??
+  218    model ??
+  219    model ??
+  220    model ??
+  221    model ??
+  222    model ??
+  223    model ??
+  224    model ??
+  225    model ??
+  226    model ??
+  227    model ??
+  228    model ??
+  229    model ??
+  230    model ??
+  231    model ??
+  232    model ??
+  233    model ??
+  234    model ??
+  235    model ??
+  236    model ??
+  237    model ??
+  238    model ??
+  239    model ??
+  240    model ??
+  241    model ??
+  242    model ??
+  243    model ??
+  244    model ??
+  245    model ??
+  246    model ??
+  247    model ??
+  248    model ??
+  249    model ??
+  250    model ??
+  252    model ??
+  253    model ??
+  254    model ??
+  255    model ??
+  256    model ??
+  257    model ??
+  258    model ??
+  259    model ??
+  260    model ??
+  261    model ??
+  262    model ??
+  263    model ??
+  264    model ??
+  265    model ??
+  266    model ??
+  267    model ??
+  268    model ??
+  269    model ??
+  270    model ??
+  271    model ??
+  272    model ??
+  273    model ??
+  274    model ??
+  275    model ??
+  276    model ??
+  277    model ??
+  278    model ??
+  280    model ??
+  281    model ??
+  282    model ??
+  283    model ??
+  284    model ??
+  285    model ??
+  286    model ??
+  287    model ??
+  288    model ??
+  289    model ??
+  290    model ??
+  291    model ??
+  292    model ??
+  293    model ??
+  294    model ??
+  295    model ??
+  296    model ??
+  297    model ??
+  298    model ??
+  299    model ??
+  300    model ??
+  301    model ??
+  302    model ??
+  303    model ??
+  304    model ??
+  305    model ??
+  306    model ??
+  307    model ??
+  308    model ??
+  309    model ??
+  310    model ??
+  311    model ??
+  312    model ??
+  313    model ??
+  314    model ??
+  315    model ??
+  316    model ??
+  317    model ??
+  318    model ??
+  319    model ??
+  320    model ??
+  321    model ??
+  322    model ??
+  323    model ??
+  324    model ??
+  325    model ??
+  326    model ??
+  327    model ??
+  328    model ??
+  330    model ??
+  331    model ??
+  332    model ??
+  333    model ??
+  334    model ??
+  335    model ??
+  336    model ??
+  337    model ??
+  338    model ??
+  339    model ??
+  340    model ??
+  341    model ??
+  342    model ??
+  343    model ??
+  344    model ??
+  345    model ??
+  346    model ??
+  347    model ??
+  348    model ??
+  349    model ??
+  350    model ??
+  351    model ??
+  352    model ??
+  353    model ??
+  354    model ??
+  355    model ??
+  356    model ??
+  357    model ??
+  358    model ??
+  360    model ??
+  361    model ??
+  362    model ??
+  363    model ??
+  364    model ??
+  365    model ??
+  366    model ??
+  367    model ??
+  368    model ??
+  369    model ??
+  370    model ??
+  371    model ??
+  372    model ??
+  373    model ??
+  374    model ??
+  375    model ??
+  376    model ??
+  377    model ??
+  378    model ??
+  379    model ??
+  380    model ??
+  381    model ??
+  382    model ??
+  383    model ??
+  384    model ??
+  385    model ??
+  386    model ??
+  387    model ??
+  388    model ??
+  389    model ??
+  390    model ??
+  391    model ??
+  392    model ??
+  393    model ??
+  394    model ??
+  395    model ??
+  396    model ??
+  397    model ??
+  398    model ??
+  399    model ??
+  400    model ??
+  401    model ??
+  402    model ??
+  403    model ??
+  404    model ??
+  405    model ??
+  406    model ??
+  407    model ??
+  409    model ??
+  410    model ??
+  412    model ??
+  413    model ??
+  414    model ??
+  415    model ??
+  416    model ??
+  417    model ??
+  418    model ??
+  419    model ??
+  420    model ??
+  421    model ??
+  422    model ??
+  423    model ??
+  424    model ??
+  425    model ??
+  426    model ??
+  427    model ??
+  428    model ??
+  429    model ??
+  430    model ??
+  431    model ??
+  432    model ??
+  433    model ??
+  434    model ??
+  435    model ??
+  436    model ??
+  437    model ??
+  438    model ??
+  439    model ??
+  440    model ??
+  441    model ??
+  442    model ??
+  443    model ??
+  444    model ??
+  445    model ??
+  446    model ??
+  447    model ??
+  448    model ??
+  449    model ??
+  450    model ??
+  451    model ??
+  452    model ??
+  453    model ??
+  454    model ??
+  455    model ??
+  456    model ??
+  457    model ??
+  458    model ??
+  459    model ??
+  460    model ??
+  461    model ??
+  463    model ??
+  464    model ??
+  465    model ??
+  466    model ??
+  467    model ??
+  468    model ??
+  469    model ??
+  470    model ??
+  471    model ??
+  472    model ??
+  473    model ??
+  474    model ??
+  475    model ??
+  477    model ??
+  478    model ??
+  479    model ??
+  480    model ??
+  481    model ??
+  483    model ??
+  484    model ??
+  485    model ??
+  486    model ??
+  487    model ??
+  488    model ??
+  489    model ??
+  490    model ??
+  491    model ??
+  492    model ??
+  493    model ??
+  494    model ??
+  495    model ??
+  496    model ??
+  497    model ??
+  498    model ??
+  499    model ??
+  500    model ??
+  501    model ??
+  502    model ??
+  503    model ??
+  504    model ??
+  505    model ??
+  506    model ??
+  507    model ??
+  508    model ??
+  509    model ??
+  510    model ??
+  511    model ??
+  512    model ??
+  513    model ??
+  514    model ??
+  515    model ??
+  516    model ??
+  518    model ??
+  519    model ??
+  520    model ??
+  521    model ??
+  522    model ??
+  523    model ??
+  524    model ??
+  525    model ??
+  526    model ??
+  527    model ??
+  528    model ??
+  529    model ??
+  530    model ??
+  531    model ??
+  532    model ??
+  533    model ??
+  534    model ??
+  535    model ??
+  536    model ??
+  537    model ??
+  538    model ??
+  539    model ??
+  540    model ??
+  541    model ??
+  542    model ??
+  543    model ??
+  544    model ??
+  545    model ??
+  546    model ??
+  547    model ??
+  548    model ??
+  549    model ??
+  550    model ??
+  551    model ??
+  552    model ??
+  553    model ??
+  554    model ??
+  555    model ??
+  556    model ??
+  557    model ??
+  558    model ??
+  559    model ??
+  560    model ??
+  561    model ??
+  562    model ??
+  563    model ??
+  564    model ??
+  565    model ??
+  566    model ??
+  567    model ??
+  568    model ??
+  569    model ??
+  570    model ??
+  571    model ??
+  572    model ??
+  573    model ??
+  574    model ??
+  575    model ??
+  576    model ??
+  577    model ??
+  578    model ??
+  579    model ??
+  580    model ??
+  581    model ??
+  582    model ??
+  583    model ??
+  584    model ??
+  586    model ??
+  587    model ??
+  588    model ??
+  589    model ??
+  590    model ??
+  591    model ??
+  592    model ??
+  593    model ??
+  594    model ??
+  596    model ??
+  597    model ??
+  598    model ??
+  599    model ??
+  600    model ??
+  601    model ??
+  602    model ??
+  603    model ??
+  604    model ??
+  605    model ??
+  606    model ??
+  607    model ??
+  608    model ??
+  609    model ??
+  610    model ??
+  611    model ??
+  612    model ??
+  613    model ??
+  614    model ??
+  615    model ??
+  616    model ??
+  617    model ??
+  618    model ??
+  619    model ??
+  620    model ??
+  621    model ??
+  622    model ??
+  623    model ??
+  624    model ??
+  625    model ??
+  626    model ??
+  627    model ??
+  628    model ??
+  629    model ??
+  630    model ??
+  631    model ??
+  632    model ??
+  633    model ??
+  634    model ??
+  636    model ??
+  637    model ??
+  638    model ??
+  639    model ??
+  640    model ??
+  641    model ??
+  642    model ??
+  643    model ??
+  644    model ??
+  645    model ??
+  646    model ??
+  647    model ??
+  648    model ??
+  649    model ??
+  650    model ??
+  651    model ??
+  652    model ??
+  653    model ??
+  654    model ??
+  655    model ??
+  656    model ??
+  657    model ??
+  658    model ??
+  659    model ??
+  660    model ??
+  661    model ??
+  662    model ??
+  663    model ??
+  664    model ??
+  665    model ??
+  666    model ??
+  667    model ??
+  668    model ??
+  669    model ??
+  670    model ??
+  671    model ??
+  672    model ??
+  673    model ??
+  674    model ??
+  675    model ??
+  676    model ??
+  677    model ??
+  678    model ??
+  679    model ??
+  680    model ??
+  681    model ??
+  682    model ??
+  683    model ??
+  684    model ??
+  685    model ??
+  686    model ??
+  687    model ??
+  688    model ??
+  689    model ??
+  690    model ??
+  691    model ??
+  692    model ??
+  693    model ??
+  694    model ??
+  695    model ??
+  696    model ??
+  697    model ??
+  698    model ??
+  699    model ??
+  700    model ??
+  701    model ??
+  702    model ??
+  704    model ??
+  705    model ??
+  706    model ??
+  707    model ??
+  709    model ??
+  710    model ??
+  711    model ??
+  712    model ??
+  713    model ??
+  714    model ??
+  715    model ??
+
+data/Interfac.drs
+objects: 50
+shapes: 10
+models: 98
+audio: 17
+ID        type description
+50001   object ??
+50002   object ??
+50003   object ??
+50004   object ??
+50005   object ??
+50006   object ??
+50007   object ??
+50008   object ??
+50009   object ??
+50010   object ??
+50011   object ??
+50012   object ??
+50013   object ??
+50051   object ??
+50052   object ??
+50053   object ??
+50054   object ??
+50055   object ??
+50056   object ??
+50057   object ??
+50058   object ??
+50059   object ??
+50060   object ??
+50061   object ??
+50401   object ??
+50402   object ??
+50500   object ??
+50501   object ??
+50502   object ??
+50503   object ??
+50504   object ??
+50505   object ??
+50506   object ??
+50507   object ??
+50508   object ??
+50509   object ??
+50519   object ??
+50800   object ??
+50900   object ??
+50901   object ??
+50902   object ??
+50903   object ??
+50904   object ??
+50905   object ??
+50906   object ??
+50907   object ??
+50908   object ??
+50909   object ??
+50910   object ??
+50911   object ??
+50154    shape ??
+50155    shape ??
+50156    shape ??
+50157    shape ??
+50158    shape ??
+50159    shape ??
+50160    shape ??
+50202    shape ??
+50204    shape ??
+50406    shape ??
+50100    model ??
+50103    model ??
+50105    model ??
+50107    model ??
+50109    model ??
+50111    model ??
+50113    model ??
+50115    model ??
+50117    model ??
+50119    model ??
+50121    model ??
+50123    model ??
+50125    model ??
+50127    model ??
+50129    model ??
+50131    model ??
+50133    model ??
+50135    model ??
+50137    model ??
+50139    model ??
+50141    model ??
+50143    model ??
+50145    model ??
+50147    model ??
+50149    model ??
+50151    model ??
+50153    model ??
+50210    model ??
+50212    model ??
+50214    model ??
+50216    model ??
+50400    model ??
+50403    model ??
+50404    model ??
+50405    model ??
+50601    model ??
+50602    model ??
+50603    model ??
+50604    model ??
+50605    model ??
+50606    model ??
+50607    model ??
+50608    model ??
+50609    model ??
+50610    model ??
+50611    model ??
+50612    model ??
+50704    model ??
+50705    model ??
+50706    model ??
+50707    model ??
+50713    model ??
+50714    model ??
+50715    model ??
+50716    model ??
+50717    model ??
+50718    model ??
+50719    model ??
+50720    model ??
+50721    model ??
+50725    model ??
+50726    model ??
+50727    model ??
+50728    model ??
+50729    model ??
+50730    model ??
+50731    model ??
+50732    model ??
+50733    model ??
+50734    model ??
+50735    model ??
+50736    model ??
+50737    model ??
+50738    model ??
+50739    model ??
+50740    model ??
+50741    model ??
+50742    model ??
+50743    model ??
+50744    model ??
+50745    model ??
+50746    model ??
+50747    model ??
+50748    model ??
+50749    model ??
+50750    model ??
+51000    model ??
+51001    model ??
+51002    model ??
+51003    model ??
+51004    model ??
+51005    model ??
+51007    model ??
+51008    model ??
+51009    model ??
+51010    model ??
+52001    model ??
+52002    model ??
+50300    audio menu button click
+50301    audio upgrade button click
+50302    audio text message send
+50303    audio build queue error
+50304    audio trade
+50305    audio civilization upgrade (advance age)
+50306    audio other player resigned
+50307    audio ?? resigned short ??
+50308    audio wonder build started
+50309    audio wonder completed
+50310    audio wonder destroyed
+50311    audio gaia win condition start (ruins/artifacts etc.)
+50312    audio gaia win condition stopped
+50313    audio conversion completed
+50314    audio reversed conversion
+50320    audio win condition completed (game over, win)
+50321    audio lose condition completed (game over, lose)
+
+data/sounds.drs
+audio: 144
+ID        type description
+ 5000    audio burning
+ 5002    audio academy
+ 5003    audio gazelle die
+ 5004    audio villager task
+ 5005    audio villager assign hunting
+ 5006    audio villager assign move
+ 5007    audio trade workshop
+ 5008    audio archery
+ 5009    audio bowman throw
+ 5010    audio bowman throw 2
+ 5011    audio bowman throw 3
+ 5012    audio bowman throw 4
+ 5013    audio artifact assign move
+ 5014    audio under attack signal
+ 5016    audio siege die
+ 5017    audio ballista
+ 5018    audio ballista throw
+ 5019    audio ballista throw 2
+ 5020    audio ballista throw 3
+ 5021    audio ballista throw 4
+ 5022    audio barrack
+ 5027    audio dock
+ 5028    audio arrow hit
+ 5029    audio ship die
+ 5030    audio ship spawn
+ 5032    audio villager build
+ 5035    audio user interface button click
+ 5036    audio research button click
+ 5037    audio villager
+ 5038    audio warship throw
+ 5039    audio warship throw 2
+ 5040    audio warship throw 3
+ 5041    audio catapult spawn
+ 5042    audio catapult die
+ 5043    audio catapult assign move
+ 5044    audio town center
+ 5045    audio villager gather food deer
+ 5048    audio villager gather wood
+ 5050    audio priest convert
+ 5051    audio priest convert 2
+ 5052    audio siege throw 2 (unused)
+ 5053    audio villager 2
+ 5054    audio villager 3
+ 5055    audio villager die
+ 5056    audio villager die 2
+ 5057    audio villager die 3
+ 5058    audio villager die 4
+ 5059    audio villager die 5
+ 5060    audio villager die 6
+ 5061    audio villager die 7
+ 5062    audio villager die 8
+ 5063    audio villager die 9
+ 5064    audio villager die 10
+ 5065    audio horse die
+ 5070    audio elephant attack
+ 5071    audio elephant
+ 5072    audio elephant 2
+ 5074    audio siege workshop
+ 5075    audio infantry assign move
+ 5076    audio infantry assign move 2
+ 5077    audio building die
+ 5078    audio building die 2
+ 5079    audio building die 3
+ 5080    audio villager gather food deer 2
+ 5081    audio burning 2
+ 5082    audio burning 3
+ 5083    audio water splash
+ 5084    audio spear throw
+ 5085    audio villager gather food bush
+ 5092    audio horse assign move
+ 5093    audio ??
+ 5096    audio ganary
+ 5100    audio jason attack
+ 5102    audio jason die
+ 5103    audio jason die 2
+ 5104    audio jason die 3
+ 5105    audio infantry attack
+ 5106    audio infantry attack 2
+ 5107    audio villager build
+ 5108    audio horse die
+ 5109    audio priest heal
+ 5111    audio horse attack
+ 5112    audio horse attack 2
+ 5113    audio ??
+ 5116    audio horse attack 3
+ 5118    audio villager assign move 2
+ 5120    audio ?? trade horse ??
+ 5121    audio horse
+ 5122    audio horse 2
+ 5123    audio horse 3
+ 5125    audio spear throw 2
+ 5126    audio house
+ 5128    audio infantry assign move 3
+ 5129    audio academy
+ 5132    audio lion attack
+ 5133    audio lion attack 2
+ 5134    audio lion
+ 5135    audio lion 2
+ 5138    audio villager attack
+ 5139    audio villager attack 2
+ 5140    audio villager attack 3
+ 5142    audio market
+ 5143    audio infantry assign move 4
+ 5144    audio infantry spawn
+ 5148    audio wonder
+ 5158    audio villager 4
+ 5159    audio villager gather stone/gold
+ 5162    audio axeman
+ 5164    audio axeman assign move
+ 5165    audio priest spawn
+ 5166    audio villager spawn
+ 5167    audio axeman assign move 2
+ 5169    audio civilization upgrade (advance age)
+ 5171    audio villager 5
+ 5173    audio swordsman
+ 5176    audio farm
+ 5177    audio ship die 2
+ 5178    audio villager gather food deer 3
+ 5180    audio axeman assign move 3
+ 5181    audio ship die 3
+ 5182    audio water splash 2
+ 5183    audio water splash 3
+ 5184    audio water splash 4
+ 5186    audio storage pit
+ 5190    audio ?? swordsmen attack ??
+ 5191    audio swordsmen attack
+ 5192    audio ?? trade ??
+ 5193    audio horse attack 4
+ 5196    audio temple
+ 5201    audio watch tower
+ 5202    audio ??
+ 5205    audio villager 6
+ 5206    audio villager 7
+ 5207    audio wall
+ 5208    audio navy ship
+ 5210    audio whale
+ 5211    audio whale 2
+ 5214    audio infantry attack 3
+ 5216    audio elephant warrior
+ 5217    audio villager assign gather food bush
+ 5218    audio ??
+ 5231    audio ?? jason ??
+ 5239    audio gazelle die 2
+ 5240    audio big momma
+
+data/Terrain.drs
+models: 4
+ID        type description
+15000    model ??
+15001    model ??
+15002    model ??
+15003    model ??
+
+data2/graphics.drs
+models: 153
+ID        type description
+  147    model ??
+  149    model ??
+  150    model ??
+  151    model ??
+  152    model ??
+  240    model ??
+  248    model ??
+  249    model ??
+  292    model ??
+  293    model ??
+  294    model ??
+  295    model ??
+  296    model ??
+  297    model ??
+  298    model ??
+  299    model ??
+  300    model ??
+  301    model ??
+  303    model ??
+  304    model ??
+  305    model ??
+  306    model ??
+  307    model ??
+  463    model ??
+  464    model ??
+  465    model ??
+  466    model ??
+  467    model ??
+  468    model ??
+  469    model ??
+  470    model ??
+  471    model ??
+  472    model ??
+  481    model ??
+  492    model ??
+  493    model ??
+  494    model ??
+  495    model ??
+  503    model ??
+  504    model ??
+  505    model ??
+  506    model ??
+  507    model ??
+  508    model ??
+  509    model ??
+  510    model ??
+  511    model ??
+  512    model ??
+  513    model ??
+  514    model ??
+  515    model ??
+  516    model ??
+  522    model ??
+  523    model ??
+  524    model ??
+  525    model ??
+  526    model ??
+  531    model ??
+  532    model ??
+  533    model ??
+  534    model ??
+  535    model ??
+  536    model ??
+  537    model ??
+  538    model ??
+  539    model ??
+  540    model ??
+  541    model ??
+  542    model ??
+  546    model ??
+  547    model ??
+  548    model ??
+  549    model ??
+  550    model ??
+  551    model ??
+  552    model ??
+  553    model ??
+  554    model ??
+  555    model ??
+  556    model ??
+  557    model ??
+  558    model ??
+  622    model ??
+  717    model ??
+  718    model ??
+  719    model ??
+  720    model ??
+  721    model ??
+  722    model ??
+  723    model ??
+  724    model ??
+  725    model ??
+  726    model ??
+  727    model ??
+  728    model ??
+  729    model ??
+  730    model ??
+  731    model ??
+  733    model ??
+  734    model ??
+  735    model ??
+  754    model ??
+  755    model ??
+  756    model ??
+  757    model ??
+  758    model ??
+  759    model ??
+  760    model ??
+  761    model ??
+  762    model ??
+  763    model ??
+  764    model ??
+  765    model ??
+  766    model ??
+  767    model ??
+  768    model ??
+  769    model ??
+  771    model ??
+  772    model ??
+  773    model ??
+  774    model ??
+  775    model ??
+  776    model ??
+  777    model ??
+  778    model ??
+  779    model ??
+  781    model ??
+  782    model ??
+  783    model ??
+  785    model ??
+  786    model ??
+  787    model ??
+  788    model ??
+  789    model ??
+  790    model ??
+  791    model ??
+  792    model ??
+  794    model ??
+  795    model ??
+  796    model ??
+  797    model ??
+  798    model ??
+  800    model ??
+  801    model ??
+  802    model ??
+  803    model ??
+  804    model ??
+  805    model ??
+  806    model ??
+  807    model ??
+  808    model ??
+  809    model ??
+  810    model ??
+
+data2/Interfac.drs
+objects: 6
+shapes: 0
+models: 30
+audio: 2
+ID        type description
+50003   object ??
+50051   object ??
+50053   object ??
+50501   object ??
+50503   object ??
+53000   object ??
+50100    model ??
+50103    model ??
+50105    model ??
+50113    model ??
+50115    model ??
+50117    model ??
+50137    model ??
+50139    model ??
+50141    model ??
+50149    model ??
+50151    model ??
+50153    model ??
+50204    model ??
+50406    model ??
+50602    model ??
+50721    model ??
+50729    model ??
+50730    model ??
+53001    model ??
+53002    model ??
+53003    model ??
+53004    model ??
+53005    model ??
+53006    model ??
+53007    model ??
+53008    model ??
+53009    model ??
+53010    model ??
+53011    model ??
+53012    model ??
+50315    audio ?? upgrade ??
+50316    audio farm exhausted
+
+data2/sounds.drs
+audio: 46
+ID        type description
+ 5070    audio elephant attack
+ 5168    audio civilization upgrade (advance age)
+ 5242    audio camel
+ 5243    audio camel 2
+ 5244    audio camel assign move
+ 5245    audio camel die
+ 5246    audio camel die 2
+ 5247    audio ??
+ 5248    audio war galley attack
+ 5249    audio Z assign move
+ 5250    audio Z assign move 2
+ 5251    audio Z
+ 5252    audio Z 2
+ 5253    audio Z 3
+ 5254    audio Z assign attack
+ 5255    audio Z 4
+ 5256    audio boom
+ 5257    audio boom 2
+ 5258    audio boom 3
+ 5259    audio boom 4
+ 5260    audio burning 3
+ 5261    audio laser
+ 5262    audio laser 2
+ 5263    audio slinger attack
+ 5264    audio slinger attack 2
+ 5265    audio slinger attack 3
+ 5266    audio alligator die
+ 5267    audio alligator die 2
+ 5268    audio elephant warrior attack
+ 5269    audio elephant warrior attack 2
+ 5270    audio elephant warrior attack 3
+ 5271    audio war galley attack 2
+ 5272    audio war galley attack 3
+ 5273    audio war galley attack 4
+ 5274    audio villager attack 4
+ 5275    audio villager attack 5
+ 5276    audio villager attack 6
+ 5277    audio baby
+ 5278    audio baby die
+ 5279    audio baby
+ 5280    audio baby assign move
+ 5281    audio baby assign move 2
+ 5282    audio baby attack
+ 5283    audio baby attack 2
+ 5284    audio baby attack 3
+ 5285    audio baby assign move 3

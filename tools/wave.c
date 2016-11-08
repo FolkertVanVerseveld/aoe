@@ -165,6 +165,7 @@ int drsmap_stat(char *data, size_t size)
 				fputs("no data\n", stderr);
 				return 1;
 			}
+			printf("id: %u\n", item->id);
 			sfx_play(ckdata + 8, fmt, datasz);
 		}
 	}

@@ -1,0 +1,14 @@
+Related stuff and similar projects
+
+GITHUB
+
+OpenAOE https://github.com/angered-ghandi/OpenAOE
+OpenAge https://github.com/SFTtech/openage
+
+OpenAOE replicates the original Age of Empires and borrows some features from
+Rise of Rome like build queuing. It also uses SDL2 for event handling and
+rendering.
+
+OpenAge has been in development since August 18th 2013 and is still under active
+development. It also replicates the genie game engine with its own flavor on top
+of it.
