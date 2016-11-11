@@ -1,5 +1,6 @@
 #include "config.h"
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,13 +10,13 @@
 #include <pwd.h>
 #include <unistd.h>
 #include "dbg.h"
+#include "prompt.h"
 
 #define CFGSUFFIX "/.aoerc"
 
 static const char *homedir = NULL;
 static char *cfgname = NULL;
 static int custom_root = 0;
-static char *root = NULL;
 
 struct config reg_cfg = {
 	.screen_size = 1280,
@@ -27,7 +28,10 @@ struct config reg_cfg = {
 	.difficulty = 5,
 	.scroll_speed = 84,
 	.pathfind = 3,
-	.mp_pathfind = 3
+	.mp_pathfind = 3,
+	.root_path = NULL,
+	.flags = 0,
+	.display = 0,
 };
 
 static const char *cfg_default =
@@ -41,7 +45,9 @@ static const char *cfg_default =
 	"difficulty = 5\n"
 	"scroll_speed = 84\n"
 	"pathfind = 3\n"
-	"mp_pathfind = 3\n";
+	"mp_pathfind = 3\n"
+	"display = 0\n"
+	"fullscreen = no\n";
 
 void config_free(void)
 {
@@ -86,6 +92,10 @@ int config_init(void)
 			return 0;
 		}
 	}
+	if (!strncmp(homedir, "/root", 5) || !getuid()) {
+		fputs("do not run this as root\n", stderr);
+		return 0;
+	}
 	cfgname = malloc(strlen(homedir) + strlen(CFGSUFFIX) + 1);
 	if (!cfgname) {
 		fputs("out of memory\n", stderr);
@@ -98,113 +108,113 @@ int config_init(void)
 /* NOTE we have about 10 options so we don't have to optimize this */
 static int cfg_update(unsigned i, const char *arg, const char *val, char **path)
 {
-	char err[256] = "internal error";
+	char err[80] = "internal error";
 	if (!strcmp(arg, "screen_size")) {
 		int size = atoi(val);
 		if (size < 400) {
-			snprintf(err, 256, "bad screen size: %s (minimum=400)", val);
+			snprintf(err, sizeof err, "bad screen size: %s (minimum=400)", val);
 			goto fail;
 		}
 		if (size > 1920) {
-			snprintf(err, 256, "bad screen size: %s (maximum=1920)", val);
+			snprintf(err, sizeof err, "bad screen size: %s (maximum=1920)", val);
 			goto fail;
 		}
 		reg_cfg.screen_size = size;
 	} else if (!strcmp(arg, "rollover_text")) {
 		int text = atoi(val);
 		if (text < 0) {
-			snprintf(err, 256, "bad rollover text: %s (minimum=0)", val);
+			snprintf(err, sizeof err, "bad rollover text: %s (minimum=0)", val);
 			goto fail;
 		}
 		if (text > 2) {
-			snprintf(err, 256, "bad rollover text: %s (maximum=2)", val);
+			snprintf(err, sizeof err, "bad rollover text: %s (maximum=2)", val);
 			goto fail;
 		}
 		reg_cfg.rollover_text = text;
 	} else if (!strcmp(arg, "mouse_style")) {
 		int style = atoi(val);
 		if (style < 1) {
-			snprintf(err, 256, "bad mouse style: %s (minimum=1)", val);
+			snprintf(err, sizeof err, "bad mouse style: %s (minimum=1)", val);
 			goto fail;
 		}
 		if (style > 2) {
-			snprintf(err, 256, "bad mouse style: %s (maximum=2)", val);
+			snprintf(err, sizeof err, "bad mouse style: %s (maximum=2)", val);
 			goto fail;
 		}
 		reg_cfg.mouse_style = style;
 	} else if (!strcmp(arg, "custom_mouse")) {
 		int custom = atoi(val);
 		if (custom < 0) {
-			snprintf(err, 256, "bad custom mouse: %s (minimum=0)", val);
+			snprintf(err, sizeof err, "bad custom mouse: %s (minimum=0)", val);
 			goto fail;
 		}
 		if (custom > 2) {
-			snprintf(err, 256, "bad custom mouse: %s (maximum=2)", val);
+			snprintf(err, sizeof err, "bad custom mouse: %s (maximum=2)", val);
 			goto fail;
 		}
 		reg_cfg.custom_mouse = custom;
 	} else if (!strcmp(arg, "sfx_volume")) {
 		int volume = atoi(val);
 		if (volume < 0) {
-			snprintf(err, 256, "bad sound effects volume: %s (minimum=0)", val);
+			snprintf(err, sizeof err, "bad sound effects volume: %s (minimum=0)", val);
 			goto fail;
 		}
 		reg_cfg.sfx_volume = volume;
 	} else if (!strcmp(arg, "game_speed")) {
 		int speed = atoi(val);
 		if (speed < 1) {
-			snprintf(err, 256, "bad game speed: %s (minimum=1)", val);
+			snprintf(err, sizeof err, "bad game speed: %s (minimum=1)", val);
 			goto fail;
 		}
 		reg_cfg.game_speed = speed;
 	} else if (!strcmp(arg, "difficulty")) {
 		int diff = atoi(val);
 		if (diff < 0) {
-			snprintf(err, 256, "bad difficulty: %s (minimum=0)", val);
+			snprintf(err, sizeof err, "bad difficulty: %s (minimum=0)", val);
 			goto fail;
 		}
 		if (diff > 5) {
-			snprintf(err, 256, "bad difficulty: %s (maximum=5)", val);
+			snprintf(err, sizeof err, "bad difficulty: %s (maximum=5)", val);
 			goto fail;
 		}
 		reg_cfg.difficulty = diff;
 	} else if (!strcmp(arg, "scroll_speed")) {
 		int speed = atoi(val);
 		if (speed < 1) {
-			snprintf(err, 256, "bad scroll speed: %s (minimum=1)", val);
+			snprintf(err, sizeof err, "bad scroll speed: %s (minimum=1)", val);
 			goto fail;
 		}
 		reg_cfg.scroll_speed = speed;
 	} else if (!strcmp(arg, "pathfind")) {
 		int find = atoi(val);
 		if (find < 1) {
-			snprintf(err, 256, "bad pathfind: %s (minimum=1)", val);
+			snprintf(err, sizeof err, "bad pathfind: %s (minimum=1)", val);
 			goto fail;
 		}
 		if (find > 127) {
-			snprintf(err, 256, "bad pathfind: %s (maximum=127)", val);
+			snprintf(err, sizeof err, "bad pathfind: %s (maximum=127)", val);
 			goto fail;
 		}
 		reg_cfg.pathfind = find;
 	} else if (!strcmp(arg, "mp_pathfind")) {
 		int find = atoi(val);
 		if (find < 1) {
-			snprintf(err, 256, "bad multiplayer pathfind: %s (minimum=1)", val);
+			snprintf(err, sizeof err, "bad multiplayer pathfind: %s (minimum=1)", val);
 			goto fail;
 		}
 		if (find > 127) {
-			snprintf(err, 256, "bad multiplayer pathfind: %s (maximum=127)", val);
+			snprintf(err, sizeof err, "bad multiplayer pathfind: %s (maximum=127)", val);
 			goto fail;
 		}
 		reg_cfg.mp_pathfind = find;
 	} else if (!strcmp(arg, "root_path")) {
 		if (!*path) {
-			root = *path = strdup(val);
+			reg_cfg.root_path = *path = strdup(val);
 			custom_root = 1;
 			dbgf("root_path: %s\n", val);
 		}
 	} else {
-		snprintf(err, 256, "invalid option: %s", arg);
+		snprintf(err, sizeof err, "invalid option: %s", arg);
 fail:
 		fprintf(stderr, "syntax error at line %u: %s\n", i, err);
 		return 0;
@@ -261,7 +271,11 @@ int config_load(char **path)
 end:
 	ret = 1;
 fail:
-	if (!ret) perror(cfgname);
+	if (!ret) {
+		char buf[256];
+		snprintf(buf, sizeof buf, "%s: %s\n", cfgname, strerror(errno));
+		show_error("Configuration error", buf);
+	}
 	if (line) free(line);
 	if (f) fclose(f);
 	return ret;
@@ -309,7 +323,7 @@ int config_save(void)
 		reg_cfg.mp_pathfind
 	);
 	if (custom_root)
-		fprintf(f, "root_path = %s\n", root);
+		fprintf(f, "root_path = %s\n", reg_cfg.root_path);
 	ret = 1;
 fail:
 	if (f) fclose(f);

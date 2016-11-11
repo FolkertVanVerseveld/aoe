@@ -175,7 +175,6 @@ static void cleanup(void)
 {
 	eng_free();
 	drs_free();
-	config_free();
 	memchk();
 	memfree();
 	if (path)
@@ -187,9 +186,6 @@ int main(int argc, char **argv)
 	int argp;
 	char *optptr, options[OPTBUFSZ];
 	size_t optsz = 0;
-	SDL_Window *hPrevInst = NULL, *hInst = NULL;
-	unsigned nShowCmd = 0;
-	/* < */
 	meminit();
 	atexit(cleanup);
 	argp = parse_opt(argc, argv);
@@ -211,27 +207,6 @@ int main(int argc, char **argv)
 	if (eng_init(&path)) {
 		fputs("engine died\n", stderr);
 		return 1;
-	}
-	/* > */
-	// see also fixme at game_config struct declaration
-	strcpy(cfg.optbuf, options);
-	cfg.hPrevInst = hPrevInst;
-	cfg.hInst = hInst;
-	cfg.nshowcmd = nShowCmd;
-	game_ctor(&AOE, &cfg, 1);
-	unsigned error = AOE.vtbl->get_state(&AOE);
-	printf("error=%u\n", error);
-	if (!error) {
-		int status = AOE.vtbl->main(&AOE);
-		AOE.vtbl->get_state(&AOE);
-		AOE.vtbl->dtor(&AOE, 0);
-		return status;
-	}
-	if (error != GE_FOCUS) {
-		AOE.vtbl->get_res_str(STR_ERROR, cfg.prompt_title, 256);
-		AOE.vtbl->strerr(&AOE, 1, error, 0, cfg.prompt_message, 256);
-		AOE.vtbl->dtor(&AOE, 0);
-		show_error(cfg.prompt_title, cfg.prompt_message);
 	}
 	return 0;
 }

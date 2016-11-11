@@ -2,6 +2,7 @@
 #define AOE_ENGINE_H
 
 #include <stddef.h>
+#include "prompt.h"
 
 extern int fd_langx, fd_lang;
 extern char *data_langx, *data_lang;

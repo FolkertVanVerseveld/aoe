@@ -5,6 +5,8 @@
 #define PATHFIND_MEDIUM 1
 #define PATHFIND_HIGH 2
 
+#define CFG_FULL 1
+
 struct config {
 	unsigned screen_size;
 	unsigned rollover_text;
@@ -18,6 +20,7 @@ struct config {
 	unsigned width, height;
 	char pathfind, mp_pathfind;
 	unsigned display;
+	char *root_path;
 };
 
 extern struct config reg_cfg;

@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <SDL2/SDL.h>
 #include <GL/gl.h>
+#include "dbg.h"
 #include "empx.h"
 #include "dmap.h"
 #include "gfx.h"
@@ -25,6 +26,9 @@ size_t size_langx = 0, size_lang = 0;
 static int init = 0;
 static SDL_Window *win = NULL;
 static SDL_GLContext *gl = NULL;
+
+#define CFG_WIDTH 400
+#define CFG_HEIGHT 300
 
 int findfirst(const char *fname)
 {
@@ -67,12 +71,13 @@ void eng_free(void)
 		SDL_Quit();
 		init &= ~INIT_SDL;
 	}
+	config_free();
 }
 
 static int envcheck(char *buf)
 {
 	struct stat st;
-	const char *data [] = {DRS_SFX, DRS_GFX, DRS_MAP, DRS_BORDER};
+	const char *data[] = {DRS_SFX, DRS_GFX, DRS_MAP, DRS_BORDER};
 	const char *xdata[] = {DRS_SFX, DRS_GFX, DRS_UI};
 	for (unsigned i = 0; i < 4; ++i) {
 		sprintf(buf, "%s%s", DRS_DATA, data[i]);
@@ -118,14 +123,12 @@ fail:
 	return ret;
 }
 
-#define CFG_WIDTH 400
-#define CFG_HEIGHT 300
-
 #define MODESZ 64
 static unsigned nmode;
 static SDL_DisplayMode modes[MODESZ];
 
-// FIXME fails if display count has changed since scr_init
+// XXX fails if display count has changed since scr_init
+// We cannot fix this since SDL2 does not recognize this.
 static int scr_fetch_modes(unsigned scr)
 {
 	int d, ret = 1;
@@ -147,6 +150,40 @@ fail:
 	return ret;
 }
 
+static int scr_apply(unsigned display, unsigned flags, SDL_DisplayMode *mode)
+{
+	char buf[256];
+	SDL_Rect bnds;
+	int d, ret = 1;
+	Uint32 mask;
+	d = SDL_GetNumVideoDisplays();
+	if (d < 1 || (int)display > d) {
+		show_error("Engine failed", "Display disappeared");
+		goto fail;
+	}
+	if (SDL_GetDisplayBounds(display, &bnds))
+		goto screrr;
+	SDL_SetWindowPosition(win, bnds.x, bnds.y);
+	SDL_SetWindowSize(win, mode->w, mode->h);
+	mask = flags & CFG_FULL ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
+	SDL_SetWindowFullscreen(win, mask);
+	if ((SDL_GetWindowFlags(win) & mask) != mask) {
+screrr:
+		snprintf(buf, sizeof buf, "Display error: %s", SDL_GetError());
+		show_error("Engine failed", buf);
+		goto fail;
+	}
+	if (!(flags & CFG_FULL)) {
+		int cx, cy;
+		cx = bnds.x + (bnds.w - mode->w) / 2;
+		cy = bnds.y + (bnds.h - mode->h) / 2;
+		SDL_SetWindowPosition(win, cx, cy);
+	}
+	ret = 0;
+fail:
+	return ret;
+}
+
 static int cfg_loop(void)
 {
 	unsigned nscr, mode = 0, display = 0;
@@ -160,6 +197,7 @@ static int cfg_loop(void)
 	if (scr_fetch_modes(display))
 		goto fail;
 	unsigned shift = 0, ymax = CFG_HEIGHT / FONT_GH - 8;
+	unsigned flags = reg_cfg.flags & CFG_FULL;
 	while (1) {
 		SDL_Event ev;
 		char buf[256];
@@ -201,12 +239,22 @@ static int cfg_loop(void)
 					goto end;
 				}
 				break;
+			case SDL_KEYUP:
+				switch (ev.key.keysym.sym) {
+				case 'f':
+					flags ^= CFG_FULL;
+					break;
+				}
+				break;
 			}
 		}
 		if (shift > mode)
 			shift = mode;
 		if (mode - shift >= ymax)
 			shift = mode - ymax;
+		int w, h;
+		SDL_GetWindowSize(win, &w, &h);
+		glViewport(0, 0, w, h);
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glMatrixMode(GL_PROJECTION);
@@ -221,8 +269,8 @@ static int cfg_loop(void)
 			3 * FONT_GW, FONT_GH,
 			"Age of Empires screen setup\n"
 		);
-		snprintf(buf, sizeof buf, "Display: \x11%u\x10 of %u (max %dx%d)\n", display + 1, nscr, bnds[display].w, bnds[display].h);
-		draw_str(3 * FONT_GW, 3 * FONT_GH, buf);
+		snprintf(buf, sizeof buf, "Fullscreen: %-3s (toggle with f)\nDisplay: \x11%u\x10 of %u (max %dx%d)\n", flags & CFG_FULL ? "yes" : "no", display + 1, nscr, bnds[display].w, bnds[display].h);
+		draw_str(3 * FONT_GW, 2 * FONT_GH, buf);
 		unsigned max = nmode <= shift + ymax + 1 ? nmode : shift + ymax + 1;
 		for (unsigned i = shift; i < max; ++i) {
 			SDL_DisplayMode *m = &modes[i];
@@ -230,7 +278,7 @@ static int cfg_loop(void)
 			draw_str(6 * FONT_GW, (5 + i - shift) * FONT_GH, buf);
 		}
 		draw_str(4 * FONT_GW, (5 + mode - shift) * FONT_GH, "\x10");
-		draw_str(3 * FONT_GW, FONT_GW * (300 - 3 * FONT_GW) / FONT_GW, "Choose your resolution and press ENTER");
+		draw_str(3 * FONT_GW, FONT_GW * (CFG_HEIGHT - 3 * FONT_GW) / FONT_GW, "Choose your resolution and press ENTER");
 		glEnd();
 		SDL_GL_SwapWindow(win);
 	}
@@ -239,6 +287,8 @@ end:
 	reg_cfg.display = display;
 	reg_cfg.screen_size = reg_cfg.width = cfg_mode->w;
 	reg_cfg.height = cfg_mode->h;
+	reg_cfg.flags = flags;
+	scr_apply(display, flags, cfg_mode);
 	ret = 0;
 fail:
 	if (bnds)
@@ -263,7 +313,7 @@ sdl_error:
 		show_error("SDL failed", SDL_GetError());
 		goto fail;
 	}
-	win = SDL_CreateWindow("AoE", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 300, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+	win = SDL_CreateWindow("AoE", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, CFG_WIDTH, CFG_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	if (!win) {
 		show_error("Engine failed", "no window");
 		goto fail;
@@ -275,17 +325,43 @@ sdl_error:
 	}
 	if (gfx_init())
 		goto fail;
-	char buf[256];
-	if (*path && chdir(*path)) {
-		snprintf(buf, sizeof buf, "%s: %s", *path, strerror(errno));
-		show_error("Engine failed", buf);
-		goto fail;
+	int set = 0;
+	char *newpath = NULL, *oldpath = "/usr/local/games";
+	while (1) {
+		if (!*path) {
+			// ask for directory
+			newpath = prompt_folder("AoE gamedata directory", oldpath);
+			if (!newpath) {
+				if (set)
+					show_error("Engine failed", "Invalid AoE gamedata directory");
+				exit(1);
+			}
+		} else
+			newpath = *path;
+		if (!chdir(newpath)) {
+			char envbuf[80];
+			oldpath = newpath;
+			if (envcheck(envbuf)) {
+				show_error("Engine failed", "bad runtime path or missing files");
+				continue;
+			}
+			if (*path != newpath)
+				*path = strdup(newpath);
+			break;
+		}
+		char buf[256];
+		snprintf(buf, sizeof buf, "%s: %s\n", newpath, strerror(errno));
+		show_error("Bad AoE gamedata directory", buf);
+		if (newpath) {
+			if (*path) {
+				free(*path);
+				*path = NULL;
+				set = 1;
+			}
+		}
 	}
-	if (envcheck(buf)) {
-		perror(buf);
-		show_error("Engine failed", "bad runtime path or missing files");
-		goto fail;
-	}
+	dbgf("set root: %s (%s)\n", *path, newpath);
+	reg_cfg.root_path = *path;
 	cfg.window = win;
 	cfg.gl = gl;
 	init |= INIT_ENG;
@@ -301,7 +377,7 @@ void show_error(const char *title, const char *msg)
 	else
 		fprintf(stderr, "%s\n", msg);
 	if (init || !isatty(fileno(stdin)))
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, msg, win);
+		show_message(title, msg, BTN_OK, MSG_ERR, BTN_OK);
 }
 
 int get_display(SDL_Window *scr, unsigned *display)

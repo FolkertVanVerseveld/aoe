@@ -8,3 +8,4 @@ Working:
 * read and locate game assets in data resource sets (drs).
 * fetch utf7 strings from original language files (utf8 is planned).
 * load and save default game configuration settings.
+* inspecting and (un)packing drs files.
