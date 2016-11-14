@@ -9,3 +9,8 @@ Working:
 * fetch utf7 strings from original language files (utf8 is planned).
 * load and save default game configuration settings.
 * inspecting and (un)packing drs files.
+
+In progress:
+* background file parsing
+* main menu
+* audio subsystem

@@ -34,6 +34,7 @@ int loadlib(const char *name, char **data, size_t *size);
 void libdump(void);
 
 int eng_init(char **path);
+int eng_main(void);
 void eng_free(void);
 
 void show_error(const char *title, const char *msg);

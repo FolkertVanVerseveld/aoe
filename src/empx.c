@@ -208,5 +208,5 @@ int main(int argc, char **argv)
 		fputs("engine died\n", stderr);
 		return 1;
 	}
-	return 0;
+	return eng_main();
 }

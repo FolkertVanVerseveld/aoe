@@ -21,7 +21,12 @@ struct config {
 	char pathfind, mp_pathfind;
 	unsigned display;
 	char *root_path;
+	unsigned mode_fixed;
 };
+
+#define RES_LOW 0
+#define RES_MED 1
+#define RES_HIGH 2
 
 extern struct config reg_cfg;
 

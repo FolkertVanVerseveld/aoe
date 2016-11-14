@@ -25,10 +25,18 @@ size_t size_langx = 0, size_lang = 0;
 
 static int init = 0;
 static SDL_Window *win = NULL;
-static SDL_GLContext *gl = NULL;
+static SDL_GLContext gl = NULL;
 
 #define CFG_WIDTH 400
 #define CFG_HEIGHT 300
+
+struct res {
+	unsigned w, h;
+} resfixed[] = {
+	{640, 480},
+	{800, 600},
+	{1024, 768},
+};
 
 int findfirst(const char *fname)
 {
@@ -37,12 +45,11 @@ int findfirst(const char *fname)
 	int found = -1;
 	d = opendir(".");
 	if (!d) goto fail;
-	while ((entry = readdir(d)) != NULL) {
+	while ((entry = readdir(d)) != NULL)
 		if (!strcasecmp(entry->d_name, fname)) {
 			found = 0;
 			break;
 		}
-	}
 fail:
 	if (d) closedir(d);
 	return found;
@@ -352,12 +359,10 @@ sdl_error:
 		char buf[256];
 		snprintf(buf, sizeof buf, "%s: %s\n", newpath, strerror(errno));
 		show_error("Bad AoE gamedata directory", buf);
-		if (newpath) {
-			if (*path) {
-				free(*path);
-				*path = NULL;
-				set = 1;
-			}
+		if (newpath && *path) {
+			free(*path);
+			*path = NULL;
+			set = 1;
 		}
 	}
 	dbgf("set root: %s (%s)\n", *path, newpath);
@@ -416,4 +421,52 @@ struct game_drive *game_drive_init(struct game_drive *this)
 	strcpy(this->buf, "Z:/");
 	strcpy(this->buf2, "Z:/");
 	return this;
+}
+
+int eng_main(void)
+{
+	unsigned rmode, rw, rh;
+	rmode = reg_cfg.mode_fixed;
+	rw = resfixed[rmode].w;
+	rh = resfixed[rmode].h;
+	while (1) {
+		SDL_Event ev;
+		while (SDL_PollEvent(&ev)) {
+			switch (ev.type) {
+			case SDL_QUIT:
+				goto end;
+			}
+		}
+		int x, y, w, h;
+		SDL_GetWindowSize(win, &w, &h);
+		while (rw > w || rh > h) {
+			if (!rmode)
+				break;
+			--rmode;
+			rw = resfixed[rmode].w;
+			rh = resfixed[rmode].h;
+		}
+		x = (w - (int)rw) / 2;
+		y = (h - (int)rh) / 2;
+		glViewport(x, y, rw, rh);
+		glClearColor(0, 0, 0, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, rw, rh, 0, -1, 1);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glEnable(GL_TEXTURE_2D);
+		glBegin(GL_QUADS);
+		glColor3f(1, 1, 1);
+		draw_str(
+			3 * FONT_GW, FONT_GH,
+			"Age of Empires screen setup\n"
+		);
+		glEnd();
+		SDL_GL_SwapWindow(win);
+	}
+end:
+	return 0;
 }

@@ -32,6 +32,7 @@ struct config reg_cfg = {
 	.root_path = NULL,
 	.flags = 0,
 	.display = 0,
+	.mode_fixed = RES_HIGH,
 };
 
 static const char *cfg_default =
@@ -213,6 +214,12 @@ static int cfg_update(unsigned i, const char *arg, const char *val, char **path)
 			custom_root = 1;
 			dbgf("root_path: %s\n", val);
 		}
+	} else if (!strcmp(arg, "fullscreen")) {
+		int enable = atoi(val);
+		if (enable)
+			reg_cfg.flags |= CFG_FULL;
+		else
+			reg_cfg.flags &= ~CFG_FULL;
 	} else {
 		snprintf(err, sizeof err, "invalid option: %s", arg);
 fail:
@@ -324,6 +331,10 @@ int config_save(void)
 	);
 	if (custom_root)
 		fprintf(f, "root_path = %s\n", reg_cfg.root_path);
+	fprintf(f,
+		"fullscreen = %u\n",
+		reg_cfg.flags & CFG_FULL ? 1 : 0
+	);
 	ret = 1;
 fail:
 	if (f) fclose(f);
