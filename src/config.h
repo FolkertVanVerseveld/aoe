@@ -27,6 +27,7 @@ struct config {
 #define RES_LOW 0
 #define RES_MED 1
 #define RES_HIGH 2
+#define RES_LARGE 3
 
 extern struct config reg_cfg;
 

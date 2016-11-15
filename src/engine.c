@@ -36,6 +36,7 @@ struct res {
 	{640, 480},
 	{800, 600},
 	{1024, 768},
+	{1280, 1024},
 };
 
 int findfirst(const char *fname)
@@ -57,6 +58,7 @@ fail:
 
 void eng_free(void)
 {
+	drs_free();
 	if (gl) {
 		SDL_GL_DeleteContext(gl);
 		gl = NULL;
@@ -370,7 +372,17 @@ sdl_error:
 	cfg.window = win;
 	cfg.gl = gl;
 	init |= INIT_ENG;
-	ret = cfg_loop();
+	if (cfg_loop()) goto fail;
+	#define mapdrs(a,b,c) if(read_data_mapping(a,b,c)) goto fail;
+	mapdrs(DRS_SFX   , DRS_XDATA, 1);
+	mapdrs(DRS_GFX   , DRS_XDATA, 0);
+	mapdrs(DRS_UI    , DRS_XDATA, 0);
+	mapdrs(DRS_SFX   , DRS_DATA , 1);
+	mapdrs(DRS_GFX   , DRS_DATA , 0);
+	mapdrs(DRS_MAP   , DRS_DATA , 0);
+	mapdrs(DRS_BORDER, DRS_DATA , 0);
+	mapdrs(DRS_UI    , DRS_DATA , 0);
+	ret = 0;
 fail:
 	return ret;
 }
@@ -423,9 +435,23 @@ struct game_drive *game_drive_init(struct game_drive *this)
 	return this;
 }
 
+#define OPT_MAIN_SINGLE 1
+#define OPT_MAIN_MULTI 2
+#define OPT_MAIN_HELP 3
+#define OPT_MAIN_EDITOR 4
+#define OPT_MAIN_EXIT 5
+#define OPT_MAINSZ 5
+
 int eng_main(void)
 {
 	unsigned rmode, rw, rh;
+	const char *opts[] = {
+		"Single Player (not implemented)",
+		"Multiplayer (not implemented)",
+		"Help (not implemented)",
+		"Scenario Builder (not implemented)",
+		"Exit (not implemented)"
+	};
 	rmode = reg_cfg.mode_fixed;
 	rw = resfixed[rmode].w;
 	rh = resfixed[rmode].h;
@@ -461,9 +487,17 @@ int eng_main(void)
 		glBegin(GL_QUADS);
 		glColor3f(1, 1, 1);
 		draw_str(
-			3 * FONT_GW, FONT_GH,
-			"Age of Empires screen setup\n"
+			(rw - strlen("Age of Empires") * FONT_GW) / 2, FONT_GH,
+			"Age of Empires"
 		);
+		unsigned opty = 4 * FONT_GH;
+		for (unsigned i = 0; i < OPT_MAINSZ; ++i) {
+			draw_str(
+				(rw - strlen(opts[i]) * FONT_GW) / 2,
+				opty, opts[i]
+			);
+			opty += 2 * FONT_GH;
+		}
 		glEnd();
 		SDL_GL_SwapWindow(win);
 	}

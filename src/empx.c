@@ -174,7 +174,6 @@ struct game_config cfg = {
 static void cleanup(void)
 {
 	eng_free();
-	drs_free();
 	memchk();
 	memfree();
 	if (path)

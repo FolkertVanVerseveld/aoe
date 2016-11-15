@@ -18,15 +18,13 @@
 
 #define DMAPBUFSZ 260
 struct dmap {
-	struct drsmap *dblk;
+	char *data;
 	int fd;
-	struct drsmap *drs_data;
-	char filename[DMAPBUFSZ];
 	size_t length;
+	char filename[DMAPBUFSZ];
+	int nommap;
 };
 
-void dmap_init(struct dmap *map);
-void dmap_free(struct dmap *map);
 void *drs_get_item(unsigned item, int fd, size_t *count, off_t *offset);
 void drs_free(void);
 
