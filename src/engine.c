@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <SDL2/SDL.h>
 #include <GL/gl.h>
+#include "bkg.h"
 #include "dbg.h"
 #include "empx.h"
 #include "dmap.h"
@@ -435,37 +436,80 @@ struct game_drive *game_drive_init(struct game_drive *this)
 	return this;
 }
 
-#define OPT_MAIN_SINGLE 1
-#define OPT_MAIN_MULTI 2
-#define OPT_MAIN_HELP 3
-#define OPT_MAIN_EDITOR 4
-#define OPT_MAIN_EXIT 5
+static struct bkg main_bkg;
+
+static int main_bkg_init(void)
+{
+	size_t n;
+	off_t off;
+	void *bkgdata = drs_get_item(DT_BINARY, 50001, &n, &off);
+	if (!bkgdata) {
+		show_error("Fatal error", "missing background");
+		goto fail;
+	}
+	return bkg_init(&main_bkg, bkgdata, n);
+fail:
+	return 1;
+}
+
+#define OPT_MAIN_SINGLE 0
+#define OPT_MAIN_MULTI 1
+#define OPT_MAIN_HELP 2
+#define OPT_MAIN_EDITOR 3
+#define OPT_MAIN_EXIT 4
 #define OPT_MAINSZ 5
 
 int eng_main(void)
 {
-	unsigned rmode, rw, rh;
+	unsigned rmode, rw, rh, opti = 0, press = 0;
 	const char *opts[] = {
 		"Single Player (not implemented)",
 		"Multiplayer (not implemented)",
 		"Help (not implemented)",
 		"Scenario Builder (not implemented)",
-		"Exit (not implemented)"
+		"Exit"
 	};
 	rmode = reg_cfg.mode_fixed;
 	rw = resfixed[rmode].w;
 	rh = resfixed[rmode].h;
+	main_bkg_init();
 	while (1) {
 		SDL_Event ev;
 		while (SDL_PollEvent(&ev)) {
 			switch (ev.type) {
 			case SDL_QUIT:
 				goto end;
+			case SDL_KEYDOWN:
+				switch (ev.key.keysym.sym) {
+				case SDLK_DOWN:
+					opti = (opti + 1) % OPT_MAINSZ;
+					break;
+				case SDLK_UP:
+					opti = (opti + OPT_MAINSZ - 1) % OPT_MAINSZ;
+					break;
+				case ' ':
+					press = 1;
+					break;
+				}
+				break;
+			case SDL_KEYUP:
+				switch (ev.key.keysym.sym) {
+				case ' ':
+					press = 0;
+					switch (opti) {
+					case OPT_MAIN_EXIT:
+						goto end;
+					default:
+						fputs("not implemented yet\n", stderr);
+						break;
+					}
+					break;
+				}
 			}
 		}
 		int x, y, w, h;
 		SDL_GetWindowSize(win, &w, &h);
-		while (rw > w || rh > h) {
+		while ((int)rw > w || (int)rh > h) {
 			if (!rmode)
 				break;
 			--rmode;
@@ -492,6 +536,25 @@ int eng_main(void)
 		);
 		unsigned opty = 4 * FONT_GH;
 		for (unsigned i = 0; i < OPT_MAINSZ; ++i) {
+			if (i == opti) {
+				if (press)
+					glColor3ub(
+						main_bkg.col.state[0][0],
+						main_bkg.col.state[0][1],
+						main_bkg.col.state[0][2]
+					);
+				else
+					glColor3ub(
+						main_bkg.col.focus[0][0],
+						main_bkg.col.focus[0][1],
+						main_bkg.col.focus[0][2]
+					);
+			} else
+				glColor3ub(
+					main_bkg.col.text[0][0],
+					main_bkg.col.text[0][1],
+					main_bkg.col.text[0][2]
+				);
 			draw_str(
 				(rw - strlen(opts[i]) * FONT_GW) / 2,
 				opty, opts[i]

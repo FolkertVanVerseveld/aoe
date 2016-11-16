@@ -38,4 +38,22 @@ struct drs_item {
 	uint32_t size;
 };
 
+#define DRS_NO_REF ((uint32_t)-1)
+#define DRS_REF_NAMESZ 12
+
+struct drs_ref {
+	char name[DRS_REF_NAMESZ];
+	uint32_t id;
+};
+
+struct drs_fref {
+	char name[DRS_REF_NAMESZ];
+	char name2[DRS_REF_NAMESZ];
+	uint32_t id;
+	uint32_t id2;
+};
+
+int drs_ref_read(const char *data, struct drs_ref *ref);
+int drs_fref_read(const char *data, struct drs_fref *ref);
+
 #endif

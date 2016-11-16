@@ -25,7 +25,7 @@ struct dmap {
 	int nommap;
 };
 
-void *drs_get_item(unsigned item, int fd, size_t *count, off_t *offset);
+void *drs_get_item(unsigned item, int res_id, size_t *count, off_t *offset);
 void drs_free(void);
 
 /*

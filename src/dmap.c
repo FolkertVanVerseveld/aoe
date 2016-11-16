@@ -44,7 +44,8 @@ static inline void dmap_free(struct dmap *map)
 	}
 }
 
-void drs_free(void) {
+void drs_free(void)
+{
 	for (unsigned i = 0; i < drs_count; ++i)
 		dmap_free(&drs_list[i]);
 	drs_count = 0;
@@ -120,25 +121,22 @@ fail:
 
 static int drs_map(unsigned type, int res_id, off_t *offset, char **dblk, size_t *count)
 {
-	struct drsmap *drs_data;
-	struct dmap *map = drs_list;
-	unsigned drs_i = 0;
 	if (!drs_count)
 		goto fail;
-	for (drs_i = 0; drs_i < drs_count; ++drs_i) {
-		drs_data = (struct drsmap*)map->data;
-		map = &drs_list[drs_i];
-		if (!drs_data->nlist)
+	for (unsigned drs_i = 0; drs_i < drs_count; ++drs_i) {
+		struct dmap *map = &drs_list[drs_i];
+		struct drsmap *drs = (struct drsmap*)map->data;
+		if (!drs->nlist)
 			continue;
-		struct drs_list *list = (struct drs_list*)((char*)drs_data + sizeof(struct drsmap));
-		for (unsigned i = 0; i < drs_data->nlist; ++i, ++list) {
+		struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drsmap));
+		for (unsigned i = 0; i < drs->nlist; ++i, ++list) {
 			if (list->type != type)
 				continue;
 			if (list->offset > map->length) {
 				fputs("bad item offset\n", stderr);
 				goto fail;
 			}
-			struct drs_item *item = (struct drs_item*)((char*)drs_data + list->offset);
+			struct drs_item *item = (struct drs_item*)((char*)drs + list->offset);
 			for (unsigned j = 0; j < list->size; ++j, ++item) {
 				if (list->offset + (j + 1) * sizeof(struct drs_item) > map->length) {
 					fputs("bad list\n", stderr);
