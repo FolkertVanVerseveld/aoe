@@ -1,8 +1,19 @@
 #!/bin/bash -e
 CC=gcc
 cstd='-std=gnu99'
-CFLAGS="-Wall -Wextra -pedantic $cstd $*"
+CFLAGS="-Wall -Wextra -pedantic $cstd"
+hasmidi=no
 libs='sdl2 gl'
+for i in "$@"; do
+	case "$i" in
+	--enable-midi)
+		shift 1
+		libs="$libs fluidsynth"
+		hasmidi=yes
+		;;
+	esac
+done
+CFLAGS="$CFLAGS $*"
 if ! hash pkg-config 2>/dev/null; then
 	echo "pkg-config is missing" 1>&2
 	exit 1
@@ -50,6 +61,9 @@ cat <<EOF >>configure.h
 #define GIT_SHA "$(git rev-parse HEAD)"
 #define CFG_TAUNTED 0
 EOF
+fi
+if [ "$hasmidi" = yes ]; then
+	echo '#define HAS_MIDI' >>configure.h
 fi
 cat <<EOF >>configure.h
 

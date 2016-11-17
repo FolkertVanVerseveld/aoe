@@ -57,6 +57,9 @@ static int parse_opt(int argc, char **argv)
 				"commit: " GIT_SHA "\n"
 				"origin: " GIT_ORIGIN "\n"
 				"configured with: " BUILD_OPTIONS
+#ifdef HAS_MIDI
+				" --enable-midi"
+#endif
 #if CFG_TAUNTED
 				"\nconfiguration is taunted\n"
 				"no support will be provided"
