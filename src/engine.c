@@ -14,6 +14,7 @@
 #include "empx.h"
 #include "dmap.h"
 #include "gfx.h"
+#include "sfx.h"
 #include "xmap.h"
 #include "todo.h"
 
@@ -60,6 +61,7 @@ fail:
 void eng_free(void)
 {
 	drs_free();
+	sfx_free();
 	if (gl) {
 		SDL_GL_DeleteContext(gl);
 		gl = NULL;
@@ -315,6 +317,8 @@ int eng_init(char **path)
 	}
 	if (!config_load(path))
 		fputs("bad configuration settings\n", stderr);
+	if (sfx_init())
+		goto fail;
 	if (SDL_Init(SDL_INIT_VIDEO))
 		goto sdl_error;
 	init |= INIT_SDL;
@@ -368,7 +372,6 @@ sdl_error:
 			set = 1;
 		}
 	}
-	dbgf("set root: %s (%s)\n", *path, newpath);
 	reg_cfg.root_path = *path;
 	cfg.window = win;
 	cfg.gl = gl;
@@ -473,6 +476,7 @@ int eng_main(void)
 	rw = resfixed[rmode].w;
 	rh = resfixed[rmode].h;
 	main_bkg_init();
+	sfx_play(MUSIC_XMAIN);
 	while (1) {
 		SDL_Event ev;
 		while (SDL_PollEvent(&ev)) {

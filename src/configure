@@ -4,12 +4,18 @@ cstd='-std=gnu99'
 CFLAGS="-Wall -Wextra -pedantic $cstd"
 hasmidi=no
 libs='sdl2 gl'
+sf_dir=
 for i in "$@"; do
 	case "$i" in
 	--enable-midi)
 		shift 1
 		libs="$libs fluidsynth"
 		hasmidi=yes
+		;;
+	--sf-dir)
+		shift 1
+		sf_dir="$1"
+		shift 1
 		;;
 	esac
 done
@@ -63,7 +69,10 @@ cat <<EOF >>configure.h
 EOF
 fi
 if [ "$hasmidi" = yes ]; then
-	echo '#define HAS_MIDI' >>configure.h
+	echo '#define HAS_MIDI 1' >>configure.h
+fi
+if [ ! -z "$sf_dir" ]; then
+	printf '#define MIDI_SF_DIR "%s"' "$sf_dir" >>configure.h
 fi
 cat <<EOF >>configure.h
 

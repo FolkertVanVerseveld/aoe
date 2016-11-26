@@ -60,4 +60,35 @@ struct sfx_engine {
 int clip4A3440(struct clip *this);
 int clip_ctl(struct clip *this);
 
+int sfx_init(void);
+void sfx_free(void);
+
+#define MUSIC_MAIN    0
+#define MUSIC_BKG1    1
+#define MUSIC_BKG2    2
+#define MUSIC_BKG3    3
+#define MUSIC_BKG4    4
+#define MUSIC_BKG5    5
+#define MUSIC_BKG6    6
+#define MUSIC_BKG7    7
+#define MUSIC_BKG8    8
+#define MUSIC_BKG9    9
+#define MUSIC_WON    10
+#define MUSIC_LOST   11
+#define MUSIC_XMAIN  12
+#define MUSIC_XBKG1  13
+#define MUSIC_XBKG2  14
+#define MUSIC_XBKG3  15
+#define MUSIC_XBKG4  16
+#define MUSIC_XBKG5  17
+#define MUSIC_XBKG6  18
+#define MUSIC_XBKG7  19
+#define MUSIC_XBKG8  20
+#define MUSIC_XBKG9  21
+#define MUSIC_XBKG10 22
+#define MUSIC_XWON   23
+#define MUSIC_XLOST  24
+
+int sfx_play(unsigned id);
+
 #endif

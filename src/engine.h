@@ -37,8 +37,6 @@ int eng_init(char **path);
 int eng_main(void);
 void eng_free(void);
 
-void show_error(const char *title, const char *msg);
-
 struct game_drive {
 	unsigned driveno;
 	char buf[256];
