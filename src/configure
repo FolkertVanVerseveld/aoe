@@ -17,6 +17,8 @@ for i in "$@"; do
 		sf_dir="$1"
 		shift 1
 		;;
+	--)
+		break;;
 	esac
 done
 CFLAGS="$CFLAGS $*"
