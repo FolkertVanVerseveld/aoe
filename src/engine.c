@@ -16,7 +16,10 @@
 #include "gfx.h"
 #include "sfx.h"
 #include "xmap.h"
+#include "memmap.h"
 #include "todo.h"
+#include "../genie/shape.h"
+#include "../genie/shape.c"
 
 int fd_langx = -1, fd_lang = -1;
 char *data_langx = NULL, *data_lang = NULL;
@@ -445,13 +448,34 @@ static int main_bkg_init(void)
 {
 	size_t n;
 	off_t off;
-	void *bkgdata = drs_get_item(DT_BINARY, 50001, &n, &off);
+	struct pal_entry *palette = NULL;
+	void *bkgdata = drs_get_item(DT_BINARY, 50002, &n, &off);
 	if (!bkgdata) {
 		show_error("Fatal error", "missing background");
 		goto fail;
 	}
-	return bkg_init(&main_bkg, bkgdata, n);
+	if (bkg_init(&main_bkg, bkgdata, n)) {
+		show_error("Fatal error", "corrupt background");
+		goto fail;
+	}
+	palette = drs_palette("xmain_bkg.pal", main_bkg.palette.id, 0);
+	if (!palette) {
+		show_error("Fatal error", "missing background palette");
+		goto fail;
+	}
+	void *bkg1 = drs_get_item(DT_SHP, main_bkg.tbl[0].id, &n, &off);
+	if (!bkg1) {
+		show_error("Fatal error", "missing layer 0");
+		goto fail;
+	}
+	struct shape shp1;
+	if (shape_read(bkg1, &shp1, n)) {
+		show_error("Fatal error", "corrupt background shape");
+		goto fail;
+	}
 fail:
+	if (palette)
+		delete(palette);
 	return 1;
 }
 
