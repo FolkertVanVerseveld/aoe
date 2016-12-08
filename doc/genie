@@ -35,3 +35,8 @@ Other binaries
 
 This section name is misleading since it also contains JASC palettes, which are
 just plain text files. This is probably the `everything else' section.
+
+TRIVIA
+It looks like gold was the first resource that has been implemented. This is
+based on the fact that the first string item in the string table is gold. The
+order in which they appear is: gold, wood, food, stone.

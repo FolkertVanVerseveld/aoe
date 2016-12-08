@@ -730,7 +730,7 @@ ID        type description
 50056   object ?? background ??
 50057   object ?? background ??
 50058   object ?? background ??
-50059   object ?? background ??
+50059   object background credits screen
 50060   object ?? background ??
 50061   object ?? background ??
 50401   object ??
@@ -801,9 +801,9 @@ ID        type description
 50214    model ??
 50216    model ??
 50400    model ??
-50403    model ??
-50404    model ??
-50405    model ??
+50403    model groupnum.shp
+50404    model waypoint.shp
+50405    model moveto.shp
 50601    model ??
 50602    model ??
 50603    model ??
@@ -816,45 +816,45 @@ ID        type description
 50610    model ??
 50611    model ??
 50612    model ??
-50704    model ??
-50705    model ??
-50706    model ??
-50707    model ??
+50704    model ?? button bldg ??
+50705    model ?? button bldg ??
+50706    model ?? button bldg ??
+50707    model ?? button bldg ??
 50713    model ??
 50714    model ??
 50715    model ??
 50716    model ??
-50717    model ??
-50718    model ??
-50719    model ??
-50720    model ??
-50721    model ??
-50725    model ??
-50726    model ??
-50727    model ??
-50728    model ??
-50729    model ??
-50730    model ??
+50717    model button border b
+50718    model button border b
+50719    model button border b
+50720    model button border b
+50721    model command button
+50725    model command button
+50726    model command button
+50727    model command button
+50728    model command button
+50729    model unit button
+50730    model technology button
 50731    model ??
-50732    model ??
-50733    model ??
-50734    model ??
-50735    model ??
-50736    model ??
-50737    model ??
-50738    model ??
-50739    model ??
-50740    model ??
-50741    model ??
-50742    model ??
-50743    model ??
-50744    model ??
+50732    model diplomacy dialog tradicon
+50733    model game a
+50734    model game a
+50735    model game a
+50736    model game a
+50737    model game b
+50738    model game b
+50739    model game b
+50740    model game b
+50741    model game c
+50742    model game c
+50743    model game c
+50744    model game c
 50745    model ??
-50746    model ??
-50747    model ??
-50748    model ??
-50749    model ??
-50750    model ??
+50746    model menu dialog plain button
+50747    model button border c
+50748    model button border c
+50749    model button border c
+50750    model button border c
 51000    model ?? mouse cursor ??
 51001    model ??
 51002    model ??
@@ -865,8 +865,8 @@ ID        type description
 51008    model ??
 51009    model ??
 51010    model ??
-52001    model ??
-52002    model ??
+52001    model menu achievements victory check fshape
+52002    model menu achievements defeat check fshape
 50300    audio menu button click
 50301    audio upgrade button click
 50302    audio text message send
@@ -1209,7 +1209,7 @@ ID        type description
 50053   object ??
 50501   object ??
 50503   object ??
-53000   object ??
+53000   object ?? dlg6_4 ??
 50100    model ??
 50103    model ??
 50105    model ??
@@ -1232,14 +1232,14 @@ ID        type description
 53002    model ??
 53003    model ??
 53004    model ??
-53005    model ??
-53006    model ??
-53007    model ??
-53008    model ??
-53009    model ??
-53010    model ??
-53011    model ??
-53012    model ??
+53005    model button bldg
+53006    model button border a
+53007    model button border b
+53008    model button border c
+53009    model button other
+53010    model game a
+53011    model game b
+53012    model game c
 50315    audio ?? upgrade ??
 50316    audio farm exhausted
 
