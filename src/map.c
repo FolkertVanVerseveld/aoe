@@ -1,5 +1,5 @@
 #include "map.h"
-#include "dbg.h"
+#include "../dbg.h"
 #include "todo.h"
 #include "memmap.h"
 #include <stdlib.h>

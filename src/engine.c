@@ -10,9 +10,9 @@
 #include <SDL2/SDL.h>
 #include <GL/gl.h>
 #include "bkg.h"
-#include "dbg.h"
+#include "../dbg.h"
 #include "empx.h"
-#include "dmap.h"
+#include "../genie/dmap.h"
 #include "gfx.h"
 #include "sfx.h"
 #include "xmap.h"
@@ -20,6 +20,9 @@
 #include "todo.h"
 #include "../genie/shape.h"
 #include "../genie/shape.c"
+#include "../genie/dmap.c"
+#include "../genie/shp.c"
+#include "../dbg.c"
 
 int fd_langx = -1, fd_lang = -1;
 char *data_langx = NULL, *data_lang = NULL;

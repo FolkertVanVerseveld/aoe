@@ -1,7 +1,7 @@
 #include "comm.h"
 #include <assert.h>
 #include <string.h>
-#include "dbg.h"
+#include "../dbg.h"
 #include "todo.h"
 #include "memmap.h"
 

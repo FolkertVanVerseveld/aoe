@@ -9,8 +9,8 @@
 #include <unistd.h>
 #include <alloca.h>
 #include "../../genie/drs.h"
-#include "../../src/dbg.h"
-#include "../../src/dbg.c"
+#include "../../dbg.h"
+#include "../../dbg.c"
 
 #define OPT_LIST 1
 #define OPT_DUMP 2

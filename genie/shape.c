@@ -1,5 +1,5 @@
 #include "shape.h"
-#include "../src/dbg.h"
+#include "../dbg.h"
 
 int shape_read(const void *blk, struct shape *shape, size_t n)
 {

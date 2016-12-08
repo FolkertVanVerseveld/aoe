@@ -8,8 +8,8 @@
 #include <SDL2/SDL.h>
 #include "config.h"
 #include "comm.h"
-#include "dbg.h"
-#include "dmap.h"
+#include "../dbg.h"
+#include "../genie/dmap.h"
 #include "game.h"
 #include "game_set.h"
 #include "langx.h"

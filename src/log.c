@@ -5,7 +5,7 @@ DO NOT modify strings constants in this file!
 #include <stdio.h>
 #include <string.h>
 #include "log.h"
-#include "dbg.h"
+#include "../dbg.h"
 #include "todo.h"
 
 static FILE *file_logger;

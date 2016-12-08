@@ -9,8 +9,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "dmap.h"
-#include "dbg.h"
-#include "todo.h"
+#include "../dbg.h"
+#include "../src/todo.h"
 #include "../genie/drs.h"
 
 #define DRS_LISTSZ 8

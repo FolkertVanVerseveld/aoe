@@ -3,19 +3,27 @@
 
 #include <stdint.h>
 
+#define SHAPE_V1_0  0x312e3030
+#define SHAPE_V1_1  0x312e3031
+#define SHAPE_V1_2  0x312e3032
+#define SHAPE_V1_3  0x312e3033
+#define SHAPE_V1_4  0x312e3034
+#define SHAPE_V1_5  0x312e3035
+#define SHAPE_V1_6  0x312e3036
+#define SHAPE_V1_7  0x312e3037
+#define SHAPE_V1_8  0x312e3038
+#define SHAPE_V1_9  0x312e3039
+#define SHAPE_V1_10 0x312e3130
+#define SHAPE_V1_11 0x312e3131
+#define SHAPE_V1_12 0x312e3132
+
 struct shape {
 	uint32_t magic;
-	uint32_t pad[3];
+	int32_t vertices;
+	uint32_t pad[2];
 	const char *data;
 };
 
 int shape_read(const void *data, struct shape *shape, size_t n);
-
-/*
-0000000: 312e 3130 0100 0000 1000 0000 0000 0000  1.10............
-0000010: 0d00 0d00 0000 0000 0200 0000 0200 0000  ................
-0000010: 5802 2003 0000 0000 0000 0000 0000 0000  X. .............
-0000010: e001 8002 0000 0000 0000 0000 0000 0000  ................
-*/
 
 #endif

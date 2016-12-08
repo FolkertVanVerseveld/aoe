@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <pwd.h>
 #include <unistd.h>
-#include "dbg.h"
+#include "../dbg.h"
 #include "prompt.h"
 
 #define CFGSUFFIX "/.aoerc"

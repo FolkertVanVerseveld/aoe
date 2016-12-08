@@ -1,5 +1,5 @@
 #include "sfx.h"
-#include "dbg.h"
+#include "../dbg.h"
 #include "todo.h"
 #include "prompt.h"
 #include "configure.h"

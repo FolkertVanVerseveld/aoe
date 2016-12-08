@@ -1,7 +1,7 @@
 #include "menu.h"
 #include "memmap.h"
 #include "todo.h"
-#include "dbg.h"
+#include "../dbg.h"
 
 static struct menu_ctl_vtbl menu_ctl_vtbl = {
 	.dtor = menu_ctl_dtor,

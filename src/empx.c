@@ -14,7 +14,7 @@
 #include "engine.h"
 #include "config.h"
 #include "configure.h"
-#include "dmap.h"
+#include "../genie/dmap.h"
 #include "game.h"
 #include "langx.h"
 #include "memmap.h"

@@ -6,7 +6,7 @@
 #include <SDL2/SDL.h>
 #include "config.h"
 #include "engine.h"
-#include "shp.h"
+#include "../genie/shp.h"
 #include "map.h"
 #include "gfx.h"
 #include "sfx.h"
