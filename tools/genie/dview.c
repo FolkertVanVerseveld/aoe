@@ -329,7 +329,11 @@ static int pack(int argp, int argc, char **argv)
 	FILE *f = NULL;
 	int ret = 1;
 	struct drsmap hdr = {
+#ifdef DRS_CUSTOM_HDR
 		"Copyleft libregenie 2016",
+#else
+		"Copyright (c) 1997 Ensemble Studios\x2e\x1a",
+#endif
 		"1.00tribe", 0, 0
 	};
 	f = fopen(packname, "wb");
@@ -382,14 +386,14 @@ static int pack(int argp, int argc, char **argv)
 		sztbl[j] = st.st_size;
 	}
 	unsigned nlist = 0;
-	if (nwave) ++nlist;
+	if (nbin) ++nlist;
 	if (nshp) ++nlist;
 	if (nslp) ++nlist;
-	if (nbin) ++nlist;
-	printf("audio: %u (%u, 0x%X)\n", nwave, wavesz, wavesz);
+	if (nwave) ++nlist;
+	printf("objects: %u (%u, 0x%X)\n", nbin, binsz, binsz);
 	printf("shapes: %u (%u, 0x%X)\n", nshp, shpsz, shpsz);
 	printf("models: %u (%u, 0x%X)\n", nslp, slpsz, slpsz);
-	printf("objects: %u (%u, 0x%X)\n", nbin, binsz, binsz);
+	printf("audio: %u (%u, 0x%X)\n", nwave, wavesz, wavesz);
 	printf("lists: %u\n", nlist);
 	off_t pos = sizeof(struct drsmap);
 	uint32_t listend = pos + nlist * sizeof(struct drs_list)
@@ -400,13 +404,13 @@ static int pack(int argp, int argc, char **argv)
 		goto ioerr;
 	// write drs lists
 	pos += nlist * sizeof(struct drs_list);
-	if (!packlist(f, DT_WAVE, &pos, nwave))
+	if (!packlist(f, DT_BINARY, &pos, nbin))
 		goto ioerr;
 	if (!packlist(f, DT_SHP, &pos, nshp))
 		goto ioerr;
 	if (!packlist(f, DT_SLP, &pos, nslp))
 		goto ioerr;
-	if (!packlist(f, DT_BINARY, &pos, nbin)) {
+	if (!packlist(f, DT_WAVE, &pos, nwave)) {
 ioerr:
 		perror(packname);
 		goto fail;
@@ -421,30 +425,30 @@ ioerr:
 	size_t rpos = ppos + (nwave + nshp + nslp + nbin) * sizeof(struct drs_item);
 	size_t rposp = rpos;
 	// write lookup tables
-	if (packtbl(f, rpos, nwave, DT_WAVE, argv, argp, argc, itbl, ntbl, sztbl))
+	if (packtbl(f, rpos, nbin, DT_BINARY, argv, argp, argc, itbl, ntbl, sztbl))
 		goto ioerr;
-	rpos += wavesz;
+	rpos += binsz;
 	if (packtbl(f, rpos, nshp, DT_SHP, argv, argp, argc, itbl, ntbl, sztbl))
 		goto ioerr;
 	rpos += shpsz;
 	if (packtbl(f, rpos, nslp, DT_SLP, argv, argp, argc, itbl, ntbl, sztbl))
 		goto ioerr;
 	rpos += slpsz;
-	if (packtbl(f, rpos, nbin, DT_BINARY, argv, argp, argc, itbl, ntbl, sztbl))
+	if (packtbl(f, rpos, nwave, DT_WAVE, argv, argp, argc, itbl, ntbl, sztbl))
 		goto ioerr;
-	rpos += binsz;
+	rpos += wavesz;
 	// write resources
 	rpos = rposp;
-	if (packtype(f, rpos, nwave, DT_WAVE, argv, argp, argc, itbl, sztbl))
+	if (packtype(f, rpos, nbin, DT_BINARY, argv, argp, argc, itbl, sztbl))
 		goto fail;
-	rpos += wavesz;
+	rpos += binsz;
 	if (packtype(f, rpos, nshp, DT_SHP, argv, argp, argc, itbl, sztbl))
 		goto fail;
 	rpos += shpsz;
 	if (packtype(f, rpos, nslp, DT_SLP, argv, argp, argc, itbl, sztbl))
 		goto fail;
 	rpos += slpsz;
-	if (packtype(f, rpos, nbin, DT_BINARY, argv, argp, argc, itbl, sztbl))
+	if (packtype(f, rpos, nwave, DT_WAVE, argv, argp, argc, itbl, sztbl))
 		goto fail;
 	ret = 0;
 fail:
