@@ -41,16 +41,16 @@ static int sfx_play(char *data, struct ckfmt *fmt, size_t cksz)
 	printf("%hu,%hu,%u,", fmt->format, fmt->channels, fmt->freq);
 	printf("%u,%hu,%hu\n", fmt->bytes, fmt->align, fmt->sample);
 	switch (fmt->format) {
-		case 1:
-			printf("PCM%u\n", fmt->sample);
-			break;
-		case 7:
-			puts("uLaw");
-			fputs("not supported yet\n", stderr);
-			return 0;
-		default:
-			fprintf(stderr, "unknown format %u\n", fmt->format);
-			return 1;
+	case 1:
+		printf("PCM%u\n", fmt->sample);
+		break;
+	case 7:
+		puts("uLaw");
+		fputs("not supported yet\n", stderr);
+		return 0;
+	default:
+		fprintf(stderr, "unknown format %u\n", fmt->format);
+		return 1;
 	}
 	ALenum format;
 	int ret = 1;
