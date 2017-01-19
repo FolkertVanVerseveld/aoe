@@ -1,10 +1,14 @@
 #!/bin/bash -e
 CC=gcc
+LD=ld
 cstd='-std=gnu99'
 CFLAGS="-Wall -Wextra -pedantic $cstd"
 hasmidi=no
 libs='sdl2 gl'
 sf_dir=
+embedfont=no
+# remove auto generated files
+rm -f font.c
 for i in "$@"; do
 	case "$i" in
 	--enable-midi)
@@ -19,6 +23,24 @@ for i in "$@"; do
 		;;
 	--)
 		break;;
+	esac
+done
+for i in "$@"; do
+	case "$i" in
+	-DEMBED_FONT)
+		embedfont=yes
+		if ! hash xxd 2>/dev/null; then
+			echo Need xxd to embed font 2>&1
+			exit 1
+		fi
+		xxd -i font.png >font.c
+		length="$(tail -n1 font.c | sed -e 's/[^0-9]//g')"
+		cat <<-EOF >>font.c
+
+		unsigned char *font_png_start =  font_png;
+		unsigned char *font_png_end   = &font_png[$length];
+		EOF
+		;;
 	esac
 done
 CFLAGS="$CFLAGS $*"
@@ -52,6 +74,9 @@ doc
 configure.h
 # binaries
 EOF
+if [ "$embedfont" == yes ]; then
+	echo 'font.c' >>.gitignore
+fi
 cat <<EOF >configure.h
 #ifndef CONFIGURE
 #define CONFIGURE
@@ -111,6 +136,9 @@ printf '\nLIST=' >>Makefile
 for i in $FILES; do
 	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
 done
+if [ "$embedfont" == no ]; then
+	printf ' \\\n\tfont.o' >>Makefile
+fi
 cat <<'EOF' >>Makefile
 
 default: $(OBJECTS) $(MAIN)
@@ -121,6 +149,15 @@ done
 cat <<'EOF' >>Makefile
 %.o: %.c
 	$(CC) -c $< -o $@ $(CFLAGS)
+EOF
+# embed font in library
+if [ "$embedfont" == no ]; then
+cat <<EOF >>Makefile
+font.o: font.png
+	$LD -r -b binary -o font.o font.png
+EOF
+fi
+cat <<'EOF' >>Makefile
 clean:
 	rm -f $(MAIN) $(OBJECTS)
 EOF
