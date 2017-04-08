@@ -19,6 +19,10 @@
 
 static int init = 0;
 
+#ifdef EMBED_FONT
+extern unsigned char *font_png_start, *font_png_end;
+#endif
+
 int enum_display_modes(void *arg, int (*cmp)(struct display*, void*))
 {
 	int count;
@@ -296,10 +300,22 @@ void gfx_free(void)
 int gfx_init(void)
 {
 	int ret = 1, flags = IMG_INIT_PNG;
+	GLenum format;
 	SDL_Surface *surf = NULL;
+	SDL_RWops *fontdata = NULL;
 	if ((IMG_Init(flags) & flags) != flags)
 		goto img_error;
+#ifndef EMBED_FONT
 	surf = IMG_Load("font.png");
+#else
+	size_t fontsz = (size_t)(font_png_end - font_png_start);
+	fontdata = SDL_RWFromConstMem(font_png_start, fontsz);
+	if (!fontdata) {
+		show_error("Graphics failed", "No font found");
+		goto fail;
+	}
+	surf = IMG_LoadPNG_RW(fontdata);
+#endif
 	if (!surf) {
 img_error:
 		show_error("IMG failed", IMG_GetError());
@@ -315,7 +331,7 @@ img_error:
 		show_error("Bad font", buf);
 		goto fail;
 	}
-	GLenum format = (!surf->format->Amask || surf->format->BitsPerPixel == 24) ? GL_RGB : GL_RGBA;
+	format = (!surf->format->Amask || surf->format->BitsPerPixel == 24) ? GL_RGB : GL_RGBA;
 	glGenTextures(1, &tex);
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, format, surf->w, surf->h, 0, format, GL_UNSIGNED_BYTE, surf->pixels);
@@ -327,6 +343,8 @@ img_error:
 fail:
 	if (surf)
 		SDL_FreeSurface(surf);
+	if (fontdata)
+		SDL_RWclose(fontdata);
 	return ret;
 }
 
