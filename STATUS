@@ -12,6 +12,7 @@ Working:
 * MIDI playback
 
 In progress:
+* menu navigation
 * background file parsing
 * main menu
 * audio subsystem
