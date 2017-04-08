@@ -10,7 +10,7 @@ able to contribute. If you do not know what these things mean nor SDL2 or bash
 then you will have a hard time with contributing.
 
 Game engine and windows API specific file formats are discussed in doc/ with
-pointer to external sources. We have written tools for some of these file
+pointers to external sources. We have written tools for some of these file
 formats that you can find in section TOOLS.
 
 Memory allocation

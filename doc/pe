@@ -1,28 +1,27 @@
 Gathered stuff that we know about Portable Executable's
 
-Portable Executables are ancient executable files designed when windows
-NT 3.1 was being developed. Due to the nature of Microsof, it has been
-inherited all up to OS'es like Windows 10. It is a real pain to parse it
-easily and efficiently.
+Portable Executables are ancient executable files designed when windows NT 3.1
+was being developed. Due to the nature of Microsof, it has been inherited all up
+to OS'es like Windows 10. It is a real pain to parse it easily and efficiently.
 An in-depth article about the format from Redmond itself:
 http://web.archive.org/web/20080905063304/http://msdn.microsoft.com/en-us/magazine/ms809762.aspx
-The non-archived link is useless since they've fucked up the formatting.
+The non-archived link is useless because they've fucked up the formatting.
 
 -- pcrio --
 
 Mikko P (a.k.a. Tapsa) has been maintaining pcrio which is a very simple
-resource viewer/editor for pe/coff files. Unfortunately, it suffers a
-lot from fragmentation due to allocating each node in the resource
-section one at a time and it keeps resizing strings until it fits.
+resource viewer/editor for pe/coff files. Unfortunately, it suffers a lot from
+fragmentation because it allocates each node in the resource section one at a
+time and it keeps resizing strings until it fits.
 His repository is here: https://github.com/Tapsa/pcrio
 
 -- tools/xmap --
 
-We have written an alternative to Tapsa's pcrio that takes fully
-advantage of posix functionality like mmap in order to dramatically
-reduce the amount of malloc's.
-All PE related structures have more unix like names (i.e. short and
-cryptic) to make it short, simple and easier to use.
+We have written an alternative to Tapsa's pcrio that takes fully advantage of
+posix functionality like mmap in order to dramatically reduce the amount of
+malloc's.
+All PE related structures have more unix like names (i.e. short and cryptic) to
+make it short, simple and easier to use.
 
 -- links --
 

@@ -1,7 +1,7 @@
 Color palettes
 
 In the ol' days, when 256 colors was pretty common, color palettes were
-used to represent which rgb values represent a indexed color in the
+used to represent which rgb values represent an indexed color in the
 palette.
 
 Age of Empires uses JASC palette that were probably made using something
