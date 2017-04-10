@@ -124,6 +124,8 @@ static void menu_nav_select_dummy(struct menu_nav *this)
 
 static void menu_nav_select_main(struct menu_nav *this);
 static void menu_nav_select_single_player(struct menu_nav *this);
+static void menu_nav_select_multiplayer(struct menu_nav *this);
+static void menu_nav_select_scenario_builder(struct menu_nav *this);
 
 struct menu_nav menu_nav_main = {
 	.title = "Age of Empires",
@@ -137,6 +139,18 @@ struct menu_nav menu_nav_main = {
 	.index = 0,
 	.list = &menu_list_single_player,
 	.select = menu_nav_select_single_player
+}, menu_nav_multiplayer = {
+	"Multiplayer Connection",
+	.flags = 0,
+	.index = 0,
+	.list = &menu_list_multiplayer,
+	.select = menu_nav_select_multiplayer
+}, menu_nav_scenario_builder = {
+	"Scenario Builder",
+	.flags = 0,
+	.index = 0,
+	.list = &menu_list_scenario_builder,
+	.select = menu_nav_select_scenario_builder
 };
 
 static void menu_nav_select_main(struct menu_nav *this)
@@ -144,6 +158,12 @@ static void menu_nav_select_main(struct menu_nav *this)
 	switch (this->index) {
 	case 0:
 		ui_menu_push(&ui, &menu_nav_single_player);
+		break;
+	case 1:
+		ui_menu_push(&ui, &menu_nav_multiplayer);
+		break;
+	case 3:
+		ui_menu_push(&ui, &menu_nav_scenario_builder);
 		break;
 	case 4:
 		ui_menu_pop(&ui);
@@ -158,6 +178,30 @@ static void menu_nav_select_single_player(struct menu_nav *this)
 {
 	switch (this->index) {
 	case 5:
+		ui_menu_pop(&ui);
+		break;
+	default:
+		menu_nav_select_dummy(this);
+		break;
+	}
+}
+
+static void menu_nav_select_multiplayer(struct menu_nav *this)
+{
+	switch (this->index) {
+	case 3:
+		ui_menu_pop(&ui);
+		break;
+	default:
+		menu_nav_select_dummy(this);
+		break;
+	}
+}
+
+static void menu_nav_select_scenario_builder(struct menu_nav *this)
+{
+	switch (this->index) {
+	case 3:
 		ui_menu_pop(&ui);
 		break;
 	default:
