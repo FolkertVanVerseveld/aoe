@@ -74,25 +74,25 @@ static inline char game_settings_tbl(struct game *this, int index, char value)
 	return this->settings.tbl.array[index] = value;
 }
 
-static inline int game_setA80(struct game *this, int value)
+static inline int game_set_color_cfg_brightness(struct game *this, int value)
 {
-	return this->numA80 = value;
+	return this->col.brightness = value;
 }
 
-static inline int game_setA84(struct game *this, int value)
+static inline int game_set_color_cfg_dword4(struct game *this, int value)
 {
-	return this->numA84 = value;
+	return this->col.dword4 = value;
 }
 
-static inline int game_setA88(struct game *this, int value)
+static inline int game_set_color_cfg_dword8(struct game *this, int value)
 {
-	return this->numA88 = value;
+	return this->col.dword8 = value;
 }
 
-static inline int game_setA8C_A90(struct game *this, int v0, int v1)
+static inline int game_set_color_cfg_dwordC_dword10(struct game *this, int v0, int v1)
 {
-	this->numA8C = v0;
-	this->numA90 = v1;
+	this->col.dwordC  = v0;
+	this->col.dword10 = v1;
 	return v0;
 }
 
@@ -105,73 +105,73 @@ static int game_offsetA24(struct game *this, int a2, int a3, int a4, int a5)
 	return a4;
 }
 
-static int game_offsetAA0(struct game *this, int index, int value)
-{
-	assert(index < 12);
-	return this->tblAA0[index] = value;
-}
-
-static char game_offsetA94(struct game *this, int index, char value)
-{
-	assert(index < 12);
-	return this->tblA94[index] = value;
-}
-
-static char game_offsetAC4(struct game *this, int index, char value)
+static int game_set_color_cfg_tbl20(struct game *this, int index, int value)
 {
 	assert(index < 9);
-	return this->tblAC4[index] = value;
+	return this->col.tbl20[index] = value;
 }
 
-static char game_offsetACD(struct game *this, int index, char value)
+static char game_set_color_cfg_tbl14(struct game *this, int index, char value)
 {
 	assert(index < 9);
-	return this->tblACD[index] = value;
+	return this->col.tbl14[index] = value;
 }
 
-static inline int game_setAD6(struct game *this, int value)
+static char game_set_color_cfg_tbl44(struct game *this, int index, char value)
 {
-	return this->chAD6 = value;
+	assert(index < 9);
+	return this->col.tbl44[index] = value;
 }
 
-static inline int game_setAD7(struct game *this, int value)
+static char game_set_color_cfg_tbl4D(struct game *this, int index, char value)
 {
-	return this->chAD7 = value;
+	assert(index < 9);
+	return this->col.tbl4D[index] = value;
 }
 
-static inline int game_setAD8(struct game *this, int value)
+static inline int game_set_color_cfg_ch56(struct game *this, int value)
 {
-	return this->chAD8 = value;
+	return this->col.ch56 = value;
 }
 
-static inline int game_setAD9(struct game *this, int value)
+static inline int game_set_color_cfg_ch57(struct game *this, int value)
 {
-	return this->chAD9 = value;
+	return this->col.ch57 = value;
 }
 
-static inline int game_setADC(struct game *this, int value)
+static inline int game_set_color_cfg_ch58(struct game *this, int value)
 {
-	return this->numADC = value;
+	return this->col.ch58 = value;
 }
 
-static inline int game_setAE0(struct game *this, int value)
+static inline int game_set_color_cfg_ch59(struct game *this, int value)
 {
-	return this->numAE0 = value;
+	return this->col.ch59 = value;
 }
 
-static inline char game_setAE4(struct game *this, char value)
+static inline int game_set_color_cfg_num5C(struct game *this, int value)
 {
-	return this->chAE4 = value;
+	return this->col.num5C = value;
 }
 
-static inline char game_setAE5(struct game *this, char value)
+static inline int game_set_color_cfg_num60(struct game *this, int value)
 {
-	return this->chAE5 = value;
+	return this->col.num60 = value;
 }
 
-static inline char game_setAE6(struct game *this, char value)
+static inline int game_set_color_cfg_ch64(struct game *this, int value)
 {
-	return this->chAE6 = value;
+	return this->col.ch64 = value;
+}
+
+static inline int game_set_color_cfg_ch65(struct game *this, int value)
+{
+	return this->col.ch65 = value;
+}
+
+static inline int game_set_color_cfg_ch66(struct game *this, int value)
+{
+	return this->col.ch66 = value;
 }
 
 static inline char game_set1190(struct game *this, char value)

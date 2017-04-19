@@ -29,6 +29,8 @@ struct config {
 #define RES_HIGH 2
 #define RES_LARGE 3
 
+#define COLOR_CFG_TBLSIZE 9
+
 extern struct config reg_cfg;
 
 struct color_cfg {
@@ -37,17 +39,23 @@ struct color_cfg {
 	unsigned dword8;
 	unsigned dwordC;
 	unsigned dword10;
-	unsigned dword14;
-	char gap18[12];
-	int int24;
-	char gap28[50];
+	char tbl14[COLOR_CFG_TBLSIZE];
+	char gap19[3];
+	int  tbl20[COLOR_CFG_TBLSIZE];
+	char tbl44[COLOR_CFG_TBLSIZE];
+	char tbl4D[COLOR_CFG_TBLSIZE];
+	char ch56;
+	char ch57;
+	char ch58;
+	char ch59;
 	char byte5A;
 	char byte5B;
-	char byte5C;
-	char byte5D;
-	char gap5E[2];
-	unsigned dword60;
-	unsigned dword64;
+	unsigned num5C;
+	unsigned num60;
+	char ch64;
+	char ch65;
+	char ch66;
+	char ch67;
 	char byte68;
 	char byte69;
 	char byte6A;

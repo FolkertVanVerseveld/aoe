@@ -1022,13 +1022,14 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	this->tblBF0[1] = 0;
 	this->tblBF0[2] = 0;
 	this->time_mci = 0;
-	for (unsigned i = 0; i < 10; ++i)
+	for (unsigned i = 0; i < COLOR_CFG_TBLSIZE; ++i)
 		this->tblC00[i] = 0;
+	this->menu = NULL;
 	this->num1250 = 0;
 	this->vtbl = &g_vtbl2;
 	this->num1D8 = 1;
 	this->window2 = 0;
-	this->chAE8 = 0;
+	this->col.byte68 = 0;
 	hLibModule = 0;
 	this->chC58 = 0;
 	this->chD5C = 0;
@@ -1042,30 +1043,29 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	for (unsigned i = 0; i < 4; ++i)
 		this->tblA24[i] = 0;
 	game_settings_set_color(this, 2);
-
-	game_setA80(this, 2);
-	game_setA84(this, 1);
-	game_setA88(this, 1);
-	game_setA8C_A90(this, 1, 1);
-	game_setAD6(this, 1);
-	game_setAD7(this, 0);
-	game_setAD8(this, 0);
-	game_setAD9(this, 0);
-	game_setADC(this, 0);
-	game_setAE0(this, 0);
-	game_setAE4(this, 0);
-	game_setAE5(this, 0);
-	game_setAE6(this, 50);
+	game_set_color_cfg_brightness(this, 2);
+	game_set_color_cfg_dword4(this, 1);
+	game_set_color_cfg_dword8(this, 1);
+	game_set_color_cfg_dwordC_dword10(this, 1, 1);
+	game_set_color_cfg_ch56(this, 1);
+	game_set_color_cfg_ch57(this, 0);
+	game_set_color_cfg_ch58(this, 0);
+	game_set_color_cfg_ch59(this, 0);
+	game_set_color_cfg_num5C(this, 0);
+	game_set_color_cfg_num60(this, 0);
+	game_set_color_cfg_ch64(this, 0);
+	game_set_color_cfg_ch65(this, 0);
+	game_set_color_cfg_ch66(this, 50);
 	game_set1190(this, 0);
 	game_set1194(this, -1);
 	for (unsigned i = 5; i < 10; ++i)
 		this->restbl[i] = -1;
 	this->restbl[10] = this->restbl[11] = -1;
-	for (unsigned index = 0; index < 9; ++index) {
-		game_offsetA94(this, index, index + 2);
-		game_offsetAA0(this, index, index);
-		game_offsetAC4(this, index, 1);
-		game_offsetACD(this, index, 0);
+	for (unsigned index = 0; index < COLOR_CFG_TBLSIZE; ++index) {
+		game_set_color_cfg_tbl14(this, index, index + 2);
+		game_set_color_cfg_tbl20(this, index, index);
+		game_set_color_cfg_tbl44(this, index, 1);
+		game_set_color_cfg_tbl4D(this, index, 0);
 		players_connection_state[index] = 0;
 	}
 
