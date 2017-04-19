@@ -17,7 +17,9 @@
 #include "sfx.h"
 #include "xmap.h"
 #include "memmap.h"
+#include "menu.h"
 #include "todo.h"
+#include "ui.h"
 #include "../genie/shape.h"
 #include "../genie/shape.c"
 #include "../genie/dmap.c"
@@ -482,62 +484,58 @@ fail:
 	return 1;
 }
 
-#define OPT_MAIN_SINGLE 0
-#define OPT_MAIN_MULTI 1
-#define OPT_MAIN_HELP 2
-#define OPT_MAIN_EDITOR 3
-#define OPT_MAIN_EXIT 4
-#define OPT_MAINSZ 5
+static int menu_press;
+
+static int menu_nav_handle_input(struct menu_nav *nav)
+{
+	SDL_Event ev;
+	while (SDL_PollEvent(&ev)) {
+		switch (ev.type) {
+		case SDL_QUIT:
+			return 1;
+		case SDL_KEYDOWN:
+			switch (ev.key.keysym.sym) {
+			case SDLK_DOWN:
+				menu_nav_down(nav, MENU_KEY_DOWN);
+				break;
+			case SDLK_UP:
+				menu_nav_down(nav, MENU_KEY_UP);
+				break;
+			case ' ':
+				menu_nav_down(nav, MENU_KEY_SELECT);
+				menu_press = 1;
+				break;
+			}
+			break;
+		case SDL_KEYUP:
+			switch (ev.key.keysym.sym) {
+			case ' ':
+				menu_nav_up(nav, MENU_KEY_SELECT);
+				menu_press = 0;
+			}
+		}
+	}
+	return 0;
+}
 
 int eng_main(void)
 {
-	unsigned rmode, rw, rh, opti = 0, press = 0;
-	const char *opts[] = {
-		"Single Player (not implemented)",
-		"Multiplayer (not implemented)",
-		"Help (not implemented)",
-		"Scenario Builder (not implemented)",
-		"Exit"
-	};
+	unsigned rmode, rw, rh;
+	ui_menu_push(&ui, &menu_nav_main);
 	rmode = reg_cfg.mode_fixed;
 	rw = resfixed[rmode].w;
 	rh = resfixed[rmode].h;
 	main_bkg_init();
 	sfx_play(MUSIC_XMAIN);
-	while (1) {
-		SDL_Event ev;
-		while (SDL_PollEvent(&ev)) {
-			switch (ev.type) {
-			case SDL_QUIT:
-				goto end;
-			case SDL_KEYDOWN:
-				switch (ev.key.keysym.sym) {
-				case SDLK_DOWN:
-					opti = (opti + 1) % OPT_MAINSZ;
-					break;
-				case SDLK_UP:
-					opti = (opti + OPT_MAINSZ - 1) % OPT_MAINSZ;
-					break;
-				case ' ':
-					press = 1;
-					break;
-				}
-				break;
-			case SDL_KEYUP:
-				switch (ev.key.keysym.sym) {
-				case ' ':
-					press = 0;
-					switch (opti) {
-					case OPT_MAIN_EXIT:
-						goto end;
-					default:
-						fputs("not implemented yet\n", stderr);
-						break;
-					}
-					break;
-				}
-			}
-		}
+	menu_press = 0;
+	while (ui.stack_index) {
+		struct menu_nav *nav = ui_menu_peek(&ui);
+		if (menu_nav_handle_input(nav))
+			goto end;
+		// nav may be changed by now
+		nav = ui_menu_peek(&ui);
+		if (!nav)
+			goto end;
 		int x, y, w, h;
 		SDL_GetWindowSize(win, &w, &h);
 		while ((int)rw > w || (int)rh > h) {
@@ -561,14 +559,16 @@ int eng_main(void)
 		glEnable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
 		glColor3f(1, 1, 1);
+		const struct menu_list *list = nav->list;
+		unsigned n = list->count;
 		draw_str(
-			(rw - strlen("Age of Empires") * FONT_GW) / 2, FONT_GH,
-			"Age of Empires"
+			(rw - ui.title_width * FONT_GW) / 2, FONT_GH,
+			nav->title
 		);
 		unsigned opty = 4 * FONT_GH;
-		for (unsigned i = 0; i < OPT_MAINSZ; ++i) {
-			if (i == opti) {
-				if (press)
+		for (unsigned i = 0; i < n; ++i) {
+			if (i == nav->index) {
+				if (menu_press)
 					glColor3ub(
 						main_bkg.col.state[0][0],
 						main_bkg.col.state[0][1],
@@ -587,8 +587,8 @@ int eng_main(void)
 					main_bkg.col.text[0][2]
 				);
 			draw_str(
-				(rw - strlen(opts[i]) * FONT_GW) / 2,
-				opty, opts[i]
+				(rw - ui.option_width[i] * FONT_GW) / 2.0,
+				opty, list->buttons[i]
 			);
 			opty += 2 * FONT_GH;
 		}
