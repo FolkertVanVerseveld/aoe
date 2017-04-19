@@ -168,6 +168,8 @@ int midi_play(unsigned id)
 		show_error("Audio error", buf);
 		return 1;
 	}
+	if (fluid_player_get_status(player) == FLUID_PLAYER_PLAYING)
+		fluid_player_stop(player);
 	fluid_player_add(player, clip->name);
 	fluid_player_play(player);
 	return 0;
