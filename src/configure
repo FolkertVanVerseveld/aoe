@@ -5,7 +5,7 @@ LD=ld
 cstd='-std=gnu99'
 CFLAGS="-Wall -Wextra -pedantic $cstd"
 hasmidi=no
-libs='sdl2 gl'
+libs='sdl2 gl openal'
 sf_dir=
 embedfont=no
 # remove auto generated files

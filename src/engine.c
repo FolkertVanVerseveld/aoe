@@ -526,7 +526,7 @@ int eng_main(void)
 	rw = resfixed[rmode].w;
 	rh = resfixed[rmode].h;
 	main_bkg_init();
-	sfx_play(MUSIC_XMAIN);
+	sfx_play(MUSIC_XMAIN, 0, 1.0f);
 	menu_press = 0;
 	while (ui.stack_index) {
 		struct menu_nav *nav = ui_menu_peek(&ui);

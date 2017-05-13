@@ -2,6 +2,7 @@
 #include "memmap.h"
 #include "todo.h"
 #include "ui.h"
+#include "sfx.h"
 #include "../dbg.h"
 
 static struct menu_ctl_vtbl menu_ctl_vtbl = {
@@ -229,6 +230,8 @@ void menu_nav_down(struct menu_nav *this, unsigned key)
 void menu_nav_up(struct menu_nav *this, unsigned key)
 {
 	this->keys &= ~key;
-	if (key == MENU_KEY_SELECT)
+	if (key == MENU_KEY_SELECT) {
+		sfx_play(SFX_BTN1, 0, 1.0f);
 		this->select(this);
+	}
 }
