@@ -1,6 +1,8 @@
 #ifndef AOE_SFX_H
 #define AOE_SFX_H
 
+#define SFX_PLAY_LOOP 1
+
 #define SFX_BTN1     50300
 #define SFX_BTN2     50301
 #define SFX_CHATRECV 50302
@@ -89,6 +91,6 @@ void sfx_free(void);
 #define MUSIC_XWON   23
 #define MUSIC_XLOST  24
 
-int sfx_play(unsigned id);
+int sfx_play(unsigned id, unsigned flags, float volume);
 
 #endif

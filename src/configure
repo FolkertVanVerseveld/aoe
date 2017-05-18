@@ -1,10 +1,11 @@
 #!/bin/bash -e
+DEP=${DEP:-no}
 CC=gcc
 LD=ld
 cstd='-std=gnu99'
 CFLAGS="-Wall -Wextra -pedantic $cstd"
 hasmidi=no
-libs='sdl2 gl'
+libs='sdl2 gl openal'
 sf_dir=
 embedfont=no
 # remove auto generated files
@@ -51,7 +52,6 @@ fi
 CFLAGS="$CFLAGS $(pkg-config --cflags $libs)"
 LDLIBS="$(pkg-config --libs $libs)"
 LLIBS='-lSDL2_image -lm'
-CCM="$CC $cstd -MM"
 cat <<'EOF'>.gitignore
 .gitignore
 *.tmp
@@ -146,10 +146,16 @@ EOF
 for i in $MAIN; do
 	printf '%s: %s $(LIST)\n' "${i/%.c/}" "${i/%.c/.o}" >>Makefile
 done
+if [ "$DEP" == yes ]; then
+	for i in $FILES; do
+		printf '%s\n\t$(CC) -c %s -o $@ $(CFLAGS)\n' "$(cpp -MM $CFLAGS $LDLIBS "$i")" "$i" >>Makefile
+	done
+else
 cat <<'EOF' >>Makefile
 %.o: %.c
 	$(CC) -c $< -o $@ $(CFLAGS)
 EOF
+fi
 # embed font in library
 if [ "$embedfont" == no ]; then
 cat <<EOF >>Makefile

@@ -27,7 +27,7 @@ install the packages using:
 
 $ sudo -s
 # apt-get update
-# apt-get install pkg-config libsdl2-dev libsdl2-image-dev
+# apt-get install pkg-config libsdl2-dev libsdl2-image-dev libopenal-dev
 # exit
 $ cd src/
 $ ./configure && make

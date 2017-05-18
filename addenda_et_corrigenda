@@ -81,3 +81,8 @@ Network
 Multiplayer games are disrupted easily by desynchronisation errors. This
 is very frustrating since the game does not support saving and restoring
 multiplayer sessions.
+
+Pathfinding
+The genie game engine's pathfinding was redesigned for AoE II. We think
+it should be upgraded as well by providing an option to select the
+pathfinding method used.

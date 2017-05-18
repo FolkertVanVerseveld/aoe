@@ -8,9 +8,9 @@ the genie game engine for compatibility reasons. In order to achieve this, some
 code is reconstructed from the dissassembly. We have provided a couple of tools
 that verify, test, and inspect the original data files.
 
-You still need to have an original installed version of Age of Empires in order
-to run this program, since you need to specify the location of the original
-data directory.
+You still need to own an original legitimate copy of Age of Empires in order to
+run this program, since you need to specify the location of the original data
+directory.
 
 BUILDING THE GAME
 
@@ -21,6 +21,7 @@ In order to build the project you will need:
 * SDL2
 * SDL2_image
 * OpenGL support
+* OpenAL support
 
 This project has been built primarly for Xubuntu 14, but it should build
 on any POSIX-compatible machine that provides the packages listed above.
