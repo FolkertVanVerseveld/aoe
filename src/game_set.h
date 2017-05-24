@@ -16,51 +16,51 @@ static inline char *game_settings_set_str(struct game *this, const char *str)
 	return ptr;
 }
 
-static inline int game_settings_set97D_97E(struct game *this, int value)
+static inline int game_settings_set_running(struct game *this, int value)
 {
 	this->settings.game_running = value;
-	return this->settings.num97E_97D_is_zero = value == 0;
+	return this->settings.game_stopped = value == 0;
 }
 
-static inline int game_settings_set97E_97D(struct game *this, int value)
+static inline int game_settings_set_stopped(struct game *this, int value)
 {
-	this->settings.num97E_97D_is_zero = value;
+	this->settings.game_stopped = value;
 	return this->settings.game_running = value == 0;
 }
 
 static inline char game_settings_set8C(struct game *this, char value)
 {
-	return this->settings.ch8C = value;
+	return this->settings.byte8C = value;
 }
 
 static inline char game_settings_set8D(struct game *this, char value)
 {
-	return this->settings.ch8D = value;
+	return this->settings.byte8D = value;
 }
 
 static inline char game_settings_set8E(struct game *this, char value)
 {
-	return this->settings.ch8E = value;
+	return this->settings.byte8E = value;
 }
 
 static inline char game_settings_set8F(struct game *this, char value)
 {
-	return this->settings.ch8F = value;
+	return this->settings.byte8F = value;
 }
 
 static inline char game_settings_set90(struct game *this, char value)
 {
-	return this->settings.ch90 = value;
+	return this->settings.byte90 = value;
 }
 
 static inline char game_settings_set91(struct game *this, char value)
 {
-	return this->settings.ch91 = value;
+	return this->settings.byte91 = value;
 }
 
-static inline int game_set9A0(struct game *this, int value)
+static inline int game_settings_set_ptrA8(struct game *this, int value)
 {
-	return this->num9A0 = value;
+	return this->settings.tbl.flat.ptrA8 = value;
 }
 
 static inline int game_set9A4(struct game *this, int value)
@@ -176,7 +176,7 @@ static inline int game_set_color_cfg_ch66(struct game *this, int value)
 
 static inline char game_set1190(struct game *this, char value)
 {
-	return this->ch1190 = value;
+	return this->str1190[0] = value;
 }
 
 static inline int game_set1194(struct game *this, int value)

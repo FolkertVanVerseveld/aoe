@@ -838,16 +838,20 @@ static char game_apply_settings(struct game *this, struct game_settings *cfg)
 	game_settings_set_gamespeed(this, cfg->gamespeed);
 	game_settings_set_c0(this, cfg->c0);
 	game_settings_set_str(this, cfg->str);
-	game_settings_set97D_97E(this, cfg->game_running);
-	game_settings_set97E_97D(this, cfg->num97E_97D_is_zero);
+	game_settings_set_running(this, cfg->game_running);
+	game_settings_set_stopped(this, cfg->game_stopped);
 	game_settings_set_hsv(this, cfg->hsv[0], cfg->hsv[1], cfg->hsv[2]);
 	game_settings_set_cheats(this, cfg->cheats);
-	game_settings_set90(this, cfg->ch90);
-	game_settings_set91(this, cfg->ch91);
+	game_settings_set8C(this, cfg->byte8C);
+	game_settings_set8D(this, cfg->byte8D);
+	game_settings_set8E(this, cfg->byte8E);
+	game_settings_set8F(this, cfg->byte8F);
+	game_settings_set90(this, cfg->byte90);
+	game_settings_set91(this, cfg->byte91);
 	game_settings_set_difficulty(this, cfg->difficulty);
 	game_settings_set_mp_pathfind(this, cfg->mp_pathfind);
 	char result;
-	for (unsigned i = 0; i < 9; ++i) {
+	for (unsigned i = 0; i < PLAYER_TBLSZ; ++i) {
 		game_settings_init_player(this, i, cfg->player_tbl[i]);
 		result = game_settings_tbl(this, i, cfg->tbl.array[i]);
 	}
@@ -856,6 +860,8 @@ static char game_apply_settings(struct game *this, struct game_settings *cfg)
 
 struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int should_start_game)
 {
+	this->mutex_init = 0;
+	/* end custom vars */
 	this->focus = NULL;
 	for (int i = 0; i < 4; ++i)
 		this->tbl28[i] = -1;
@@ -869,10 +875,10 @@ struct game *game_vtbl_init(struct game *this, struct game_config *cfg, int shou
 	// setup other members
 	game_settings_set_gamespeed(this, 1.0f);
 	game_settings_set_c0(this, 0);
-	game_set9A0(this, 0);
+	game_settings_set_ptrA8(this, 0);
 	game_set9A4(this, 0);
-	game_settings_set97D_97E(this, 1);
-	game_settings_set97E_97D(this, 0);
+	game_settings_set_running(this, 1);
+	game_settings_set_stopped(this, 0);
 	game_settings_set_hsv(this, 96, 96, 8);
 	game_settings_set_cheats(this, 0);
 	game_settings_set8C(this, 1);
@@ -1031,12 +1037,12 @@ struct game *game_ctor(struct game *this, struct game_config *cfg, int should_st
 	this->window2 = 0;
 	this->col.byte68 = 0;
 	hLibModule = 0;
-	this->chC58 = 0;
-	this->chD5C = 0;
-	this->chE64 = 0;
-	this->chF68 = 0;
+	this->strC58[0] = 0;
+	this->strD5C[0] = 0;
+	this->strE64[0] = 0;
+	this->strF68[0] = 0;
 	this->numE60 = 0;
-	this->ch106C = 0;
+	this->str106C[0] = 0;
 	disable_terrain_sound = 0;
 	game_580E24 = 0;
 	game_580E28 = 0;
@@ -1119,7 +1125,10 @@ static int game_opt_check(struct game *this, char *opt)
 static int game_futex_window_request_focus(struct game *this)
 {
 	stub
-	this->mutex_main_error = 1;
+	if (!this->mutex_init) {
+		if (!pthread_mutex_init(&this->mutex_main_error, NULL))
+			this->mutex_init = 1;
+	}
 	return 1;
 }
 
@@ -1653,7 +1662,7 @@ static inline char game_is_cheats_enabled(struct game *this)
 
 static inline int game_still_running(struct game *this)
 {
-	return this->settings.num97E_97D_is_zero;
+	return this->settings.game_running;
 }
 
 static struct cheat_action *game3F4_cheat(struct game3F4 *this, int id)

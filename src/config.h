@@ -1,6 +1,8 @@
 #ifndef AOE_CONFIG_H
 #define AOE_CONFIG_H
 
+#define PLAYER_TBLSZ 9
+
 #define PATHFIND_LOW 0
 #define PATHFIND_MEDIUM 1
 #define PATHFIND_HIGH 2
@@ -29,7 +31,7 @@ struct config {
 #define RES_HIGH 2
 #define RES_LARGE 3
 
-#define COLOR_CFG_TBLSIZE 9
+#define COLOR_CFG_TBLSIZE PLAYER_TBLSZ
 
 extern struct config reg_cfg;
 
@@ -66,17 +68,17 @@ struct game_settings {
 	char c0;
 	char str[128];
 	char game_running;
-	char num97E_97D_is_zero;
+	char game_stopped;
 	char hsv[3];
 	char cheats;
 	char mp_pathfind;
-	char ch8C;
-	char ch8D;
-	char ch8E;
-	char ch8F;
-	char ch90;
-	char ch91;
-	char player_tbl[9];
+	char byte8C;
+	char byte8D;
+	char byte8E;
+	char byte8F;
+	char byte90;
+	char byte91;
+	char player_tbl[PLAYER_TBLSZ];
 	char difficulty;
 	union {
 		char array[12];
@@ -84,6 +86,7 @@ struct game_settings {
 			unsigned num9C;
 			unsigned numA0;
 			unsigned numA4;
+			unsigned ptrA8;
 		} flat;
 	} tbl;
 	struct color_cfg colcfg;

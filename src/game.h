@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <time.h>
+#include <pthread.h>
 #include <SDL2/SDL.h>
 #include "config.h"
 #include "engine.h"
@@ -332,8 +333,7 @@ struct game {
 	unsigned running;
 	// REMAP typeof(HPALETTE palette) == pal_entry*
 	struct pal_entry *palette;
-	// REMAP typeof(HANDLE mutex) == void*
-	unsigned mutex_main_error;
+	pthread_mutex_t mutex_main_error; int mutex_init;
 	unsigned num24;
 	unsigned tbl28[4];
 	unsigned screensaver_state;
@@ -367,7 +367,6 @@ struct game {
 	unsigned tbl184[2];
 	struct comm *nethandler;
 	unsigned tbl190[5];
-	struct game18C *ptr18C;
 	struct logger *log;
 	unsigned logctl;
 	struct regpair rpair_root;
@@ -400,11 +399,10 @@ struct game {
 	unsigned int tbl8E8[3];
 	unsigned int num8F4;
 	struct game_settings settings;
-	unsigned num9A0;
 	unsigned num9A4;
 	unsigned vtbl9A8;
 	unsigned num9AC;
-	unsigned tbl9B0[9];
+	unsigned tbl9B0[PLAYER_TBLSZ];
 	unsigned state2;
 	char pad9D8[36];
 	unsigned num9FC;
@@ -417,32 +415,29 @@ struct game {
 	struct map *map_area;
 	unsigned tblA24[4];
 	unsigned brightness;
+	char gapA38[68];
+	unsigned brightness2;
 	struct color_cfg col;
 	char padAEB[257];
 	// REMAP typeof(HWND hwnd_mci) == unsigned
 	unsigned hwnd_mci;
 	unsigned tblBF0[3];
 	unsigned time_mci;
-	unsigned tblC00[9];
+	unsigned tblC00[PLAYER_TBLSZ];
 	struct menu_ctl *menu;
 	int restbl[12];
-	char chC58;
-	char padC59[259];
-	char chD5C;
-	char padD5D[259];
+	char strC58[260];
+	char strD5C[260];
 	unsigned numE60;
-	char chE64;
-	char padE65[259];
-	char chF68;
-	char padF69[259];
-	char ch106C;
-	char pad106D[255];
+	char strE64[260];
+	char strF68[260];
+	char str106C[256];
 	char blk116C[36];
-	char ch1190;
-	char ch1191[3];
+	/* still not sure what this type is supposed to be */
+	char str1190[4];
 	unsigned num1194;
 	char blk1198[160];
-	char pad1238[64];
+	char pad1238[24];
 	int num1250;
 };
 
