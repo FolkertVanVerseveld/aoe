@@ -1,0 +1,71 @@
+#!/bin/bash -e
+# Simple script that creates a Makefile for all c files that contain a main function
+CC=gcc
+cstd='-std=gnu99'
+CFLAGS="-Wall -Wextra -pedantic $cstd -I../ $*"
+libs='ncurses openal'
+INCS=
+if ! hash pkg-config 2>/dev/null; then
+	echo "pkg-config is missing" 1>&2
+	exit 1
+fi
+CFLAGS="$CFLAGS $(pkg-config --cflags $libs)"
+LDLIBS="$(pkg-config --libs $libs)"
+cat <<END >.gitignore
+# Created by build script. Modifications are lost when rerun.
+.gitignore
+Makefile
+*.tmp
+# VIM
+*.swp
+*.vim
+# CC
+*.o
+END
+CFLAGS="$CFLAGS $INCS"
+# Write phony target and overwrite some builtin variables
+cat <<END >Makefile
+.PHONY: default clean
+
+CC?=$CC
+CFLAGS=$CFLAGS
+LDLIBS=$LDLIBS
+
+END
+
+printf "MAIN=" >>Makefile
+# Filter Binary.* and strip extensions
+MAIN=$(grep -r 'int main' | sed -e '/Binary.*/d' -e 's/:.*//g')
+# Write elf executables
+for i in $MAIN; do
+	bin="${i/%.c/}"
+	echo "$bin" >>.gitignore
+	printf ' \\\n\t%s' "$bin" >>Makefile
+done
+# Write object files
+printf '\nOBJECTS=' >>Makefile
+FILES=$(find . -name '*.c')
+FILES="${FILES//.\//}"
+for i in $FILES; do
+	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
+done
+for i in $MAIN; do
+	FILES="${FILES/$i/}"
+done
+printf '\nLIST=' >>Makefile
+for i in $FILES; do
+	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
+done
+cat <<'EOF' >>Makefile
+
+default: $(OBJECTS) $(MAIN)
+EOF
+for i in $MAIN; do
+	printf '%s: %s $(LIST) ../genie/libgenie.a\n' "${i/%.c/}" "${i/%.c/.o}" >>Makefile
+done
+cat <<'EOF' >>Makefile
+%.o: %.c
+	$(CC) -c $< -o $@ $(CFLAGS)
+clean:
+	rm -f $(MAIN) $(OBJECTS)
+EOF

@@ -1,0 +1,63 @@
+#!/bin/bash -e
+CC=gcc
+if hash colorgcc 2>/dev/null; then
+	CC=colorgcc
+fi
+cstd='-std=gnu99'
+CFLAGS="-Wall -Wextra -pedantic $cstd -pthread -fPIC $*"
+libs='sdl2 glew freealut vorbisfile'
+if ! hash pkg-config 2>/dev/null; then
+	echo "pkg-config is missing" 1>&2
+	exit 1
+fi
+CFLAGS="$CFLAGS $(pkg-config --cflags $libs)"
+LDLIBS="$(pkg-config --libs $libs)"
+LLIBS='-lSDL2_image -lSDL2_mixer -lpthread -lm'
+CCM="$CC $cstd -MM"
+cat <<'EOF'>.gitignore
+.gitignore
+*.tmp
+# Make
+Makefile
+# CC
+*.o
+*.a
+*.so
+# VIM
+*.vim
+*.swp
+# valgrind
+*.valgrind
+*.log
+# archives
+*.tgz
+*.zip
+EOF
+cat <<EOF >Makefile
+.PHONY: default clean
+
+CC=$CC
+CFLAGS=$CFLAGS
+LDLIBS=$LDLIBS $LLIBS
+
+EOF
+
+printf "OBJECTS=" >>Makefile
+for i in *.c; do
+	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
+done
+
+cat <<'EOF' >>Makefile
+
+
+default: libgenie.a libgenie.so $(DEMOS)
+libgenie.a: $(OBJECTS)
+	ar -cr libgenie.a $(OBJECTS)
+libgenie.so: $(OBJECTS)
+	$(CC) -shared -Wl,-soname,libgenie -o libgenie.so $(OBJECTS)
+%.o: %.c
+	$(CC) -c $< -o $@ $(CFLAGS)
+clean:
+	rm -f libgenie.a libgenie.so
+	rm -f $(OBJECTS)
+EOF

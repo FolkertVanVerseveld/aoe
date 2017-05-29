@@ -1,0 +1,169 @@
+#!/bin/bash -e
+DEP=${DEP:-no}
+CC=gcc
+LD=ld
+cstd='-std=gnu99'
+CFLAGS="-Wall -Wextra -pedantic $cstd -I../"
+hasmidi=no
+libs='sdl2 gl openal'
+sf_dir=
+embedfont=no
+# remove auto generated files
+rm -f font.c
+for i in "$@"; do
+	case "$i" in
+	--enable-midi)
+		shift 1
+		libs="$libs fluidsynth"
+		hasmidi=yes
+		;;
+	--sf-dir)
+		shift 1
+		sf_dir="$1"
+		shift 1
+		;;
+	--)
+		break;;
+	esac
+done
+for i in "$@"; do
+	case "$i" in
+	-DEMBED_FONT)
+		embedfont=yes
+		if ! hash xxd 2>/dev/null; then
+			echo Need xxd to embed font 2>&1
+			exit 1
+		fi
+		xxd -i font.png >font.c
+		length="$(tail -n1 font.c | sed -e 's/[^0-9]//g')"
+		cat <<-EOF >>font.c
+
+		unsigned char *font_png_start =  font_png;
+		unsigned char *font_png_end   = &font_png[$length];
+		EOF
+		;;
+	esac
+done
+CFLAGS="$CFLAGS $*"
+if ! hash pkg-config 2>/dev/null; then
+	echo "pkg-config is missing" 1>&2
+	exit 1
+fi
+CFLAGS="$CFLAGS $(pkg-config --cflags $libs)"
+LDLIBS="$(pkg-config --libs $libs)"
+LLIBS='-lSDL2_image -lm'
+cat <<'EOF'>.gitignore
+.gitignore
+*.tmp
+# Make
+Makefile
+# CC
+*.o
+# VIM
+*.vim
+*.swp
+# valgrind
+*.valgrind
+*.log
+# archives
+*.tgz
+*.zip
+# documentation
+doc
+# configure
+configure.h
+# binaries
+EOF
+if [ "$embedfont" == yes ]; then
+	echo 'font.c' >>.gitignore
+fi
+cat <<EOF >configure.h
+#ifndef CONFIGURE
+#define CONFIGURE
+
+EOF
+if ! hash git 2>/dev/null; then
+	echo 'No git available, falling back to defaults' 2>&1
+	echo 'configuration is taunted' 2>&1
+cat <<EOF >>configure.h
+#define GIT_SHA "??"
+#define CFG_TAUNTED 1
+EOF
+else
+cat <<EOF >>configure.h
+#define GIT_SHA "$(git rev-parse HEAD)"
+#define CFG_TAUNTED 0
+EOF
+fi
+if [ "$hasmidi" = yes ]; then
+	echo '#define HAS_MIDI 1' >>configure.h
+fi
+if [ ! -z "$sf_dir" ]; then
+	printf '#define MIDI_SF_DIR "%s"' "$sf_dir" >>configure.h
+fi
+cat <<EOF >>configure.h
+
+#define BUILD_OPTIONS "$*"
+#define GIT_ORIGIN "https://www.github.com/FolkertVanVerseveld/aoe.git"
+
+#endif
+EOF
+cat <<EOF >Makefile
+.PHONY: default clean
+
+CC=$CC
+CFLAGS=$CFLAGS
+LDLIBS=$LDLIBS $LLIBS
+
+EOF
+printf 'MAIN=' >>Makefile
+MAIN=$(grep -r '^int main' | sed -e '/Binary.*/d' -e 's/:.*//g')
+for i in $MAIN; do
+	bin="${i/%.c/}"
+	echo "$bin" >>.gitignore
+	printf ' \\\n\t%s' "$bin" >>Makefile
+done
+printf '\nOBJECTS=' >>Makefile
+FILES=$(find . -name '*.c')
+FILES="${FILES//.\//}"
+for i in $FILES; do
+	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
+done
+for i in $MAIN; do
+	FILES="${FILES/$i/}"
+done
+printf '\nLIST=' >>Makefile
+for i in $FILES; do
+	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
+done
+if [ "$embedfont" == no ]; then
+	printf ' \\\n\tfont.o' >>Makefile
+fi
+cat <<'EOF' >>Makefile
+
+default: $(OBJECTS) $(MAIN)
+EOF
+for i in $MAIN; do
+	printf '%s: %s $(LIST) ../genie/libgenie.a\n' "${i/%.c/}" "${i/%.c/.o}" >>Makefile
+done
+if [ "$DEP" == yes ]; then
+	for i in $FILES; do
+		printf '%s\n\t$(CC) -c %s -o $@ $(CFLAGS)\n' "$(cpp -MM $CFLAGS $LDLIBS "$i")" "$i" >>Makefile
+	done
+else
+cat <<'EOF' >>Makefile
+%.o: %.c
+	$(CC) -c $< -o $@ $(CFLAGS)
+EOF
+fi
+# embed font in library
+if [ "$embedfont" == no ]; then
+cat <<EOF >>Makefile
+font.o: font.png
+	$LD -r -b binary -o font.o font.png
+EOF
+fi
+cat <<'EOF' >>Makefile
+clean:
+	rm -f $(MAIN) $(OBJECTS)
+EOF
