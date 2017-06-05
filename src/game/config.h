@@ -9,6 +9,33 @@
 
 #define CFG_FULL 1
 
+#define SCREEN_SIZE_MIN 400
+#define SCREEN_SIZE_MAX 1920
+
+#define ROLLOVER_TEXT_MIN 0
+#define ROLLOVER_TEXT_MAX 2
+
+#define MOUSE_STYLE_MIN 1
+#define MOUSE_STYLE_MAX 2
+
+#define CUSTOM_MOUSE_MIN 0
+#define CUSTOM_MOUSE_MAX 2
+
+#define SFX_VOLUME_MIN 0
+
+#define GAME_SPEED_MIN 1
+
+#define DIFFICULTY_MIN 0
+#define DIFFICULTY_MAX 5
+
+#define SCROLL_SPEED_MIN 1
+
+#define PATHFIND_MIN 1
+#define PATHFIND_MAX 127
+
+#define MP_PATHFIND_MIN 1
+#define MP_PATHFIND_MAX 127
+
 struct config {
 	unsigned screen_size;
 	unsigned rollover_text;

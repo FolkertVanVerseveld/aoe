@@ -65,11 +65,13 @@ static int cfg_touch(void)
 	struct stat st;
 	int ret = 0, fd = -1;
 	if (stat(cfgname, &st)) {
+		size_t n = sizeof cfg_default;
+		ssize_t out;
 		fd = creat(cfgname, 0600);
-		if (fd == -1) goto fail;
+		if (fd == -1)
+			goto fail;
 		dbgs("create/replace config file");
-		size_t n = strlen(cfg_default);
-		ssize_t out = write(fd, cfg_default, n);
+		out = write(fd, cfg_default, n);
 		if (out < 0 || (size_t)out != n) {
 			fputs("failed to create config file\n", stderr);
 			goto fail;
@@ -77,7 +79,8 @@ static int cfg_touch(void)
 	}
 	ret = 1;
 fail:
-	if (fd != -1) close(fd);
+	if (fd != -1)
+		close(fd);
 	return ret;
 }
 
@@ -112,99 +115,99 @@ static int cfg_update(unsigned i, const char *arg, const char *val, char **path)
 	char err[80] = "internal error";
 	if (!strcmp(arg, "screen_size")) {
 		int size = atoi(val);
-		if (size < 400) {
-			snprintf(err, sizeof err, "bad screen size: %s (minimum=400)", val);
+		if (size < SCREEN_SIZE_MIN) {
+			snprintf(err, sizeof err, "bad screen size: %s (minimum=%d)", val, SCREEN_SIZE_MIN);
 			goto fail;
 		}
-		if (size > 1920) {
-			snprintf(err, sizeof err, "bad screen size: %s (maximum=1920)", val);
+		if (size > SCREEN_SIZE_MAX) {
+			snprintf(err, sizeof err, "bad screen size: %s (maximum=%d)", val, SCREEN_SIZE_MAX);
 			goto fail;
 		}
 		reg_cfg.screen_size = size;
 	} else if (!strcmp(arg, "rollover_text")) {
 		int text = atoi(val);
-		if (text < 0) {
-			snprintf(err, sizeof err, "bad rollover text: %s (minimum=0)", val);
+		if (text < ROLLOVER_TEXT_MIN) {
+			snprintf(err, sizeof err, "bad rollover text: %s (minimum=%d)", val, ROLLOVER_TEXT_MIN);
 			goto fail;
 		}
-		if (text > 2) {
-			snprintf(err, sizeof err, "bad rollover text: %s (maximum=2)", val);
+		if (text > ROLLOVER_TEXT_MAX) {
+			snprintf(err, sizeof err, "bad rollover text: %s (maximum=%d)", val, ROLLOVER_TEXT_MAX);
 			goto fail;
 		}
 		reg_cfg.rollover_text = text;
 	} else if (!strcmp(arg, "mouse_style")) {
 		int style = atoi(val);
-		if (style < 1) {
-			snprintf(err, sizeof err, "bad mouse style: %s (minimum=1)", val);
+		if (style < MOUSE_STYLE_MIN) {
+			snprintf(err, sizeof err, "bad mouse style: %s (minimum=%d)", val, MOUSE_STYLE_MIN);
 			goto fail;
 		}
-		if (style > 2) {
-			snprintf(err, sizeof err, "bad mouse style: %s (maximum=2)", val);
+		if (style > MOUSE_STYLE_MAX) {
+			snprintf(err, sizeof err, "bad mouse style: %s (maximum=%d)", val, MOUSE_STYLE_MAX);
 			goto fail;
 		}
 		reg_cfg.mouse_style = style;
 	} else if (!strcmp(arg, "custom_mouse")) {
 		int custom = atoi(val);
-		if (custom < 0) {
-			snprintf(err, sizeof err, "bad custom mouse: %s (minimum=0)", val);
+		if (custom < CUSTOM_MOUSE_MIN) {
+			snprintf(err, sizeof err, "bad custom mouse: %s (minimum=%d)", val, CUSTOM_MOUSE_MIN);
 			goto fail;
 		}
-		if (custom > 2) {
-			snprintf(err, sizeof err, "bad custom mouse: %s (maximum=2)", val);
+		if (custom > CUSTOM_MOUSE_MAX) {
+			snprintf(err, sizeof err, "bad custom mouse: %s (maximum=%d)", val, CUSTOM_MOUSE_MAX);
 			goto fail;
 		}
 		reg_cfg.custom_mouse = custom;
 	} else if (!strcmp(arg, "sfx_volume")) {
 		int volume = atoi(val);
-		if (volume < 0) {
-			snprintf(err, sizeof err, "bad sound effects volume: %s (minimum=0)", val);
+		if (volume < SFX_VOLUME_MIN) {
+			snprintf(err, sizeof err, "bad sound effects volume: %s (minimum=%d)", val, SFX_VOLUME_MIN);
 			goto fail;
 		}
 		reg_cfg.sfx_volume = volume;
 	} else if (!strcmp(arg, "game_speed")) {
 		int speed = atoi(val);
-		if (speed < 1) {
-			snprintf(err, sizeof err, "bad game speed: %s (minimum=1)", val);
+		if (speed < GAME_SPEED_MIN) {
+			snprintf(err, sizeof err, "bad game speed: %s (minimum=%d)", val, GAME_SPEED_MIN);
 			goto fail;
 		}
 		reg_cfg.game_speed = speed;
 	} else if (!strcmp(arg, "difficulty")) {
 		int diff = atoi(val);
-		if (diff < 0) {
-			snprintf(err, sizeof err, "bad difficulty: %s (minimum=0)", val);
+		if (diff < DIFFICULTY_MIN) {
+			snprintf(err, sizeof err, "bad difficulty: %s (minimum=%d)", val, DIFFICULTY_MIN);
 			goto fail;
 		}
-		if (diff > 5) {
-			snprintf(err, sizeof err, "bad difficulty: %s (maximum=5)", val);
+		if (diff > DIFFICULTY_MAX) {
+			snprintf(err, sizeof err, "bad difficulty: %s (maximum=%d)", val, DIFFICULTY_MAX);
 			goto fail;
 		}
 		reg_cfg.difficulty = diff;
 	} else if (!strcmp(arg, "scroll_speed")) {
 		int speed = atoi(val);
-		if (speed < 1) {
-			snprintf(err, sizeof err, "bad scroll speed: %s (minimum=1)", val);
+		if (speed < SCROLL_SPEED_MIN) {
+			snprintf(err, sizeof err, "bad scroll speed: %s (minimum=%d)", val, SCROLL_SPEED_MIN);
 			goto fail;
 		}
 		reg_cfg.scroll_speed = speed;
 	} else if (!strcmp(arg, "pathfind")) {
 		int find = atoi(val);
-		if (find < 1) {
-			snprintf(err, sizeof err, "bad pathfind: %s (minimum=1)", val);
+		if (find < PATHFIND_MIN) {
+			snprintf(err, sizeof err, "bad pathfind: %s (minimum=%d)", val, PATHFIND_MIN);
 			goto fail;
 		}
-		if (find > 127) {
-			snprintf(err, sizeof err, "bad pathfind: %s (maximum=127)", val);
+		if (find > PATHFIND_MAX) {
+			snprintf(err, sizeof err, "bad pathfind: %s (maximum=%d)", val, PATHFIND_MAX);
 			goto fail;
 		}
 		reg_cfg.pathfind = find;
 	} else if (!strcmp(arg, "mp_pathfind")) {
 		int find = atoi(val);
-		if (find < 1) {
-			snprintf(err, sizeof err, "bad multiplayer pathfind: %s (minimum=1)", val);
+		if (find < MP_PATHFIND_MIN) {
+			snprintf(err, sizeof err, "bad multiplayer pathfind: %s (minimum=%d)", val, MP_PATHFIND_MIN);
 			goto fail;
 		}
-		if (find > 127) {
-			snprintf(err, sizeof err, "bad multiplayer pathfind: %s (maximum=127)", val);
+		if (find > MP_PATHFIND_MAX) {
+			snprintf(err, sizeof err, "bad multiplayer pathfind: %s (maximum=%d)", val, MP_PATHFIND_MAX);
 			goto fail;
 		}
 		reg_cfg.mp_pathfind = find;
