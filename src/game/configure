@@ -54,22 +54,16 @@ LDLIBS="$(pkg-config --libs $libs)"
 LLIBS='-lSDL2_image -lm'
 cat <<'EOF'>.gitignore
 .gitignore
-*.tmp
 # Make
 Makefile
 # CC
 *.o
-# VIM
-*.vim
-*.swp
 # valgrind
 *.valgrind
 *.log
 # archives
 *.tgz
 *.zip
-# documentation
-doc
 # configure
 configure.h
 # binaries

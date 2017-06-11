@@ -18,3 +18,12 @@ void strmerge(char **dest, const char *str1, const char *str2)
 		delete(*dest);
 	*dest = merge;
 }
+
+char *strncpy0(char *dest, const char *src, size_t n)
+{
+	char *ptr;
+	ptr = strncpy(dest, src, n);
+	if (n)
+		dest[n - 1] = '\0';
+	return ptr;
+}

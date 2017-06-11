@@ -29,5 +29,5 @@ for i in $dir; do
 done
 printf 'clean:\n' >>Makefile
 for i in $dir; do
-	printf '\tcd %s && $(MAKE) clean && cd ..\n' "$i" "$i" >>Makefile
+	printf '\tcd %s && $(MAKE) clean && cd ..\n' "$i" >>Makefile
 done
