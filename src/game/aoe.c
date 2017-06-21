@@ -10,7 +10,7 @@ Copyright by Folkert van Verseveld et al. */
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include "../genie/engine.h"
+#include <genie/engine.h>
 
 #define TITLE "Age of Empires - Free Software Remake"
 

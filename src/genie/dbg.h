@@ -1,5 +1,5 @@
-#ifndef AOE_DBG_H
-#define AOE_DBG_H
+#ifndef GENIE_DBG_H
+#define GENIE_DBG_H
 
 #include <stddef.h>
 

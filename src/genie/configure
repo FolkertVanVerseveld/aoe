@@ -6,7 +6,6 @@ CFLAGS="-Wall -Wextra -pedantic $cstd -pthread -fPIC $*"
 hasmidi=no
 libs='sdl2 gl openal'
 sf_dir=
-embedfont=yes
 # remove auto generated files
 rm -f font.c
 for i in "$@"; do
@@ -25,26 +24,17 @@ for i in "$@"; do
 		break;;
 	esac
 done
-for i in "$@"; do
-	case "$i" in
-	-DNO_EMBED_FONT)
-		embedfont=no
-		;;
-	esac
-done
-if [ "$embedfont" == yes ]; then
-	if ! hash xxd 2>/dev/null; then
-		echo Need xxd to embed font 2>&1
-		exit 1
-	fi
-	xxd -i font.png >font.c
-	length="$(tail -n1 font.c | sed -e 's/[^0-9]//g')"
-	cat <<-EOF >>font.c
-
-	unsigned char *font_png_start =  font_png;
-	unsigned char *font_png_end   = &font_png[$length];
-	EOF
+if ! hash xxd 2>/dev/null; then
+	echo Need xxd to embed font 2>&1
+	exit 1
 fi
+xxd -i font.png >font.c
+length="$(tail -n1 font.c | sed -e 's/[^0-9]//g')"
+cat <<-EOF >>font.c
+
+unsigned char *font_png_start =  font_png;
+unsigned char *font_png_end   = &font_png[$length];
+EOF
 CFLAGS="$CFLAGS $*"
 if ! hash pkg-config 2>/dev/null; then
 	echo "pkg-config is missing" 1>&2
@@ -63,9 +53,7 @@ cat <<'EOF'>.gitignore
 Makefile
 _build.h
 EOF
-if [ "$embedfont" == yes ]; then
-	echo 'font.c' >>.gitignore
-fi
+echo 'font.c' >>.gitignore
 # build configuration generation
 cat <<EOF >_build.h
 #ifndef _GENIE_BUILD_H
@@ -131,13 +119,6 @@ else
 cat <<'EOF' >>Makefile
 %.o: %.c
 	$(CC) -c $< -o $@ $(CFLAGS)
-EOF
-fi
-# embed font in library
-if [ "$embedfont" == no ]; then
-cat <<EOF >>Makefile
-font.o: font.png
-	$LD -r -b binary -o font.o font.png
 EOF
 fi
 cat <<'EOF' >>Makefile

@@ -12,12 +12,18 @@ You still need to own an original legitimate copy of Age of Empires in order to
 run this program, since you need to specify the location of the original data
 directory.
 
+Community free assets are not supported at the moment, but there are tools
+included if you want to make your own. It is not recommended to create your own
+at the moment because we haven't figured out what all resources are needed for
+and what dimensions, colors etc. the game expects.
+
 BUILDING THE GAME
 
 In order to build the project you will need:
 * gcc
 * bash
 * pkg-config
+* xxd
 * SDL2
 * SDL2_image
 * OpenGL support
@@ -39,5 +45,6 @@ For more information about the commandline options, use ./empx -h
 See also INSTALL for more details.
 
 TROUBLESHOOTING
-Make sure you own a legal version of Age of Empires Rise of Rome and you have
-specified the root directory to AoE RoR correctly. See BUGS for more details.
+Make sure you own a legitimate copy of the original Age of Empires or Rise of
+Rome expansion and you have specified the root directory to AoE (RoR) correctly.
+See BUGS for more details.

@@ -7,6 +7,9 @@
 #include <getopt.h>
 
 #include "_build.h"
+#include "ui.h"
+#include "gfx.h"
+#include "game.h"
 
 #define GENIE_INIT 1
 #define GENIE_MODE_NOSTART     1
@@ -25,8 +28,6 @@ static unsigned genie_init = 0;
 static unsigned genie_mode = 0;
 
 char *root_path = NULL;
-
-static const char *game_title = NULL;
 
 static const char *version_info =
 	"commit: " GENIE_GIT_SHA "\n"
@@ -64,12 +65,18 @@ static void genie_cleanup(void)
 {
 	if (!genie_init)
 		return;
+
 	genie_init &= ~GENIE_INIT;
+
+	genie_gfx_free();
+	genie_ui_free(&genie_ui);
+
 	if (genie_init)
-		warn(
+		warnx(
 			"%s: expected state to be zero, but got %d",
 			__func__, genie_init
 		);
+
 	genie_init = 0;
 }
 
@@ -150,12 +157,18 @@ int ge_print_options(char *str, size_t size)
  */
 static int ge_parse_opt(int argc, char *argv[], unsigned options)
 {
+	const char *game_title;
 	int c, option_index;
+
+	game_title = genie_ui.game_title;
+
 	while (1) {
 		/* Get next argument */
 		c = getopt_long(argc, argv, "hr:v", long_opt, &option_index);
+
 		if (c == -1)
 			break;
+
 		switch (c) {
 		case 'v':
 			printf("%s\n%s\n", game_title, version_info);
@@ -177,21 +190,27 @@ static int ge_parse_opt(int argc, char *argv[], unsigned options)
 			break;
 		}
 	}
+
 	if (options & GE_INIT_LEGACY_OPTIONS)
 		optind = ge_parse_opt_legacy(optind, argc, argv);
+
 	return optind;
 }
 
 int ge_init(int argc, char **argv, const char *title, unsigned options)
 {
 	int argp;
+
 	if (genie_init) {
-		warn("%s: already initialized", __func__);
+		warnx("%s: already initialized", __func__);
 		return 0;
 	}
+
 	genie_init |= GENIE_INIT;
 	atexit(genie_cleanup);
-	game_title = title;
+
+	genie_ui.game_title = title;
+
 	argp = ge_parse_opt(argc, argv, options);
 #ifdef DEBUG
 	char buf[256];
@@ -203,5 +222,19 @@ int ge_init(int argc, char **argv, const char *title, unsigned options)
 
 int ge_main(void)
 {
-	return 0;
+	int error = 1;
+
+	error = genie_ui_init(&genie_ui);
+	if (error)
+		goto fail;
+
+	error = genie_gfx_init();
+	if (error)
+		goto fail;
+
+	genie_game_init(&genie_game, &genie_ui);
+
+	error = genie_game_main(&genie_game);
+fail:
+	return error;
 }

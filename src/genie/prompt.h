@@ -13,6 +13,8 @@
 #define BTN_OKCANCEL 2
 #define BTN_YESNO 3
 
+void show_oem(int code) __attribute__((noreturn));
+
 int show_message(const char *title, const char *message, unsigned button, unsigned type, unsigned defbtn);
 void show_error(const char *title, const char *msg);
 char *prompt_input(const char *title, const char *message, const char *input);

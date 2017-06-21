@@ -394,16 +394,6 @@ fail:
 	return ret;
 }
 
-void show_error(const char *title, const char *msg)
-{
-	if (title)
-		fprintf(stderr, "%s: %s\n", title, msg);
-	else
-		fprintf(stderr, "%s\n", msg);
-	if (init || !isatty(fileno(stdin)))
-		show_message(title, msg, BTN_OK, MSG_ERR, BTN_OK);
-}
-
 int get_display(SDL_Window *scr, unsigned *display)
 {
 	int i, n, x, y, w, h;
