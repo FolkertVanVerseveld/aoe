@@ -71,7 +71,7 @@ int show_message(const char *title, const char *message, unsigned button, unsign
 
 char *prompt_input(const char *title, const char *message, const char *input)
 {
-	return tinyfd_inputBox(title, message, input);
+	return (char*)tinyfd_inputBox(title, message, input);
 }
 
 char *prompt_file(const char *title, const char *defpath, unsigned nfilter, const char **filter, const char *desc, unsigned flags)
@@ -84,13 +84,13 @@ char *prompt_file(const char *title, const char *defpath, unsigned nfilter, cons
 	multi_select = flags & PROMPT_MULTISELECT ? 1 : 0;
 
 	if (flags & PROMPT_LOAD)
-		return tinyfd_openFileDialog(
+		return (char*)tinyfd_openFileDialog(
 			title, defpath,
 			nfilter, filter, desc,
 			multi_select
 		);
 	else
-		return tinyfd_saveFileDialog(
+		return (char*)tinyfd_saveFileDialog(
 			title, defpath,
 			nfilter, filter, desc
 		);
@@ -98,5 +98,5 @@ char *prompt_file(const char *title, const char *defpath, unsigned nfilter, cons
 
 char *prompt_folder(const char *title, const char *defpath)
 {
-	return tinyfd_selectFolderDialog(title, defpath);
+	return (char*)tinyfd_selectFolderDialog(title, defpath);
 }
