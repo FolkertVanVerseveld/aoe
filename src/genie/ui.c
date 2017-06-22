@@ -1,14 +1,16 @@
 #include "ui.h"
 #include <err.h>
 #include <assert.h>
+#include <string.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
+#include "game.h"
 #include "prompt.h"
 #include "gfx.h"
 
 struct genie_ui genie_ui = {
 	.game_title = "???",
-	.width = 640, .height = 480,
+	.width = 1024, .height = 768,
 };
 
 #define UI_INIT 1
@@ -79,7 +81,7 @@ fail:
 	return error;
 }
 
-int genie_ui_init(struct genie_ui *ui)
+int genie_ui_init(struct genie_ui *ui, struct genie_game *game)
 {
 	int error = 0;
 
@@ -91,6 +93,12 @@ int genie_ui_init(struct genie_ui *ui)
 	error = genie_ui_sdl_init(ui);
 	if (error)
 		goto fail;
+
+	menu_nav_start.title = ui->game_title;
+	genie_ui_menu_push(ui, &menu_nav_start);
+
+	ui->menu_press = 0;
+	ui->game = game;
 
 	error = 0;
 fail:
@@ -107,16 +115,138 @@ static void genie_ui_update(struct genie_ui *ui)
 	SDL_GL_SwapWindow(ui->win);
 }
 
+static void draw_menu(struct genie_ui *ui)
+{
+	struct menu_nav *nav;
+	const struct menu_list *list;
+	unsigned i, n;
+
+	nav = genie_ui_menu_peek(ui);
+
+	if (!nav)
+		return;
+
+	list = nav->list;
+	n = list->count;
+
+	glColor3f(1, 1, 1);
+
+	genie_gfx_draw_text(
+		(ui->width - ui->title_width * GENIE_GLYPH_WIDTH) / 2.0,
+		GENIE_GLYPH_HEIGHT,
+		nav->title
+	);
+
+	for (i = 0; i < n; ++i) {
+		if (i == nav->index)
+			glColor3ub(255, 255, 0);
+		else
+			glColor3ub(237, 206, 186);
+
+		genie_gfx_draw_text(
+			(ui->width - ui->option_width[i] * GENIE_GLYPH_WIDTH) / 2.0,
+			308 + 80 * i,
+			list->buttons[i]
+		);
+	}
+}
+
+static void menu_key_down(struct genie_ui *ui, SDL_Event *ev)
+{
+	struct menu_nav *nav;
+
+	nav = genie_ui_menu_peek(ui);
+
+	if (!nav)
+		return;
+
+	switch (ev->key.keysym.sym) {
+	case SDLK_DOWN:
+		menu_nav_down(nav, MENU_KEY_DOWN);
+		break;
+	case SDLK_UP:
+		menu_nav_down(nav, MENU_KEY_UP);
+		break;
+	case ' ':
+		menu_nav_down(nav, MENU_KEY_SELECT);
+		ui->menu_press = 1;
+		break;
+	}
+}
+
+static void menu_key_up(struct genie_ui *ui, SDL_Event *ev)
+{
+	struct menu_nav *nav;
+
+	nav = genie_ui_menu_peek(ui);
+
+	if (!nav)
+		return;
+
+	switch (ev->key.keysym.sym) {
+	case ' ':
+		menu_nav_up(nav, MENU_KEY_SELECT);
+		ui->menu_press = 0;
+		break;
+	}
+}
+
+void genie_ui_key_down(struct genie_ui *ui, SDL_Event *ev)
+{
+	menu_key_down(ui, ev);
+}
+
+void genie_ui_key_up(struct genie_ui *ui, SDL_Event *ev)
+{
+	menu_key_up(ui, ev);
+}
+
 void genie_ui_display(struct genie_ui *ui)
 {
 	genie_gfx_clear_screen(0, 0, 0, 0);
 	genie_gfx_setup_ortho(ui->width, ui->height);
 
-	glColor3f(1, 1, 1);
-	genie_gfx_draw_text(
-		0, 0, "This is going to be the new main executable\n"
-		"There is nothing else to see here yet..."
-	);
+	draw_menu(ui);
 
 	genie_ui_update(ui);
+}
+
+void genie_ui_menu_update(struct genie_ui *ui)
+{
+	const struct menu_nav *nav;
+	const struct menu_list *list;
+
+	nav = genie_ui_menu_peek(ui);
+	list = nav->list;
+
+	for (unsigned i = 0, n = list->count; i < n; ++i)
+		ui->option_width[i] = strlen(list->buttons[i]);
+
+	ui->title_width = strlen(nav->title);
+}
+
+void genie_ui_menu_push(struct genie_ui *ui, struct menu_nav *nav)
+{
+	ui->stack[ui->stack_index++] = nav;
+
+	genie_ui_menu_update(ui);
+}
+
+void genie_ui_menu_pop(struct genie_ui *ui)
+{
+	if (!--ui->stack_index) {
+		ui->game->running = 0;
+		return;
+	}
+
+	genie_ui_menu_update(ui);
+}
+
+struct menu_nav *genie_ui_menu_peek(const struct genie_ui *ui)
+{
+	unsigned i;
+
+	i = ui->stack_index;
+
+	return i ? ui->stack[i - 1] : NULL;
 }

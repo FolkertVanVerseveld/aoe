@@ -10,13 +10,21 @@ void genie_game_init(struct genie_game *g, struct genie_ui *ui)
 
 int genie_game_main(struct genie_game *g)
 {
-	while (1) {
+	g->running = 1;
+
+	while (g->running) {
 		SDL_Event ev;
 
 		while (SDL_PollEvent(&ev)) {
 			switch (ev.type) {
 			case SDL_QUIT:
 				goto end;
+			case SDL_KEYDOWN:
+				genie_ui_key_down(g->ui, &ev);
+				break;
+			case SDL_KEYUP:
+				genie_ui_key_up(g->ui, &ev);
+				break;
 			}
 		}
 

@@ -224,7 +224,7 @@ int ge_main(void)
 {
 	int error = 1;
 
-	error = genie_ui_init(&genie_ui);
+	error = genie_ui_init(&genie_ui, &genie_game);
 	if (error)
 		goto fail;
 

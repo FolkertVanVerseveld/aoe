@@ -3,6 +3,7 @@
 
 #include "engine.h"
 #include "gfx.h"
+#include <genie/menu.h>
 
 struct menu_ctl;
 struct game3F4;
@@ -125,26 +126,5 @@ struct menu_ctl *menu_ctl_dtor(struct menu_ctl *this, char a2);
 struct menu_ctl *menu_ctl_dtor_stdiobuf(struct menu_ctl *this, char call_this_dtor);
 struct regpair *menu_gameC24(struct menu_ctl *this, struct regpair *a2, struct regpair *a3);
 struct game3F4 *ui_ctl(struct menu_ctl *this, int v4, int player_id);
-
-struct menu_list {
-	const char **buttons;
-	unsigned count;
-};
-
-struct menu_nav {
-	const char *title;
-	unsigned flags;
-	unsigned index;
-	unsigned keys;
-	struct menu_list *list;
-	void (*select)(struct menu_nav *this);
-} menu_nav_main;
-
-#define MENU_KEY_DOWN   1
-#define MENU_KEY_UP     2
-#define MENU_KEY_SELECT 4
-
-void menu_nav_down(struct menu_nav *nav, unsigned key);
-void menu_nav_up(struct menu_nav *nav, unsigned key);
 
 #endif

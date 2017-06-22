@@ -506,7 +506,7 @@ static int menu_nav_handle_input(struct menu_nav *nav)
 int eng_main(void)
 {
 	unsigned rmode, rw, rh;
-	ui_menu_push(&ui, &menu_nav_main);
+	//ui_menu_push(&ui, &menu_nav_main);
 	rmode = reg_cfg.mode_fixed;
 	rw = resfixed[rmode].w;
 	rh = resfixed[rmode].h;
