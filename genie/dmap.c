@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -8,12 +9,17 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <err.h>
 #include "dmap.h"
 #include "dbg.h"
 #include "todo.h"
 #include "drs.h"
+#include "prompt.h"
 
 #define DRS_LISTSZ 8
+
+static struct dmap *dmap_list;
+static unsigned dmap_loaded = 0, dmap_count = 0;
 
 static struct dmap drs_list[DRS_LISTSZ];
 static unsigned drs_count = 0;
@@ -23,7 +29,6 @@ static inline void dmap_init(struct dmap *this)
 	this->fd = -1;
 	this->data = NULL;
 	this->length = 0;
-	this->filename[0] = '\0';
 	this->nommap = 0;
 }
 
@@ -42,6 +47,24 @@ static inline void dmap_free(struct dmap *map)
 		close(map->fd);
 		map->fd = -1;
 	}
+}
+
+void dmap_set_list(struct dmap *list, unsigned count)
+{
+	dmap_list = list;
+	dmap_count = count;
+	dmap_loaded = 0;
+}
+
+void dmap_list_free(void)
+{
+	unsigned i;
+
+	for (i = 0; i < dmap_loaded; ++i)
+		dmap_free(&dmap_list[i]);
+
+	dmap_list = NULL;
+	dmap_loaded = dmap_count = 0;
 }
 
 void drs_free(void)
@@ -99,11 +122,6 @@ int read_data_mapping(const char *filename, const char *directory, int nommap)
 		map->fd = fd;
 		fd = -1;
 	}
-	if (strlen(filename) >= DMAPBUFSZ) {
-		fprintf(stderr, "map: overflow: %s\n", name);
-		goto fail;
-	}
-	strcpy(map->filename, filename);
 	// check for magic "1.00tribe"
 	ret = strncmp(((struct drsmap*)map->data)->version, "1.00tribe", strlen("1.00tribe"));
 	if (ret) fprintf(stderr, "%s: hdr invalid\n", filename);
@@ -117,6 +135,79 @@ fail:
 	if (fd != -1)
 		close(fd);
 	return ret;
+}
+
+static int dmap_load(struct dmap *d)
+{
+	int fd = -1, error = 1;
+	struct stat st;
+	void *data = NULL;
+
+	fd = open(d->filename, O_RDONLY);
+
+	if (fd == -1 || fstat(fd, &st))
+		goto fail;
+
+	if (d->nommap) {
+		ssize_t count;
+
+		data = malloc(st.st_size);
+
+		if (!data)
+			show_oem(1);
+
+		count = read(fd, data, st.st_size);
+
+		if (count != st.st_size)
+			goto fail;
+	} else {
+		data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+		if (data == MAP_FAILED)
+			goto fail;
+	}
+
+	d->data = data;
+	d->fd = fd;
+	d->length = st.st_size;
+
+	error = 0;
+fail:
+	if (error) {
+		char str[256];
+
+		snprintf(str, sizeof str,
+			"Could not load \"%s\": %s\n"
+			"Make sure you have copied the executable to the Age of Empires directory",
+			d->filename, errno ? strerror(errno) : "Unknown error"
+		);
+		show_error("Missing data", str);
+
+		if (data && d->nommap)
+			free(data);
+
+		if (fd != -1)
+			close(fd);
+	}
+	return error;
+}
+
+int dmap_list_init(void)
+{
+	int error = 1;
+	unsigned i, n;
+
+	for (i = 0, n = dmap_count; i < n; ++i, ++dmap_loaded) {
+		error = dmap_load(&dmap_list[i]);
+
+		if (error)
+			return error;
+	}
+
+	if (!dmap_count)
+		errx(1, "drs list not specified");
+
+	return error;
 }
 
 static int drs_map(unsigned type, int res_id, off_t *offset, char **dblk, size_t *count)

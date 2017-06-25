@@ -21,9 +21,13 @@ struct dmap {
 	char *data;
 	int fd;
 	size_t length;
-	char filename[DMAPBUFSZ];
+	const char *filename;
 	int nommap;
 };
+
+void dmap_set_list(struct dmap *list, unsigned count);
+void dmap_list_free(void);
+int dmap_list_init(void);
 
 void *drs_get_item(unsigned item, int res_id, size_t *count, off_t *offset);
 void drs_free(void);

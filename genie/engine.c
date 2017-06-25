@@ -5,8 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <libgen.h>
 
 #include "_build.h"
+#include "dmap.h"
 #include "ui.h"
 #include "gfx.h"
 #include "game.h"
@@ -70,6 +72,7 @@ static void genie_cleanup(void)
 
 	genie_gfx_free();
 	genie_ui_free(&genie_ui);
+	dmap_list_free();
 
 	if (genie_init)
 		warnx(
@@ -211,6 +214,15 @@ int ge_init(int argc, char **argv, const char *title, unsigned options)
 
 	genie_ui.game_title = title;
 
+	if (argc) {
+		char *wd;
+
+		wd = dirname(argv[0]);
+
+		if (chdir(wd))
+			warn("Could not cd to \"%s\"", wd);
+	}
+
 	argp = ge_parse_opt(argc, argv, options);
 #ifdef DEBUG
 	char buf[256];
@@ -225,6 +237,10 @@ int ge_main(void)
 	int error = 1;
 
 	error = genie_ui_init(&genie_ui, &genie_game);
+	if (error)
+		goto fail;
+
+	error = dmap_list_init();
 	if (error)
 		goto fail;
 
