@@ -1,0 +1,95 @@
+#!/bin/bash -e
+# Simple script that creates a Makefile for all c and c++ files that contain a main function
+DEP=${CMAKE_DEP:-yes}
+CC=i686-w64-mingw32-gcc
+CXX=i686-w64-mingw32-g++
+cstd='-std=gnu99'
+cxxstd='-std=c++11'
+CFLAGS="-Wall -Wextra -pedantic $cstd $*"
+CXXFLAGS="-Wall -Wextra -pedantic $cxxstd $*"
+INCS=
+cat <<END >.gitignore
+# Created by build script. Modifications are lost when rerun.
+.gitignore
+Makefile
+# CC
+*.o
+*.exe
+END
+CFLAGS="$CFLAGS $INCS"
+if ! hash pkg-config 2>/dev/null; then
+	echo "pkg-config is missing" 1>&2
+	exit 1
+fi
+LDLIBS="-lstdc++ -lmingw32 -lole32 -lcomdlg32 -lntdll -lwinmm"
+# Write phony target and overwrite some builtin variables
+cat <<END >Makefile
+.PHONY: default clean
+
+CC=$CC
+CXX=$CXX
+CFLAGS=$CFLAGS
+CXXFLAGS=$CXXFLAGS
+LDLIBS=$LDLIBS
+
+END
+
+printf "MAIN=" >>Makefile
+# Filter Binary.* and strip extensions
+MAIN=$(grep -r 'int main' | sed -e '/Binary.*/d' -e 's/:.*//g')
+# Write elf executables
+for i in $MAIN; do
+	bin="${i/%.cpp/}"
+	bin="${bin/%.c/}"
+	printf ' \\\n\t%s' "$bin" >>Makefile
+	echo "$bin" >>.gitignore
+done
+# Write object files
+printf '\nOBJECTS=' >>Makefile
+shopt -s nullglob
+FILES=$(find . -name '*.c' -o -name '*.cpp')
+LIST=
+for i in $FILES; do
+	i="${i/.\//}"
+	LIST="$LIST $i"
+	i="${i/%.cpp/.c}"
+	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
+done
+for i in $MAIN; do
+	LIST="${LIST/$i/}"
+done
+printf '\nLIST=' >>Makefile
+for i in $LIST; do
+	i="${i/%.cpp/.c}"
+	printf ' \\\n\t%s' "${i/%.c/.o}" >>Makefile
+done
+cat <<'EOF' >>Makefile
+
+default: $(OBJECTS) $(MAIN)
+EOF
+for i in $MAIN; do
+	i="${i/%.cpp/.c}"
+	o="${i/%.c/.o}"
+	printf '%s: %s $(LIST)\n' "${i/%.c/}" "$o" >>Makefile
+done
+if [ "$DEP" == yes ]; then
+	for i in $FILES; do
+		ext="${i##*.}"
+		if [ "$ext" == c ]; then
+			printf '%s\n\t$(CC) -c %s -o $@ $(CFLAGS)\n' "$(cpp -MM $CFLAGS $LDLIBS "$i")" "$i" >>Makefile
+		else
+			printf '%s\n\t$(CXX) -c %s -o $@ $(CXXFLAGS)\n' "$(cpp -MM $CXXFLAGS $LDLIBS "$i")" "$i" >>Makefile
+		fi
+	done
+else
+cat <<'EOF' >>Makefile
+%.o: %.c
+	$(CC) -c $< -o $@ $(CFLAGS)
+%.o: %.cpp
+	$(CXX) -c $< -o $@ $(CXXFLAGS)
+EOF
+fi
+cat <<'EOF' >>Makefile
+clean:
+	rm -f $(MAIN) $(OBJECTS)
+EOF
