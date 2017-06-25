@@ -1,22 +1,30 @@
 BUILDING THE GAME
 
-All code that actually mimicks Age of Empires Rise of Rome (AoE RoR) is
-located in src/. You can build this using:
+All code is spread across multiple directories. The game engine itself is
+located in genie/, the game in game/ and tools in tools/ (as you can see, it is
+pretty self-explanatory).
 
-./configure && make
+You can build the game and the tools using:
 
-Then you can run the game by specifying the directory where your AoE RoR
-installation is located using:
+  ./configure && make
 
-./empx -r/usr/local/games/aoe1
+Or if you prefer running it in parallel:
 
-Assuming the game is located at /usr/local/games/aoe1. The specified
-path may be relative.
+  ./configure && ./make_parallel
+
+If your genie/ build is up to date, you can also make it in parallel using:
+
+  ./configure && make -j8
+
+Where `-j8' means `use 8 cores'. Normally, we should not have to provide a make
+parallel script, but at the moment we are not sure how to fix this properly.
+This workaround should be sufficient for now, albeit a bit clumsy.
 
 INSTALLING THE GAME
 
-You should not install the game in /usr/local/ or something similar yet,
-since this project is not stable at all.
+Before you can run the executable, you have to copy the file to your AoE
+directory so it can find and load the data files. You can run it by double
+clicking it or starting it from a shell/terminal/whatever you prefer.
 
 INSTALLATION RECIPIES
 
@@ -29,6 +37,7 @@ $ sudo -s
 # apt-get update
 # apt-get install pkg-config libsdl2-dev libsdl2-image-dev libopenal-dev
 # exit
-$ cd src/
 $ ./configure && make
-$ ./empx -r/usr/local/games/aoe1
+$ cp -i game/aoe /usr/local/games/aoe1
+$ cd /usr/local/games/aoe1
+$ ./aoe

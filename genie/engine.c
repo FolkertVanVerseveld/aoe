@@ -6,6 +6,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <unistd.h>
 
 #include "_build.h"
 #include "dmap.h"
