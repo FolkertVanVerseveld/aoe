@@ -1,3 +1,5 @@
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 #ifndef AOE_LANGX_H
 #define AOE_LANGX_H
 

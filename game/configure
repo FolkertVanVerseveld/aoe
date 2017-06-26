@@ -1,4 +1,6 @@
 #!/bin/bash -e
+# Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info
+
 DEP=${DEP:-no}
 CC=gcc
 LD=ld
@@ -72,6 +74,8 @@ if [ "$embedfont" == yes ]; then
 	echo 'font.c' >>.gitignore
 fi
 cat <<EOF >configure.h
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 #ifndef CONFIGURE
 #define CONFIGURE
 

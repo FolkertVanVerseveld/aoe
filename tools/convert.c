@@ -1,3 +1,5 @@
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 /**
 quick and dirty program that exactly replicates a file by generating a
 dissassembly that can be fed to nasm to produce the exact same file.

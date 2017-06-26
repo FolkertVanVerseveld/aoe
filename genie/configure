@@ -1,4 +1,6 @@
 #!/bin/bash -e
+# Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info
+
 DEP=${DEP:-yes}
 CC=gcc
 cstd='-std=gnu99'
@@ -56,6 +58,8 @@ EOF
 echo 'font.c' >>.gitignore
 # build configuration generation
 cat <<EOF >_build.h
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 #ifndef _GENIE_BUILD_H
 #define _GENIE_BUILD_H
 

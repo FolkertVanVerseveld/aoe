@@ -1,3 +1,5 @@
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 #ifndef GENIE_UI_H
 #define GENIE_UI_H
 

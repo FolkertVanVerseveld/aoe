@@ -1,7 +1,12 @@
-/* licensed under Affero General Public License version 3 */
-/*
-Simple wave inspector for data resource sets.
-*/
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
+/**
+ * Simple wave inspector for data resource sets.
+ *
+ * Licensed under GNU Affero General Public License version 3
+ * Copyright Folkert van Verseveld
+ */
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>

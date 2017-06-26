@@ -1,8 +1,10 @@
-/* Licensed under Affero General Public License v3.0
-Copyright by Folkert van Verseveld et al. */
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Age of Empires - The Original and Rise of Rome Expansion
+ *
+ * Licensed under Affero General Public License v3.0
+ * Copyright by Folkert van Verseveld.
  *
  * Revised main program startup executable.
  */

@@ -1,7 +1,10 @@
-/* Copyright 2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Simple registry inspector that looks up and prints all registry keys.
+ *
+ * Licensed under the GNU Affero General Public License version 3
+ * Copyright Folkert van Verseveld
  *
  * It is completely written from scratch without consulting the dissassembly.
  */

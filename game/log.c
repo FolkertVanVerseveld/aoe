@@ -1,3 +1,5 @@
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 /*
 This file is reconstructed from debug information from the original game.
 DO NOT modify strings constants in this file!

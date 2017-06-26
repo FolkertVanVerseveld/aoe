@@ -1,3 +1,5 @@
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 #include <alloca.h>
 #include <assert.h>
 #include <sys/mman.h>

@@ -1,3 +1,5 @@
+/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 /*
 quick and dirty program that tries to extract all strings from string
 table from a windows dynamic load library. you need to pipe the output
