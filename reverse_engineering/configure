@@ -21,7 +21,7 @@ if ! hash pkg-config 2>/dev/null; then
 	echo "pkg-config is missing" 1>&2
 	exit 1
 fi
-LDLIBS="-lstdc++ -lmingw32 -lole32 -lcomdlg32 -lntdll -lwinmm"
+LDLIBS="-lstdc++ -lmingw32 -lgdi32 -lole32 -lcomdlg32 -lntdll -lwinmm"
 # Write phony target and overwrite some builtin variables
 cat <<END >Makefile
 .PHONY: default clean
@@ -37,6 +37,7 @@ END
 printf "MAIN=" >>Makefile
 # Filter Binary.* and strip extensions
 MAIN=$(grep -r 'int main' | sed -e '/Binary.*/d' -e 's/:.*//g')
+MAIN="$MAIN $(grep -r 'int WINAPI WinMain' | sed -e '/Binary.*/d' -e 's/:.*//g')"
 # Write elf executables
 for i in $MAIN; do
 	bin="${i/%.cpp/}"
