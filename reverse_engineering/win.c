@@ -17,11 +17,11 @@ static LPCTSTR ClsName = "WindowApp";
 static LRESULT CALLBACK handle_msg(HWND w, UINT m, WPARAM wp, LPARAM lp)
 {
 	switch (m) {
-		case WM_DESTROY:
-			PostQuitMessage(WM_QUIT);
-			break;
-		default:
-			return DefWindowProc(w, m, wp, lp);
+	case WM_DESTROY:
+		PostQuitMessage(WM_QUIT);
+		break;
+	default:
+		return DefWindowProc(w, m, wp, lp);
 	}
 	return 0;
 }
