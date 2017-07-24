@@ -252,6 +252,13 @@ static int init_lang(int size, const char *str, int (*msg_box_func)(HWND, LPCTST
 			}
 		}
 
+		printf(
+			"hInst: %X\n"
+			"hmod: %X\n",
+			(unsigned)hInst,
+			(unsigned)hmod
+		);
+
 		if (FindResourceA(mod, "SETUPDATA", "SETUPBINARY")) {
 			setup_data_binary = 1;
 			hModule = hInst;
@@ -273,6 +280,8 @@ static int init_lang(int size, const char *str, int (*msg_box_func)(HWND, LPCTST
 		}
 
 		if (FindResourceA(hmod, (LPCSTR)0x65, "SETUPINFO")) {
+			dbgs("yay");
+
 			hModule = hmod;
 
 			return 1;
@@ -286,7 +295,7 @@ static int init_lang(int size, const char *str, int (*msg_box_func)(HWND, LPCTST
 
 static int init(HINSTANCE hinstance, LPSTR str, HWND a3, const char *lpClassName, unsigned short a5, int a6, int a7, WNDPROC a8, int a9)
 {
-	HWND v9;
+	HWND hwnd;
 	DWORD last_error;
 
 	HCURSOR cursor;
@@ -309,10 +318,10 @@ static int init(HINSTANCE hinstance, LPSTR str, HWND a3, const char *lpClassName
 	hmod = hinstance;
 	hWndParent = a3;
 
-	v9 = FindWindowA(lpClassName, 0);
+	hwnd = FindWindowA(lpClassName, 0);
 
-	if (v9) {
-		SetForegroundWindow(v9);
+	if (hwnd) {
+		SetForegroundWindow(hwnd);
 		return 0;
 	}
 
@@ -373,6 +382,8 @@ skip_post:
 
 		return 0;
 	}
+
+	dbgs("init lang");
 
 	/*
 	TODO port
