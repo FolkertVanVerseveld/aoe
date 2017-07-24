@@ -1,0 +1,2 @@
+/* Some setup information magic identifier */
+.byte 0x1e, 0x01, 0x65, 0x00

@@ -12,10 +12,6 @@ case "$mode" in
 	release) opts="-O2 -ffast-math" ;;
 esac
 dir='genie game tools'
-cat <<EOF >.gitignore
-.gitignore
-Makefile
-EOF
 cat <<EOF >Makefile
 .PHONY: default clean $dir
 

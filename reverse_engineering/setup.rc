@@ -1,0 +1,35 @@
+// Age of Empires CD-ROM setup executable version information.
+#include <windows.h>
+
+101 SETUPINFO "setupinfo.bin"
+
+VS_VERSION_INFO VERSIONINFO
+
+FILEVERSION 1,0,1,77
+PRODUCTVERSION 1,0,1,0
+
+FILEOS VOS__WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE VFT2_UNKNOWN
+FILEFLAGSMASK VS_FF_DEBUG | VS_FF_PRERELEASE | VS_FF_PATCHED | VS_FF_PRIVATEBUILD | VS_FF_INFOINFERRED | VS_FF_SPECIALBUILD
+FILEFLAGS VS_FF_SPECIALBUILD
+
+BEGIN
+	BLOCK "StringFileInfo"
+	BEGIN
+		BLOCK "040904b0"
+		BEGIN
+			VALUE "Comments", "Launcher/Installer for MS Age of Empires"
+			VALUE "CompanyName", "Microsoft Corporation"
+			VALUE "FileDescription", "Microsoft Age of Empires Launcher/Installer"
+			VALUE "FileVersion", "1.0.1.77"
+			VALUE "InternalName", "AOESetup"
+			VALUE "LegalCopyright", "© 1997 Microsoft Corp."
+			VALUE "LegalTrademarks", "© Microsoft Corp."
+			VALUE "OriginalFilename", "AOESetup.exe"
+			VALUE "ProductName", "Microsoft Age of Empires"
+			VALUE "ProductVersion", "1.0a"
+			VALUE "SpecialBuild", "OEM"
+		END
+	END
+END

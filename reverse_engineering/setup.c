@@ -252,13 +252,6 @@ static int init_lang(int size, const char *str, int (*msg_box_func)(HWND, LPCTST
 			}
 		}
 
-		printf(
-			"hInst: %X\n"
-			"hmod: %X\n",
-			(unsigned)hInst,
-			(unsigned)hmod
-		);
-
 		if (FindResourceA(mod, "SETUPDATA", "SETUPBINARY")) {
 			setup_data_binary = 1;
 			hModule = hInst;
@@ -280,8 +273,6 @@ static int init_lang(int size, const char *str, int (*msg_box_func)(HWND, LPCTST
 		}
 
 		if (FindResourceA(hmod, (LPCSTR)0x65, "SETUPINFO")) {
-			dbgs("yay");
-
 			hModule = hmod;
 
 			return 1;

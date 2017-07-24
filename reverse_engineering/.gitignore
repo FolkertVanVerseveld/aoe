@@ -1,0 +1,13 @@
+# CC
+*.o
+*.dll
+*.res
+*.exe
+# binaries
+menu
+resinfo
+regedit
+rp
+menu
+setup
+win
