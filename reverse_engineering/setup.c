@@ -26,10 +26,44 @@
 
 #define WINDOW_CLASS "AOESetupClass"
 
+/* stringtable constants, they are sorted numerically */
+
+#define STR_ERR_OS_TOO_OLD 18
+
 #define STR_ERR_FATAL 84
+
+#define STR_PATH_REGISTRY_UNINSTALL 200
+#define STR_PATH_REGISTRY_SHARED_DLLS 201
+
+#define STR_OPT_UNINSTALL 220
+#define STR_OPT_NOSETUP 221
+
 #define STR_ERR_SETUP 237
 
+#define STR_OPT_AUTORUN 238
+
+#define STR_COMMON_FILES_DIR 241
+#define STR_PROGRAM_FILES_DIR 242
+
+#define STR_PATH_REGISTRY_ROOT 306
+
+#define STR_GAME_TITLE 311
+#define STR_COMPLETE_GAME_TITLE 321
+
+#define STR_GAME_TITLE2 335
+
+#define STR_INSTALLATION_DIRECTORY 336
+
+#define STR_INSTALLATION_ROOT_SUBDIRS 345
+
+#define STR_SOME_NUMBER 364
+#define STR_SOME_NUMBER2 365
+
+#define STR_PATH_UNINSTALL 367
+
 #define STR_PATCH "PATCH:"
+
+#define REG_PATH_VERSION "Software\\Microsoft\\Windows\\CurrentVersion"
 
 static struct cpu g_cpu;
 
@@ -56,7 +90,37 @@ static char Caption[136];
 
 static char Buffer[1024];
 
+static char path_registry_root[256];
+static char game_title[256];
+static char path_registry_uninstall[256];
+static char path_registry_shared_dlls[256];
+static char complete_game_title[136];
+
+static int path_registry_root_length;
+
+static int has_joysticks;
+
 static const char *Default = "";
+
+static HKEY hKey = NULL;
+
+static int some_number = 0;
+static int some_number2 = 0;
+
+static char szLongPath[4096]; /* FIXME figure out length */
+
+static int mach_type = 0;
+static int mach_os_type = 0;
+static int mach_w95_or_better = 0;
+
+static int optbuf_length = 0;
+static char optbuf[48];
+
+static int opt_force = 0;
+static int opt_autorun = 0;
+static int opt_nosetup = 0;
+static int opt_uninstall = 0;
+static int some_path_skip_flag = 0;
 
 static void g_init(void)
 {
@@ -81,7 +145,7 @@ static HMODULE load_library(LPCSTR libname)
 	return LoadLibrary(libname);
 }
 
-static LPCSTR sub_42E630(LPCSTR str)
+static LPCSTR interlocked_str(LPCSTR str)
 {
 	LPCSTR result;
 
@@ -127,7 +191,7 @@ static int check_patch(LPCSTR str)
 	strncpy0(str_patch, STR_PATCH, sizeof str_patch);
 
 	lstrcpyA(String1, str);
-	sub_42E630(String1);
+	interlocked_str(String1);
 
 	v1 = strstr(String1, "PATCH:");
 
@@ -208,6 +272,172 @@ static int alert(HWND hWnd, UINT uType, UINT uID, ...)
 	return result;
 }
 
+/* Registry handling */
+
+static LSTATUS reg_open_key_ex(HKEY hKey, LPCSTR name, DWORD options, REGSAM access, PHKEY retkey)
+{
+	dbgf("reg: open key \"%s\"\n", name);
+
+	return RegOpenKeyExA(hKey, name, options, access, retkey);
+}
+
+static LSTATUS reg_query_key_ex(HKEY hkey, LPCSTR name, LPDWORD reserved, LPDWORD type, LPBYTE data, LPDWORD count)
+{
+	dbgf("reg: query value \"%s\"\n", name);
+
+	return RegQueryValueExA(hkey, name, reserved, type, data, count);
+}
+
+static LSTATUS reg_close_key(HKEY hkey)
+{
+	dbgf("reg: close key %X\n", (unsigned)hkey);
+
+	return RegCloseKey(hkey);
+}
+
+static int reg_query_control_set(void)
+{
+	HKEY retkey;
+	DWORD value = 0;
+	DWORD n = 4;
+
+	if (!reg_open_key_ex(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Windows", 0, 1, &retkey)) {
+		reg_query_key_ex(retkey, "CSDVersion", 0, 0, (LPBYTE)&value, &n);
+		reg_close_key(retkey);
+	}
+
+	return value >> 8;
+}
+
+/* other registry handling */
+
+static int reg_str(HKEY root, const char *name, const char *str, const char *str2, char *buf, DWORD n)
+{
+	int n_copy;
+	int result;
+
+	n_copy = n;
+
+	if (reg_open_key_ex(root, name, 0, 1, &hKey)) {
+		lstrcpynA(buf, str2, n_copy);
+
+		result = lstrlenA(str2);
+	} else {
+		if (reg_query_key_ex(hKey, str, NULL, 0, (LPBYTE)buf, &n)) {
+			lstrcpynA(buf, str2, n_copy);
+			n = lstrlenA(str2);
+		}
+
+		result = n;
+	}
+
+	printf("reg_str: str2=\"%s\"\n", str2);
+
+	if (hKey)
+		reg_close_key(hKey);
+
+	return result;
+}
+
+static int reg_init_installation_path(const char *name, const char *str, char *dest, DWORD n)
+{
+	int n_copy;
+	int result;
+
+	HKEY retkey = NULL;
+
+	n_copy = n;
+
+	if (reg_open_key_ex(HKEY_LOCAL_MACHINE, path_registry_root, 0, 1, &retkey)) {
+		lstrcpynA(dest, str, n_copy);
+
+		result = lstrlenA(dest);
+	} else {
+		if (reg_query_key_ex(retkey, name, 0, 0, (LPBYTE)dest, &n)) {
+			lstrcpynA(dest, str, n_copy);
+			n = lstrlenA(str);
+		}
+
+		result = n;
+	}
+
+	printf("reg_init_installation_path: path=\"%s\"\n", dest);
+
+	if (retkey)
+		reg_close_key(retkey);
+
+	return result;
+}
+
+static int init_str_files_dir(int use_common_dir, char *str, int n)
+{
+	int lang;
+
+	char Buffer[25];
+	char String2[512];
+	char String1[512];
+
+	lstrcpyA(String1, REG_PATH_VERSION);
+
+	if (use_common_dir)
+		LoadStringA(hInst, STR_COMMON_FILES_DIR, Buffer, sizeof Buffer);
+	else
+		LoadStringA(hInst, STR_PROGRAM_FILES_DIR, Buffer, sizeof Buffer);
+
+	lang = GetSystemDefaultLangID() & 0x3ff;
+
+	memset(String2, 0, sizeof String2);
+	LoadStringA(hInst, lang + 400, String2, sizeof String2);
+
+	return reg_str(HKEY_LOCAL_MACHINE, REG_PATH_VERSION, Buffer, String2, str, n);
+}
+
+static int init_str(void)
+{
+	char Buffer[50];
+	char String1[260];
+	char String2[260];
+
+	/*
+	 * NOTE some buffers are larger than the maximum requested data.
+	 * it is either a programming error or intentional for other stuff.
+	 */
+
+	path_registry_root_length = LoadStringA(hInst,
+		STR_GAME_TITLE, game_title, sizeof game_title
+	);
+	LoadStringA(hInst,
+		STR_PATH_REGISTRY_UNINSTALL, path_registry_uninstall,
+		sizeof path_registry_uninstall
+	);
+	LoadStringA(hInst,
+		STR_PATH_REGISTRY_SHARED_DLLS, path_registry_shared_dlls,
+		sizeof path_registry_shared_dlls
+	);
+	LoadStringA(hInst,
+		STR_COMPLETE_GAME_TITLE, complete_game_title,
+		sizeof complete_game_title
+	);
+	LoadStringA(hInst, STR_INSTALLATION_DIRECTORY, Buffer, sizeof Buffer);
+
+	init_str_files_dir(0, String1, sizeof String1);
+
+	lstrcatA(String1, "\\");
+	LoadStringA(hInst, STR_INSTALLATION_ROOT_SUBDIRS, String2, sizeof String2);
+	lstrcatA(String1, String2);
+
+	reg_init_installation_path(Buffer, String1, szLongPath, sizeof String1);
+
+	if (LoadStringA(hInst, STR_SOME_NUMBER, Buffer, sizeof Buffer) > 0)
+		some_number = atol(Buffer);
+	if (LoadStringA(hInst, STR_SOME_NUMBER2, Buffer, sizeof Buffer) > 0)
+		some_number2 = atol(Buffer);
+
+	has_joysticks = joyGetNumDevs() > 0;
+
+	return 1;
+}
+
 static int init_lang(int size, const char *str, int (*msg_box_func)(HWND, LPCTSTR, LPCTSTR, UINT))
 {
 	LCID lcid;
@@ -284,15 +514,171 @@ static int init_lang(int size, const char *str, int (*msg_box_func)(HWND, LPCTST
 	return 0;
 }
 
+static int get_os_info()
+{
+	int result;
+
+	struct _OSVERSIONINFOA VersionInformation;
+
+	if (mach_type)
+		return mach_type;
+
+	VersionInformation.dwOSVersionInfoSize = sizeof VersionInformation;
+	GetVersionExA(&VersionInformation);
+
+	if (!VersionInformation.dwPlatformId)
+		return mach_type = 4;
+
+	if (VersionInformation.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
+		mach_type = 8;
+
+		if ((VersionInformation.dwBuildNumber & 0xffff) > 1000)
+			mach_w95_or_better = 1;
+
+		return mach_type;
+	}
+
+	if (VersionInformation.dwPlatformId != VER_PLATFORM_WIN32_NT)
+		return mach_type;
+
+	mach_w95_or_better = 1;
+
+	switch (VersionInformation.dwMajorVersion) {
+	case 0:
+	case 1:
+	case 2:
+	case 3: /* Windows NT 3.0 */
+		return mach_type = 32;
+	case 4:
+		mach_type = 64;
+		reg_query_control_set();
+		return mach_type;
+	case 5: /* Windows 2000 */
+		return mach_type = 64;
+	default:
+		return mach_type;
+	}
+
+	return result;
+}
+
+static int optbuf_init(char *str)
+{
+	char *ptr;
+	int state = 0;
+	int state2 = 0;
+
+	const char *path_end;
+	const char *path_end_next;
+
+	int result;
+
+	char str_opt_nosetup[50];
+	char Buffer[50];
+	char str_opt_autorun[50];
+	char str_opt_uninstall[50];
+	char Filename[256];
+
+	for (ptr = str; *ptr; ptr = CharNextA(ptr)) {
+		int ch = *ptr;
+
+		if (state2) {
+			if (state) {
+				if (ch == '"') {
+					state = 0;
+					state2 = 0;
+					*ptr = '\0';
+				}
+			} else if (ch == ' ') {
+				state2 = 0;
+				*ptr = '\0';
+			} else if (ch == '"') {
+				state = 1;
+				optbuf[optbuf_length + 0] = ptr[1];
+				optbuf[optbuf_length + 1] = ptr[2];
+				optbuf[optbuf_length + 2] = ptr[3];
+				optbuf[optbuf_length + 3] = ptr[4];
+				++optbuf_length;
+			}
+		} else {
+			state2 = 1;
+
+			if (ch == ' ') {
+				optbuf[optbuf_length + 0] = ptr[1];
+				optbuf[optbuf_length + 1] = ptr[2];
+				optbuf[optbuf_length + 2] = ptr[3];
+				optbuf[optbuf_length + 3] = ptr[4];
+				++optbuf_length;
+			} else {
+				optbuf[optbuf_length + 0] = ptr[0];
+				optbuf[optbuf_length + 1] = ptr[1];
+				optbuf[optbuf_length + 2] = ptr[2];
+				optbuf[optbuf_length + 3] = ptr[3];
+				++optbuf_length;
+			}
+		}
+	}
+
+	optbuf_length = 0;
+
+	GetModuleFileNameA(hmod, Filename, sizeof Filename);
+
+	path_end = str_find_last_backslash(Filename);
+
+	if (path_end)
+		path_end_next = CharNextA(path_end);
+	else
+		path_end_next = Filename;
+
+	LoadStringA(hInst, STR_PATH_UNINSTALL, Buffer, sizeof Buffer - 2);
+
+	if (lstrcmpiA(path_end_next, Buffer) || some_main_skip_flag) {
+		result = optbuf_length;
+
+		if (optbuf_length > 0) {
+			LoadStringA(hInst, STR_OPT_UNINSTALL, str_opt_uninstall, sizeof str_opt_uninstall);
+			LoadStringA(hInst, STR_OPT_NOSETUP, str_opt_nosetup, sizeof str_opt_nosetup);
+			LoadStringA(hInst, STR_OPT_AUTORUN, str_opt_autorun, sizeof str_opt_autorun);
+
+			if (lstrcmpiA(optbuf, str_opt_uninstall)) {
+				if (lstrcmpiA(optbuf, str_opt_nosetup)) {
+					result = lstrcmpiA(optbuf, str_opt_nosetup);
+					if (result) {
+						result = lstrcmpiA(optbuf, str_opt_autorun);
+						if (!result)
+							opt_force = 1;
+					} else
+						opt_autorun = 1;
+				} else
+					opt_nosetup = 1;
+			} else {
+				result = 1;
+				some_main_skip_flag = 1;
+				opt_uninstall = 1;
+			}
+		}
+	} else {
+		result = 1;
+		some_main_skip_flag = 1;
+		opt_uninstall = 1;
+		some_path_skip_flag = 1;
+	}
+
+	return result;
+}
+
 static int init(HINSTANCE hinstance, LPSTR str, HWND a3, const char *lpClassName, unsigned short a5, int a6, int a7, WNDPROC a8, int a9)
 {
 	HWND hwnd;
 	DWORD last_error;
-
 	HCURSOR cursor;
 
 	int v14;
 	int v15;
+	int os_good;
+	DWORD build_number;
+
+	HANDLE current_thread;
 
 	struct tagMSG Msg;
 	struct _OSVERSIONINFOA VersionInformation;
@@ -315,6 +701,8 @@ static int init(HINSTANCE hinstance, LPSTR str, HWND a3, const char *lpClassName
 		SetForegroundWindow(hwnd);
 		return 0;
 	}
+
+	dbgs("init_lang");
 
 	if (!init_lang(1024, str, NULL)) {
 		last_error = GetLastError();
@@ -374,17 +762,41 @@ skip_post:
 		return 0;
 	}
 
-	dbgs("init lang");
+	dbgs("init_str");
 
-	/*
-	TODO port
-
-	sub_4169D0();
-	word_438C5C = sub_40D8A0();
-	*/
+	init_str();
+	mach_os_type = get_os_info();
 
 	VersionInformation.dwOSVersionInfoSize = sizeof VersionInformation;
 	GetVersionExA(&VersionInformation);
+
+	os_good = 1;
+
+	if (mach_os_type & 8) {
+		/* TODO some black magic */
+	} else if (mach_os_type & 0x40) {
+		build_number = 1381; /* FIXME fetch this now precomputed value */
+
+		if (build_number > VersionInformation.dwBuildNumber || (build_number == VersionInformation.dwBuildNumber && 0 > reg_query_control_set())) /* FIXME determine `0' expression */
+			os_good = 0;
+	} else
+		os_good = 1;
+
+	if (!os_good) {
+		LoadStringA(hInst, STR_ERR_OS_TOO_OLD, Buffer, sizeof Buffer);
+		MessageBoxA(0, Buffer, complete_game_title, 0x30);
+
+		return 0;
+	}
+
+	current_thread = GetCurrentThread();
+	SetThreadPriority(current_thread, 1);
+
+	optbuf_init(str);
+
+	LoadStringA(hInst, STR_GAME_TITLE2, Buffer, sizeof Buffer);
+
+	/* ... */
 
 	if (0) {
 post_some_msg:
