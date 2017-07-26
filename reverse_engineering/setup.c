@@ -7,6 +7,7 @@
  * Copyright 2017 Folkert van Verseveld
  */
 #include "cpu.h"
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,6 +126,11 @@ static HDC hdc = NULL;
 static HPALETTE hPal = NULL;
 
 static int some_handle_msg2_tbl[1];
+static int some_msg_event_number = 0;
+static int some_msg_index = 0;
+static char some_msg_mem[0x900]; /* FIXME figure out overlapping region */
+
+#define SOME_MSG_MEM_OFFSET_PROC 0x3C
 
 static void g_init(void)
 {
@@ -678,7 +684,7 @@ static int some_sound_cleanup(void)
 		hObject = CreateEventA(0, 1, 0, 0);
 		some_sound_number |= 0x100000;
 
-		WaitForSingleObject(hObject, 0XFFFFFFFF);
+		WaitForSingleObject(hObject, -1);
 		CloseHandle(hObject);
 	} else
 		some_sound_number |= 0x100000;
@@ -708,14 +714,68 @@ static int some_message_wait(void)
 		return 1;
 }
 
+static int some_msg_event(int a1)
+{
+	stub
+
+	(void)a1;
+
+	return 0;
+}
+
+static int *msg_proc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+
+static int some_msg_event2(LONG dwNewLong)
+{
+	short *proc;
+	int i;
+
+	stub
+
+	some_cursor_arg |= 0x40;
+	if (some_msg_event_number) {
+		/* function pointer black magic */
+		if (dwNewLong == some_msg_event_number)
+			some_cursor_arg &= 0xBF00;
+		else
+			some_cursor_arg |= 0x4000;
+		if (IsWindow(ThreadId))
+			SetFocus(ThreadId);
+		if (!(some_handle_msg2_tbl[0] & 2)) {
+			FIXME("some handle msg2 table loop");
+		}
+	}
+
+	some_msg_index = (some_msg_index & ~0xFFFF) | -1;
+	memset(&some_msg_mem, 0, sizeof some_msg_mem);
+
+	for (proc = (short*)&some_msg_mem[SOME_MSG_MEM_OFFSET_PROC], i = 0; i < 32; ++i) {
+		*proc = -1;
+		proc += 36;
+	}
+
+	/* assert(dwNewLong == msg_proc); */
+	FIXME("pointer black magic");
+	int (*ptr)(HWND, UINT, WPARAM, LPARAM);
+
+	ptr = (int (*)(HWND, UINT, WPARAM, LPARAM))msg_proc;
+
+	ptr(NULL, 0, 0, 0);
+
+	return 0;
+}
+
 static LRESULT CALLBACK handle_msg2(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result = 0;
 
 	HPALETTE palette;
+	HDC local_hdc;
+	HCURSOR cursor;
+	RECT rect;
 	PAINTSTRUCT Paint;
 
-	RECT rect;
+	LPARAM lParamb;
 
 	stub
 
@@ -865,11 +925,47 @@ switch_sys_command:
 			while (init_message_loop_running)
 				some_message_wait();
 		}
-		FIXME("some message event");
-	}
+		init_message_loop_running = 1;
 
-	/* ... */
-	FIXME("handle other cases");
+		cursor = LoadCursorA(NULL, IDC_WAIT);
+		if (cursor) {
+			some_cursor_arg &= 0xEF00;
+			Sleep(0);
+			SetCursor(cursor);
+		}
+
+		init_message_loop_running = 0;
+
+		some_msg_event2(lParam);
+		SendMessageA(ThreadId, 0x8EC, 0, 0);
+		Sleep(0);
+		some_cursor_arg &= 0xFFFEFFFF;
+		return 0;
+	} else {
+		if (Msg != 0x8B0) {
+			if (Msg != WM_QUERYNEWPALETTE && (Msg != WM_PALETTECHANGED || (HWND)wParam == hWnd))
+				goto propagate;
+
+			local_hdc = GetDC(hWnd);
+			palette = SelectPalette(local_hdc, hPal, 0);
+			lParamb = RealizePalette(local_hdc);
+			SelectPalette(local_hdc, hPal, 1);
+			RealizePalette(local_hdc);
+			SelectPalette(local_hdc, palette, 0);
+			ReleaseDC(hWnd, local_hdc);
+
+			if (lParamb) {
+				InvalidateRect(hWnd, 0, 0);
+				return 1;
+			}
+			return 0;
+		}
+		if (some_msg_event(1) == 2)
+			opt_uninstall = 0;
+
+		PostMessage(ThreadId, 0x900, 0, 0);
+		return 0;
+	}
 
 	return result;
 propagate:
@@ -1179,6 +1275,8 @@ static LRESULT CALLBACK handle_msg(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
 	return result;
 }
 
+static int *some_image_ctl(HINSTANCE hInst, int a2, int a3, int a4);
+
 static int *msg_proc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
 	stub
@@ -1187,6 +1285,14 @@ static int *msg_proc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 	(void)Msg;
 	(void)wParam;
 	(void)lParam;
+
+	some_sound_cleanup();
+
+	some_image_ctl(hInst, 209, 0, 4);
+	some_image_ctl(hInst, 209, 0, 4);
+	some_image_ctl(hInst, 209, 0, 4);
+	some_image_ctl(hInst, 209, 0, 4);
+	some_image_ctl(hInst, 209, 0, 4);
 
 	return NULL;
 }
