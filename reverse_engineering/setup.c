@@ -23,53 +23,49 @@
 #endif
 
 #define stub fprintf(stderr, "stub: %s\n", __func__);
+#define FIXME(s) fprintf(stderr, "fixme: %s: %s\n", __func__, s)
 
 #define WINDOW_CLASS "AOESetupClass"
 
 /* stringtable constants, they are sorted numerically */
 
+#define STR_ERR_GAME_RUNNING 15
 #define STR_ERR_OS_TOO_OLD 18
-
 #define STR_ERR_FATAL 84
+
+#define STR_CD_ROM_TITLE 95
 
 #define STR_PATH_REGISTRY_UNINSTALL 200
 #define STR_PATH_REGISTRY_SHARED_DLLS 201
 
 #define STR_OPT_UNINSTALL 220
 #define STR_OPT_NOSETUP 221
-
 #define STR_ERR_SETUP 237
-
 #define STR_OPT_AUTORUN 238
 
 #define STR_COMMON_FILES_DIR 241
 #define STR_PROGRAM_FILES_DIR 242
-
 #define STR_PATH_REGISTRY_ROOT 306
 
 #define STR_GAME_TITLE 311
 #define STR_COMPLETE_GAME_TITLE 321
-
 #define STR_GAME_TITLE2 335
 
 #define STR_INSTALLATION_DIRECTORY 336
-
 #define STR_INSTALLATION_ROOT_SUBDIRS 345
 
 #define STR_SOME_NUMBER 364
 #define STR_SOME_NUMBER2 365
-
 #define STR_PATH_UNINSTALL 367
 
 #define STR_PATCH "PATCH:"
-
 #define REG_PATH_VERSION "Software\\Microsoft\\Windows\\CurrentVersion"
 
 static struct cpu g_cpu;
 
 static int dword_437E0C = 0;
 static int dword_437F38 = 0;
-static int some_main_skip_flag = 0;
+static int main_singleton_required = 0;
 static int init_message_loop_running = 0;
 static int chdir_patch = 0;
 static int setup_data_binary = 0;
@@ -121,6 +117,14 @@ static int opt_autorun = 0;
 static int opt_nosetup = 0;
 static int opt_uninstall = 0;
 static int some_path_skip_flag = 0;
+
+static int some_sound_number = 0;
+
+static HANDLE hObject = NULL;
+static HDC hdc = NULL;
+static HPALETTE hPal = NULL;
+
+static int some_handle_msg2_tbl[1];
 
 static void g_init(void)
 {
@@ -632,7 +636,7 @@ static int optbuf_init(char *str)
 
 	LoadStringA(hInst, STR_PATH_UNINSTALL, Buffer, sizeof Buffer - 2);
 
-	if (lstrcmpiA(path_end_next, Buffer) || some_main_skip_flag) {
+	if (lstrcmpiA(path_end_next, Buffer) || main_singleton_required) {
 		result = optbuf_length;
 
 		if (optbuf_length > 0) {
@@ -653,13 +657,13 @@ static int optbuf_init(char *str)
 					opt_nosetup = 1;
 			} else {
 				result = 1;
-				some_main_skip_flag = 1;
+				main_singleton_required = 1;
 				opt_uninstall = 1;
 			}
 		}
 	} else {
 		result = 1;
-		some_main_skip_flag = 1;
+		main_singleton_required = 1;
 		opt_uninstall = 1;
 		some_path_skip_flag = 1;
 	}
@@ -667,19 +671,273 @@ static int optbuf_init(char *str)
 	return result;
 }
 
+static int some_sound_cleanup(void)
+{
+	if (some_sound_number & 0x200000) {
+		some_sound_number &= 0XFFDFFFFF;
+		hObject = CreateEventA(0, 1, 0, 0);
+		some_sound_number |= 0x100000;
+
+		WaitForSingleObject(hObject, 0XFFFFFFFF);
+		CloseHandle(hObject);
+	} else
+		some_sound_number |= 0x100000;
+
+	hObject = NULL;
+	some_sound_number &= 0xFFF7FFFF;
+
+	return GdiFlush();
+}
+
+static int some_message_wait(void)
+{
+	struct tagMSG Msg;
+
+	if (PeekMessageA(&Msg, 0, 0, 0, 1)) {
+		while (Msg.message != 18 && Msg.message != 16 && Msg.message != 2) {
+			TranslateMessage(&Msg);
+			DispatchMessageA(&Msg);
+
+			if (!PeekMessageA(&Msg, 0, 0, 0, 1))
+				return 1;
+		}
+		PostMessageA(Msg.hwnd, Msg.message, Msg.wParam, Msg.lParam);
+
+		return 0;
+	} else
+		return 1;
+}
+
+static LRESULT CALLBACK handle_msg2(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+{
+	LRESULT result = 0;
+
+	HPALETTE palette;
+	PAINTSTRUCT Paint;
+
+	RECT rect;
+
+	stub
+
+	(void)hWnd;
+	(void)wParam;
+	(void)lParam;
+
+	dbgf("%s: Msg == 0x%X\n", __func__, Msg);
+
+	if (Msg <= WM_SETFOCUS) {
+		if (Msg == WM_SETFOCUS) {
+			FIXME("set focus");
+		} else if (Msg == WM_DESTROY) {
+			if (!main_singleton_required) {
+				PlaySoundA(NULL, hmod, SND_PURGE);
+				some_sound_cleanup();
+			}
+			PostQuitMessage(0);
+			return 0;
+		}
+		goto propagate;
+	}
+
+	if (Msg <= WM_ERASEBKGND) {
+		if (Msg != WM_ERASEBKGND) {
+			if (Msg != WM_PAINT)
+				return CallWindowProcA(lpPrevWndFunc, hWnd, Msg, wParam, lParam);
+			if (!(some_cursor_arg & 0x40)) {
+				BeginPaint(hWnd, &Paint);
+
+				palette = SelectPalette(Paint.hdc, hPal, 0);
+				RealizePalette(Paint.hdc);
+
+				BitBlt(
+					Paint.hdc,
+					Paint.rcPaint.left,
+					Paint.rcPaint.top,
+					Paint.rcPaint.right - Paint.rcPaint.left + 1,
+					Paint.rcPaint.bottom - Paint.rcPaint.top + 1,
+					hdc,
+					Paint.rcPaint.left,
+					Paint.rcPaint.top,
+					0xCC0020
+				);
+
+				EndPaint(hWnd, &Paint);
+				GdiFlush();
+			}
+			return 0;
+		}
+		if (some_cursor_arg & 0x40)
+			return 0;
+
+		goto propagate;
+	}
+
+	if (Msg <= WM_DRAWITEM) {
+		if (Msg != WM_DRAWITEM) {
+			if (Msg == WM_SETCURSOR && (some_cursor_arg & 0x1000) == 0x1000)
+				return 1;
+
+			goto propagate;
+		}
+		if (!(some_cursor_arg & 0x40)) {
+			FIXME("draw item");
+		}
+		return 0;
+	}
+
+	if (Msg <= WM_NCPAINT) {
+		if (Msg != WM_NCPAINT) {
+			if (Msg == WM_MEASUREITEM && *(DWORD*)lParam == 4)
+				return 0;
+
+			goto propagate;
+		}
+	}
+
+	if (Msg <= WM_COMMAND) {
+		if (Msg == WM_COMMAND) {
+			if (wParam >> 16)
+				goto propagate;
+
+			FIXME("command");
+		} else {
+			if (Msg != WM_KEYFIRST)
+				goto propagate;
+			if (wParam == 9) {
+				FIXME("async key focus");
+
+				return 0;
+			}
+			if (wParam != 13 && wParam != 27)
+				goto propagate;
+			if (lParam & 0x40000000 || some_handle_msg2_tbl[0] & 2)
+				return 0;
+
+			FIXME("handle_msg2_tbl loop");
+		}
+	}
+
+	if (Msg <= WM_INITMENU) {
+		if (Msg == WM_INITMENU) {
+			EnableMenuItem((HMENU)wParam, 0xF060, 1);
+			return 0;
+		}
+		if (Msg != WM_SYSCOMMAND)
+			goto propagate;
+
+		if ((wParam & 0xFFF0) == 0xF170)
+			return 0;
+switch_sys_command:
+		FIXME("switch sys command");
+
+		goto propagate;
+	}
+
+	if (Msg <= WM_CTLCOLORSTATIC) {
+		if (Msg == WM_CTLCOLORSTATIC) {
+			FIXME("ctl color static");
+		}
+		if (Msg != WM_CTLCOLOREDIT)
+			goto propagate;
+
+		FIXME("ctl color edit");
+
+		return GetStockObject(0);
+	}
+
+	if (Msg <= WM_POWERBROADCAST) {
+		if (Msg != WM_POWERBROADCAST) {
+			if (Msg == WM_LBUTTONDOWN && !hWndParent) {
+				GetUpdateRect(hWnd, &rect, 0);
+				RedrawWindow(hWnd, &rect, 0, 0x1A2);
+				PostMessage(hWnd, WM_NCLBUTTONDOWN, 2, lParam);
+			}
+			goto propagate;
+		}
+		goto switch_sys_command;
+	}
+
+	if (Msg > 0x8B0) {
+		if (Msg == 0x8CE) {
+			Sleep(0);
+			some_cursor_arg |= 0x10000;
+
+			while (init_message_loop_running)
+				some_message_wait();
+		}
+		FIXME("some message event");
+	}
+
+	/* ... */
+	FIXME("handle other cases");
+
+	return result;
+propagate:
+	return CallWindowProcA(lpPrevWndFunc, hWnd, Msg, wParam, lParam);
+}
+
+#define PANIC(code, title) panic(__func__, code, title)
+
+static inline void panic(const char *caller, DWORD last_error, LPCSTR title)
+{
+	HCURSOR cursor;
+
+	int rem;
+	int buflen;
+
+	init_message_loop_running = 1;
+
+	cursor = LoadCursorA(NULL, IDC_ARROW);
+	if (cursor) {
+		some_cursor_arg &= 0xef00;
+
+		Sleep(0);
+		SetCursor(cursor);
+	}
+
+	init_message_loop_running = 0;
+
+	/**
+	 * Inform user that fatal non-recoverable error occurred.
+	 *
+	 * Finally, halt and catch fire.
+	 */
+	fprintf(stderr, "%s: panic\n", caller);
+
+	LoadStringA(hInst, STR_ERR_FATAL, Buffer, sizeof Buffer);
+
+	rem = sizeof Buffer - lstrlenA(Buffer);
+	buflen = lstrlenA(Buffer);
+
+	FormatMessageA(0x1000, 0, last_error, 0x400, Buffer + buflen, rem, 0);
+
+	if (IsWindow(ThreadId))
+		FlashWindow(ThreadId, 1);
+
+	MessageBeep(MB_ICONERROR);
+	MessageBoxA(NULL, Buffer, title, MB_SETFOREGROUND | MB_ICONERROR);
+
+	if (IsWindow(ThreadId))
+		PostMessageA(ThreadId, 0x900, 0, 0);
+}
+
 static int init(HINSTANCE hinstance, LPSTR str, HWND a3, const char *lpClassName, unsigned short a5, int a6, int a7, WNDPROC a8, int a9)
 {
 	HWND hwnd;
 	DWORD last_error;
-	HCURSOR cursor;
 
-	int v14;
-	int v15;
 	int os_good;
 	DWORD build_number;
 
 	HANDLE current_thread;
+	char *name_pipe;
+	const char *name_pipe_next;
 
+	HWND main_window;
+	HLOCAL cls_memlock;
+	WNDCLASSA *cls;
+	int atom;
+	HWND win;
 	struct tagMSG Msg;
 	struct _OSVERSIONINFOA VersionInformation;
 
@@ -723,41 +981,7 @@ skip_post:
 			;
 		}
 
-		init_message_loop_running = 1;
-
-		cursor = LoadCursorA(0, IDC_ARROW);
-
-		if (cursor) {
-			some_cursor_arg &= 0xef00;
-
-			Sleep(0);
-			SetCursor(cursor);
-		}
-
-		init_message_loop_running = 0;
-
-		/**
-		 * Inform user that fatal non-recoverable error occurred.
-		 *
-		 * Finally, halt and catch fire.
-		 */
-		fprintf(stderr, "%s: panic\n", __func__);
-
-		LoadStringA(hInst, STR_ERR_FATAL, Buffer, sizeof Buffer);
-
-		v14 = (sizeof Buffer) - lstrlenA(Buffer);
-		v15 = lstrlenA(Buffer);
-
-		FormatMessageA(0x1000, 0, last_error, 0x400, Buffer + v15, v14, 0);
-
-		if (IsWindow(ThreadId))
-			FlashWindow(ThreadId, 1);
-
-		MessageBeep(MB_ICONERROR);
-		MessageBoxA(0, Buffer, Caption, MB_SETFOREGROUND | MB_ICONERROR);
-
-		if (IsWindow(ThreadId))
-			goto post_some_msg;
+		PANIC(last_error, Caption);
 
 		return 0;
 	}
@@ -774,6 +998,8 @@ skip_post:
 
 	if (mach_os_type & 8) {
 		/* TODO some black magic */
+		if (0 > (VersionInformation.dwBuildNumber & 0xffff))
+			os_good = 0;
 	} else if (mach_os_type & 0x40) {
 		build_number = 1381; /* FIXME fetch this now precomputed value */
 
@@ -784,8 +1010,7 @@ skip_post:
 
 	if (!os_good) {
 		LoadStringA(hInst, STR_ERR_OS_TOO_OLD, Buffer, sizeof Buffer);
-		MessageBoxA(0, Buffer, complete_game_title, 0x30);
-
+		MessageBoxA(0, Buffer, complete_game_title, MB_ICONWARNING);
 		return 0;
 	}
 
@@ -795,14 +1020,98 @@ skip_post:
 	optbuf_init(str);
 
 	LoadStringA(hInst, STR_GAME_TITLE2, Buffer, sizeof Buffer);
+	name_pipe = strchr(Buffer, '|');
+	if (name_pipe) {
+		name_pipe_next = CharNextA(name_pipe);
+		*name_pipe = '\0';
+	} else
+		name_pipe_next = NULL;
 
-	/* ... */
-
-	if (0) {
-post_some_msg:
-		PostMessageA(ThreadId, 0x900, 0, 0);
+	main_window = FindWindowA(Buffer, name_pipe_next);
+	if (main_window) {
+		if (main_singleton_required) {
+			LoadStringA(hInst, STR_ERR_GAME_RUNNING, Buffer, sizeof Buffer);
+			MessageBoxA(NULL, Buffer, complete_game_title, MB_ICONWARNING);
+		} else {
+			if (IsIconic(main_window))
+				ShowWindow(main_window, SW_RESTORE);
+			SetForegroundWindow(main_window);
+		}
 		return 0;
 	}
+
+	cls_memlock = LocalAlloc(LMEM_ZEROINIT, sizeof *cls);
+	if (!cls_memlock) {
+		fprintf(stderr, "%s: alloc failed\n", __func__);
+
+		last_error = GetLastError();
+
+		while (init_message_loop_running)
+			some_message_wait();
+
+		goto err_alloc;
+	}
+
+	cls = LocalLock(cls_memlock);
+	cls->style = 0x4000;
+	cls->lpfnWndProc = handle_msg2;
+	cls->hInstance = hinstance;
+	cls->hIcon = LoadIconA(hmod, (LPCSTR)a5);
+	cls->hCursor = LoadCursorA(0, IDC_ARROW);
+	cls->hbrBackground = 0;
+	cls->lpszMenuName = 0;
+	cls->lpszClassName = lpClassName;
+
+	atom = RegisterClass(cls);
+	LocalUnlock(cls_memlock);
+	LocalFree(cls_memlock);
+
+	if (!atom) {
+		fprintf(stderr, "%s: class failed\n", __func__);
+
+		last_error = GetLastError();
+
+		while (init_message_loop_running)
+			some_message_wait();
+
+err_alloc:
+		PANIC(last_error, complete_game_title);
+
+		return 0;
+	}
+
+	if (!LoadStringA(hInst, STR_CD_ROM_TITLE, Buffer, sizeof Buffer))
+		lstrcpyA(Buffer, complete_game_title);
+
+	dbgs("creating window...");
+
+	win = CreateWindowExA(
+		0, lpClassName, Buffer,
+		0x82080000,
+		0x80000000,
+		0x80000000,
+		0x80000000,
+		0x80000000,
+		hWndParent,
+		0, hInstance, 0
+	);
+
+	if (!win) {
+		fprintf(stderr, "%s: window failed\n", __func__);
+
+		last_error = GetLastError();
+
+		while (init_message_loop_running)
+			some_message_wait();
+
+		PANIC(last_error, complete_game_title);
+
+		return 0;
+	}
+
+	ThreadId = win;
+
+	/* ... */
 
 	return 1;
 }
@@ -813,7 +1122,7 @@ static HMODULE __cdecl cleanup(LPCSTR lpClassName)
 
 	(void)lpClassName;
 
-	if (!some_main_skip_flag) {
+	if (!main_singleton_required) {
 		if (IsWindow(ThreadId))
 			SetFocus(ThreadId);
 
@@ -979,7 +1288,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	);
 
 	if (result) {
-		if (!some_main_skip_flag) {
+		if (!main_singleton_required) {
 			some_loop(IDC_WAIT);
 			some_image_ctl(hInst, 209, 0, 4);
 

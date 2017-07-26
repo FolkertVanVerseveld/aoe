@@ -3,6 +3,7 @@
 *.dll
 *.res
 *.exe
+*.bin
 # binaries
 menu
 resinfo
