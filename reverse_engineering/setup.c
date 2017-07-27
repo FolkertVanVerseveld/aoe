@@ -129,6 +129,7 @@ static int some_handle_msg2_tbl[1];
 static int some_msg_event_number = 0;
 static int some_msg_index = 0;
 static char some_msg_mem[0x900]; /* FIXME figure out overlapping region */
+static int some_image_msg_tbl[288];
 
 #define SOME_MSG_MEM_OFFSET_PROC 0x3C
 
@@ -1340,6 +1341,7 @@ static int *some_image_ctl(HINSTANCE hInst, int a2, int a3, int a4)
 {
 	int v4;
 	int *v5 = NULL;
+	int v6;
 
 	stub
 
@@ -1348,6 +1350,13 @@ static int *some_image_ctl(HINSTANCE hInst, int a2, int a3, int a4)
 	(void)a4;
 
 	v4 = a2;
+
+	for (v6 = 0; v6 < 48; ++v6) {
+		if (a2 == some_image_msg_tbl[6 * v6]) {
+			v5 = &some_image_msg_tbl[24 * v6];
+			break;
+		}
+	}
 
 	(void)v4;
 

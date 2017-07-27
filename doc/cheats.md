@@ -26,7 +26,7 @@ Cheat code        | Description
 ------------------|----------------------------------------------------
 home run          | win game instantly
 stormbilly        | spawn unit Zug 209
-convert this!     | ??
+convert this!     | ?? priests thunderstrike ??
 big momma         | spawn white rocket launcher car
 pow               | spawn baby
 grantlinkspence   | supersonic gazelles
@@ -38,9 +38,9 @@ big bertha        | spawn supercatapult
 flying dutchman   | juggernaught can move over land
 upsidflintmobile  | supersonic chariot archers
 hoyohoyo          | supersonic priests
-dark rain         | idle composite bowman change into trees
+dark rain         | idle composite bowman change into trees when standing still
 black rider       | ??
-medusa            | villagers change into horse archer and horse archer in catapult if it dies
+medusa            | villagers change into horse archer and horse archer in catapult if it dies (only applies to villagers created after cheat activation)
 icbm              | huge ballista range
 diediedie         | destroy all enemy units and buildings
 kill1             | player 1 resigns
