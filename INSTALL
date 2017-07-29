@@ -30,14 +30,12 @@ INSTALLATION RECIPIES
 
 Xubuntu 14:
 
-This project has been built primarly on a Xubuntu 14 machine. You can
-install the packages using:
+This project has been built primarly on a Xubuntu 14 machine. You can install
+the packages using:
 
 $ sudo -s
 # apt-get update
-# apt-get install pkg-config libsdl2-dev libsdl2-image-dev libopenal-dev
+# apt-get install pkg-config libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libopenal-dev
 # exit
 $ ./configure && make
-$ cp -i game/aoe /usr/local/games/aoe1
-$ cd /usr/local/games/aoe1
-$ ./aoe
+$ ./game/aoe
