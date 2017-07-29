@@ -44,7 +44,7 @@ if ! hash pkg-config 2>/dev/null; then
 fi
 CFLAGS="$CFLAGS $(pkg-config --cflags $libs)"
 LDLIBS="$(pkg-config --libs $libs)"
-LLIBS='-lSDL2_image -lSDL2_mixer -lpthread -lm'
+LLIBS='-lSDL2_image -lSDL2_mixer -lSDL2_ttf -lpthread -lm'
 cat <<'EOF'>.gitignore
 # cc
 *.o

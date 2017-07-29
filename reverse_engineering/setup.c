@@ -129,7 +129,13 @@ static int some_handle_msg2_tbl[1];
 static int some_msg_event_number = 0;
 static int some_msg_index = 0;
 static char some_msg_mem[0x900]; /* FIXME figure out overlapping region */
-static int some_image_msg_tbl[288];
+
+#define IMG_LOAD_TABLE_SIZE 48
+
+static int some_image_msg_tbl[6 * IMG_LOAD_TABLE_SIZE];
+static int img_tbl[6 * IMG_LOAD_TABLE_SIZE];
+
+static HANDLE img_lock = NULL;
 
 #define SOME_MSG_MEM_OFFSET_PROC 0x3C
 
@@ -1276,7 +1282,7 @@ static LRESULT CALLBACK handle_msg(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
 	return result;
 }
 
-static int *some_image_ctl(HINSTANCE hInst, int a2, int a3, int a4);
+static int *img_load(HINSTANCE hInst, int a2, int a3, int a4);
 
 static int *msg_proc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
@@ -1289,11 +1295,11 @@ static int *msg_proc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 
 	some_sound_cleanup();
 
-	some_image_ctl(hInst, 209, 0, 4);
-	some_image_ctl(hInst, 209, 0, 4);
-	some_image_ctl(hInst, 209, 0, 4);
-	some_image_ctl(hInst, 209, 0, 4);
-	some_image_ctl(hInst, 209, 0, 4);
+	img_load(hInst, 209, 0, 4);
+	img_load(hInst, 209, 0, 4);
+	img_load(hInst, 209, 0, 4);
+	img_load(hInst, 209, 0, 4);
+	img_load(hInst, 209, 0, 4);
 
 	return NULL;
 }
@@ -1337,11 +1343,12 @@ skip_post:
 	return result;
 }
 
-static int *some_image_ctl(HINSTANCE hInst, int a2, int a3, int a4)
+static int *img_load(HINSTANCE hInst, int id, int a3, int a4)
 {
 	int v4;
 	int *v5 = NULL;
 	int v6;
+	HANDLE img = NULL;
 
 	stub
 
@@ -1349,13 +1356,29 @@ static int *some_image_ctl(HINSTANCE hInst, int a2, int a3, int a4)
 	(void)a3;
 	(void)a4;
 
-	v4 = a2;
+	v4 = id;
 
-	for (v6 = 0; v6 < 48; ++v6) {
-		if (a2 == some_image_msg_tbl[6 * v6]) {
+	/* check if already loaded */
+	for (v6 = 0; v6 < IMG_LOAD_TABLE_SIZE; ++v6) {
+		if (id == some_image_msg_tbl[6 * v6]) {
 			v5 = &some_image_msg_tbl[24 * v6];
 			break;
 		}
+	}
+	/* load if not loaded yet */
+	if (!v5) {
+		img = LoadImageA(hInst, id, 0, 0, 0, 0xA000);
+		if (!img)
+			return 0;
+
+		WaitForSingleObject(img_lock, -1);
+		for (v6 = 0; v6 < IMG_LOAD_TABLE_SIZE; ++v6) {
+			if (!some_image_msg_tbl[6 * v6] || id == some_image_msg_tbl[6 * v6]) {
+				img_tbl[6 * v6] = (int)img;
+				break;
+			}
+		}
+		ReleaseMutex(img_lock);
 	}
 
 	(void)v4;
@@ -1405,7 +1428,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	if (result) {
 		if (!main_singleton_required) {
 			some_loop(IDC_WAIT);
-			some_image_ctl(hInst, 209, 0, 4);
+			img_load(hInst, 209, 0, 4);
 
 			SetForegroundWindow(ThreadId);
 			SendMessageA(ThreadId, /* IDM_APPLYNORMAL */ 0x8CE, 0, (LPARAM)msg_proc);

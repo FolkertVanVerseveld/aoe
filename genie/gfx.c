@@ -2,6 +2,7 @@
 
 #include "gfx.h"
 #include "prompt.h"
+#include "ttf.h"
 #include <err.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -11,6 +12,7 @@
 #define GFX_INIT 1
 #define GFX_INIT_IMG 2
 #define GFX_INIT_FONT 4
+#define GFX_INIT_TTF 8
 
 /* The default font texture */
 extern unsigned char *font_png_start, *font_png_end;
@@ -24,6 +26,11 @@ void genie_gfx_free(void)
 		return;
 
 	gfx_init &= ~GFX_INIT;
+
+	if (gfx_init & GFX_INIT_TTF) {
+		genie_ttf_free();
+		gfx_init &= ~GFX_INIT_TTF;
+	}
 
 	if (gfx_init & GFX_INIT_IMG) {
 		IMG_Quit();
@@ -178,6 +185,10 @@ int genie_gfx_init(void)
 	gfx_init |= GFX_INIT_IMG;
 
 	error = gfx_init_font();
+	if (error)
+		goto fail;
+
+	error = genie_ttf_init();
 	if (error)
 		goto fail;
 

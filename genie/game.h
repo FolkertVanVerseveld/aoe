@@ -9,6 +9,7 @@
 struct genie_game {
 	struct genie_ui *ui;
 	int running;
+	int init;
 };
 
 extern struct genie_game genie_game;

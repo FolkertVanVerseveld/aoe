@@ -29,3 +29,8 @@ char *strncpy0(char *dest, const char *src, size_t n)
 		dest[n - 1] = '\0';
 	return ptr;
 }
+
+int strsta(const char *haystack, const char *needle)
+{
+	return strstr(haystack, needle) == haystack;
+}

@@ -17,6 +17,7 @@
 #include "game.h"
 
 #define GENIE_INIT 1
+
 #define GENIE_MODE_NOSTART     1
 #define GENIE_MODE_SYSMEM      2
 #define GENIE_MODE_MIDI        4
@@ -71,11 +72,11 @@ static void genie_cleanup(void)
 	if (!genie_init)
 		return;
 
-	genie_init &= ~GENIE_INIT;
-
 	genie_gfx_free();
 	genie_ui_free(&genie_ui);
 	dmap_list_free();
+
+	genie_init &= ~GENIE_INIT;
 
 	if (genie_init)
 		warnx(
