@@ -7,24 +7,13 @@
  * Copyright 2017 Folkert van Verseveld
  */
 #include "cpu.h"
+#include "dbg.h"
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
-
-#ifdef DEBUG
-#include <stdio.h>
-#define dbgs(s) puts(s)
-#define dbgf(f,...) printf(f,##__VA_ARGS__)
-#else
-#define dbgs(s) ((void)0)
-#define dbgf(f,...) ((void)0)
-#endif
-
-#define stub fprintf(stderr, "stub: %s\n", __func__);
-#define FIXME(s) fprintf(stderr, "fixme: %s: %s\n", __func__, s)
 
 #define WINDOW_CLASS "AOESetupClass"
 

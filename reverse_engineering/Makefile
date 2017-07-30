@@ -12,6 +12,7 @@ CXXFLAGS=-Wall -Wextra -pedantic -std=c++11 -g -DDEBUG
 LDLIBS=-lstdc++ -lmingw32 -lgdi32 -lole32 -lcomdlg32 -lntdll -lwinmm
 
 MAIN= \
+	aoe \
 	menu \
 	regedit \
 	rp \
