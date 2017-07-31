@@ -19,11 +19,9 @@
 
 struct genie_ui genie_ui = {
 	.game_title = "???",
-	.width = 1024, .height = 768,
+	.width = 800, .height = 600,
 	.console_show = 0,
 };
-
-#define CONSOLE_PS1 "# "
 
 #define UI_INIT 1
 #define UI_INIT_SDL 2
@@ -89,49 +87,6 @@ sdl_error:
 	error = 0;
 fail:
 	return error;
-}
-
-static void console_init(struct console *c)
-{
-	c->screen.start = c->screen.index = c->screen.size = 0;
-}
-
-static void console_add_line(struct console *c, const char *str)
-{
-	char text[GENIE_CONSOLE_LINE_MAX];
-	strncpy0(text, str, GENIE_CONSOLE_LINE_MAX);
-	memcpy(c->screen.text[c->screen.index], text, GENIE_CONSOLE_LINE_MAX);
-
-	if (c->screen.size < GENIE_CONSOLE_ROWS)
-		++c->screen.size;
-	else
-		c->screen.start = (c->screen.start + 1) % GENIE_CONSOLE_ROWS;
-	c->screen.index = (c->screen.index + 1) % GENIE_CONSOLE_ROWS;
-}
-
-static void console_puts(struct console *c, const char *str)
-{
-	while (1) {
-		const char *end = strchr(str, '\n');
-		if (!end) {
-			puts(str);
-			if (*str)
-				console_add_line(c, str);
-			break;
-		}
-		char text[GENIE_CONSOLE_LINE_MAX];
-		size_t n = end - str + 1;
-		text[0] = '\0';
-		strncpy0(text, str, n);
-
-		if (n >= sizeof text)
-			--n;
-		if (n)
-			text[n] = '\0';
-		puts(text);
-		console_add_line(c, text);
-		str = end + 1;
-	}
 }
 
 int genie_ui_init(struct genie_ui *ui, struct genie_game *game)
@@ -214,6 +169,45 @@ static void draw_console(struct genie_ui *ui)
 		);
 }
 
+static void draw_menu_box(GLfloat y)
+{
+	glBegin(GL_LINES);
+		/* outer rectangle */
+		glColor3ub(145, 136, 71);
+		glVertex2f(213, y + 223);
+		glVertex2f(587, y + 223);
+		glVertex2f(587, y + 223);
+		glVertex2f(587, y + 271);
+		glColor3ub(41, 33, 16);
+		glVertex2f(213, y + 222);
+		glVertex2f(213, y + 272);
+		glVertex2f(213, y + 272);
+		glVertex2f(587, y + 272);
+		/* margin rectangle */
+		glColor3ub(129, 112, 65);
+		glVertex2f(214, y + 224);
+		glVertex2f(586, y + 224);
+		glVertex2f(586, y + 224);
+		glVertex2f(586, y + 270);
+		glColor3ub(78, 61, 49);
+		glVertex2f(214, y + 223);
+		glVertex2f(214, y + 271);
+		glVertex2f(214, y + 271);
+		glVertex2f(586, y + 271);
+		/* inner rectangle */
+		glColor3ub(97, 78, 50);
+		glVertex2f(215, y + 225);
+		glVertex2f(585, y + 225);
+		glVertex2f(585, y + 225);
+		glVertex2f(585, y + 269);
+		glColor3ub(107, 85, 34);
+		glVertex2f(215, y + 224);
+		glVertex2f(215, y + 270);
+		glVertex2f(215, y + 270);
+		glVertex2f(585, y + 270);
+	glEnd();
+}
+
 static void draw_menu(struct genie_ui *ui)
 {
 	struct menu_nav *nav;
@@ -228,15 +222,10 @@ static void draw_menu(struct genie_ui *ui)
 	list = nav->list;
 	n = list->count;
 
-	glColor3f(1, 1, 1);
-
-	genie_gfx_draw_text(
-		(ui->width - ui->title_width * GENIE_GLYPH_WIDTH) / 2.0,
-		GENIE_GLYPH_HEIGHT,
-		nav->title
-	);
-
 	for (i = 0; i < n; ++i) {
+		// FIXME y pos of exit box in main menu is slightly off
+		draw_menu_box(63 * i);
+
 		if (i == nav->index)
 			glColor3ub(255, 255, 0);
 		else
@@ -244,10 +233,17 @@ static void draw_menu(struct genie_ui *ui)
 
 		genie_gfx_draw_text(
 			(ui->width - ui->option_width[i] * GENIE_GLYPH_WIDTH) / 2.0,
-			308 + 80 * i,
+			242 + 63 * i,
 			list->buttons[i]
 		);
 	}
+
+	glColor3f(1, 1, 1);
+	genie_gfx_draw_text(
+		(ui->width - ui->title_width * GENIE_GLYPH_WIDTH) / 2.0,
+		GENIE_GLYPH_HEIGHT,
+		nav->title
+	);
 }
 
 static void console_clear_line_buffer(struct console *c)
@@ -288,7 +284,7 @@ static int cmd_has_arg(const char *str)
 static void console_dump_info(struct console *c)
 {
 	char text[256];
-	const char *scr_mode = "1024x768";
+	const char *scr_mode = "800x600";
 	const char *music = "yes", *sound = "yes";
 
 	if (genie_mode & GENIE_MODE_1024_768)

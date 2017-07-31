@@ -4,6 +4,7 @@
 #define GENIE_UI_H
 
 #include "menu.h"
+#include "shell.h"
 
 #include <stddef.h>
 #include <SDL2/SDL.h>
@@ -15,18 +16,6 @@
 #define GENIE_UI_OPTION_WIDTHSZ 64
 
 struct genie_game;
-
-#define GENIE_CONSOLE_ROWS 40
-#define GENIE_CONSOLE_LINE_MAX 80
-
-struct console {
-	struct {
-		char text[GENIE_CONSOLE_ROWS][GENIE_CONSOLE_LINE_MAX];
-		unsigned start, index, size;
-	} screen;
-	char line_buffer[GENIE_CONSOLE_LINE_MAX];
-	unsigned line_count;
-};
 
 struct genie_ui {
 	const char *game_title;
