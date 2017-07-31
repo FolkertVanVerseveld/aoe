@@ -42,7 +42,7 @@ For more information, see [INSTALL](INSTALL).
 
 Make sure you own a legitimate copy of the original Age of Empires or Rise of
 Rome expansion and you have specified the root directory to AoE (RoR) correctly.
-See [known issues and bugs](BUGS) for more details.
+See [known issues and bugs](BUGS.md) for more details.
 
 ## Links
 

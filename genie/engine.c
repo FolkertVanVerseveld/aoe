@@ -8,19 +8,29 @@
 #include <string.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <pwd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "_build.h"
 #include "dmap.h"
+#include "dbg.h"
 #include "ui.h"
 #include "gfx.h"
 #include "sfx.h"
 #include "game.h"
+#include "prompt.h"
 
 #define GENIE_INIT 1
 
 static unsigned genie_init = 0;
 unsigned genie_mode = 0;
+
+static int has_wine = 0;
+static int has_wine_dir = 0;
+
+static const char *home_dir = NULL;
 
 char *root_path = NULL;
 
@@ -204,15 +214,11 @@ int ge_init(int argc, char **argv, const char *title, unsigned options)
 	}
 
 	genie_init |= GENIE_INIT;
+	genie_ui.game_title = title;
 	atexit(genie_cleanup);
 
-	genie_ui.game_title = title;
-
 	if (argc) {
-		char *wd;
-
-		wd = dirname(argv[0]);
-
+		char *wd = dirname(argv[0]);
 		if (chdir(wd))
 			warn("Could not cd to \"%s\"", wd);
 	}
@@ -226,9 +232,65 @@ int ge_init(int argc, char **argv, const char *title, unsigned options)
 	return argp;
 }
 
+static void init_home_dir(void)
+{
+	if (home_dir)
+		return;
+	home_dir = getenv("HOME");
+	if (!home_dir) {
+		struct passwd *pwd = getpwuid(getuid());
+		if (pwd)
+			home_dir = pwd->pw_dir;
+		else
+			err(1, "failed to get pwd");
+	}
+}
+
+static int is_run_as_root(void)
+{
+	init_home_dir();
+	if (!strncmp(home_dir, "/root", 5) || !getuid()) {
+		/* drop privileges before continuing */
+		if (setgid(getgid()) || setuid(getuid()))
+			err(1, "can't drop root privileges");
+		return 1;
+	}
+	return 0;
+}
+
+static void try_find_wine(void)
+{
+	char path[4096];
+	struct stat st;
+
+	init_home_dir();
+	if (stat("/usr/bin/wine", &st))
+		goto no_wine;
+	has_wine = 1;
+
+	snprintf(path, sizeof path, "%s/.wine", home_dir);
+	if (stat(path, &st))
+		goto no_wine;
+	has_wine_dir = 1;
+	return;
+no_wine:
+	warnx("wine executable or wine home not found, falling back to CD-ROM only");
+}
+
 int ge_main(void)
 {
 	int error = 1;
+
+	if (is_run_as_root()) {
+		/*
+		 * We could continue here since is_run_as_root drops root
+		 * privileges if run as root, but we don't want this because
+		 * we want to discourage running any game as root in general.
+		 */
+		show_error("Fatal error", "Cannot run application as root");
+		goto fail;
+	}
+	try_find_wine();
 
 	error = genie_ui_init(&genie_ui, &genie_game);
 	if (error)
@@ -247,7 +309,6 @@ int ge_main(void)
 		goto fail;
 
 	genie_game_init(&genie_game, &genie_ui);
-
 	error = genie_game_main(&genie_game);
 fail:
 	return error;

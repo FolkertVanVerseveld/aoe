@@ -35,7 +35,8 @@ the packages using:
 
 $ sudo -s
 # apt-get update
-# apt-get install pkg-config libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libopenal-dev
+# apt-get install bash gcc git make pkg-config libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libopenal-dev
 # exit
-$ ./configure && make
+$ ./configure
+$ make
 $ ./game/aoe

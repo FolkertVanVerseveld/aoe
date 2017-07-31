@@ -86,14 +86,14 @@ int ge_msc_play(unsigned id, int loops)
 {
 	if (genie_mode & GENIE_MODE_NOMUSIC)
 		return 0;
+
 	const char *path = ge_cdrom_get_music_path(id);
 	if (!path)
 		return 1;
-	printf("music path to play: %s\n", path);
 	music_chunk = Mix_LoadWAV(path);
-	if (!music_chunk) {
+	if (!music_chunk)
 		goto fail;
-	}
+
 	int channel = Mix_PlayChannel(MUSIC_CHANNEL, music_chunk, loops);
 	if (channel == -1) {
 fail:
