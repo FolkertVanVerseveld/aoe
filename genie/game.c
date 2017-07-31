@@ -3,6 +3,7 @@
 #include "game.h"
 #include "cdrom.h"
 #include "ui.h"
+#include "sfx.h"
 #include <err.h>
 
 #define GAME_INIT 1
@@ -31,6 +32,7 @@ static int game_init(struct genie_game *g)
 		goto fail;
 
 	g->init |= GAME_INIT_CDROM;
+	ge_msc_play(MSC_OPENING, 0);
 
 	error = 0;
 fail:

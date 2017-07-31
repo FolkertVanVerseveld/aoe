@@ -24,7 +24,6 @@ void genie_ui_free(struct genie_ui *ui)
 {
 	if (!ui_init)
 		return;
-
 	ui_init &= ~UI_INIT;
 
 	if (ui->gl) {
@@ -37,7 +36,6 @@ void genie_ui_free(struct genie_ui *ui)
 	}
 
 	SDL_Quit();
-
 	ui_init &= ~UI_INIT_SDL;
 
 	if (ui_init)

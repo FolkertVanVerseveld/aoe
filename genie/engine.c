@@ -14,24 +14,13 @@
 #include "dmap.h"
 #include "ui.h"
 #include "gfx.h"
+#include "sfx.h"
 #include "game.h"
 
 #define GENIE_INIT 1
 
-#define GENIE_MODE_NOSTART     1
-#define GENIE_MODE_SYSMEM      2
-#define GENIE_MODE_MIDI        4
-#define GENIE_MODE_MSYNC       8
-#define GENIE_MODE_NOSOUND    16
-#define GENIE_MODE_MFILL      32
-#define GENIE_MODE_640_480    64
-#define GENIE_MODE_800_600   128
-#define GENIE_MODE_1024_768  256
-#define GENIE_MODE_NOMUSIC   512
-#define GENIE_MODE_NMOUSE   1024
-
 static unsigned genie_init = 0;
-static unsigned genie_mode = 0;
+unsigned genie_mode = 0;
 
 char *root_path = NULL;
 
@@ -72,6 +61,7 @@ static void genie_cleanup(void)
 	if (!genie_init)
 		return;
 
+	ge_sfx_free();
 	genie_gfx_free();
 	genie_ui_free(&genie_ui);
 	dmap_list_free();
@@ -249,6 +239,10 @@ int ge_main(void)
 		goto fail;
 
 	error = genie_gfx_init();
+	if (error)
+		goto fail;
+
+	error = ge_sfx_init();
 	if (error)
 		goto fail;
 
