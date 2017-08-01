@@ -124,12 +124,14 @@ static void genie_ui_update(struct genie_ui *ui)
 	SDL_GL_SwapWindow(ui->win);
 }
 
+static void draw_box(GLfloat x, GLfloat y, GLfloat width, GLfloat height);
+
 static void draw_console(struct genie_ui *ui)
 {
 	static int tick_cursor = 0, blink_cursor = 0;
 
+	draw_box(1, 0, ui->width - 1, ui->height);
 	glColor3f(1, 1, 1);
-
 	genie_gfx_draw_text(GENIE_FONT_TILE_WIDTH, GENIE_FONT_TILE_HEIGHT,
 		"Age of Empires Free Software Remake console\n"
 		"Built with: " GENIE_BUILD_OPTIONS "\n"
@@ -169,43 +171,55 @@ static void draw_console(struct genie_ui *ui)
 		);
 }
 
-static void draw_menu_box(GLfloat y)
+static void draw_box(GLfloat x, GLfloat y, GLfloat width, GLfloat height)
 {
+	GLfloat left, right, top, bottom;
+
+	left = x;
+	right = x + width;
+	top = y;
+	bottom = y + height;
+
 	glBegin(GL_LINES);
 		/* outer rectangle */
 		glColor3ub(145, 136, 71);
-		glVertex2f(213, y + 223);
-		glVertex2f(587, y + 223);
-		glVertex2f(587, y + 223);
-		glVertex2f(587, y + 271);
+		glVertex2f(left, top + 1);
+		glVertex2f(right, top + 1);
+		glVertex2f(right, top + 1);
+		glVertex2f(right, bottom - 1);
 		glColor3ub(41, 33, 16);
-		glVertex2f(213, y + 222);
-		glVertex2f(213, y + 272);
-		glVertex2f(213, y + 272);
-		glVertex2f(587, y + 272);
+		glVertex2f(left, top + 0);
+		glVertex2f(left, bottom);
+		glVertex2f(left, bottom);
+		glVertex2f(right, bottom);
 		/* margin rectangle */
 		glColor3ub(129, 112, 65);
-		glVertex2f(214, y + 224);
-		glVertex2f(586, y + 224);
-		glVertex2f(586, y + 224);
-		glVertex2f(586, y + 270);
+		glVertex2f(left + 1, top + 2);
+		glVertex2f(right - 1, top + 2);
+		glVertex2f(right - 1, top + 2);
+		glVertex2f(right - 1, bottom - 2);
 		glColor3ub(78, 61, 49);
-		glVertex2f(214, y + 223);
-		glVertex2f(214, y + 271);
-		glVertex2f(214, y + 271);
-		glVertex2f(586, y + 271);
+		glVertex2f(left + 1, top + 1);
+		glVertex2f(left + 1, bottom - 1);
+		glVertex2f(left + 1, bottom - 1);
+		glVertex2f(right - 1, bottom - 1);
 		/* inner rectangle */
 		glColor3ub(97, 78, 50);
-		glVertex2f(215, y + 225);
-		glVertex2f(585, y + 225);
-		glVertex2f(585, y + 225);
-		glVertex2f(585, y + 269);
+		glVertex2f(left + 2, top + 3);
+		glVertex2f(right - 2, top + 3);
+		glVertex2f(right - 2, top + 3);
+		glVertex2f(right - 2, bottom - 3);
 		glColor3ub(107, 85, 34);
-		glVertex2f(215, y + 224);
-		glVertex2f(215, y + 270);
-		glVertex2f(215, y + 270);
-		glVertex2f(585, y + 270);
+		glVertex2f(left + 2, top + 2);
+		glVertex2f(left + 2, bottom - 2);
+		glVertex2f(left + 2, bottom - 2);
+		glVertex2f(right - 2, bottom - 2);
 	glEnd();
+}
+
+static void draw_menu_box(GLfloat y)
+{
+	draw_box(213, 222 + y, 374, 50);
 }
 
 static void draw_menu(struct genie_ui *ui)
@@ -221,6 +235,8 @@ static void draw_menu(struct genie_ui *ui)
 
 	list = nav->list;
 	n = list->count;
+
+	draw_box(1, 0, ui->width - 1, ui->height);
 
 	for (i = 0; i < n; ++i) {
 		// FIXME y pos of exit box in main menu is slightly off
@@ -256,7 +272,8 @@ static const char *help_console =
 	"Commands:\n"
 	"  help    This help\n"
 	"  info    Print statistics\n"
-	"  quit    Quit game without confirmation";
+	"  quit    Quit game without confirmation\n"
+	"  toggle  Toggle option";
 
 static const char *help_quit =
 	"quit: Quit game without confirmation\n"
@@ -265,6 +282,11 @@ static const char *help_quit =
 static const char *help_info =
 	"info: Show information statistics\n"
 	"  Print current state of options and statistics for testing purposes.";
+
+static const char *help_toggle =
+	"toggle option: Toggle option\n"
+	"  The following options are supported:\n"
+	"    border    Border around game display";
 
 static const char *cmd_next_arg(const char *str)
 {
@@ -308,6 +330,15 @@ static void console_dump_info(struct console *c)
 	console_puts(c, text);
 }
 
+static void console_toggle_border(struct genie_ui *ui)
+{
+	Uint32 flags = SDL_GetWindowFlags(ui->win);
+	if (flags & SDL_WINDOW_BORDERLESS)
+		SDL_SetWindowBordered(ui->win, SDL_TRUE);
+	else
+		SDL_SetWindowBordered(ui->win, SDL_FALSE);
+}
+
 static void console_run(struct console *c, char *str)
 {
 	char text[1024];
@@ -341,33 +372,25 @@ static void console_run(struct console *c, char *str)
 			console_puts(c, help_info);
 		else if (!strcmp(arg, "help"))
 			console_puts(c, help_console);
+		else if (!strcmp(arg, "toggle"))
+			console_puts(c, help_toggle);
 		else {
 			snprintf(text, sizeof text, "No help for \"%s\"", arg);
 			console_puts(c, text);
 		}
 	} else if (!strcmp(str, "info"))
 		console_dump_info(c);
-	else {
+	else if (strsta(str, "toggle")) {
+		const char *arg = cmd_next_arg(str);
+		if (!arg)
+			console_puts(c, help_toggle);
+		else if (!strcmp(arg, "border"))
+			console_toggle_border(&genie_ui);
+	} else {
 unknown:
 		snprintf(text, sizeof text, "Unknown command: \"%s\"\nType `help' for help", str);
 		console_puts(c, text);
 	}
-}
-
-static void console_line_pop_last(struct console *c)
-{
-	if (!c->line_count)
-		return;
-	c->line_buffer[--c->line_count] = '\0';
-}
-
-static void console_line_push_last(struct console *c, int ch)
-{
-	ch &= 0xff;
-	if (c->line_count >= GENIE_CONSOLE_LINE_MAX - 1)
-		return;
-	c->line_buffer[c->line_count++] = ch;
-	c->line_buffer[c->line_count] = '\0';
 }
 
 static void console_key_down(struct genie_ui *ui, SDL_Event *ev)

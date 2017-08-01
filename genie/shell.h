@@ -29,5 +29,7 @@ struct console {
 
 void console_init(struct console *c);
 void console_puts(struct console *c, const char *str);
+void console_line_pop_last(struct console *c);
+void console_line_push_last(struct console *c, int ch);
 
 #endif

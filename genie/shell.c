@@ -46,3 +46,19 @@ void console_puts(struct console *c, const char *str)
 		str = end + 1;
 	}
 }
+
+void console_line_pop_last(struct console *c)
+{
+	if (!c->line_count)
+		return;
+	c->line_buffer[--c->line_count] = '\0';
+}
+
+void console_line_push_last(struct console *c, int ch)
+{
+	ch &= 0xff;
+	if (c->line_count >= GENIE_CONSOLE_LINE_MAX - 1)
+		return;
+	c->line_buffer[c->line_count++] = ch;
+	c->line_buffer[c->line_count] = '\0';
+}
