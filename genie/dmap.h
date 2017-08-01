@@ -16,7 +16,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#include "../genie/drs.h"
+#include "drs.h"
 
 #define DMAPBUFSZ 260
 struct dmap {

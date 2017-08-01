@@ -151,20 +151,15 @@ static int dmap_load(struct dmap *d)
 		goto fail;
 
 	if (d->nommap) {
-		ssize_t count;
-
 		data = malloc(st.st_size);
-
 		if (!data)
 			show_oem(1);
 
-		count = read(fd, data, st.st_size);
-
+		ssize_t count = read(fd, data, st.st_size);
 		if (count != st.st_size)
 			goto fail;
 	} else {
 		data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-
 		if (data == MAP_FAILED)
 			goto fail;
 	}

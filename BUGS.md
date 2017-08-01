@@ -63,4 +63,4 @@ bugs yourself and submit a pull request or patch so we can apply the changes. It
 goes without saying that you provide a good description *why* we should merge a
 particular contribution.
 
-See also [HACKING](HACKING) for more information about contributing to this project.
+See also [HACKING](HACKING.md) for more information about contributing to this project.

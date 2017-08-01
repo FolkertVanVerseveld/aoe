@@ -298,11 +298,6 @@ static const char *cmd_next_arg(const char *str)
 	return *ptr ? (const char*)ptr : NULL;
 }
 
-static int cmd_has_arg(const char *str)
-{
-	return cmd_next_arg(str) != NULL;
-}
-
 static void console_dump_info(struct console *c)
 {
 	char text[256];
@@ -348,7 +343,7 @@ static void console_run(struct console *c, char *str)
 		++ptr;
 	str = (char*)ptr;
 	ptr = (unsigned char*)str + strlen(str);
-	while (ptr > str && isspace(ptr[-1]))
+	while (ptr > (unsigned char*)str && isspace(ptr[-1]))
 		--ptr;
 	*ptr = '\0';
 

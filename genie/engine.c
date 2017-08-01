@@ -22,6 +22,8 @@
 #include "game.h"
 #include "prompt.h"
 
+#define WINE_INSTALLATION_PATH ".wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires"
+
 #define GENIE_INIT 1
 
 static unsigned genie_init = 0;
@@ -29,6 +31,7 @@ unsigned genie_mode = 0;
 
 static int has_wine = 0;
 static int has_wine_dir = 0;
+static int has_wine_game = 0;
 
 static const char *home_dir = NULL;
 
@@ -258,6 +261,19 @@ static int is_run_as_root(void)
 	return 0;
 }
 
+static int is_game_installed_through_wine(void)
+{
+	char path[4096];
+	struct stat st;
+
+	if (!has_wine_dir)
+		return 0;
+	snprintf(path, sizeof path, "%s/%s/%s", home_dir, WINE_INSTALLATION_PATH, "Empires.exe");
+	if (stat(path, &st))
+		return 0;
+	return 1;
+}
+
 static void try_find_wine(void)
 {
 	char path[4096];
@@ -272,6 +288,9 @@ static void try_find_wine(void)
 	if (stat(path, &st))
 		goto no_wine;
 	has_wine_dir = 1;
+	has_wine_game = is_game_installed_through_wine();
+	if (has_wine_game)
+		puts("wine installation detected");
 	return;
 no_wine:
 	warnx("wine executable or wine home not found, falling back to CD-ROM only");
@@ -292,11 +311,11 @@ int ge_main(void)
 	}
 	try_find_wine();
 
-	error = genie_ui_init(&genie_ui, &genie_game);
+	error = dmap_list_init();
 	if (error)
 		goto fail;
 
-	error = dmap_list_init();
+	error = genie_ui_init(&genie_ui, &genie_game);
 	if (error)
 		goto fail;
 

@@ -20,9 +20,6 @@
 int prng_seed;
 
 struct dmap drs_data_list[] = {
-	{.filename = DRS_XDATA DRS_SFX, .nommap = 1},
-	{.filename = DRS_XDATA DRS_GFX},
-	{.filename = DRS_XDATA DRS_UI},
 	{.filename = DRS_DATA DRS_SFX, .nommap = 1},
 	{.filename = DRS_DATA DRS_GFX},
 	{.filename = DRS_DATA DRS_MAP},
