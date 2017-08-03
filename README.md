@@ -29,7 +29,7 @@ A simple, incomplete user guide is available [here](doc/user_guide.md).
 
 At the moment, there is no game to be played. Only basic functionality and lots
 of simple low-level stuff in the game engine is implemented. See
-[STATUS](STATUS) for more details.
+[STATUS](STATUS.md) for more details.
 
 ## Support
 
