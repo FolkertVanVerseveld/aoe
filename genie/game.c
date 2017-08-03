@@ -27,7 +27,6 @@ static int game_init(struct genie_game *g)
 	ge_msc_play(MSC_OPENING, 0);
 
 	error = 0;
-fail:
 	return error;
 }
 

@@ -14,6 +14,7 @@
 #include "engine.h"
 #include "game.h"
 #include "gfx.h"
+#include "sfx.h"
 #include "prompt.h"
 #include "string.h"
 
@@ -436,6 +437,7 @@ static void menu_key_down(struct genie_ui *ui, SDL_Event *ev)
 	case ' ':
 		menu_nav_down(nav, MENU_KEY_SELECT);
 		ui->menu_press = 1;
+		ge_sfx_play(SFX_MENU_BUTTON);
 		break;
 	case '`':
 		ui->console_show = 1;

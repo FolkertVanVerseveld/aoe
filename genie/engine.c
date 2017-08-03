@@ -347,5 +347,5 @@ const char *ge_absolute_path(const char *path)
 		snprintf(file_abs_path, sizeof file_abs_path, "%s/%s/%s", home_dir, WINE_INSTALLATION_PATH, path);
 		return file_abs_path;
 	}
-	return ge_cdrom_absolute_path(path);
+	return ge_cdrom_absolute_game_path(path);
 }

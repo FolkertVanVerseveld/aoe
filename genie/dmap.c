@@ -197,11 +197,9 @@ int dmap_list_init(void)
 
 	for (i = 0, n = dmap_count; i < n; ++i, ++dmap_loaded) {
 		error = dmap_load(&dmap_list[i]);
-
 		if (error)
 			return error;
 	}
-
 	if (!dmap_count)
 		errx(1, "drs list not specified");
 
@@ -210,10 +208,10 @@ int dmap_list_init(void)
 
 static int drs_map(unsigned type, int res_id, off_t *offset, char **dblk, size_t *count)
 {
-	if (!drs_count)
+	if (!dmap_count)
 		goto fail;
-	for (unsigned drs_i = 0; drs_i < drs_count; ++drs_i) {
-		struct dmap *map = &drs_list[drs_i];
+	for (unsigned drs_i = 0; drs_i < dmap_loaded; ++drs_i) {
+		struct dmap *map = &dmap_list[drs_i];
 		struct drsmap *drs = (struct drsmap*)map->data;
 		if (!drs->nlist)
 			continue;

@@ -1,9 +1,6 @@
 /* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #include "cdrom.h"
-#include "engine.h"
-#include "prompt.h"
-#include "string.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -14,6 +11,11 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <err.h>
+
+#include "engine.h"
+#include "prompt.h"
+#include "string.h"
+#include "sfx.h"
 
 #define GVFS_PATH "/run/user/1000/gvfs/"
 
@@ -337,10 +339,14 @@ const char *ge_cdrom_get_music_path(unsigned id)
 	return cdrom_msc_path;
 }
 
-const char *ge_cdrom_absolute_path(const char *path)
+const char *ge_cdrom_absolute_game_path(const char *path)
 {
+	char str[4096];
+	strncpy0(str, path, sizeof str);
 	if (!cdrom_dir)
 		return NULL;
-	snprintf(cdrom_abs_path, sizeof cdrom_abs_path, "%s/%s", cdrom_dir, path);
+	for (unsigned char *ptr = (unsigned char*)str; *ptr; ++ptr)
+		*ptr = tolower(*ptr);
+	snprintf(cdrom_abs_path, sizeof cdrom_abs_path, "%s/game/%s", cdrom_dir, str);
 	return cdrom_abs_path;
 }
