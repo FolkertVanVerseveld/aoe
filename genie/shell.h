@@ -13,7 +13,7 @@
 #ifndef GENIE_SHELL_H
 #define GENIE_SHELL_H
 
-#define GENIE_CONSOLE_ROWS 40
+#define GENIE_CONSOLE_ROWS 30
 #define GENIE_CONSOLE_LINE_MAX 80
 
 #define CONSOLE_PS1 "# "

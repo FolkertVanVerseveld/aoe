@@ -289,6 +289,8 @@ static const char *help_toggle =
 	"  The following options are supported:\n"
 	"    border    Border around game display";
 
+static const char *help_play = "play ID: Play sound";
+
 static const char *cmd_next_arg(const char *str)
 {
 	const unsigned char *ptr = (const unsigned char*)str;
@@ -386,6 +388,15 @@ static void console_run(struct console *c, char *str)
 			snprintf(text, sizeof text, "Invalid option \"%s\"", arg);
 			console_puts(c, text);
 		}
+	} else if (strsta(str, "play")) {
+		const char *arg = cmd_next_arg(str);
+		uint64_t num, dummy;
+		if (!arg || parse_address(arg, &num, &dummy)) {
+			console_puts(c, help_play);
+			return;
+		}
+		if (num < 65536)
+			ge_sfx_play(num);
 	} else {
 unknown:
 		snprintf(text, sizeof text, "Unknown command: \"%s\"\nType `help' for help", str);
