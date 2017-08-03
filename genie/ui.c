@@ -381,6 +381,10 @@ static void console_run(struct console *c, char *str)
 			console_puts(c, help_toggle);
 		else if (!strcmp(arg, "border"))
 			console_toggle_border(&genie_ui);
+		else {
+			snprintf(text, sizeof text, "Invalid option \"%s\"", arg);
+			console_puts(c, text);
+		}
 	} else {
 unknown:
 		snprintf(text, sizeof text, "Unknown command: \"%s\"\nType `help' for help", str);

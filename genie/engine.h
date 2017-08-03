@@ -22,4 +22,6 @@ extern unsigned genie_mode;
 int ge_init(int argc, char **argv, const char *title, unsigned options);
 int ge_main(void);
 
+const char *ge_absolute_path(const char *path);
+
 #endif

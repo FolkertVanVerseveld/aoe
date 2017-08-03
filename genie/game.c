@@ -1,13 +1,11 @@
 /* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #include "game.h"
-#include "cdrom.h"
 #include "ui.h"
 #include "sfx.h"
 #include <err.h>
 
 #define GAME_INIT 1
-#define GAME_INIT_CDROM 2
 
 struct genie_game genie_game;
 
@@ -26,12 +24,6 @@ static int game_init(struct genie_game *g)
 		return 0;
 	}
 	g->init = GAME_INIT;
-
-	error = ge_cdrom_init();
-	if (error)
-		goto fail;
-
-	g->init |= GAME_INIT_CDROM;
 	ge_msc_play(MSC_OPENING, 0);
 
 	error = 0;
@@ -43,11 +35,6 @@ static void game_free(struct genie_game *g)
 {
 	if (!g->init)
 		return;
-
-	if (g->init & GAME_INIT_CDROM) {
-		ge_cdrom_free();
-		g->init &= ~GAME_INIT_CDROM;
-	}
 
 	g->init &= ~GAME_INIT;
 

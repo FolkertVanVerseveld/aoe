@@ -33,5 +33,6 @@
 void ge_cdrom_free(void);
 int ge_cdrom_init(void);
 const char *ge_cdrom_get_music_path(unsigned id);
+const char *ge_cdrom_absolute_path(const char *path);
 
 #endif

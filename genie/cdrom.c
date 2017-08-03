@@ -66,6 +66,7 @@ static const char *cdrom_options = NULL;
 static const char *cdrom_label = NULL;
 static char cdrom_gvfs_dir[4096];
 static char cdrom_msc_path[4096];
+static char cdrom_abs_path[4096];
 
 static int audio_on_default_dir = 0;
 static int audio_on_cdrom = 0;
@@ -334,4 +335,12 @@ const char *ge_cdrom_get_music_path(unsigned id)
 		dir = cdrom_dir;
 	snprintf(cdrom_msc_path, sizeof cdrom_msc_path, "%s/%s", dir, cdrom_tracks_paths[id]);
 	return cdrom_msc_path;
+}
+
+const char *ge_cdrom_absolute_path(const char *path)
+{
+	if (!cdrom_dir)
+		return NULL;
+	snprintf(cdrom_abs_path, sizeof cdrom_abs_path, "%s/%s", cdrom_dir, path);
+	return cdrom_abs_path;
 }

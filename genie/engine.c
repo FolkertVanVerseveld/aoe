@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include "_build.h"
+#include "cdrom.h"
 #include "dmap.h"
 #include "dbg.h"
 #include "ui.h"
@@ -65,6 +66,8 @@ static struct option long_opt[] = {
 	{0, 0, 0, 0},
 };
 
+static char file_abs_path[4096];
+
 /**
  * \brief General exit-handling
  * Cleans up any resources and other stuff.
@@ -78,6 +81,7 @@ static void genie_cleanup(void)
 	genie_gfx_free();
 	genie_ui_free(&genie_ui);
 	dmap_list_free();
+	ge_cdrom_free();
 
 	genie_init &= ~GENIE_INIT;
 
@@ -311,6 +315,10 @@ int ge_main(void)
 	}
 	try_find_wine();
 
+	error = ge_cdrom_init();
+	if (error)
+		goto fail;
+
 	error = dmap_list_init();
 	if (error)
 		goto fail;
@@ -331,4 +339,13 @@ int ge_main(void)
 	error = genie_game_main(&genie_game);
 fail:
 	return error;
+}
+
+const char *ge_absolute_path(const char *path)
+{
+	if (has_wine_game) {
+		snprintf(file_abs_path, sizeof file_abs_path, "%s/%s/%s", home_dir, WINE_INSTALLATION_PATH, path);
+		return file_abs_path;
+	}
+	return ge_cdrom_absolute_path(path);
 }
