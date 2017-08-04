@@ -39,11 +39,12 @@
 
 #define SFX_MENU_BUTTON 50300
 
-void ge_sfx_free(void);
-int ge_sfx_init(void);
+void genie_sfx_free(void);
+int genie_sfx_init(void);
 
-int ge_msc_play(unsigned id, int loops);
-void ge_msc_stop(void);
-int ge_sfx_play(unsigned id);
+int genie_msc_play(unsigned id, int loops);
+void genie_msc_stop(void);
+int genie_sfx_play(unsigned id);
+int genie_sfx_purge(unsigned id);
 
 #endif

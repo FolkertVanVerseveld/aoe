@@ -146,7 +146,7 @@ static int dmap_load(struct dmap *d)
 	struct stat st;
 	void *data = NULL;
 
-	fd = open(ge_absolute_path(d->filename), O_RDONLY);
+	fd = open(genie_absolute_path(d->filename), O_RDONLY);
 
 	if (fd == -1 || fstat(fd, &st))
 		goto fail;

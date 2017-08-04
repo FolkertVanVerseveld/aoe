@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <err.h>
+#include <limits.h>
 
 #include <AL/al.h>
 #include <AL/alc.h>
@@ -141,22 +142,43 @@ static void sfx_heap_add(struct sfx_heap *h, struct clip *c)
 	sfx_heap_dump(h);
 }
 
-static struct clip *sfx_heap_get(const struct sfx_heap *h, unsigned id)
+static unsigned sfx_heap_get(const struct sfx_heap *h, unsigned id)
 {
 	for (unsigned i = 0, n = h->count; i < n;) {
 		unsigned res_id = h->clips[i].res_id;
 
 		if (res_id == id)
-			return &h->clips[i];
+			return i;
 		else if (res_id > id)
 			i = heap_right(i) >= n ? heap_left(i) : heap_right(i);
 		else
 			i = heap_left(i);
 	}
-	return NULL;
+	return h->capacity;
 }
 
-void ge_msc_stop(void)
+static struct clip *sfx_heap_find(const struct sfx_heap *h, unsigned id)
+{
+	unsigned i = sfx_heap_get(h, id);
+	return i >= h->capacity ? NULL : &h->clips[i];
+}
+
+static int sfx_heap_remove(struct sfx_heap *h, unsigned id)
+{
+	unsigned i = sfx_heap_get(h, id);
+	if (i >= h->capacity)
+		return -1;
+	h->clips[i].res_id = INT_MIN;
+
+	sfx_heap_siftup(h, i);
+	h->clips[0] = h->clips[--h->count];
+	sfx_heap_sift(h, 0);
+
+	sfx_heap_dump(h);
+	return 0;
+}
+
+void genie_msc_stop(void)
 {
 	if (music_playing) {
 		Mix_HaltChannel(MUSIC_CHANNEL);
@@ -214,13 +236,13 @@ static void sfx_free_al(void)
 	}
 }
 
-void ge_sfx_free(void)
+void genie_sfx_free(void)
 {
 	if (!sfx_init)
 		return;
 	sfx_init &= ~SFX_INIT;
 
-	ge_msc_stop();
+	genie_msc_stop();
 
 	if (sfx_init & SFX_INIT_HEAP) {
 		sfx_heap_free(&sfx_heap);
@@ -240,7 +262,7 @@ void ge_sfx_free(void)
 		);
 }
 
-int ge_sfx_init(void)
+int genie_sfx_init(void)
 {
 	int error = 1;
 
@@ -278,12 +300,12 @@ fail:
 	return error;
 }
 
-int ge_msc_play(unsigned id, int loops)
+int genie_msc_play(unsigned id, int loops)
 {
 	if (genie_mode & GENIE_MODE_NOMUSIC)
 		return 0;
 
-	const char *path = ge_cdrom_get_music_path(id);
+	const char *path = genie_cdrom_get_music_path(id);
 	if (!path)
 		return 1;
 	music_chunk = Mix_LoadWAV(path);
@@ -315,7 +337,7 @@ static ALuint get_free_channel(void)
 	return al_src[free];
 }
 
-int ge_sfx_play(unsigned id)
+int genie_sfx_play(unsigned id)
 {
 	void *data;
 	size_t size;
@@ -324,7 +346,7 @@ int ge_sfx_play(unsigned id)
 	struct wave wave;
 	ALuint src;
 
-	clip = sfx_heap_get(&sfx_heap, id);
+	clip = sfx_heap_find(&sfx_heap, id);
 	if (clip)
 		goto play;
 	dbgf("sfx: fetch id=%u\n", id);
@@ -349,4 +371,9 @@ play:
 	alSourcef(src, AL_GAIN, 1.0f);
 	alSourcePlay(src);
 	return 0;
+}
+
+int genie_sfx_purge(unsigned id)
+{
+	return sfx_heap_remove(&sfx_heap, id);
 }

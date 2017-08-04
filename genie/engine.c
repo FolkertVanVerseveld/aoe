@@ -27,7 +27,7 @@
 
 #define GENIE_INIT 1
 
-static unsigned genie_init = 0;
+static unsigned engine_init = 0;
 unsigned genie_mode = 0;
 
 static int has_wine = 0;
@@ -74,29 +74,29 @@ static char file_abs_path[4096];
  */
 static void genie_cleanup(void)
 {
-	if (!genie_init)
+	if (!engine_init)
 		return;
 
-	ge_sfx_free();
+	genie_sfx_free();
 	genie_gfx_free();
 	genie_ui_free(&genie_ui);
 	dmap_list_free();
-	ge_cdrom_free();
+	genie_cdrom_free();
 
-	genie_init &= ~GENIE_INIT;
+	engine_init &= ~GENIE_INIT;
 
-	if (genie_init)
+	if (engine_init)
 		warnx(
 			"%s: expected state to be zero, but got %d",
-			__func__, genie_init
+			__func__, engine_init
 		);
 
-	genie_init = 0;
+	engine_init = 0;
 }
 
 #define hasopt(x,a,b) (!strcasecmp(x, a b) || !strcasecmp(x, a "_" b) || !strcasecmp(x, a " " b))
 
-static int ge_parse_opt_legacy(int argp, int argc, char *argv[])
+static int parse_opt_legacy(int argp, int argc, char *argv[])
 {
 	for (; argp < argc; ++argp) {
 		const char *arg = argv[argp];
@@ -138,7 +138,7 @@ static int ge_parse_opt_legacy(int argp, int argc, char *argv[])
 	return argp;
 }
 
-int ge_print_options(char *str, size_t size)
+static int print_options(char *str, size_t size)
 {
 	size_t n, max = size - 1;
 	if (!size)
@@ -169,7 +169,7 @@ int ge_print_options(char *str, size_t size)
 /**
  * \brief Process command options and return index to first non-parsed argument
  */
-static int ge_parse_opt(int argc, char *argv[], unsigned options)
+static int parse_opt(int argc, char *argv[], unsigned options)
 {
 	const char *game_title;
 	int c, option_index;
@@ -194,10 +194,8 @@ static int ge_parse_opt(int argc, char *argv[], unsigned options)
 			break;
 		case 'r':
 			root_path = strdup(optarg);
-			if (!root_path) {
-				fputs("Out of memory", stderr);
-				exit(1);
-			}
+			if (!root_path)
+				show_oem(1);
 			break;
 		default:
 			fprintf(stderr, "Unknown option: 0%o (%c)\n", c, c);
@@ -205,22 +203,22 @@ static int ge_parse_opt(int argc, char *argv[], unsigned options)
 		}
 	}
 
-	if (options & GE_INIT_LEGACY_OPTIONS)
-		optind = ge_parse_opt_legacy(optind, argc, argv);
+	if (options & GENIE_INIT_LEGACY_OPTIONS)
+		optind = parse_opt_legacy(optind, argc, argv);
 
 	return optind;
 }
 
-int ge_init(int argc, char **argv, const char *title, unsigned options)
+int genie_init(int argc, char **argv, const char *title, unsigned options)
 {
 	int argp;
 
-	if (genie_init) {
+	if (engine_init) {
 		warnx("%s: already initialized", __func__);
 		return 0;
 	}
 
-	genie_init |= GENIE_INIT;
+	engine_init |= GENIE_INIT;
 	genie_ui.game_title = title;
 	atexit(genie_cleanup);
 
@@ -230,10 +228,10 @@ int ge_init(int argc, char **argv, const char *title, unsigned options)
 			warn("Could not cd to \"%s\"", wd);
 	}
 
-	argp = ge_parse_opt(argc, argv, options);
+	argp = parse_opt(argc, argv, options);
 #ifdef DEBUG
 	char buf[256];
-	ge_print_options(buf, sizeof buf);
+	print_options(buf, sizeof buf);
 	printf("options = \"%s\"\n", buf);
 #endif
 	return argp;
@@ -300,7 +298,7 @@ no_wine:
 	warnx("wine executable or wine home not found, falling back to CD-ROM only");
 }
 
-int ge_main(void)
+int genie_main(void)
 {
 	int error = 1;
 
@@ -315,7 +313,7 @@ int ge_main(void)
 	}
 	try_find_wine();
 
-	error = ge_cdrom_init();
+	error = genie_cdrom_init();
 	if (error)
 		goto fail;
 
@@ -331,7 +329,7 @@ int ge_main(void)
 	if (error)
 		goto fail;
 
-	error = ge_sfx_init();
+	error = genie_sfx_init();
 	if (error)
 		goto fail;
 
@@ -341,11 +339,11 @@ fail:
 	return error;
 }
 
-const char *ge_absolute_path(const char *path)
+const char *genie_absolute_path(const char *path)
 {
 	if (has_wine_game) {
 		snprintf(file_abs_path, sizeof file_abs_path, "%s/%s/%s", home_dir, WINE_INSTALLATION_PATH, path);
 		return file_abs_path;
 	}
-	return ge_cdrom_absolute_game_path(path);
+	return genie_cdrom_absolute_game_path(path);
 }

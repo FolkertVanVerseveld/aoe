@@ -73,7 +73,7 @@ static char cdrom_abs_path[4096];
 static int audio_on_default_dir = 0;
 static int audio_on_cdrom = 0;
 
-void ge_cdrom_free(void)
+void genie_cdrom_free(void)
 {
 	if (!cdrom_init)
 		return;
@@ -302,7 +302,7 @@ static void handle_cdrom_error(int code)
 	}
 }
 
-int ge_cdrom_init(void)
+int genie_cdrom_init(void)
 {
 	int error = 1;
 
@@ -324,7 +324,7 @@ fail:
 	return error;
 }
 
-const char *ge_cdrom_get_music_path(unsigned id)
+const char *genie_cdrom_get_music_path(unsigned id)
 {
 	if (id == MSC_INVALID || id > CDROM_TRACKS)
 		return NULL;
@@ -339,7 +339,7 @@ const char *ge_cdrom_get_music_path(unsigned id)
 	return cdrom_msc_path;
 }
 
-const char *ge_cdrom_absolute_game_path(const char *path)
+const char *genie_cdrom_absolute_game_path(const char *path)
 {
 	char str[4096];
 	strncpy0(str, path, sizeof str);

@@ -17,11 +17,11 @@
 
 extern unsigned genie_mode;
 
-#define GE_INIT_LEGACY_OPTIONS 1
+#define GENIE_INIT_LEGACY_OPTIONS 1
 
-int ge_init(int argc, char **argv, const char *title, unsigned options);
-int ge_main(void);
+int genie_init(int argc, char **argv, const char *title, unsigned options);
+int genie_main(void);
 
-const char *ge_absolute_path(const char *path);
+const char *genie_absolute_path(const char *path);
 
 #endif

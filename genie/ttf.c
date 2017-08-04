@@ -17,11 +17,13 @@
 
 static int ttf_init = 0;
 
+#if 0
 static const char *ttf_paths[] = {
 	"/usr/share/fonts/truetype/msttcorefonts",
 	"/usr/share/fonts/truetype/droid",
 	NULL
 };
+#endif
 
 void genie_ttf_free(void)
 {
@@ -48,6 +50,5 @@ int genie_ttf_init(void)
 	ttf_init = TTF_INIT;
 
 	error = 0;
-fail:
 	return error;
 }

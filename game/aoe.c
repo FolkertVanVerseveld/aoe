@@ -33,8 +33,10 @@ int main(int argc, char *argv[])
 {
 	int argp;
 
-	argp = ge_init(argc, argv, TITLE, GE_INIT_LEGACY_OPTIONS);
+	(void)argp;
+
+	argp = genie_init(argc, argv, TITLE, GENIE_INIT_LEGACY_OPTIONS);
 	dmap_set_list(drs_data_list, ARRAY_SIZE(drs_data_list));
 
-	return ge_main();
+	return genie_main();
 }

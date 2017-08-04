@@ -23,6 +23,8 @@ The coding style tends to follow many principles from the linux kernel coding
 style. The best way to know how the coding style is implemented is by looking at
 the source.
 
+See also [this document](CODINGSTYLE.md) for more details.
+
 ## Libraries and dependencies
 
 These packages are required for development on Xubuntu 14:

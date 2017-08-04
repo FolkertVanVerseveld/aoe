@@ -291,6 +291,8 @@ static const char *help_toggle =
 
 static const char *help_play = "play ID: Play sound";
 
+static const char *help_purge = "purge ID: Force unload sound";
+
 static const char *cmd_next_arg(const char *str)
 {
 	const unsigned char *ptr = (const unsigned char*)str;
@@ -396,7 +398,16 @@ static void console_run(struct console *c, char *str)
 			return;
 		}
 		if (num < 65536)
-			ge_sfx_play(num);
+			genie_sfx_play(num);
+	} else if (strsta(str, "purge")) {
+		const char *arg = cmd_next_arg(str);
+		uint64_t num, dummy;
+		if (!arg || parse_address(arg, &num, &dummy)) {
+			console_puts(c, help_purge);
+			return;
+		}
+		if (num < 65536)
+			genie_sfx_purge(num);
 	} else {
 unknown:
 		snprintf(text, sizeof text, "Unknown command: \"%s\"\nType `help' for help", str);
@@ -448,7 +459,7 @@ static void menu_key_down(struct genie_ui *ui, SDL_Event *ev)
 	case ' ':
 		menu_nav_down(nav, MENU_KEY_SELECT);
 		ui->menu_press = 1;
-		ge_sfx_play(SFX_MENU_BUTTON);
+		genie_sfx_play(SFX_MENU_BUTTON);
 		break;
 	case '`':
 		ui->console_show = 1;
