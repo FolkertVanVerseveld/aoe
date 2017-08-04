@@ -1,9 +1,0 @@
-#!/bin/bash
-# game and tools depend on genie
-# this is a quick hack to get it to make in parallel.
-cores=8
-if (( $# >= 1 )); then
-	cores="$0"
-fi
-make -j"$cores" genie
-make -j"$cores" game

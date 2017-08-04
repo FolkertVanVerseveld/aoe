@@ -12,18 +12,8 @@ case "$mode" in
 	release) opts="-O2 -ffast-math" ;;
 esac
 dir='genie game'
-cat <<EOF >Makefile
-.PHONY: default clean $dir
-
-default: $dir
-EOF
 for i in $dir; do
-	printf '%s:\n\tcd %s && $(MAKE) && cd ..\n' "$i" "$i" >>Makefile
 	pushd "$i" >/dev/null
 	./configure $opts
 	popd >/dev/null
-done
-printf 'clean:\n' >>Makefile
-for i in $dir; do
-	printf '\tcd %s && $(MAKE) clean && cd ..\n' "$i" >>Makefile
 done

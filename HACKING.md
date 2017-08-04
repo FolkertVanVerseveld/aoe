@@ -53,15 +53,7 @@ make        | GNU make utility to maintain groups of programs
 In tools/ we have provided multiple freestanding programs that inspect the
 original data files and make porting the game a lot easier.
 
-These tools include:
-
-Name    | Purpose
---------|-------------------------------------------------------------------
-convert | Dump binary compatible source file
-pestat  | Dump standard portable executable members and parameters
-drs     | Dump assets while traversing a data resource set(=drs)
-str     | Extract strings as ASCII data ignoring file format or empty strings
-rsrc    | Fetches string data from portable executables
+See [this readme](tools/README.md) for more details.
 
 # Reverse engineering
 
