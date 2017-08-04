@@ -5,5 +5,5 @@ cores=8
 if (( $# >= 1 )); then
 	cores="$0"
 fi
-make genie
-make -j"$cores"
+make -j"$cores" genie
+make -j"$cores" game

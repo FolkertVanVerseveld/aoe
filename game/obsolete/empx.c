@@ -15,7 +15,7 @@
 #include "empx.h"
 #include "engine.h"
 #include "config.h"
-#include "configure.h"
+#include "../configure.h"
 #include "game.h"
 #include "langx.h"
 #include <genie/dmap.h>

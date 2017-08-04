@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "../genie/drs.c"
+#include "../../genie/drs.c"
 
 #define startline(str,match) (!strncmp(str,match,strlen(match)))
 

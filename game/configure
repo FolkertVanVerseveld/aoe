@@ -5,7 +5,7 @@ DEP=${DEP:-no}
 CC=gcc
 LD=ld
 cstd='-std=gnu99'
-CFLAGS="-Wall -Wextra -pedantic $cstd -I../"
+CFLAGS="-Wall -Wextra -pedantic $cstd -I../genie/include"
 hasmidi=no
 libs='sdl2 gl openal'
 sf_dir=

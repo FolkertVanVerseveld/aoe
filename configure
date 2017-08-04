@@ -11,7 +11,7 @@ case "$mode" in
 	debug) opts="-g -DDEBUG $opts" ;;
 	release) opts="-O2 -ffast-math" ;;
 esac
-dir='genie game tools'
+dir='genie game'
 cat <<EOF >Makefile
 .PHONY: default clean $dir
 

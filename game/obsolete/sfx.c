@@ -4,7 +4,7 @@
 #include <genie/dbg.h>
 #include <genie/todo.h>
 #include <genie/prompt.h>
-#include "configure.h"
+#include "../configure.h"
 #include <AL/alc.h>
 #include <AL/al.h>
 #include <stdio.h>
