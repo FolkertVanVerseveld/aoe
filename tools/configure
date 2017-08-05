@@ -3,7 +3,7 @@
 CC=gcc
 cstd='-std=gnu99'
 CFLAGS="-Wall -Wextra -pedantic $cstd -I../ $*"
-libs='ncurses openal'
+libs='ncurses openal libpng'
 INCS=
 if ! hash pkg-config 2>/dev/null; then
 	echo "pkg-config is missing" 1>&2
