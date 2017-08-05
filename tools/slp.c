@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <err.h>
+
 #include <png.h>
 
 struct palette {
@@ -119,7 +121,111 @@ static struct slp_frame_info *get_frame(const void *data, unsigned frame);
 static void slp_frame_info_dump(const struct slp_frame_info *f, const void *data);
 static uint32_t *get_cmd(const void *data, uint32_t pos);
 
-static int write_frame(png_structp png, const struct slp_frame_info *f, const void *data, unsigned width, unsigned height)
+#define CMD_LESS_BLK_CPY0 0x00
+#define CMD_LESS_BLK_CPY1 0x04
+#define CMD_LESS_BLK_CPY2 0x08
+#define CMD_LESS_BLK_CPY3 0x0c
+
+#define CMD_LESS_SKIP0 0x01
+#define CMD_LESS_SKIP1 0x05
+#define CMD_LESS_SKIP2 0x09
+#define CMD_LESS_SKIP3 0x0D
+
+#define CMD_GREAT_BLK_CPY 0x02
+
+#define CMD_EOL 0x0F
+
+static void row_set_pixel(png_bytep row, const struct palette *p, unsigned x, unsigned id)
+{
+	uint32_t rgba = p->table[id];
+	row[4 * x + 0] = (rgba >> 24) & 0xff;
+	row[4 * x + 1] = (rgba >> 16) & 0xff;
+	row[4 * x + 2] = (rgba >> 8) & 0xff;
+	row[4 * x + 3] = 0xff;
+}
+
+static void less_blk_cpy(png_bytep row, const struct palette *p, const uint8_t **cmd, unsigned *x)
+{
+	const uint8_t *ptr = *cmd;
+	unsigned pos = *x;
+
+	switch (*ptr & 0xf) {
+	case CMD_LESS_BLK_CPY0:
+		++ptr;
+		*x = pos + 1;
+		break;
+	case CMD_LESS_BLK_CPY1:
+		row_set_pixel(row, p, pos + 0, ptr[1]);
+		ptr += 2;
+		*x = pos + 1;
+		break;
+	case CMD_LESS_BLK_CPY2:
+		row_set_pixel(row, p, pos + 0, ptr[1]);
+		row_set_pixel(row, p, pos + 1, ptr[2]);
+		ptr += 3;
+		*x = pos + 2;
+		break;
+	case CMD_LESS_BLK_CPY3:
+		row_set_pixel(row, p, pos + 0, ptr[1]);
+		row_set_pixel(row, p, pos + 1, ptr[2]);
+		row_set_pixel(row, p, pos + 2, ptr[3]);
+		ptr += 4;
+		*x = pos + 3;
+		break;
+	}
+
+	*cmd = ptr;
+}
+
+static void great_blk_cpy(png_bytep row, const struct palette *p, const uint8_t **cmd, unsigned *x)
+{
+	const uint8_t *ptr = *cmd;
+	unsigned pos = *x;
+
+	unsigned sub = *ptr & 0xf0;
+
+	unsigned n = (sub << 4) + ptr[1];
+
+	printf("sub = %X, ptr[1] = %X, n = %u\n", sub, ptr[1], n);
+
+	++ptr;
+	*x = pos + 1;
+	*cmd = ptr;
+}
+
+static void less_skip(png_bytep row, const struct palette *p, const uint8_t **cmd, unsigned *x)
+{
+	const uint8_t *ptr = *cmd;
+	unsigned n, pos = *x;
+
+	switch (*ptr & 0xf) {
+	case CMD_LESS_SKIP0:
+		/* pixel count is in next byte */
+		for (n = ptr[1]; n; --n)
+			row[4 * (pos + n) + 3] = 0;
+		*x = pos + n + 1;
+		break;
+	case CMD_LESS_SKIP1:
+		row[4 * pos + 3] = 0;
+		*x = pos + 1;
+		break;
+	case CMD_LESS_SKIP2:
+		row[4 * pos + 3] = 0;
+		row[4 * pos + 7] = 0;
+		*x = pos + 2;
+		break;
+	case CMD_LESS_SKIP3:
+		row[4 * pos + 3] = 0;
+		row[4 * pos + 7] = 0;
+		row[4 * pos + 11] = 0;
+		*x = pos + 3;
+		break;
+	}
+
+	*cmd = ++ptr;
+}
+
+static int write_frame(png_structp png, const struct palette *pal, const struct slp_frame_info *f, const void *data, unsigned width, unsigned height)
 {
 	int retval = 1;
 	png_bytep row = NULL;
@@ -132,28 +238,55 @@ static int write_frame(png_structp png, const struct slp_frame_info *f, const vo
 		fputs("out of memory\n", stderr);
 		goto fail;
 	}
-	unsigned y, x;
+	unsigned y, x, xp;
 	const uint32_t *cmdaddr = get_cmd(data, f->ctbladdr);
 	for (y = 0; y < height; ++y, ++slp_row, ++cmdaddr) {
 		printf("%5" PRId32 ": %5" PRIx32 "\n", y, *cmdaddr);
-		x = 0;
-		for (; x < slp_row->left; ++x) {
+		for (x = 0; x < width; ++x) {
 			row[4 * x + 0] = 0;
 			row[4 * x + 1] = 0;
 			row[4 * x + 2] = 0;
 			row[4 * x + 3] = 0;
 		}
-		for (; x < slp_row->right; ++x) {
-			row[4 * x + 0] = 0xff;
-			row[4 * x + 1] = 0xff;
-			row[4 * x + 2] = 0xff;
-			row[4 * x + 3] = 0xff;
-		}
-		for (; x < width; ++x) {
-			row[4 * x + 0] = 0;
-			row[4 * x + 1] = 0;
-			row[4 * x + 2] = 0;
-			row[4 * x + 3] = 0;
+		const uint8_t *cmd = (const uint8_t*)data + *cmdaddr;
+		for (x = slp_row->left, xp = width - slp_row->right; x < xp;) {
+			row[4 * x + 3] = 0xff; /* FIXME remove when cmd switch completed */
+			#if 1
+			switch (*cmd & 0xf) {
+			case CMD_LESS_BLK_CPY0:
+			case CMD_LESS_BLK_CPY1:
+			case CMD_LESS_BLK_CPY2:
+			case CMD_LESS_BLK_CPY3:
+				printf("cpy %hhu\n", *cmd & 0xf);
+				less_blk_cpy(row, pal, &cmd, &x);
+				break;
+			case CMD_LESS_SKIP0:
+			case CMD_LESS_SKIP1:
+			case CMD_LESS_SKIP2:
+			case CMD_LESS_SKIP3:
+				printf("skip %hhu\n", *cmd & 0xf);
+				less_skip(row, pal, &cmd, &x);
+				break;
+			case CMD_GREAT_BLK_CPY:
+				printf("big cpy %hhu\n", *cmd & 0xf);
+				great_blk_cpy(row, pal, &cmd, &x);
+				break;
+			default:
+				#if 1
+				fprintf(stderr, "ignore cmd: %02hhX\n", *cmd & 0xf);
+				//x = width - slp_row->right;
+				++x;
+				#else
+				//errx(1, "bad cmd: %02hhX", *cmd & 0xf);
+				#endif
+				break;
+			case CMD_EOL:
+				++x;
+				break;
+			}
+			#else
+			++x;
+			#endif
 		}
 		png_write_row(png, row);
 	}
@@ -164,7 +297,7 @@ fail:
 	return retval;
 }
 
-static int write_slp_png(unsigned f_id, const void *data)
+static int write_slp_png(unsigned f_id, const void *data, const struct palette *pal)
 {
 	int retval = 1;
 	FILE *f = NULL;
@@ -218,7 +351,7 @@ static int write_slp_png(unsigned f_id, const void *data)
 		png_set_text(png, info, &title_text, 1);
 	}
 	png_write_info(png, info);
-	if (write_frame(png, frame, data, width, height)) {
+	if (write_frame(png, pal, frame, data, width, height)) {
 		fputs("slp: bad frame\n", stderr);
 		goto fail;
 	}
@@ -266,12 +399,12 @@ static void slp_frame_info_dump(const struct slp_frame_info *f, const void *data
 	printf("hotspot x: %" PRId32 "\n", f->hsx);
 	printf("hotspot y: %" PRId32 "\n", f->hsy);
 
-#if 0
 	const struct slp_row *row = get_row(data, f->otbladdr);
 	for (uint32_t i = 0, n = f->height; i < n; ++i, ++row) {
 		printf("%5" PRId32 ": %5" PRIu16 ",%5" PRIu16 "\n", i, row->left, row->right);
 	}
 
+#if 0
 	const uint32_t *cmd = get_cmd(data, f->ctbladdr);
 	for (uint32_t i = 0; i < f->height; ++i, ++cmd)
 		printf("%5" PRId32 ": %5" PRIx32 "\n", i, *cmd);
@@ -336,7 +469,7 @@ int main(int argc, char **argv)
 		fputs("bad slp file\n", stderr);
 		goto fail;
 	}
-	retval = write_slp_png(0, data);
+	retval = write_slp_png(0, data, &pal);
 	if (retval) {
 		fputs("could not extract image\n", stderr);
 		goto fail;

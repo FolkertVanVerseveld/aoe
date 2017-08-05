@@ -32,7 +32,7 @@ ID        type description
    12    model ??
    13    model ??
    15    model ??
-   16    model ??
+   16    model academy base
    17    model ??
    18    model ??
    19    model ??
@@ -50,7 +50,7 @@ ID        type description
    31    model ??
    32    model ??
    33    model ??
-   34    model ??
+   34    model academy player
    35    model ??
    36    model ??
    37    model ??
@@ -244,7 +244,7 @@ ID        type description
   240    model ??
   241    model ??
   242    model ??
-  243    model ??
+  243    model missile arrow
   244    model ??
   245    model ??
   246    model ??
@@ -408,11 +408,11 @@ ID        type description
   409    model ??
   410    model ??
   412    model ??
-  413    model ??
-  414    model ??
+  413    model bowman
+  414    model improved bowman
   415    model ??
   416    model ??
-  417    model ??
+  417    model ballista
   418    model ??
   419    model ??
   420    model ??
@@ -428,13 +428,13 @@ ID        type description
   430    model ??
   431    model ??
   432    model ??
-  433    model ??
+  433    model alligator
   434    model ??
   435    model ??
   436    model ??
   437    model ??
   438    model ??
-  439    model ??
+  439    model composite bowman
   440    model ??
   441    model ??
   442    model ??
