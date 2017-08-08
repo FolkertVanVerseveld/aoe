@@ -159,7 +159,7 @@ ID        type description
   152    model ??
   153    model ??
   154    model ??
-  155    model ??
+  155    model building destroy base
   156    model ??
   157    model ??
   159    model ??
@@ -204,11 +204,11 @@ ID        type description
   200    model ??
   201    model ??
   202    model ??
-  203    model ??
-  204    model ??
+  203    model bowman attack
+  204    model improved bowman attack
   205    model ??
   206    model ??
-  207    model ??
+  207    model ballista attack
   208    model ??
   209    model ??
   210    model ??
@@ -218,19 +218,19 @@ ID        type description
   214    model ??
   215    model ??
   216    model ??
-  217    model ??
+  217    model alligator attack
   218    model ??
   219    model ??
   220    model ??
   221    model ??
   222    model ??
-  223    model ??
+  223    model composite bowman attack
   224    model ??
   225    model ??
   226    model ??
   227    model ??
   228    model ??
-  229    model ??
+  229    model barracks base
   230    model ??
   231    model ??
   232    model ??
@@ -247,21 +247,21 @@ ID        type description
   243    model missile arrow
   244    model ??
   245    model ??
-  246    model ??
+  246    model discovery
   247    model ??
   248    model ??
   249    model ??
   250    model ??
   252    model ??
   253    model ??
-  254    model ??
+  254    model barracks player
   255    model ??
   256    model ??
   257    model ??
   258    model ??
   259    model ??
   260    model ??
-  261    model ??
+  261    model medium building construction
   262    model ??
   263    model ??
   264    model ??
@@ -307,12 +307,12 @@ ID        type description
   305    model ??
   306    model ??
   307    model ??
-  308    model ??
-  309    model ??
+  308    model bowman die
+  309    model improved bowman die
   310    model ??
   311    model ??
   312    model ??
-  313    model ??
+  313    model ballista die
   314    model ??
   315    model ??
   316    model ??
@@ -328,14 +328,14 @@ ID        type description
   326    model ??
   327    model ??
   328    model ??
-  330    model ??
+  330    model alligator die
   331    model ??
   332    model ??
   333    model ??
   334    model ??
   335    model ??
   336    model ??
-  337    model ??
+  337    model composite bowman die
   338    model ??
   339    model ??
   340    model ??
@@ -406,13 +406,13 @@ ID        type description
   406    model ??
   407    model ??
   409    model ??
-  410    model ??
+  410    model building destroy smoke
   412    model ??
-  413    model bowman
-  414    model improved bowman
+  413    model bowman stand
+  414    model improved bowman stand
   415    model ??
   416    model ??
-  417    model ballista
+  417    model ballista stand
   418    model ??
   419    model ??
   420    model ??
@@ -428,13 +428,13 @@ ID        type description
   430    model ??
   431    model ??
   432    model ??
-  433    model alligator
+  433    model alligator stand
   434    model ??
   435    model ??
   436    model ??
   437    model ??
   438    model ??
-  439    model composite bowman
+  439    model composite bowman stand
   440    model ??
   441    model ??
   442    model ??
@@ -467,7 +467,7 @@ ID        type description
   470    model ??
   471    model ??
   472    model ??
-  473    model ??
+  473    model fishing boat stand
   474    model ??
   475    model ??
   477    model ??
@@ -640,11 +640,11 @@ ID        type description
   649    model ??
   650    model ??
   651    model ??
-  652    model ??
-  653    model ??
+  652    model bowman walk
+  653    model improved bowman walk
   654    model ??
   655    model ??
-  656    model ??
+  656    model ballista walk
   657    model ??
   658    model ??
   659    model ??
@@ -661,7 +661,7 @@ ID        type description
   670    model ??
   671    model ??
   672    model ??
-  673    model ??
+  673    model alligator walk
   674    model ??
   675    model ??
   676    model ??
@@ -669,7 +669,7 @@ ID        type description
   678    model ??
   679    model ??
   680    model ??
-  681    model ??
+  681    model composite bowman walk
   682    model ??
   683    model ??
   684    model ??
@@ -890,7 +890,7 @@ audio: 144
 ID        type description
  5000    audio burning
  5002    audio academy
- 5003    audio gazelle die
+ 5003    audio gazelle die / alligator die
  5004    audio villager task
  5005    audio villager assign hunting
  5006    audio villager assign move
@@ -958,7 +958,7 @@ ID        type description
  5084    audio spear throw
  5085    audio villager gather food bush
  5092    audio horse assign move
- 5093    audio ??
+ 5093    audio alligator attack
  5096    audio ganary
  5100    audio jason attack
  5102    audio jason die
