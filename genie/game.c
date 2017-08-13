@@ -49,6 +49,7 @@ int genie_game_main(struct genie_game *g)
 	int error = 1;
 
 	g->running = 1;
+	genie_game_show(g);
 	genie_ui_display(g->ui);
 
 	error = game_init(g);
@@ -77,4 +78,14 @@ int genie_game_main(struct genie_game *g)
 end:
 	game_free(g);
 	return error;
+}
+
+void genie_game_hide(struct genie_game *this)
+{
+	genie_ui_hide(this->ui);
+}
+
+void genie_game_show(struct genie_game *this)
+{
+	genie_ui_show(this->ui);
 }

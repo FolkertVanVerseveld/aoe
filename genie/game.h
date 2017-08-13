@@ -15,6 +15,8 @@ struct genie_game {
 extern struct genie_game genie_game;
 
 void genie_game_init(struct genie_game*, struct genie_ui*);
+void genie_game_hide(struct genie_game*);
+void genie_game_show(struct genie_game*);
 int genie_game_main(struct genie_game*);
 
 #endif

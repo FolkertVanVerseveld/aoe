@@ -546,3 +546,19 @@ struct menu_nav *genie_ui_menu_peek(const struct genie_ui *ui)
 
 	return i ? ui->stack[i - 1] : NULL;
 }
+
+void genie_ui_hide(struct genie_ui *ui)
+{
+	SDL_HideWindow(ui->win);
+}
+
+void genie_ui_show(struct genie_ui *ui)
+{
+	SDL_ShowWindow(ui->win);
+	genie_ui_raise(ui);
+}
+
+void genie_ui_raise(struct genie_ui *ui)
+{
+	SDL_RaiseWindow(ui->win);
+}

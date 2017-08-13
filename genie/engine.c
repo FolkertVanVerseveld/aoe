@@ -31,6 +31,7 @@
 
 static unsigned engine_init = 0;
 unsigned genie_mode = 0;
+unsigned genie_video_mode = 0;
 
 static int has_wine = 0;
 static int has_wine_dir = 0;
@@ -122,8 +123,16 @@ static int parse_opt_legacy(int argp, int argc, char *argv[])
 			genie_mode |= GENIE_MODE_1024_768;
 		else if (hasopt(arg, "no", "music"))
 			genie_mode |= GENIE_MODE_NOMUSIC;
+		else if (hasopt(arg, "no", "video"))
+			genie_mode |= GENIE_MODE_NOVIDEO;
+		else if (hasopt(arg, "no", "intro"))
+			genie_video_mode |= GENIE_VIDEO_MODE_NOINTRO;
+		else if (hasopt(arg, "no", "logo"))
+			genie_video_mode |= GENIE_VIDEO_MODE_NOLOGO;
 		else if (hasopt(arg, "normal", "mouse"))
 			genie_mode |= GENIE_MODE_NMOUSE;
+		else if (!strcmp(arg, "grpintro"))
+			genie_video_mode |= GENIE_VIDEO_MODE_GRPINTRO;
 		else if (!strcasecmp(arg, "no") && argp + 1 < argc) {
 			arg = argv[argp + 1];
 			if (!strcasecmp(arg, "startup"))
@@ -132,6 +141,12 @@ static int parse_opt_legacy(int argp, int argc, char *argv[])
 				genie_mode |= GENIE_MODE_NOSOUND;
 			else if (!strcasecmp(arg, "music"))
 				genie_mode |= GENIE_MODE_NOMUSIC;
+			else if (!strcasecmp(arg, "video"))
+				genie_mode |= GENIE_MODE_NOVIDEO;
+			else if (!strcasecmp(arg, "intro"))
+				genie_video_mode |= GENIE_VIDEO_MODE_NOINTRO;
+			else if (!strcasecmp(arg, "logo"))
+				genie_video_mode |= GENIE_VIDEO_MODE_NOLOGO;
 			else
 				break;
 		} else
@@ -336,6 +351,7 @@ int genie_main(void)
 		goto fail;
 
 	genie_game_init(&genie_game, &genie_ui);
+	genie_game_hide(&genie_game);
 	genie_play_intro();
 	error = genie_game_main(&genie_game);
 fail:

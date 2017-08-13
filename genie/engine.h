@@ -14,11 +14,17 @@
 #define GENIE_MODE_1024_768  256
 #define GENIE_MODE_NOMUSIC   512
 #define GENIE_MODE_NMOUSE   1024
+#define GENIE_MODE_NOVIDEO  2048
+
+#define GENIE_VIDEO_MODE_NOINTRO   1
+#define GENIE_VIDEO_MODE_NOLOGO    2
+#define GENIE_VIDEO_MODE_GRPINTRO  4
 
 #include <stddef.h>
 #include "include/genie/engine.h"
 
 extern unsigned genie_mode;
+extern unsigned genie_video_mode;
 
 const char *genie_absolute_path(const char *path);
 const char *genie_avi_path(char *str, size_t size, const char *path);

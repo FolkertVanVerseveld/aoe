@@ -105,9 +105,9 @@ static void sfx_heap_sift(struct sfx_heap *h, unsigned i)
 	m = i;
 	size = h->count;
 
-	if (l < size && h->clips[i].res_id < h->clips[i].res_id)
+	if (l < size && h->clips[l].res_id < h->clips[m].res_id)
 		m = l;
-	if (r < size && h->clips[i].res_id < h->clips[i].res_id)
+	if (r < size && h->clips[r].res_id < h->clips[m].res_id)
 		m = r;
 
 	if (m != i) {
@@ -168,7 +168,7 @@ static int sfx_heap_remove(struct sfx_heap *h, unsigned id)
 	unsigned i = sfx_heap_get(h, id);
 	if (i >= h->capacity)
 		return -1;
-	h->clips[i].res_id = INT_MIN;
+	h->clips[i].res_id = 0;
 
 	sfx_heap_siftup(h, i);
 	h->clips[0] = h->clips[--h->count];
