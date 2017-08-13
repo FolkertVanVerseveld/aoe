@@ -10,15 +10,9 @@ You can build the game and the tools using:
 
 Or if you prefer running it in parallel:
 
-  ./configure && ./make_parallel
-
-If your genie/ build is up to date, you can also make it in parallel using:
-
   ./configure && make -j8
 
-Where `-j8' means `use 8 cores'. Normally, we should not have to provide a make
-parallel script, but at the moment we are not sure how to fix this properly.
-This workaround should be sufficient for now, albeit a bit clumsy.
+Where `-j8' means `use 8 cores'.
 
 INSTALLING THE GAME
 
@@ -28,10 +22,10 @@ clicking it or starting it from a shell/terminal/whatever you prefer.
 
 INSTALLATION RECIPIES
 
-Xubuntu 14:
+Xubuntu 14 and Xubuntu 16:
 
-This project has been built primarly on a Xubuntu 14 machine. You can install
-the packages using:
+This project has been built primarly on Xubuntu 14 and 16. You can install the
+packages using:
 
 $ sudo -s
 # apt-get update
