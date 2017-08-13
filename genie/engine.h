@@ -15,10 +15,12 @@
 #define GENIE_MODE_NOMUSIC   512
 #define GENIE_MODE_NMOUSE   1024
 
+#include <stddef.h>
 #include "include/genie/engine.h"
 
 extern unsigned genie_mode;
 
 const char *genie_absolute_path(const char *path);
+const char *genie_avi_path(char *str, size_t size, const char *path);
 
 #endif

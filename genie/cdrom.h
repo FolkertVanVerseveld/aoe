@@ -12,9 +12,13 @@
 #ifndef GENIE_CDROM_H
 #define GENIE_CDROM_H
 
+#include <stddef.h>
+
 void genie_cdrom_free(void);
 int genie_cdrom_init(void);
 const char *genie_cdrom_get_music_path(unsigned id);
 const char *genie_cdrom_absolute_game_path(const char *path);
+const char *genie_cdrom_absolute_game_path(const char *path);
+void genie_cdrom_avi_path(char *str, size_t size, const char *file);
 
 #endif

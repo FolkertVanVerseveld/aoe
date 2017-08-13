@@ -22,6 +22,8 @@
 #include "sfx.h"
 #include "game.h"
 #include "prompt.h"
+#include "string.h"
+#include "video.h"
 
 #define WINE_INSTALLATION_PATH ".wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires"
 
@@ -334,6 +336,7 @@ int genie_main(void)
 		goto fail;
 
 	genie_game_init(&genie_game, &genie_ui);
+	genie_play_intro();
 	error = genie_game_main(&genie_game);
 fail:
 	return error;
@@ -346,4 +349,18 @@ const char *genie_absolute_path(const char *path)
 		return file_abs_path;
 	}
 	return genie_cdrom_absolute_game_path(path);
+}
+
+const char *genie_avi_path(char *str, size_t size, const char *path)
+{
+	char file[80];
+	strncpy0(file, path, sizeof file);
+	if (has_wine_game) {
+		strupper(file);
+		snprintf(str, size, "%s/%s/avi/%s", home_dir, WINE_INSTALLATION_PATH, file);
+		return str;
+	}
+	strlower(file);
+	genie_cdrom_avi_path(str, size, file);
+	return str;
 }

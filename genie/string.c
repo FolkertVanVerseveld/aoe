@@ -64,3 +64,15 @@ int parse_address(const char *str, uint64_t *address, uint64_t *mask)
 	*address = v;
 	return 0;
 }
+
+void strupper(char *str)
+{
+	for (unsigned char *ptr = str; *ptr; ++ptr)
+		*ptr = toupper(*ptr);
+}
+
+void strlower(char *str)
+{
+	for (unsigned char *ptr = str; *ptr; ++ptr)
+		*ptr = tolower(*ptr);
+}
