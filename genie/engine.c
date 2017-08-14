@@ -39,7 +39,7 @@ static int has_wine_game = 0;
 
 static const char *home_dir = NULL;
 
-char *root_path = NULL;
+static char *root_path = NULL;
 
 static const char *version_info =
 	"commit: " GENIE_GIT_SHA "\n"
@@ -330,7 +330,7 @@ int genie_main(void)
 	}
 	try_find_wine();
 
-	error = genie_cdrom_init();
+	error = genie_cdrom_init(root_path);
 	if (error)
 		goto fail;
 

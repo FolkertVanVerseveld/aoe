@@ -9,6 +9,7 @@
 void strmerge(char **dest, const char *str1, const char *str2);
 char *strncpy0(char *dest, const char *src, size_t n);
 int strsta(const char *haystack, const char *needle);
+int strstasplit(char **haystack, const char *needle);
 int parse_address(const char *str, uint64_t *address, uint64_t *mask);
 void strupper(char *str);
 void strlower(char *str);

@@ -76,3 +76,21 @@ void strlower(char *str)
 	for (unsigned char *ptr = (unsigned char*)str; *ptr; ++ptr)
 		*ptr = tolower(*ptr);
 }
+
+int strstasplit(char **haystack, const char *needle)
+{
+	int retval = 1;
+	char *ptr = *haystack;
+
+	while (*ptr && !isspace((unsigned char)*ptr))
+		++ptr;
+	if (!ptr || !strsta(ptr, needle))
+		goto fail;
+	*ptr = '\0';
+	ptr += strlen(needle);
+
+	retval = 0;
+fail:
+	*haystack = ptr;
+	return retval;
+}

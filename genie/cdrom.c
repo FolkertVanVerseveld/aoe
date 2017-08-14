@@ -105,36 +105,17 @@ static int set_cdrom_root(char *mount_str)
 
 	strncpy0(mount_cdrom, mount_str, sizeof mount_cdrom);
 
-	for (ptr = mount_cdrom; *ptr && !isspace(*ptr);)
-		++ptr;
-	if (!ptr)
+	ptr = mount_cdrom;
+	if (strstasplit(&ptr, " on "))
 		return 1;
-	if (!strsta(ptr, " on "))
-		return 1;
-	*ptr = '\0';
 	dev = mount_cdrom;
-
-	ptr += strlen(" on ");
 	dir = ptr;
 
-	while (*ptr && !isspace(*ptr))
-		++ptr;
-	if (!ptr)
+	if (strstasplit(&ptr, " type "))
 		return 1;
-	if (!strsta(ptr, " type "))
-		return 1;
-	*ptr = '\0';
-
-	ptr += strlen(" type ");
 	type = ptr;
-
-	while (*ptr && !isspace(*ptr))
-		++ptr;
-	if (!strsta(ptr, " ("))
+	if (strstasplit(&ptr, " ("))
 		return 1;
-	*ptr = '\0';
-
-	ptr += strlen(" (");
 	options = ptr;
 
 	if (!(ptr = strchr(ptr, ')')))
@@ -142,14 +123,11 @@ static int set_cdrom_root(char *mount_str)
 	*ptr++ = '\0';
 
 	if ((ptr = strchr(ptr, '[')) != NULL) {
-		char *end;
-
 		puts(ptr);
 
-		end = strrchr(ptr, ']');
+		char *end = strrchr(ptr, ']');
 		if (!end)
 			return 1;
-
 		*end = '\0';
 		label = ptr + 1;
 	}
@@ -189,12 +167,29 @@ static int cdrom_fsck(void)
 #define ERR_CDROM_FSCK 3
 #define ERR_CDROM_UNKNOWN 4
 
-static int cdrom_is_mounted(void)
+static int cdrom_is_mounted(const char *root_path)
 {
 	char buf[4096];
-	FILE *p;
+	FILE *p = NULL;
 	size_t n;
 	int error = ERR_CDROM_NODRIVE;
+
+	/* Don't scan CD-ROMs if user specified custom path */
+	if (root_path && *root_path) {
+		cdrom_dir = root_path;
+		/* use dummy values */
+		cdrom_dev = "/";
+		cdrom_type = cdrom_options = cdrom_label = "";
+		cdrom_gvfs_dir[0] = '\0';
+		cdrom_msc_path[0] = '\0';
+		cdrom_abs_path[0] = '\0';
+
+		if (!cdrom_fsck()) {
+			error = ERR_CDROM_FSCK;
+			goto fail;
+		} else
+			goto end;
+	}
 
 	p = popen("/bin/mount -l", "r");
 	if (!p) {
@@ -302,7 +297,7 @@ static void handle_cdrom_error(int code)
 	}
 }
 
-int genie_cdrom_init(void)
+int genie_cdrom_init(const char *root_path)
 {
 	int error = 1;
 
@@ -312,7 +307,7 @@ int genie_cdrom_init(void)
 	}
 	cdrom_init = CDROM_INIT;
 
-	error = cdrom_is_mounted();
+	error = cdrom_is_mounted(root_path);
 	if (error) {
 		handle_cdrom_error(error);
 		goto fail;

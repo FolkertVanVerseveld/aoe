@@ -15,7 +15,7 @@
 #include <stddef.h>
 
 void genie_cdrom_free(void);
-int genie_cdrom_init(void);
+int genie_cdrom_init(const char *root_path);
 const char *genie_cdrom_get_music_path(unsigned id);
 const char *genie_cdrom_absolute_game_path(const char *path);
 const char *genie_cdrom_absolute_game_path(const char *path);

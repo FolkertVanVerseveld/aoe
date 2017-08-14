@@ -23,6 +23,7 @@ static int has_vlc = 0;
 static int video_init = 0;
 
 #define VLC_PATH "/usr/bin/cvlc"
+#define VLC_OPTIONS "--fullscreen --play-and-exit --no-video-title-show"
 
 static const char *video_start_list[] = {"logo1", "logo2", "intro", NULL};
 static const char **video_start_nointro_list = video_start_list + 2;
@@ -77,7 +78,7 @@ int genie_video_play(const char *name)
 	if (retval)
 		return retval;
 
-	snprintf(cmd, sizeof cmd, "%s --fullscreen --play-and-exit --no-video-title-show \"%s\"", VLC_PATH, path);
+	snprintf(cmd, sizeof cmd, "%s %s \"%s\"", VLC_PATH, VLC_OPTIONS, path);
 	return genie_system(cmd);
 }
 
@@ -102,7 +103,7 @@ static int genie_video_play_list(const char **list)
 	if (genie_mode & GENIE_MODE_NOVIDEO)
 		return 0;
 
-	n = snprintf(cmd, sizeof cmd, "%s --fullscreen --play-and-exit --no-video-title-show", VLC_PATH);
+	n = snprintf(cmd, sizeof cmd, "%s %s", VLC_PATH, VLC_OPTIONS);
 	if (n < 0)
 		return 1;
 	pos += (unsigned)n;
