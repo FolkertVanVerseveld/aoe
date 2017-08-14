@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include "_build.h"
+#include "crash.h"
 #include "cdrom.h"
 #include "dmap.h"
 #include "dbg.h"
@@ -255,6 +256,10 @@ int genie_init(int argc, char **argv, const char *title, unsigned options)
 	engine_init |= GENIE_INIT;
 	genie_ui.game_title = title;
 	atexit(genie_cleanup);
+	if (genie_crash_init()) {
+		show_error("Init failed", "Could not attach crash handler");
+		return 1;
+	}
 
 	if (argc) {
 		char *wd = dirname(argv[0]);

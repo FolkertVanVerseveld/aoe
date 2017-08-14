@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <string.h>
+#include <signal.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
@@ -363,6 +364,11 @@ static void console_run(struct console *c, char *str)
 		return;
 	if (!strcmp(str, "quit"))
 		exit(0);
+#ifdef DEBUG
+	/* Developer-only undocumented commands */
+	else if (!strcmp(str, "hcf")) /* halt and catch fire */
+		raise(SIGSEGV);
+#endif
 	else if (strsta(str, "help")) {
 		const char *arg = cmd_next_arg(str);
 		if (!arg) {

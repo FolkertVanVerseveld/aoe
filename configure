@@ -8,7 +8,7 @@ if (( $# >= 1 )); then
 fi
 opts="$*"
 case "$mode" in
-	debug) opts="-g -DDEBUG $opts" ;;
+	debug) opts="-g -DDEBUG -rdynamic $opts" ;;
 	release) opts="-O2 -ffast-math" ;;
 esac
 dir='genie game'

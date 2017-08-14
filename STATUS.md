@@ -11,6 +11,8 @@ These items are implemented in either the genie game engine or the game:
 
 Subsystem | Task / Purpose          | Notes
 ----------|-------------------------|----------------------------------------------------
+Video     | AVI video playback      | Uses command-line interface for VLC
+Bugreport | Debug info for crashes  | Crash handler in case the engine or game crashes
 CD-ROM    | File I/O                | Known issues regarding auto-mounting audio tracks
 Shell     | Command line interface  | Monospaced white on black only font
 File I/O  | Parse basic game assets | Audio works, parsing other types is being worked on
@@ -37,7 +39,6 @@ These items will be picked up when other items are being completed:
 
 Subsystem      | Task / Purpose   | Notes
 ---------------|------------------|-----------------------------------------------------------
-Engine         | Crash handling   | Proof of concept written, needs more investigation
 ""             | Networking       | For multiplayer games etc.
 ""             | Configuration    | Either on compile time (./configure) or runtime (~/.aoerc)
 User Interface | Background image | Requires lots of reverse engineering
