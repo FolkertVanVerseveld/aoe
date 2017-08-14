@@ -4,6 +4,8 @@
 
 #include <err.h>
 
+#include "engine.h"
+#include "game.h"
 #include "prompt.h"
 #include "ui.h"
 
@@ -95,6 +97,10 @@ static void menu_nav_select_main(struct genie_ui *ui, struct menu_nav *n)
 	case 1:
 		genie_ui_menu_push(ui, &menu_nav_multiplayer);
 		break;
+	case 2:
+		if (genie_open_help())
+			show_error("Help unavailable", "Could not find or open help");
+		break;
 	case 3:
 		genie_ui_menu_push(ui, &menu_nav_scenario_builder);
 		break;
@@ -162,8 +168,6 @@ void menu_nav_down(struct menu_nav *this, unsigned key)
 void menu_nav_up(struct menu_nav *this, unsigned key)
 {
 	this->keys &= ~key;
-	if (key == MENU_KEY_SELECT) {
-		//sfx_play(SFX_BTN1, 0, 1.0f);
+	if (key == MENU_KEY_SELECT)
 		this->select(&genie_ui, this);
-	}
 }

@@ -133,7 +133,7 @@ static void draw_console(struct genie_ui *ui)
 
 	draw_box(1, 0, ui->width - 1, ui->height);
 	glColor3f(1, 1, 1);
-	genie_gfx_draw_text(GENIE_FONT_TILE_WIDTH, GENIE_FONT_TILE_HEIGHT,
+	genie_gfx_draw_text(2 * GENIE_GLYPH_WIDTH, GENIE_GLYPH_HEIGHT,
 		"Age of Empires Free Software Remake console\n"
 		"Built with: " GENIE_BUILD_OPTIONS "\n"
 		"Commit: " GENIE_GIT_SHA "\n"
@@ -307,7 +307,7 @@ static void console_dump_info(struct console *c)
 {
 	char text[256];
 	const char *scr_mode = "800x600";
-	const char *music = "yes", *sound = "yes";
+	const char *music = "yes", *sound = "yes", *video = "yes";
 
 	if (genie_mode & GENIE_MODE_1024_768)
 		scr_mode = "1024x768";
@@ -320,12 +320,15 @@ static void console_dump_info(struct console *c)
 		music = "no";
 	if (genie_mode & GENIE_MODE_NOSOUND)
 		sound = "no";
+	if (genie_mode & GENIE_MODE_NOVIDEO)
+		video = "no";
 
 	snprintf(text, sizeof text,
 		"Screen resolution: %s\n"
 		"Music playback: %s\n"
-		"Sound playback: %s",
-		scr_mode, music, sound
+		"Sound playback: %s\n"
+		"Video playback: %s",
+		scr_mode, music, sound, video
 	);
 	console_puts(c, text);
 }

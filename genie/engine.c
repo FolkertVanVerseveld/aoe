@@ -23,6 +23,7 @@
 #include "game.h"
 #include "prompt.h"
 #include "string.h"
+#include "system.h"
 #include "video.h"
 
 #define WINE_INSTALLATION_PATH ".wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires"
@@ -42,24 +43,40 @@ static const char *home_dir = NULL;
 static char *root_path = NULL;
 
 static const char *version_info =
-	"commit: " GENIE_GIT_SHA "\n"
-	"origin: " GENIE_GIT_ORIGIN "\n"
-	"configured with: " GENIE_BUILD_OPTIONS
+	"Commit: " GENIE_GIT_SHA "\n"
+	"Origin: " GENIE_GIT_ORIGIN "\n"
+	"Configured with: " GENIE_BUILD_OPTIONS
 #if GENIE_CFG_TAUNTED
-	"\nconfiguration is taunted\n"
-	"no support will be provided"
+	"\nConfiguration is taunted\n"
+	"No support will be provided"
 #endif
 	;
 
 static const char *general_help =
 #ifdef DEBUG
-	"commit: " GENIE_GIT_SHA "\n"
+	"Commit: " GENIE_GIT_SHA "\n\n"
 #endif
-	"common options:\n"
-	"ch long     description\n"
-	" h help     this help\n"
-	" r root     load resources from directory\n"
-	" v version  dump version info";
+	"Common options:\n"
+	"ch Long       Description\n"
+	"-h --help     This help\n"
+	"-r --root     Load resources from directory\n"
+	"-v --version  Dump version info\n\n"
+	"Engine options (case insensitive):\n"
+	"Option        Description\n"
+	"nostartup     Does nothing at the moment\n"
+	"systemmemory  Does nothing at the moment\n"
+	"midimusic     Force MIDI background music\n"
+	"mfill         Does nothing at the moment\n"
+	"nosound       Disable all sound effects\n"
+	"640           Use 640x480 (unsupported)\n"
+	"800           Use 800x600 (unsupported)\n"
+	"1024          Use 1024x768 (unsupported)\n"
+	"nomusic       Disable all music playback\n"
+	"novideo       Disable all video playback\n"
+	"nointro       Skip logo and intro videos\n"
+	"nologo        Skip logo videos\n"
+	"normalmouse   Does nothing at the moment\n"
+	"grpintro      Use playlist for logo and intro videos";
 
 /* Supported command line options */
 static struct option long_opt[] = {
@@ -379,4 +396,17 @@ const char *genie_avi_path(char *str, size_t size, const char *path)
 	strlower(file);
 	genie_cdrom_avi_path(str, size, file);
 	return str;
+}
+
+int genie_open_help(void)
+{
+	char cmd[4096];
+	int retval;
+
+	genie_cdrom_path_format(cmd, sizeof cmd, "xdg-open \"%s/%s\"", "readme.doc");
+	genie_game_hide(&genie_game);
+	retval = genie_system(cmd);
+	genie_game_show(&genie_game);
+
+	return retval;
 }

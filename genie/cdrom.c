@@ -345,6 +345,20 @@ const char *genie_cdrom_absolute_game_path(const char *path)
 	return cdrom_abs_path;
 }
 
+void genie_cdrom_path_format(char *str, size_t size, const char *format, const char *file)
+{
+	if (!cdrom_dir) {
+		strncpy0(str, file, size);
+		return;
+	}
+	snprintf(str, size, format, cdrom_dir, file);
+}
+
+void genie_cdrom_path(char *str, size_t size, const char *file)
+{
+	genie_cdrom_path_format(str, size, "%s/%s", file);
+}
+
 void genie_cdrom_avi_path(char *str, size_t size, const char *file)
 {
 	if (!cdrom_dir) {
