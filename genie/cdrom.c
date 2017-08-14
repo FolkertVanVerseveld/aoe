@@ -361,9 +361,13 @@ void genie_cdrom_path(char *str, size_t size, const char *file)
 
 void genie_cdrom_avi_path(char *str, size_t size, const char *file)
 {
-	if (!cdrom_dir) {
-		strncpy0(str, file, size);
-		return;
-	}
-	snprintf(str, size, "%s/avi/%s", cdrom_dir, file);
+	genie_cdrom_path_format(str, size, "%s/avi/%s", file);
+}
+
+void genie_cdrom_ttf_path(char *str, size_t size, const char *path)
+{
+	char file[80];
+	strncpy0(file, path, sizeof file);
+	strlower(file);
+	genie_cdrom_path_format(str, size, "%s/system/fonts/%s", file);
 }

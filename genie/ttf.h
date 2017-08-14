@@ -15,7 +15,17 @@
 
 #include <SDL2/SDL_ttf.h>
 
+#define GENIE_TTF_DEFAULT 0
+#define GENIE_TTF_DEFAULT_BOLD 1
+#define GENIE_TTF_COMIC 2
+#define GENIE_TTF_COMIC_BOLD 3
+#define GENIE_TTF_UI 4
+#define GENIE_TTF_UI_BOLD 5
+
 void genie_ttf_free(void);
 int genie_ttf_init(void);
+
+/* Render text to surface. This cannot fail. */
+SDL_Surface *genie_ttf_render_solid(unsigned id, const char *text, SDL_Color color);
 
 #endif

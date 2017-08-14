@@ -21,5 +21,6 @@ const char *genie_cdrom_absolute_game_path(const char *path);
 void genie_cdrom_path(char *str, size_t size, const char *file);
 void genie_cdrom_path_format(char *str, size_t size, const char *format, const char *file);
 void genie_cdrom_avi_path(char *str, size_t size, const char *file);
+void genie_cdrom_ttf_path(char *str, size_t size, const char *file);
 
 #endif

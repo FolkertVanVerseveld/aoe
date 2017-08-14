@@ -13,7 +13,7 @@
 #define GENIE_UI_ERR_SDL 1
 
 #define GENIE_UI_MENU_STACKSZ 16
-#define GENIE_UI_OPTION_WIDTHSZ 64
+#define GENIE_UI_OPTIONSZ 16
 
 struct genie_game;
 
@@ -26,9 +26,9 @@ struct genie_ui {
 	struct genie_game *game;
 
 	struct menu_nav *stack[GENIE_UI_MENU_STACKSZ];
+	struct menu_nav *old_top;
+	unsigned slots[GENIE_UI_OPTIONSZ];
 	unsigned stack_index;
-	size_t option_width[GENIE_UI_OPTION_WIDTHSZ];
-	size_t title_width;
 	int menu_press;
 
 	int console_show;

@@ -16,6 +16,7 @@
 #include "game.h"
 #include "gfx.h"
 #include "sfx.h"
+#include "ttf.h"
 #include "prompt.h"
 #include "string.h"
 
@@ -224,6 +225,18 @@ static void draw_menu_box(GLfloat y)
 	draw_box(213, 222 + y, 374, 50);
 }
 
+static void update_menu_cache(struct genie_ui *ui)
+{
+	const struct menu_nav *nav = genie_ui_menu_peek(ui);
+	const struct menu_list *list = nav->list;
+
+	genie_gfx_cache_clear();
+
+	for (unsigned i = 0, n = list->count; i < n; ++i)
+		ui->slots[i] = genie_gfx_cache_text(GENIE_TTF_UI, list->buttons[i]);
+	ui->slots[list->count] = genie_gfx_cache_text(GENIE_TTF_UI_BOLD, nav->title);
+}
+
 static void draw_menu(struct genie_ui *ui)
 {
 	struct menu_nav *nav;
@@ -234,6 +247,9 @@ static void draw_menu(struct genie_ui *ui)
 
 	if (!nav)
 		return;
+	if (nav != ui->old_top)
+		update_menu_cache(ui);
+	ui->old_top = nav;
 
 	list = nav->list;
 	n = list->count;
@@ -249,18 +265,16 @@ static void draw_menu(struct genie_ui *ui)
 		else
 			glColor3ub(237, 206, 186);
 
-		genie_gfx_draw_text(
-			(ui->width - ui->option_width[i] * GENIE_GLYPH_WIDTH) / 2.0,
-			242 + 63 * i,
-			list->buttons[i]
+		genie_gfx_put_text(
+			ui->slots[i], ui->width / 2, 246 + 63 * i,
+			GENIE_HA_CENTER, GENIE_VA_MIDDLE
 		);
 	}
 
 	glColor3f(1, 1, 1);
-	genie_gfx_draw_text(
-		(ui->width - ui->title_width * GENIE_GLYPH_WIDTH) / 2.0,
-		GENIE_GLYPH_HEIGHT,
-		nav->title
+	genie_gfx_put_text(
+		ui->slots[i], ui->width / 2, 20,
+		GENIE_HA_CENTER, GENIE_VA_MIDDLE
 	);
 }
 
@@ -523,11 +537,6 @@ void genie_ui_menu_update(struct genie_ui *ui)
 
 	nav = genie_ui_menu_peek(ui);
 	list = nav->list;
-
-	for (unsigned i = 0, n = list->count; i < n; ++i)
-		ui->option_width[i] = strlen(list->buttons[i]);
-
-	ui->title_width = strlen(nav->title);
 }
 
 void genie_ui_menu_push(struct genie_ui *ui, struct menu_nav *nav)

@@ -30,5 +30,6 @@ int genie_open_help(void);
 
 const char *genie_absolute_path(const char *path);
 const char *genie_avi_path(char *str, size_t size, const char *path);
+void genie_ttf_path(char *str, size_t size, const char *path);
 
 #endif

@@ -28,6 +28,7 @@
 #include "video.h"
 
 #define WINE_INSTALLATION_PATH ".wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires"
+#define WINE_FONT_PATH ".wine/drive_c/windows/Fonts"
 
 #define GENIE_INIT 1
 
@@ -401,6 +402,15 @@ const char *genie_avi_path(char *str, size_t size, const char *path)
 	strlower(file);
 	genie_cdrom_avi_path(str, size, file);
 	return str;
+}
+
+void genie_ttf_path(char *str, size_t size, const char *path)
+{
+	if (has_wine_dir) {
+		snprintf(str, size, "%s/%s/%s", home_dir, WINE_FONT_PATH, path);
+		return;
+	}
+	genie_cdrom_ttf_path(str, size, path);
 }
 
 int genie_open_help(void)

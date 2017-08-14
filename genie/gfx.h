@@ -24,4 +24,18 @@ void genie_gfx_clear_screen(GLclampf red, GLclampf green, GLclampf blue, GLclamp
 
 void genie_gfx_draw_text(GLfloat x, GLfloat y, const char *str);
 
+#define GENIE_HA_LEFT 0
+#define GENIE_HA_CENTER 1
+#define GENIE_HA_RIGHT 2
+
+#define GENIE_VA_TOP 0
+#define GENIE_VA_MIDDLE 1
+#define GENIE_VA_BOTTOM 2
+
+#define GENIE_GFX_CACHE_SIZE 16
+
+void genie_gfx_cache_clear(void);
+unsigned genie_gfx_cache_text(unsigned ttf_id, const char *text);
+void genie_gfx_put_text(unsigned slot, int x, int y, unsigned halign, unsigned valign);
+
 #endif

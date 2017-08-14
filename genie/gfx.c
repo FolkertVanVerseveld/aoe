@@ -20,12 +20,79 @@ extern unsigned char *font_png_start, *font_png_end;
 static unsigned gfx_init = 0;
 static GLuint font_tex = 0;
 
+struct ttf_text {
+	GLuint tex;
+	int w, h;
+};
+
+static struct gfx_cache {
+	struct ttf_text data[GENIE_GFX_CACHE_SIZE];
+	unsigned count;
+	int init;
+} gfx_cache;
+
+static void gfx_cache_init(struct gfx_cache *this)
+{
+	this->count = 0;
+	this->init = 0;
+}
+
+static int gfx_cache_create(struct gfx_cache *this)
+{
+	GLuint tex[GENIE_GFX_CACHE_SIZE];
+	if (this->init)
+		return 0;
+	glGenTextures(GENIE_GFX_CACHE_SIZE, tex);
+	for (unsigned i = 0, n = GENIE_GFX_CACHE_SIZE; i < n; ++i)
+		this->data[i].tex = tex[i];
+	this->count = 0;
+	this->init = 1;
+	return 0;
+}
+
+static void gfx_cache_free(struct gfx_cache *this)
+{
+	GLuint tex[GENIE_GFX_CACHE_SIZE];
+	if (!this->init)
+		return;
+	this->init = 0;
+	for (unsigned i = 0, n = GENIE_GFX_CACHE_SIZE; i < n; ++i)
+		tex[i] = this->data[i].tex;
+	glDeleteTextures(GENIE_GFX_CACHE_SIZE, tex);
+	gfx_cache_init(this);
+}
+
+static void gfx_cache_clear(struct gfx_cache *this)
+{
+	this->count = 0;
+}
+
+static void map_tex(SDL_Surface *surf, GLuint tex);
+
+static unsigned gfx_cache_add(struct gfx_cache *this, SDL_Surface *surf)
+{
+	if (this->count >= GENIE_GFX_CACHE_SIZE) {
+		show_error("Fatal error", "Graphics cache is full");
+		exit(1);
+	}
+	unsigned slot = this->count++;
+
+	struct ttf_text *text = &this->data[slot];
+	map_tex(surf, text->tex);
+	text->w = surf->w;
+	text->h = surf->h;
+
+	return slot;
+}
+
 void genie_gfx_free(void)
 {
 	if (!gfx_init)
 		return;
 
 	gfx_init &= ~GFX_INIT;
+
+	gfx_cache_free(&gfx_cache);
 
 	if (gfx_init & GFX_INIT_TTF) {
 		genie_ttf_free();
@@ -160,6 +227,7 @@ int genie_gfx_init(void)
 		return 0;
 	}
 	gfx_init = GFX_INIT;
+	gfx_cache_init(&gfx_cache);
 
 	if ((IMG_Init(img_flags) & img_flags) != img_flags) {
 		char str[1024];
@@ -187,10 +255,10 @@ int genie_gfx_init(void)
 	error = gfx_init_font();
 	if (error)
 		goto fail;
-
 	error = genie_ttf_init();
 	if (error)
 		goto fail;
+	gfx_cache_create(&gfx_cache);
 
 	error = 0;
 fail:
@@ -255,6 +323,55 @@ void genie_gfx_draw_text(GLfloat x, GLfloat y, const char *str)
 	glEnable(GL_TEXTURE_2D);
 	glBegin(GL_QUADS);
 		gfx_draw_text(x, y, str);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+}
+
+void genie_gfx_cache_clear(void)
+{
+	gfx_cache_clear(&gfx_cache);
+}
+
+unsigned genie_gfx_cache_text(unsigned ttf_id, const char *text)
+{
+	SDL_Color color = {255, 255, 255, 255};
+	SDL_Surface *surf = genie_ttf_render_solid(ttf_id, text, color);
+	unsigned slot = gfx_cache_add(&gfx_cache, surf);
+	SDL_FreeSurface(surf);
+	return slot;
+}
+
+void genie_gfx_put_text(unsigned slot, int x, int y, unsigned halign, unsigned valign)
+{
+	const struct ttf_text *text = &gfx_cache.data[slot];
+	int w = text->w, h = text->h;
+	switch (halign) {
+	case GENIE_HA_LEFT:
+		break;
+	case GENIE_HA_CENTER:
+		x -= w / 2;
+		break;
+	case GENIE_HA_RIGHT:
+		x -= w;
+		break;
+	}
+	switch (valign) {
+	case GENIE_VA_TOP:
+		break;
+	case GENIE_VA_MIDDLE:
+		y -= h / 2;
+		break;
+	case GENIE_VA_BOTTOM:
+		y -= h;
+		break;
+	}
+	glBindTexture(GL_TEXTURE_2D, text->tex);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+		glTexCoord2f(0, 0); glVertex2f(x, y);
+		glTexCoord2f(1, 0); glVertex2f(x + w, y);
+		glTexCoord2f(1, 1); glVertex2f(x + w, y + h);
+		glTexCoord2f(0, 1); glVertex2f(x, y + h);
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 }
