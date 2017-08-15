@@ -69,6 +69,12 @@ int genie_game_main(struct genie_game *g)
 			case SDL_KEYUP:
 				genie_ui_key_up(g->ui, &ev);
 				break;
+			case SDL_MOUSEBUTTONDOWN:
+				genie_ui_mouse_down(g->ui, &ev);
+				break;
+			case SDL_MOUSEBUTTONUP:
+				genie_ui_mouse_up(g->ui, &ev);
+				break;
 			}
 		}
 

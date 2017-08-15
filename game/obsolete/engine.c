@@ -575,7 +575,7 @@ int eng_main(void)
 				);
 			draw_str(
 				(rw - ui.option_width[i] * FONT_GW) / 2.0,
-				opty, list->buttons[i]
+				opty, genie_ui_button_get_text(&list->buttons[i])
 			);
 			opty += 2 * FONT_GH;
 		}

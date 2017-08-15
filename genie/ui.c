@@ -233,7 +233,10 @@ static void update_menu_cache(struct genie_ui *ui)
 	genie_gfx_cache_clear();
 
 	for (unsigned i = 0, n = list->count; i < n; ++i)
-		ui->slots[i] = genie_gfx_cache_text(GENIE_TTF_UI, list->buttons[i]);
+		ui->slots[i] = genie_gfx_cache_text(
+			GENIE_TTF_UI,
+			genie_ui_button_get_text(&list->buttons[i])
+		);
 	ui->slots[list->count] = genie_gfx_cache_text(GENIE_TTF_UI_BOLD, nav->title);
 }
 
@@ -257,8 +260,9 @@ static void draw_menu(struct genie_ui *ui)
 	draw_box(1, 0, ui->width - 1, ui->height);
 
 	for (i = 0; i < n; ++i) {
-		// FIXME y pos of exit box in main menu is slightly off
-		draw_menu_box(63 * i);
+		const struct genie_ui_button *btn = &list->buttons[i];
+
+		draw_box(btn->x, btn->y, btn->w, btn->h);
 
 		if (i == nav->index)
 			glColor3ub(255, 255, 0);
@@ -266,7 +270,7 @@ static void draw_menu(struct genie_ui *ui)
 			glColor3ub(237, 206, 186);
 
 		genie_gfx_put_text(
-			ui->slots[i], ui->width / 2, 246 + 63 * i,
+			ui->slots[i], btn->x + btn->w / 2, btn->y + btn->h / 2,
 			GENIE_HA_CENTER, GENIE_VA_MIDDLE
 		);
 	}
@@ -517,6 +521,50 @@ void genie_ui_key_up(struct genie_ui *ui, SDL_Event *ev)
 	menu_key_up(ui, ev);
 }
 
+static int mouse_in_rect(int mx, int my, int x, int y, int w, int h)
+{
+	return mx >= x && mx < x + w && my >= y && my < y + h;
+}
+
+void genie_ui_mouse_down(struct genie_ui *ui, SDL_Event *ev)
+{
+	struct menu_nav *nav = genie_ui_menu_peek(ui);
+	if (!nav || ui->console_show)
+		return;
+
+	const struct menu_list *list = nav->list;
+	int mx = ev->button.x, my = ev->button.y;
+	for (unsigned i = 0, n = list->count; i < n; ++i) {
+		const struct genie_ui_button *btn = &list->buttons[i];
+		if (mouse_in_rect(mx, my, btn->x, btn->y, btn->w, btn->h)) {
+			nav->index = i;
+			menu_nav_down(nav, MENU_KEY_SELECT);
+			ui->menu_press = 1;
+			genie_sfx_play(SFX_MENU_BUTTON);
+			return;
+		}
+	}
+}
+
+void genie_ui_mouse_up(struct genie_ui *ui, SDL_Event *ev)
+{
+	struct menu_nav *nav = genie_ui_menu_peek(ui);
+	if (!nav || ui->console_show)
+		return;
+
+	const struct menu_list *list = nav->list;
+	int mx = ev->button.x, my = ev->button.y;
+	for (unsigned i = 0, n = list->count; i < n; ++i) {
+		const struct genie_ui_button *btn = &list->buttons[i];
+		if (mouse_in_rect(mx, my, btn->x, btn->y, btn->w, btn->h)) {
+			ui->menu_press = 0;
+			if (i == nav->index)
+				menu_nav_up(nav, MENU_KEY_SELECT);
+			return;
+		}
+	}
+}
+
 void genie_ui_display(struct genie_ui *ui)
 {
 	genie_gfx_clear_screen(0, 0, 0, 0);
@@ -537,6 +585,7 @@ void genie_ui_menu_update(struct genie_ui *ui)
 
 	nav = genie_ui_menu_peek(ui);
 	list = nav->list;
+	(void)list;
 }
 
 void genie_ui_menu_push(struct genie_ui *ui, struct menu_nav *nav)

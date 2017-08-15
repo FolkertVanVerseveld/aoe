@@ -2,6 +2,7 @@
 
 #include "menu.h"
 
+#include <stdlib.h>
 #include <err.h>
 
 #include "engine.h"
@@ -9,49 +10,59 @@
 #include "prompt.h"
 #include "ui.h"
 
-static const char *buttons_main[] = {
-	"Single Player",
-	"Multiplayer",
-	"Help",
-	"Scenario Builder",
-	"Exit"
-}, *buttons_single_player[] = {
-	"Random Map",
-	"Campaign",
-	"Death Match",
-	"Scenario",
-	"Saved Game",
-	"Cancel"
-}, *buttons_multiplayer[] = {
-	"Name",
-	"Connection Type",
-	"OK",
-	"Cancel"
-}, *buttons_scenario_builder[] = {
-	"Create Scenario",
-	"Edit Scenario",
-	"Campaign Editor",
-	"Cancel"
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x)[0])
+
+static const struct genie_ui_button buttons_main[] = {
+	{212, 222, 375, 50, "Single Player"},
+	{212, 285, 375, 50, "Multiplayer"},
+	{212, 347, 375, 50, "Help"},
+	{212, 410, 375, 50, "Scenario Builder"},
+	{212, 472, 375, 50, "Exit"},
+}, buttons_single_player[] = {
+	{212, 147, 375, 50, "Random Map"},
+	{212, 210, 375, 50, "Campaign"},
+	{212, 272, 375, 50, "Death Match"},
+	{212, 335, 375, 50, "Scenario"},
+	{212, 397, 375, 50, "Saved Game"},
+	{212, 460, 375, 50, "Cancel"},
+	{779, 4, 17, 17, "X"},
+}, buttons_multiplayer[] = {
+	/* Name */
+	/* Connection Type */
+	{27, 260, 746, 23, "Internet TCP/IP Connection For DirectPlay"},
+	{87, 550, 300, 37, "OK"},
+	{412, 550, 300, 37, "Cancel"},
+	{725, 550, 37, 37, "?"},
+}, buttons_scenario_builder[] = {
+	{212, 222, 375, 50, "Create Scenario"},
+	{212, 222, 375, 50, "Edit Scenario"},
+	{212, 222, 375, 50, "Campaign Editor"},
+	{212, 222, 375, 50, "Cancel"},
 };
+
+const char *genie_ui_button_get_text(const struct genie_ui_button *this)
+{
+	return this->text;
+}
 
 static struct menu_list menu_list_main = {
 	.buttons = buttons_main,
-	.count = 5
+	.count = ARRAY_SIZE(buttons_main)
 }, menu_list_single_player = {
 	.buttons = buttons_single_player,
-	.count = 6
+	.count = ARRAY_SIZE(buttons_single_player)
 }, menu_list_multiplayer = {
 	.buttons = buttons_multiplayer,
-	.count = 4
+	.count = ARRAY_SIZE(buttons_multiplayer)
 }, menu_list_scenario_builder = {
 	.buttons = buttons_scenario_builder,
-	.count = 4
+	.count = ARRAY_SIZE(buttons_scenario_builder)
 };
 
 static void menu_nav_select_dummy(struct menu_nav *this)
 {
 	show_error(
-		this->list->buttons[this->index],
+		genie_ui_button_get_text(&this->list->buttons[this->index]),
 		"Not implemented yet"
 	);
 }
@@ -119,6 +130,9 @@ static void menu_nav_select_single_player(struct genie_ui *ui, struct menu_nav *
 	case 5:
 		genie_ui_menu_pop(ui);
 		break;
+	case 6:
+		exit(0);
+		break;
 	default:
 		menu_nav_select_dummy(this);
 		break;
@@ -128,7 +142,7 @@ static void menu_nav_select_single_player(struct genie_ui *ui, struct menu_nav *
 static void menu_nav_select_multiplayer(struct genie_ui *ui, struct menu_nav *this)
 {
 	switch (this->index) {
-	case 3:
+	case 2:
 		genie_ui_menu_pop(ui);
 		break;
 	default:

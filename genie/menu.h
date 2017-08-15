@@ -7,8 +7,16 @@ struct genie_ui;
 
 /* NOTE internal use only */
 
+struct genie_ui_button {
+	int x, y;
+	int w, h;
+	const char *text;
+};
+
+const char *genie_ui_button_get_text(const struct genie_ui_button *btn);
+
 struct menu_list {
-	const char **buttons;
+	const struct genie_ui_button *buttons;
 	unsigned count;
 };
 
