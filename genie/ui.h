@@ -50,6 +50,7 @@ void genie_ui_mouse_up(struct genie_ui *ui, SDL_Event *ev);
 void genie_ui_menu_update(struct genie_ui *ui);
 void genie_ui_menu_push(struct genie_ui *ui, struct menu_nav *nav);
 void genie_ui_menu_pop(struct genie_ui *ui);
+void genie_ui_menu_pop2(struct genie_ui *ui, unsigned level);
 struct menu_nav *genie_ui_menu_peek(const struct genie_ui *ui);
 
 void genie_ui_hide(struct genie_ui *ui);

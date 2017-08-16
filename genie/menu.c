@@ -9,6 +9,7 @@
 #include "game.h"
 #include "prompt.h"
 #include "ui.h"
+#include "sfx.h"
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x)[0])
 
@@ -25,6 +26,35 @@ static const struct genie_ui_button buttons_main[] = {
 	{212, 335, 375, 50, "Scenario"},
 	{212, 397, 375, 50, "Saved Game"},
 	{212, 460, 375, 50, "Cancel"},
+	{779, 4, 17, 17, "X"},
+}, buttons_single_player_game[] = {
+	{525, 62, 262, 37, "Settings"},
+	{87, 550, 300, 37, "Start Game"},
+	{412, 550, 300, 37, "Cancel"},
+	{725, 550, 37, 37, "?"},
+	{779, 4, 17, 17, "X"},
+}, buttons_game[] = {
+	{620, 0, 128, 19, "Diplomacy"},
+	{728, 0, 72, 19, "Menu"},
+	{765, 482, 30, 30, "S"},
+	{765, 564, 30, 30, "?"},
+}, buttons_game_menu[] = {
+	{220, 113, 360, 30, "Quit Game"},
+	{220, 163, 360, 30, "Achievements"},
+	{220, 198, 360, 30, "Scenario Instructions"},
+	{220, 233, 360, 30, "Save"},
+	{220, 268, 360, 30, "Load"},
+	{220, 303, 360, 30, "Restart"},
+	{220, 338, 360, 30, "Game Settings"},
+	{220, 373, 360, 30, "Help"},
+	{220, 408, 360, 30, "About"},
+	{220, 458, 360, 30, "Cancel"},
+}, buttons_game_achievements[] = {
+	{125, 551, 250, 37, "Timeline"},
+	{425, 551, 250, 37, "Cancel"},
+	{779, 4, 17, 17, "X"},
+}, buttons_game_timeline[] = {
+	{250, 551, 300, 37, "Back"},
 	{779, 4, 17, 17, "X"},
 }, buttons_multiplayer[] = {
 	/* Name */
@@ -51,6 +81,21 @@ static struct menu_list menu_list_main = {
 }, menu_list_single_player = {
 	.buttons = buttons_single_player,
 	.count = ARRAY_SIZE(buttons_single_player)
+}, menu_list_single_player_game = {
+	.buttons = buttons_single_player_game,
+	.count = ARRAY_SIZE(buttons_single_player_game)
+}, menu_list_game = {
+	.buttons = buttons_game,
+	.count = ARRAY_SIZE(buttons_game)
+}, menu_list_game_menu = {
+	.buttons = buttons_game_menu,
+	.count = ARRAY_SIZE(buttons_game_menu)
+}, menu_list_game_achievements = {
+	.buttons = buttons_game_achievements,
+	.count = ARRAY_SIZE(buttons_game_achievements)
+}, menu_list_game_timeline = {
+	.buttons = buttons_game_timeline,
+	.count = ARRAY_SIZE(buttons_game_timeline)
 }, menu_list_multiplayer = {
 	.buttons = buttons_multiplayer,
 	.count = ARRAY_SIZE(buttons_multiplayer)
@@ -69,6 +114,11 @@ static void menu_nav_select_dummy(struct menu_nav *this)
 
 static void menu_nav_select_main(struct genie_ui *ui, struct menu_nav *this);
 static void menu_nav_select_single_player(struct genie_ui *ui, struct menu_nav *this);
+static void menu_nav_select_single_player_game(struct genie_ui *ui, struct menu_nav *this);
+static void menu_nav_select_game(struct genie_ui *ui, struct menu_nav *this);
+static void menu_nav_select_game_menu(struct genie_ui *ui, struct menu_nav *this);
+static void menu_nav_select_game_achievements(struct genie_ui *ui, struct menu_nav *this);
+static void menu_nav_select_game_timeline(struct genie_ui *ui, struct menu_nav *this);
 static void menu_nav_select_multiplayer(struct genie_ui *ui, struct menu_nav *this);
 static void menu_nav_select_scenario_builder(struct genie_ui *ui, struct menu_nav *this);
 
@@ -85,6 +135,36 @@ static struct menu_nav menu_nav_single_player = {
 	.index = 0,
 	.list = &menu_list_single_player,
 	.select = menu_nav_select_single_player
+}, menu_nav_single_player_game = {
+	.title = "Single Player Game",
+	.flags = 0,
+	.index = 1,
+	.list = &menu_list_single_player_game,
+	.select = menu_nav_select_single_player_game
+}, menu_nav_game = {
+	.title = "game",
+	.flags = 0,
+	.index = 0,
+	.list = &menu_list_game,
+	.select = menu_nav_select_game
+}, menu_nav_game_menu = {
+	.title = "Game Menu",
+	.flags = 0,
+	.index = 9,
+	.list = &menu_list_game_menu,
+	.select = menu_nav_select_game_menu
+}, menu_nav_game_achievements = {
+	.title = "Achievements",
+	.flags = 0,
+	.index = 0,
+	.list = &menu_list_game_achievements,
+	.select = menu_nav_select_game_achievements
+}, menu_nav_game_timeline = {
+	.title = "Achievements",
+	.flags = 0,
+	.index = 0,
+	.list = &menu_list_game_timeline,
+	.select = menu_nav_select_game_timeline
 }, menu_nav_multiplayer = {
 	.title = "Multiplayer Connection",
 	.flags = 0,
@@ -127,10 +207,98 @@ static void menu_nav_select_main(struct genie_ui *ui, struct menu_nav *n)
 static void menu_nav_select_single_player(struct genie_ui *ui, struct menu_nav *this)
 {
 	switch (this->index) {
+	case 0:
+		genie_ui_menu_push(ui, &menu_nav_single_player_game);
+		break;
 	case 5:
 		genie_ui_menu_pop(ui);
 		break;
 	case 6:
+		exit(0);
+		break;
+	default:
+		menu_nav_select_dummy(this);
+		break;
+	}
+}
+
+static void menu_nav_select_single_player_game(struct genie_ui *ui, struct menu_nav *this)
+{
+	switch (this->index) {
+	case 1:
+		genie_ui_menu_pop2(ui, 1);
+		genie_ui_menu_push(ui, &menu_nav_game);
+		genie_msc_play(MSC_TRACK5, 0);
+		break;
+	case 2:
+		genie_ui_menu_pop(ui);
+		break;
+	case 4:
+		exit(0);
+		break;
+	default:
+		menu_nav_select_dummy(this);
+		break;
+	}
+}
+
+static void menu_nav_select_game(struct genie_ui *ui, struct menu_nav *this)
+{
+	switch (this->index) {
+	case 1:
+		genie_ui_menu_push(ui, &menu_nav_game_menu);
+		break;
+	default:
+		menu_nav_select_dummy(this);
+		break;
+	}
+}
+
+static void menu_nav_select_game_menu(struct genie_ui *ui, struct menu_nav *this)
+{
+	switch (this->index) {
+	case 0:
+		genie_ui_menu_pop2(ui, 1);
+		genie_ui_menu_push(ui, &menu_nav_game_achievements);
+		genie_msc_play(MSC_DEFEAT, 0);
+		break;
+	case 1:
+		genie_ui_menu_push(ui, &menu_nav_game_achievements);
+		break;
+	case 9:
+		genie_ui_menu_pop(ui);
+		break;
+	default:
+		menu_nav_select_dummy(this);
+		break;
+	}
+}
+
+static void menu_nav_select_game_achievements(struct genie_ui *ui, struct menu_nav *this)
+{
+	switch (this->index) {
+	case 0:
+		genie_ui_menu_push(ui, &menu_nav_game_timeline);
+		break;
+	case 1:
+		genie_ui_menu_pop(ui);
+		break;
+	case 2:
+		exit(0);
+		break;
+	default:
+		menu_nav_select_dummy(this);
+		break;
+	}
+}
+
+static void menu_nav_select_game_timeline(struct genie_ui *ui, struct menu_nav *this)
+{
+	switch (this->index) {
+	case 0:
+		genie_ui_menu_pop(ui);
+		break;
+	case 1:
 		exit(0);
 		break;
 	default:

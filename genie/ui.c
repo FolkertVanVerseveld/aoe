@@ -220,11 +220,6 @@ static void draw_box(GLfloat x, GLfloat y, GLfloat width, GLfloat height)
 	glEnd();
 }
 
-static void draw_menu_box(GLfloat y)
-{
-	draw_box(213, 222 + y, 374, 50);
-}
-
 static void update_menu_cache(struct genie_ui *ui)
 {
 	const struct menu_nav *nav = genie_ui_menu_peek(ui);
@@ -602,6 +597,17 @@ void genie_ui_menu_pop(struct genie_ui *ui)
 		return;
 	}
 
+	genie_ui_menu_update(ui);
+}
+
+void genie_ui_menu_pop2(struct genie_ui *ui, unsigned level)
+{
+	if (level > ui->stack_index) {
+		show_error("Fatal error", "Menu navigation broken");
+		exit(1);
+		return;
+	}
+	ui->stack_index = level;
 	genie_ui_menu_update(ui);
 }
 
