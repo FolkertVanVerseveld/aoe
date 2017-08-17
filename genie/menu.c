@@ -34,7 +34,7 @@ static const struct genie_ui_button buttons_main[] = {
 	{725, 550, 37, 37, "?"},
 	{779, 4, 17, 17, "X"},
 }, buttons_game[] = {
-	{620, 0, 128, 19, "Diplomacy"},
+	{620, 0, 108, 19, "Diplomacy"},
 	{728, 0, 72, 19, "Menu"},
 	{765, 482, 30, 30, "S"},
 	{765, 564, 30, 30, "?"},
@@ -64,10 +64,10 @@ static const struct genie_ui_button buttons_main[] = {
 	{412, 550, 300, 37, "Cancel"},
 	{725, 550, 37, 37, "?"},
 }, buttons_scenario_builder[] = {
-	{212, 222, 375, 50, "Create Scenario"},
-	{212, 222, 375, 50, "Edit Scenario"},
-	{212, 222, 375, 50, "Campaign Editor"},
-	{212, 222, 375, 50, "Cancel"},
+	{212, 212, 375, 50, "Create Scenario"},
+	{212, 275, 375, 50, "Edit Scenario"},
+	{212, 337, 375, 50, "Campaign Editor"},
+	{212, 400, 375, 50, "Cancel"},
 };
 
 const char *genie_ui_button_get_text(const struct genie_ui_button *this)
@@ -127,56 +127,65 @@ struct menu_nav menu_nav_start = {
 	.flags = 0,
 	.index = 0,
 	.list = &menu_list_main,
-	.select = menu_nav_select_main
+	.select = menu_nav_select_main,
+	.display = genie_display_default,
 };
 static struct menu_nav menu_nav_single_player = {
 	.title = "Single Player Menu",
 	.flags = 0,
 	.index = 0,
 	.list = &menu_list_single_player,
-	.select = menu_nav_select_single_player
+	.select = menu_nav_select_single_player,
+	.display = genie_display_default,
 }, menu_nav_single_player_game = {
 	.title = "Single Player Game",
 	.flags = 0,
 	.index = 1,
 	.list = &menu_list_single_player_game,
-	.select = menu_nav_select_single_player_game
+	.select = menu_nav_select_single_player_game,
+	.display = genie_display_single_player,
 }, menu_nav_game = {
 	.title = "game",
 	.flags = 0,
 	.index = 0,
 	.list = &menu_list_game,
-	.select = menu_nav_select_game
+	.select = menu_nav_select_game,
+	.display = genie_display_game,
 }, menu_nav_game_menu = {
 	.title = "Game Menu",
 	.flags = 0,
 	.index = 9,
 	.list = &menu_list_game_menu,
-	.select = menu_nav_select_game_menu
+	.select = menu_nav_select_game_menu,
+	.display = genie_display_default,
 }, menu_nav_game_achievements = {
 	.title = "Achievements",
 	.flags = 0,
 	.index = 0,
 	.list = &menu_list_game_achievements,
-	.select = menu_nav_select_game_achievements
+	.select = menu_nav_select_game_achievements,
+	.display = genie_display_achievements,
 }, menu_nav_game_timeline = {
 	.title = "Achievements",
 	.flags = 0,
 	.index = 0,
 	.list = &menu_list_game_timeline,
-	.select = menu_nav_select_game_timeline
+	.select = menu_nav_select_game_timeline,
+	.display = genie_display_achievements,
 }, menu_nav_multiplayer = {
 	.title = "Multiplayer Connection",
 	.flags = 0,
 	.index = 0,
 	.list = &menu_list_multiplayer,
-	.select = &menu_nav_select_multiplayer
+	.select = &menu_nav_select_multiplayer,
+	.display = genie_display_default,
 }, menu_nav_scenario_builder = {
 	"Scenario Builder",
 	.flags = 0,
 	.index = 0,
 	.list = &menu_list_scenario_builder,
-	.select = menu_nav_select_scenario_builder
+	.select = menu_nav_select_scenario_builder,
+	.display = genie_display_default,
 };
 
 static void menu_nav_select_main(struct genie_ui *ui, struct menu_nav *n)

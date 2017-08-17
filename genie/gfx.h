@@ -22,7 +22,7 @@ void genie_gfx_setup_ortho(GLdouble width, GLdouble height);
 
 void genie_gfx_clear_screen(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
 
-void genie_gfx_draw_text(GLfloat x, GLfloat y, const char *str);
+void genie_gfx_draw_text(int x, int y, const char *str);
 
 #define GENIE_HA_LEFT 0
 #define GENIE_HA_CENTER 1

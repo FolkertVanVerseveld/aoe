@@ -280,12 +280,12 @@ void genie_gfx_clear_screen(GLclampf red, GLclampf green, GLclampf blue, GLclamp
 	glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void gfx_draw_text(GLfloat x, GLfloat y, const char *str)
+void gfx_draw_text(int x, int y, const char *str)
 {
-	GLfloat tx0, tx1, ty0, ty1, xp;
+	GLfloat tx0, tx1, ty0, ty1;
 	GLfloat vx0, vx1, vy0, vy1;
 	unsigned gx, gy;
-	int ch;
+	int xp, ch;
 
 	for (xp = x; *str; ++str, x += GENIE_GLYPH_WIDTH) {
 		ch = *str;
@@ -317,7 +317,7 @@ void gfx_draw_text(GLfloat x, GLfloat y, const char *str)
 	}
 }
 
-void genie_gfx_draw_text(GLfloat x, GLfloat y, const char *str)
+void genie_gfx_draw_text(int x, int y, const char *str)
 {
 	glBindTexture(GL_TEXTURE_2D, font_tex);
 	glEnable(GL_TEXTURE_2D);

@@ -252,8 +252,6 @@ static void draw_menu(struct genie_ui *ui)
 	list = nav->list;
 	n = list->count;
 
-	draw_box(1, 0, ui->width - 1, ui->height);
-
 	for (i = 0; i < n; ++i) {
 		const struct genie_ui_button *btn = &list->buttons[i];
 
@@ -567,8 +565,12 @@ void genie_ui_display(struct genie_ui *ui)
 
 	if (ui->console_show)
 		draw_console(ui);
-	else
+	else {
+		const struct menu_nav *nav = genie_ui_menu_peek(ui);
+		if (nav)
+			nav->display(ui);
 		draw_menu(ui);
+	}
 
 	genie_ui_update(ui);
 }
@@ -634,4 +636,110 @@ void genie_ui_show(struct genie_ui *ui)
 void genie_ui_raise(struct genie_ui *ui)
 {
 	SDL_RaiseWindow(ui->win);
+}
+
+void genie_display_default(struct genie_ui *ui)
+{
+	draw_box(1, 0, ui->width - 1, ui->height);
+}
+
+void genie_display_game(struct genie_ui *ui)
+{
+	genie_display_default(ui);
+}
+
+void genie_display_single_player(struct genie_ui *ui)
+{
+	genie_display_default(ui);
+	glColor3f(1, 1, 1);
+	/* player configuration headers */
+	genie_gfx_draw_text(37, 74, "Name");
+	genie_gfx_draw_text(240, 74, "Civ");
+	genie_gfx_draw_text(362, 74, "Player");
+	genie_gfx_draw_text(466, 74, "Team");
+	/* players */
+	genie_gfx_draw_text(38, 110, "You");
+	genie_gfx_draw_text(212, 110, "Yamato");
+	glColor3f(0, 0, 1);
+	genie_gfx_draw_text(402, 110, "1");
+	glColor3f(1, 1, 1);
+	genie_gfx_draw_text(490, 110, "-");
+	genie_gfx_draw_text(38, 140, "Computer");
+	genie_gfx_draw_text(212, 140, "Choson");
+	genie_gfx_draw_text(490, 140, "-");
+	/* player count */
+	genie_gfx_draw_text(38, 374, "Number of Players");
+	genie_gfx_draw_text(44, 410, "2");
+	/* map configuration */
+	genie_gfx_draw_text(530, 110, "Scenario: Random Map");
+	genie_gfx_draw_text(530, 136, "Map Size: Medium");
+	genie_gfx_draw_text(530, 166, "Map Type: Highland");
+	genie_gfx_draw_text(530, 196, "Players: 2 - 8");
+	genie_gfx_draw_text(530, 226, "Victory: Standard");
+	genie_gfx_draw_text(530, 256, "Age: Default");
+	genie_gfx_draw_text(530, 286, "Resources: Default");
+	genie_gfx_draw_text(530, 316, "Difficulty Level: Moderate");
+	genie_gfx_draw_text(530, 346, "Fixed Positions: Yes");
+	genie_gfx_draw_text(530, 386, "Reveal Map: No");
+	genie_gfx_draw_text(530, 406, "Full Tech: No");
+	genie_gfx_draw_text(530, 436, "Path Finding: High");
+}
+
+void genie_display_achievements(struct genie_ui *ui)
+{
+	genie_display_default(ui);
+	/* draw borders */
+	glBegin(GL_QUADS);
+		/* draw religion and survival headers */
+		glColor3ub(8, 8, 8);
+		glVertex2f(266, 138);
+		glVertex2f(638, 138);
+		glVertex2f(638, 506);
+		glVertex2f(266, 506);
+		/* draw technology header */
+		glColor3ub(49, 49, 49);
+		glVertex2f(352, 113);
+		glVertex2f(547, 113);
+		glVertex2f(547, 138);
+		glVertex2f(352, 138);
+		glVertex2f(420, 138);
+		glVertex2f(484, 138);
+		glVertex2f(484, 507);
+		glVertex2f(420, 507);
+		/* draw economy header */
+		glVertex2f(191, 162);
+		glVertex2f(352, 162);
+		glVertex2f(352, 507);
+		glVertex2f(191, 507);
+		/* draw wonder header */
+		glVertex2f(552, 162);
+		glVertex2f(713, 162);
+		glVertex2f(713, 507);
+		glVertex2f(552, 507);
+		/* draw military header */
+		glColor3ub(8, 8, 8);
+		glVertex2f(124, 187);
+		glVertex2f(288, 187);
+		glVertex2f(288, 507);
+		glVertex2f(124, 507);
+		/* draw total score header */
+		glVertex2f(617, 187);
+		glVertex2f(781, 187);
+		glVertex2f(781, 507);
+		glVertex2f(617, 507);
+	glEnd();
+	/* headers */
+	glColor3f(1, 1, 1);
+	genie_gfx_draw_text(128, 191, "Military");
+	genie_gfx_draw_text(195, 166, "Economy");
+	genie_gfx_draw_text(270, 141, "Religion");
+	genie_gfx_draw_text(412, 116, "Technology");
+	genie_gfx_draw_text(582, 141, "Survival");
+	genie_gfx_draw_text(659, 166, "Wonder");
+	genie_gfx_draw_text(704, 191, "Total");
+	/* players */
+	glColor3f(0, 0, 1);
+	genie_gfx_draw_text(31, 225, "You");
+	glColor3f(1, 0, 0);
+	genie_gfx_draw_text(31, 263, "Enemy");
 }

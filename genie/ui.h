@@ -57,4 +57,9 @@ void genie_ui_hide(struct genie_ui *ui);
 void genie_ui_show(struct genie_ui *ui);
 void genie_ui_raise(struct genie_ui *ui);
 
+void genie_display_default(struct genie_ui *ui);
+void genie_display_game(struct genie_ui *ui);
+void genie_display_single_player(struct genie_ui *ui);
+void genie_display_achievements(struct genie_ui *ui);
+
 #endif

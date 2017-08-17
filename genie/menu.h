@@ -27,6 +27,7 @@ struct menu_nav {
 	unsigned keys;
 	struct menu_list *list;
 	void (*select)(struct genie_ui *ui, struct menu_nav *nav);
+	void (*display)(struct genie_ui *ui);
 };
 
 #define MENU_KEY_DOWN   1
