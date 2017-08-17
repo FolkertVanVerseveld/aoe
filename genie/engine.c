@@ -168,6 +168,7 @@ static int parse_opt_legacy(int argp, int argc, char *argv[])
 				genie_video_mode |= GENIE_VIDEO_MODE_NOLOGO;
 			else
 				break;
+			++argp;
 		} else
 			break;
 	}

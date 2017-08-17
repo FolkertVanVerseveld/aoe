@@ -12,10 +12,17 @@
 /* Whether controlled by A.I. */
 #define GENIE_PLAYER_STATE_CPU 2
 
-struct genie_game_player {
+struct genie_resources {
 	unsigned wood, food, gold, stone;
+};
+
+void genie_set_resources(struct genie_resources *r, unsigned w, unsigned f, unsigned g, unsigned s);
+
+struct genie_player {
+	struct genie_resources resources;
 	unsigned pop, pop_cap;
 	unsigned state;
+	unsigned age;
 	struct {
 		unsigned military;
 		unsigned economy;
@@ -27,7 +34,7 @@ struct genie_game_player {
 
 struct genie_game_stat {
 	unsigned players;
-	struct genie_game_player player[GENIE_MAX_PLAYERS];
+	struct genie_player player[GENIE_MAX_PLAYERS];
 	unsigned pop_cap;
 };
 
@@ -44,5 +51,6 @@ void genie_game_init(struct genie_game*, struct genie_ui*);
 void genie_game_hide(struct genie_game*);
 void genie_game_show(struct genie_game*);
 int genie_game_main(struct genie_game*);
+struct genie_resources *genie_player_get_resources(const struct genie_game *g, unsigned index);
 
 #endif

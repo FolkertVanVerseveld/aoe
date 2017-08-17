@@ -31,6 +31,13 @@ struct genie_ui genie_ui = {
 
 static unsigned ui_init = 0;
 
+static const char *civ_ages[] = {
+	"Stone Age",
+	"Tool Age",
+	"Bronze Age",
+	"Iron Age"
+};
+
 void genie_ui_free(struct genie_ui *ui)
 {
 	if (!ui_init)
@@ -645,7 +652,20 @@ void genie_display_default(struct genie_ui *ui)
 
 void genie_display_game(struct genie_ui *ui)
 {
-	genie_display_default(ui);
+	char buf[40];
+	glColor3f(1, 1, 1);
+	const struct genie_resources *res = genie_player_get_resources(&genie_game, 0);
+	/* resources */
+	snprintf(buf, sizeof buf, "%d", res->wood);
+	genie_gfx_draw_text(32, 4, buf);
+	snprintf(buf, sizeof buf, "%d", res->food);
+	genie_gfx_draw_text(98, 4, buf);
+	snprintf(buf, sizeof buf, "%d", res->gold);
+	genie_gfx_draw_text(165, 4, buf);
+	snprintf(buf, sizeof buf, "%d", res->stone);
+	genie_gfx_draw_text(232, 4, buf);
+	/* age */
+	genie_gfx_draw_text(370, 4, civ_ages[0]);
 }
 
 void genie_display_single_player(struct genie_ui *ui)
@@ -680,7 +700,7 @@ void genie_display_single_player(struct genie_ui *ui)
 	genie_gfx_draw_text(530, 286, "Resources: Default");
 	genie_gfx_draw_text(530, 316, "Difficulty Level: Moderate");
 	genie_gfx_draw_text(530, 346, "Fixed Positions: Yes");
-	genie_gfx_draw_text(530, 386, "Reveal Map: No");
+	genie_gfx_draw_text(530, 376, "Reveal Map: No");
 	genie_gfx_draw_text(530, 406, "Full Tech: No");
 	genie_gfx_draw_text(530, 436, "Path Finding: High");
 }

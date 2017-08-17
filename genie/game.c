@@ -7,12 +7,60 @@
 
 #define GAME_INIT 1
 
+#define STONE_AGE 0
+#define TOOL_AGE 1
+#define BRONZE_AGE 2
+#define IRON_AGE 3
+
 struct genie_game genie_game;
+
+static void player_init(struct genie_player *p)
+{
+	genie_set_resources(&p->resources, 0, 0, 0, 0);
+	p->pop = p->pop_cap = 0;
+	p->state = 0;
+	p->age = STONE_AGE;
+	p->score.military = 0;
+	p->score.economy = 0;
+	p->score.technology = 0;
+	p->score.alive = 0;
+	p->score.wonder = 0;
+}
+
+void genie_set_resources(struct genie_resources *res, unsigned wood, unsigned food, unsigned gold, unsigned stone)
+{
+	res->wood = wood;
+	res->food = food;
+	res->gold = gold;
+	res->stone = stone;
+}
+
+static void player_set_resources(struct genie_player *p, unsigned wood, unsigned food, unsigned gold, unsigned stone)
+{
+	genie_set_resources(&p->resources, wood, food, gold, stone);
+}
+
+struct genie_resources *genie_player_get_resources(const struct genie_game *g, unsigned i)
+{
+	return (struct genie_resources*)&g->stat.player[i].resources;
+}
+
+static void player_stat_init(struct genie_game_stat *this)
+{
+	unsigned n = 2;
+	for (unsigned i = 0; i < n; ++i) {
+		player_init(&this->player[i]);
+		player_set_resources(&this->player[i], 200, 150, 0, 150);
+	}
+	this->players = n;
+	this->pop_cap = 0;
+}
 
 void genie_game_init(struct genie_game *g, struct genie_ui *ui)
 {
 	g->ui = ui;
 	g->init = 0;
+	player_stat_init(&g->stat);
 }
 
 static int game_init(struct genie_game *g)
