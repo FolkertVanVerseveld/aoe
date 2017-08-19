@@ -361,7 +361,7 @@ void genie_cdrom_path(char *str, size_t size, const char *file)
 
 void genie_cdrom_avi_path(char *str, size_t size, const char *file)
 {
-	genie_cdrom_path_format(str, size, "%s/avi/%s", file);
+	genie_cdrom_path_format(str, size, "%s/game/avi/%s", file);
 }
 
 void genie_cdrom_ttf_path(char *str, size_t size, const char *path)

@@ -23,7 +23,7 @@ static int has_vlc = 0;
 static int video_init = 0;
 
 #define VLC_PATH "/usr/bin/cvlc"
-#define VLC_OPTIONS "--fullscreen --play-and-exit --no-video-title-show"
+#define VLC_OPTIONS "--no-repeat --no-loop --fullscreen --play-and-exit --no-video-title-show"
 
 static const char *video_start_list[] = {"logo1", "logo2", "intro", NULL};
 static const char **video_start_nointro_list = video_start_list + 2;
