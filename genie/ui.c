@@ -705,6 +705,22 @@ void genie_display_single_player(struct genie_ui *ui)
 	genie_gfx_draw_text(530, 436, "Path Finding: High");
 }
 
+void genie_display_diplomacy(struct genie_ui *ui)
+{
+	genie_display_default(ui);
+	glColor3f(1, 1, 1);
+	genie_gfx_draw_text(98, 157, "Name");
+	genie_gfx_draw_text(230, 157, "Civilization");
+	genie_gfx_draw_text(230, 157, "Civilization");
+	genie_gfx_draw_text(312, 157, "Ally");
+	genie_gfx_draw_text(383, 157, "Neutral");
+	genie_gfx_draw_text(453, 157, "Enemy");
+	genie_gfx_draw_text(98, 187, "You");
+	genie_gfx_draw_text(98, 217, "Enemy");
+	genie_gfx_draw_text(546, 223, "You need a market to\n pay tribute.");
+	genie_gfx_draw_text(411, 437, "Allied victory");
+}
+
 void genie_display_achievements(struct genie_ui *ui)
 {
 	genie_display_default(ui);
@@ -762,4 +778,30 @@ void genie_display_achievements(struct genie_ui *ui)
 	genie_gfx_draw_text(31, 225, "You");
 	glColor3f(1, 0, 0);
 	genie_gfx_draw_text(31, 263, "Enemy");
+}
+
+void genie_display_timeline(struct genie_ui *ui)
+{
+	genie_display_default(ui);
+	/* world population graph */
+	glBegin(GL_QUADS);
+		glColor3f(0, 0, 1);
+		glVertex2f(39, 153);
+		glVertex2f(764, 153);
+		glVertex2f(764, 312);
+		glVertex2f(39, 312);
+		glColor3f(1, 0, 0);
+		glVertex2f(39, 312);
+		glVertex2f(764, 312);
+		glVertex2f(764, 472);
+		glVertex2f(39, 472);
+	glEnd();
+	/* world population text */
+	glColor3f(1, 1, 1);
+	genie_gfx_draw_text(20, 115, "World population");
+	genie_gfx_draw_text(40, 133, "6");
+	genie_gfx_draw_text(42, 228, "You");
+	genie_gfx_draw_text(42, 387, "Enemy");
+	genie_gfx_draw_text(28, 482, "0:00");
+	genie_gfx_draw_text(364, 500, "Time (Hr:Min)");
 }

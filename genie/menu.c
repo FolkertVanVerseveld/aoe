@@ -49,6 +49,11 @@ static const struct genie_ui_button buttons_main[] = {
 	{220, 373, 360, 30, "Help"},
 	{220, 408, 360, 30, "About"},
 	{220, 458, 360, 30, "Cancel"},
+}, buttons_game_diplomacy[] = {
+	{588, 425, 30, 30, "?"},
+	{98, 465, 190, 30, "OK"},
+	{303, 465, 190, 30, "Clear Tributes"},
+	{508, 465, 190, 30, "Cancel"},
 }, buttons_game_achievements[] = {
 	{125, 551, 250, 37, "Timeline"},
 	{425, 551, 250, 37, "Cancel"},
@@ -90,6 +95,9 @@ static struct menu_list menu_list_main = {
 }, menu_list_game_menu = {
 	.buttons = buttons_game_menu,
 	.count = ARRAY_SIZE(buttons_game_menu)
+}, menu_list_game_diplomacy = {
+	.buttons = buttons_game_diplomacy,
+	.count = ARRAY_SIZE(buttons_game_diplomacy)
 }, menu_list_game_achievements = {
 	.buttons = buttons_game_achievements,
 	.count = ARRAY_SIZE(buttons_game_achievements)
@@ -117,6 +125,7 @@ static void menu_nav_select_single_player(struct genie_ui *ui, struct menu_nav *
 static void menu_nav_select_single_player_game(struct genie_ui *ui, struct menu_nav *this);
 static void menu_nav_select_game(struct genie_ui *ui, struct menu_nav *this);
 static void menu_nav_select_game_menu(struct genie_ui *ui, struct menu_nav *this);
+static void menu_nav_select_game_diplomacy(struct genie_ui *ui, struct menu_nav *this);
 static void menu_nav_select_game_achievements(struct genie_ui *ui, struct menu_nav *this);
 static void menu_nav_select_game_timeline(struct genie_ui *ui, struct menu_nav *this);
 static void menu_nav_select_multiplayer(struct genie_ui *ui, struct menu_nav *this);
@@ -158,6 +167,13 @@ static struct menu_nav menu_nav_single_player = {
 	.list = &menu_list_game_menu,
 	.select = menu_nav_select_game_menu,
 	.display = genie_display_default,
+}, menu_nav_game_diplomacy = {
+	.title = "Diplomacy",
+	.flags = 0,
+	.index = 1,
+	.list = &menu_list_game_diplomacy,
+	.select = menu_nav_select_game_diplomacy,
+	.display = genie_display_diplomacy,
 }, menu_nav_game_achievements = {
 	.title = "Achievements",
 	.flags = 0,
@@ -171,7 +187,7 @@ static struct menu_nav menu_nav_single_player = {
 	.index = 0,
 	.list = &menu_list_game_timeline,
 	.select = menu_nav_select_game_timeline,
-	.display = genie_display_achievements,
+	.display = genie_display_timeline,
 }, menu_nav_multiplayer = {
 	.title = "Multiplayer Connection",
 	.flags = 0,
@@ -254,6 +270,9 @@ static void menu_nav_select_single_player_game(struct genie_ui *ui, struct menu_
 static void menu_nav_select_game(struct genie_ui *ui, struct menu_nav *this)
 {
 	switch (this->index) {
+	case 0:
+		genie_ui_menu_push(ui, &menu_nav_game_diplomacy);
+		break;
 	case 1:
 		genie_ui_menu_push(ui, &menu_nav_game_menu);
 		break;
@@ -275,6 +294,18 @@ static void menu_nav_select_game_menu(struct genie_ui *ui, struct menu_nav *this
 		genie_ui_menu_push(ui, &menu_nav_game_achievements);
 		break;
 	case 9:
+		genie_ui_menu_pop(ui);
+		break;
+	default:
+		menu_nav_select_dummy(this);
+		break;
+	}
+}
+
+static void menu_nav_select_game_diplomacy(struct genie_ui *ui, struct menu_nav *this)
+{
+	switch (this->index) {
+	case 3:
 		genie_ui_menu_pop(ui);
 		break;
 	default:
