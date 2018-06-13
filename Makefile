@@ -21,7 +21,7 @@ else
 	CFLAGS += -O3
 endif
 
-SDL_LDLIBS = $(shell pkg-config --cflags --libs sdl2) -lSDL2_image
+SDL_LDLIBS = $(shell pkg-config --cflags --libs sdl2) -lSDL2_image -lSDL2_ttf
 
 default: setup
 all: setup
