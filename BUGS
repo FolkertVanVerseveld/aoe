@@ -1,0 +1,5 @@
+op xubuntu 14 moet je setup zo compileren:
+
+gcc -fsanitize=address  -pthread -lcheck_pic -lrt -lm   setup.o -o setup  -lm -lxtcommon -ldl -lpthread   -D_REENTRANT -I/usr/include/SDL2  -lSDL2   -lSDL2_image -lSDL2_ttf -lpe -lcrypto -lssl
+
+dus crypto en ssl moeten andersom, maar geen idee waarom...
