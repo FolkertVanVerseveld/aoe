@@ -19,12 +19,13 @@ static inline void dump(const void *mem, size_t n)
 	const unsigned char *data = mem;
 
 	for (i = 0; i < n; ++i) {
-		printf("%02X", data[i]);
+		printf("%02X ", data[i]);
 		if (++j == 16) {
 			putchar('\n');
 			j = 0;
 		}
 	}
+	putchar('\n');
 }
 
 #else
@@ -32,7 +33,11 @@ static inline void dump(const void *mem, size_t n)
 #define dbgf(f, ...) ((void)0)
 #define dbgs(s) ((void)0)
 
-static inline void dump(const void *mem, size_t n) {}
+static inline void dump(const void *mem, size_t n)
+{
+	(void)mem;
+	(void)n;
+}
 
 #endif
 

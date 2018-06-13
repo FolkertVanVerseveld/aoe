@@ -26,7 +26,7 @@ SDL_LDLIBS = $(shell pkg-config --cflags --libs sdl2) -lSDL2_image -lSDL2_ttf
 default: setup
 all: setup
 setup: setup.o
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) setup.o -o setup $(LDFLAGS) $(LDLIBS) $(SDL_LDLIBS)
+	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) setup.o -o setup $(LDFLAGS) $(LDLIBS) $(SDL_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl)
 
 clean:
 	rm -f setup *.o
