@@ -24,9 +24,11 @@ endif
 SDL_LDLIBS = $(shell pkg-config --cflags --libs sdl2) -lSDL2_image -lSDL2_ttf
 
 default: setup
-all: setup
+all: setup bmp
 setup: setup.o
 	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) setup.o -o setup $(LDFLAGS) $(LDLIBS) $(SDL_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl)
+bmp: bmp.o
+	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) bmp.o -o bmp $(LDFLAGS) $(LDLIBS)
 
 clean:
-	rm -f setup *.o
+	rm -f setup bmp *.o

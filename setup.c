@@ -14,6 +14,7 @@
 #include <linux/limits.h>
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
 #include <libpe/pe.h>
@@ -314,6 +315,7 @@ int load_lib_lang(void)
 	return 0;
 }
 
+#define RT_BITMAP 1
 #define RT_STRING 5
 
 #define MAX_PATH 256
@@ -584,7 +586,6 @@ static int pe_load_data_entry(pe_ctx_t *ctx, const NODE_PERES *node, struct pe_d
 				uint64_t offsetData = pe_rva2ofs(ctx, data_entry->offsetToData);
 				entry->data = LIBPE_PTR_ADD(ctx->map_addr, offsetData);
 				entry->size = data_entry->size;
-				dump(entry->data, data_entry->size);
 				return 0;
 			}
 		node = node->nextNode;
@@ -614,6 +615,18 @@ int load_string(unsigned id, char *str, size_t size)
 	return 1;
 }
 
+int load_bitmap(unsigned id, void **data, size_t *size)
+{
+	struct pe_data_entry entry;
+	dbgf("load_bitmap %04X\n", id);
+	if (!pe_load_data_entry(&lib_lang, lib_lang_res, &entry, RT_BITMAP, id)) {
+		*data = entry.data;
+		*size = entry.size;
+		return 0;
+	}
+	return 1;
+}
+
 #define PANIC_BUFSZ 1024
 
 void panic(const char *str)
@@ -626,6 +639,9 @@ void panic(const char *str)
 
 SDL_Surface *surf_start, *surf_reset, *surf_nuke, *surf_exit, *surf_website;
 SDL_Texture *tex_start, *tex_reset, *tex_nuke, *tex_exit, *tex_website;
+
+SDL_Surface *surf_bkg;
+SDL_Texture *tex_bkg;
 
 void init_main_menu(void)
 {
@@ -653,6 +669,18 @@ void init_main_menu(void)
 	assert(tex_exit);
 	tex_website = SDL_CreateTextureFromSurface(renderer, surf_website);
 	assert(tex_website);
+
+	void *bkg_data;
+	size_t bkg_size;
+	int ret;
+
+	ret = load_bitmap(0xA2, &bkg_data, &bkg_size);
+	assert(ret == 0);
+
+	SDL_RWops *bkg = SDL_RWFromMem(bkg_data, bkg_size);
+	surf_bkg = SDL_LoadBMP_RW(bkg, 1);
+	tex_bkg = SDL_CreateTextureFromSurface(renderer, surf_bkg);
+	//assert(tex_bkg);
 }
 
 void display_main_menu(void)
@@ -721,6 +749,8 @@ int main(void)
 	if (!(renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)))
 		panic("Could not create rendering context");
 
+	if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG))
+		panic("Could not initialize image subsystem");
 	if (TTF_Init())
 		panic("Could not initialize fonts");
 
@@ -733,6 +763,8 @@ int main(void)
 	main_event_loop();
 
 	TTF_Quit();
+	IMG_Quit();
+
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
