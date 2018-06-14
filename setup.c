@@ -766,8 +766,8 @@ void panic(const char *str)
 SDL_Surface *surf_start, *surf_reset, *surf_nuke, *surf_exit, *surf_website;
 SDL_Texture *tex_start, *tex_reset, *tex_nuke, *tex_exit, *tex_website;
 
-SDL_Surface *surf_bkg;
-SDL_Texture *tex_bkg;
+SDL_Surface *surf_bkg, *surf_btn;
+SDL_Texture *tex_bkg, *tex_btn;
 
 void init_main_menu(void)
 {
@@ -796,25 +796,65 @@ void init_main_menu(void)
 	tex_website = SDL_CreateTextureFromSurface(renderer, surf_website);
 	assert(tex_website);
 
-	void *bkg_data;
-	size_t bkg_size;
+	void *data;
+	size_t size;
 	int ret;
+	SDL_RWops *mem;
 
-	ret = load_bitmap(0xA2, &bkg_data, &bkg_size);
+	ret = load_bitmap(0xA2, &data, &size);
 	assert(ret == 0);
 
-	SDL_RWops *bkg = SDL_RWFromMem(scratch, bkg_size);
-	surf_bkg = SDL_LoadBMP_RW(bkg, 1);
+	mem = SDL_RWFromMem(scratch, size);
+	surf_bkg = SDL_LoadBMP_RW(mem, 1);
 	tex_bkg = SDL_CreateTextureFromSurface(renderer, surf_bkg);
 	assert(tex_bkg);
+
+	ret = load_bitmap(0xD1, &data, &size);
+	assert(ret == 0);
+	mem = SDL_RWFromMem(scratch, size);
+	surf_btn = SDL_LoadBMP_RW(mem, 1);
+	// FIXME remove transparent pixels
+	printf("format: %X\n", SDL_PIXELTYPE(surf_btn->format->format));
+	tex_btn = SDL_CreateTextureFromSurface(renderer, surf_btn);
+	assert(tex_btn);
 }
 
 void display_main_menu(void)
 {
-	SDL_Rect pos;
+	SDL_Rect pos, img;
 	pos.x = 0; pos.y = 0;
 	pos.w = surf_bkg->w; pos.h = surf_bkg->h;
 	SDL_RenderCopy(renderer, tex_bkg, NULL, &pos);
+
+	pos.x = 197; pos.y = 138;
+	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
+	img.x = 0; img.y = 2 * surf_btn->h / 4;
+	img.w = surf_btn->w; img.h = surf_btn->h / 4;
+	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
+
+	pos.x = 197; pos.y = 180;
+	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
+	img.x = 0; img.y = 0 * surf_btn->h / 4;
+	img.w = surf_btn->w; img.h = surf_btn->h / 4;
+	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
+
+	pos.x = 197; pos.y = 223;
+	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
+	img.x = 0; img.y = 0 * surf_btn->h / 4;
+	img.w = surf_btn->w; img.h = surf_btn->h / 4;
+	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
+
+	pos.x = 197; pos.y = 265;
+	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
+	img.x = 0; img.y = 1 * surf_btn->h / 4;
+	img.w = surf_btn->w; img.h = surf_btn->h / 4;
+	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
+
+	pos.x = 197; pos.y = 307;
+	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
+	img.x = 0; img.y = 1 * surf_btn->h / 4;
+	img.w = surf_btn->w; img.h = surf_btn->h / 4;
+	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
 
 	pos.x = 0xf1; pos.y = 0x90;
 	pos.w = surf_start->w; pos.h = surf_start->h;
