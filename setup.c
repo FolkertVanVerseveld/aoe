@@ -769,6 +769,21 @@ SDL_Texture *tex_start, *tex_reset, *tex_nuke, *tex_exit, *tex_website;
 SDL_Surface *surf_bkg, *surf_btn;
 SDL_Texture *tex_bkg, *tex_btn;
 
+struct menu_item {
+	SDL_Rect pos;
+	int x, y;
+	unsigned image;
+	unsigned id, format;
+	SDL_Surface **surf;
+	SDL_Texture **tex;
+} menu_items[] = {
+	{{0xf1, 0x90 , 0x1b8, 0xb7 }, 197, 138, 2, STR_INSTALL_GAME, 0x10, &surf_start, &tex_start},
+	{{0xf1, 0xba , 0x1b0, 0xcd }, 197, 180, 0, STR_RESET_GAME, 0, &surf_reset, &tex_reset},
+	{{0xf1, 0xe6 , 0x1b1, 0xf9 }, 197, 223, 0, STR_NUKE_GAME, 0, &surf_nuke, &tex_nuke},
+	{{0xf1, 0x10f, 0x1b8, 0x136}, 197, 265, 1, STR_EXIT_SETUP, 0x10, &surf_exit, &tex_exit},
+	{{0xf1, 0x13a, 0x1b8, 0x161}, 197, 307, 1, STR_OPEN_WEBSITE, 0x10, &surf_website, &tex_website},
+};
+
 void init_main_menu(void)
 {
 	SDL_Color fg = {0, 0, 0, 255};
@@ -826,55 +841,21 @@ void display_main_menu(void)
 	pos.w = surf_bkg->w; pos.h = surf_bkg->h;
 	SDL_RenderCopy(renderer, tex_bkg, NULL, &pos);
 
-	pos.x = 197; pos.y = 138;
-	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
-	img.x = 0; img.y = 2 * surf_btn->h / 4;
-	img.w = surf_btn->w; img.h = surf_btn->h / 4;
-	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
+	for (unsigned i = 0; i < ARRAY_SIZE(menu_items); ++i) {
+		struct menu_item *item = &menu_items[i];
+		pos.x = item->x; pos.y = item->y;
+		pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
+		img.x = 0; img.y = item->image * surf_btn->h / 4;
+		img.w = surf_btn->w; img.h = surf_btn->h / 4;
+		SDL_RenderCopy(renderer, tex_btn, &img, &pos);
+	}
 
-	pos.x = 197; pos.y = 180;
-	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
-	img.x = 0; img.y = 0 * surf_btn->h / 4;
-	img.w = surf_btn->w; img.h = surf_btn->h / 4;
-	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
-
-	pos.x = 197; pos.y = 223;
-	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
-	img.x = 0; img.y = 0 * surf_btn->h / 4;
-	img.w = surf_btn->w; img.h = surf_btn->h / 4;
-	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
-
-	pos.x = 197; pos.y = 265;
-	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
-	img.x = 0; img.y = 1 * surf_btn->h / 4;
-	img.w = surf_btn->w; img.h = surf_btn->h / 4;
-	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
-
-	pos.x = 197; pos.y = 307;
-	pos.w = surf_btn->w; pos.h = surf_btn->h / 4;
-	img.x = 0; img.y = 1 * surf_btn->h / 4;
-	img.w = surf_btn->w; img.h = surf_btn->h / 4;
-	SDL_RenderCopy(renderer, tex_btn, &img, &pos);
-
-	pos.x = 0xf1; pos.y = 0x90;
-	pos.w = surf_start->w; pos.h = surf_start->h;
-	SDL_RenderCopy(renderer, tex_start, NULL, &pos);
-
-	pos.x = 0xf1; pos.y = 0xba;
-	pos.w = surf_reset->w; pos.h = surf_reset->h;
-	SDL_RenderCopy(renderer, tex_reset, NULL, &pos);
-
-	pos.x = 0xf1; pos.y = 0xe6;
-	pos.w = surf_nuke->w; pos.h = surf_nuke->h;
-	SDL_RenderCopy(renderer, tex_nuke, NULL, &pos);
-
-	pos.x = 0xf1; pos.y = 0x10f;
-	pos.w = surf_exit->w; pos.h = surf_exit->h;
-	SDL_RenderCopy(renderer, tex_exit, NULL, &pos);
-
-	pos.x = 0xf1; pos.y = 0x13a;
-	pos.w = surf_website->w; pos.h = surf_website->h;
-	SDL_RenderCopy(renderer, tex_website, NULL, &pos);
+	for (unsigned i = 0; i < ARRAY_SIZE(menu_items); ++i) {
+		struct menu_item *item = &menu_items[i];
+		item->pos.w = (*item->surf)->w;
+		item->pos.h = (*item->surf)->h;
+		SDL_RenderCopy(renderer, *item->tex, NULL, &item->pos);
+	}
 }
 
 void main_event_loop(void)
