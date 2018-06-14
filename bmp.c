@@ -44,13 +44,17 @@ uint8_t *dump_coltbl(const void *data, size_t size, unsigned bits)
 		fputs("corrupt color table\n", stderr);
 		return NULL;
 	}
+#if 1
+	return (uint8_t*)((uint32_t*)data + n);
+#else
 	uint32_t *col = data;
 	for (size_t i = 0; i < n; ++i)
 		printf("%8X: %8X\n", i, col[i]);
-	return (uint8_t*)col[n];
+	return (uint8_t*)&col[n];
+#endif
 }
 
-void dump_img(const void *data, size_t n)
+void dump_img(const void *data, size_t n, size_t offset)
 {
 	const struct img_header *hdr = data;
 	if (n < 12 || hdr->biSize >= n) {
@@ -66,6 +70,7 @@ void dump_img(const void *data, size_t n)
 	printf("biClrUsed: %u\nbiClrImportant: %u\n", hdr->biClrUsed, hdr->biClrImportant);
 	if (hdr->biBitCount <= 8) {
 		uint8_t *end = dump_coltbl((const unsigned char*)data + hdr->biSize, n - hdr->biSize, hdr->biBitCount);
+		printf("pixel data start: 0x%zX\n", offset + hdr->biSize + 256 * sizeof(uint32_t));
 		if (end && end + hdr->biHeight * hdr->biWidth > (const unsigned char*)data + n)
 			fputs("truncated pixel data\n", stderr);
 	}
@@ -78,12 +83,12 @@ void dump_bmp(const void *data, size_t n)
 		if (!is_img(data, n))
 			fputs("corrupt bmp file\n", stderr);
 		else
-			dump_img(data, n);
+			dump_img(data, n, 0);
 		return;
 	}
 	printf("bmp header:\nbfType: 0x%04X\nSize: 0x%X\n", hdr->bfType, hdr->bfSize);
 	printf("Start pixeldata: 0x%X\n", hdr->bfOffBits);
-	dump_img(hdr + 1, n - sizeof *hdr);
+	dump_img(hdr + 1, n - sizeof *hdr, sizeof *hdr);
 }
 
 int main(int argc, char **argv)

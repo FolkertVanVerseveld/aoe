@@ -2,11 +2,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -43,6 +45,10 @@ char path_cdrom[PATH_MAX];
 
 // scratch buffer
 char buf[BUFSZ];
+
+// 0.5 MiB of scratch virtual memory
+#define SCRATCH_SIZE 524288
+void *scratch;
 
 static pe_ctx_t lib_lang;
 static NODE_PERES *lib_lang_res;
@@ -615,16 +621,136 @@ int load_string(unsigned id, char *str, size_t size)
 	return 1;
 }
 
+struct bmp_header {
+	uint16_t bfType;
+	uint32_t bfSize;
+	uint16_t bfReserved1;
+	uint16_t bfReserved2;
+	uint32_t bfOffBits;
+} __attribute__((packed));
+
+struct img_header {
+	uint32_t biSize;
+	uint32_t biWidth;
+	uint32_t biHeight;
+	uint16_t biPlanes;
+	uint16_t biBitCount;
+	uint32_t biCompression;
+	uint32_t biSizeImage;
+	uint32_t biXPelsPerMeter;
+	uint32_t biYPelsPerMeter;
+	uint32_t biClrUsed;
+	uint32_t biClrImportant;
+};
+
+// NOTE strictly assumes file is at least 40 bytes
+uint32_t img_pixel_offset(const void *data, size_t n)
+{
+	uint32_t offset = 0;
+	const struct img_header *hdr = data;
+
+	if (n < 40 || hdr->biSize >= n || hdr->biBitCount != 8)
+		return 0;
+
+	// assume all entries are used
+	return hdr->biSize + 256 * sizeof(uint32_t);
+}
+
+// FIXME remove this when load_bitmap works
+int is_bmp(const void *data, size_t n)
+{
+	const struct bmp_header *hdr = data;
+	return n >= sizeof *hdr && hdr->bfType == 0x4D42;
+}
+
+int is_img(const void *data, size_t n)
+{
+	const struct img_header *hdr = data;
+	return n >= 12 && hdr->biSize < n;
+}
+
+uint8_t *dump_coltbl(const void *data, size_t size, unsigned bits)
+{
+	size_t n = 1 << bits;
+	if (n * sizeof(uint32_t) > size) {
+		fputs("corrupt color table\n", stderr);
+		return NULL;
+	}
+#if 1
+	return (uint8_t*)((uint32_t*)data + n);
+#else
+	uint32_t *col = data;
+	for (size_t i = 0; i < n; ++i)
+		printf("%8X: %8X\n", i, col[i]);
+	return (uint8_t*)&col[n];
+#endif
+}
+
+void dump_img(const void *data, size_t n, size_t offset)
+{
+	const struct img_header *hdr = data;
+	if (n < 12 || hdr->biSize >= n) {
+		fputs("corrupt img header\n", stderr);
+		return;
+	}
+	dbgf("img header:\nbiSize: 0x%X\nbiWidth: %u\nbiHeight: %u\n", hdr->biSize, hdr->biWidth, hdr->biHeight);
+	if (hdr->biSize < 12)
+		return;
+	dbgf("biPlanes: %u\nbiBitCount: %u\nbiCompression: %u\n", hdr->biPlanes, hdr->biBitCount, hdr->biCompression);
+	dbgf("biSizeImage: 0x%X\n", hdr->biSizeImage);
+	dbgf("biXPelsPerMeter: %u\nbiYPelsPerMeter: %u\n", hdr->biXPelsPerMeter, hdr->biYPelsPerMeter);
+	dbgf("biClrUsed: %u\nbiClrImportant: %u\n", hdr->biClrUsed, hdr->biClrImportant);
+	if (hdr->biBitCount <= 8) {
+		uint8_t *end = dump_coltbl((const unsigned char*)data + hdr->biSize, n - hdr->biSize, hdr->biBitCount);
+		dbgf("pixel data start: 0x%zX\n", offset + hdr->biSize + 256 * sizeof(uint32_t));
+		if (end && end + hdr->biHeight * hdr->biWidth > (const unsigned char*)data + n)
+			fputs("truncated pixel data\n", stderr);
+	}
+}
+
+void dump_bmp(const void *data, size_t n)
+{
+	const struct bmp_header *hdr = data;
+	if (!is_bmp(data, n)) {
+		if (!is_img(data, n))
+			fputs("corrupt bmp file\n", stderr);
+		else
+			dump_img(data, n, 0);
+		return;
+	}
+	dbgf("bmp header:\nbfType: 0x%04X\nSize: 0x%X\n", hdr->bfType, hdr->bfSize);
+	dbgf("Start pixeldata: 0x%X\n", hdr->bfOffBits);
+	dump_img(hdr + 1, n - sizeof *hdr, sizeof *hdr);
+}
+
+// FIXME also support big endian machines
 int load_bitmap(unsigned id, void **data, size_t *size)
 {
 	struct pe_data_entry entry;
+	struct bmp_header *hdr;
+
 	dbgf("load_bitmap %04X\n", id);
-	if (!pe_load_data_entry(&lib_lang, lib_lang_res, &entry, RT_BITMAP, id)) {
-		*data = entry.data;
-		*size = entry.size;
-		return 0;
-	}
-	return 1;
+	if (pe_load_data_entry(&lib_lang, lib_lang_res, &entry, RT_BITMAP, id))
+		return 1;
+	if (entry.size + sizeof *hdr > SCRATCH_SIZE)
+		panic("bitmap too big");
+	// TODO reconstruct bmp_header in scratch mem
+	uint32_t offset = img_pixel_offset(entry.data, entry.size);
+	if (!offset)
+		return 1;
+	hdr = scratch;
+	hdr->bfType = 0x4D42;
+	hdr->bfSize = entry.size + sizeof *hdr;
+	hdr->bfReserved1 = hdr->bfReserved2 = 0;
+	hdr->bfOffBits = offset + sizeof *hdr;
+
+	memcpy(hdr + 1, entry.data, entry.size);
+	dump_bmp(hdr, hdr->bfSize);
+
+	*data = entry.data;
+	*size = entry.size + sizeof *hdr;
+
+	return 0;
 }
 
 #define PANIC_BUFSZ 1024
@@ -677,15 +803,19 @@ void init_main_menu(void)
 	ret = load_bitmap(0xA2, &bkg_data, &bkg_size);
 	assert(ret == 0);
 
-	SDL_RWops *bkg = SDL_RWFromMem(bkg_data, bkg_size);
+	SDL_RWops *bkg = SDL_RWFromMem(scratch, bkg_size);
 	surf_bkg = SDL_LoadBMP_RW(bkg, 1);
 	tex_bkg = SDL_CreateTextureFromSurface(renderer, surf_bkg);
-	//assert(tex_bkg);
+	assert(tex_bkg);
 }
 
 void display_main_menu(void)
 {
 	SDL_Rect pos;
+	pos.x = 0; pos.y = 0;
+	pos.w = surf_bkg->w; pos.h = surf_bkg->h;
+	SDL_RenderCopy(renderer, tex_bkg, NULL, &pos);
+
 	pos.x = 0xf1; pos.y = 0x90;
 	pos.w = surf_start->w; pos.h = surf_start->h;
 	SDL_RenderCopy(renderer, tex_start, NULL, &pos);
@@ -709,7 +839,7 @@ void display_main_menu(void)
 
 void main_event_loop(void)
 {
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 
 	display_main_menu();
@@ -731,6 +861,10 @@ int main(void)
 		panic("Please insert or mount the game CD-ROM");
 	if (load_lib_lang())
 		panic("CD-ROM files are corrupt");
+
+	scratch = mmap(NULL, SCRATCH_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (scratch == MAP_FAILED)
+		panic("Could not initialize scratch memory");
 
 	if (SDL_Init(SDL_INIT_VIDEO))
 		panic("Could not initialize user interface");
