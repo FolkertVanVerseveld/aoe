@@ -784,6 +784,9 @@ struct menu_item {
 	{{0xf1, 0x13a, 0x1b8, 0x161}, 197, 307, 1, STR_OPEN_WEBSITE, 0x10, &surf_website, &tex_website},
 };
 
+unsigned menu_option = 0;
+
+
 void init_main_menu(void)
 {
 	SDL_Color fg = {0, 0, 0, 255};
@@ -858,6 +861,59 @@ void display_main_menu(void)
 	}
 }
 
+int keydown(const SDL_Event *ev)
+{
+	unsigned mod, virt;
+	unsigned old_option;
+
+	mod = ev->key.keysym.mod;
+	virt = ev->key.keysym.sym;
+
+	old_option = menu_option;
+
+	switch (virt) {
+	case SDLK_DOWN:
+		do {
+			menu_option = (menu_option + 1) % ARRAY_SIZE(menu_items);
+		} while (menu_items[menu_option].image == 0);
+		break;
+	case SDLK_UP:
+		do {
+			menu_option = (menu_option + ARRAY_SIZE(menu_items) - 1) % ARRAY_SIZE(menu_items);
+		} while (menu_items[menu_option].image == 0);
+		break;
+	}
+
+	if (old_option != menu_option) {
+		menu_items[old_option].image = 1;
+		menu_items[menu_option].image = 2;
+		return 1;
+	}
+	return 0;
+}
+
+int keyup(const SDL_Event *ev)
+{
+	unsigned virt = ev->key.keysym.sym;
+
+	switch (virt) {
+	case '\r':
+	case '\n':
+		switch (menu_option) {
+		case 0:
+		case 1:
+		case 2:
+			break;
+		case 3:
+			return -1;
+		case 4:
+			break;
+		}
+		break;
+	}
+	return 0;
+}
+
 void main_event_loop(void)
 {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -867,11 +923,21 @@ void main_event_loop(void)
 	SDL_RenderPresent(renderer);
 
 	SDL_Event ev;
+	int code;
 	while (SDL_WaitEvent(&ev)) {
 		switch (ev.type) {
 		case SDL_QUIT:
-		case SDL_KEYDOWN:
 			return;
+		case SDL_KEYUP:
+			if (keyup(&ev) < 0)
+				return;
+			break;
+		case SDL_KEYDOWN:
+			if (keydown(&ev)) {
+				display_main_menu();
+				SDL_RenderPresent(renderer);
+			}
+			break;
 		}
 	}
 }
