@@ -1,8 +1,8 @@
 .PHONY: default all clean
 
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -std=gnu11 $(shell pkg-config --cflags xtcommon)
-LDLIBS=$(shell pkg-config --libs xtcommon)
+CFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -std=gnu11
+LDLIBS=
 LDFLAGS?=
 DEBUG_LDLIBS?=
 DEBUG_LDFLAGS?=

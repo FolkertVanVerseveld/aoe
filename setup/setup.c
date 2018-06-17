@@ -1,4 +1,4 @@
-/* Copyright 2018 Folkert van Verseveld. All rights resseved */
+/* Copyright 2018 Folkert van Verseveld. All rights reserved */
 
 #include <stdio.h>
 #include <stdlib.h>

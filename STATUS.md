@@ -19,7 +19,7 @@ File I/O  | Parse basic game assets | Audio works, parsing other types is being 
 Tools     | (Un)packing game assets | Pretty stable, but the code needs a good cleanup
 
 Unfortunately, the audio tracks mounting issue is related to the particular
-Linux distribution the game is running on and we don't know if this is possible
+Linux distribution the game is running on and we do not know if this is possible
 to fix at all.
 
 ## In progress
@@ -51,4 +51,4 @@ require more investigation or the scope of the issue has to be clarified.
 Subsystem | Task / Purpose | Notes
 ----------|----------------|----------------------------------------------
 Engine    | MIDI playback  | Old launcher is being migrated to the new one
-""        | PE parsing     | Ugly code; needs refactoring
+""        | PE parsing     | Currently investigating libpe

@@ -20,6 +20,7 @@ Symptom                  | Cause                                     | Solution
 -------------------------|-------------------------------------------|-------------------------------------------------------
 Ugly user interface font | The original game font could not be found | No workaround at the moment
 No music                 | The CD-ROM audio partition is not mounted | Open the directory in your filebrowser to automount it
+Cannot patch DRS bitmap  | The bitmap header is also included        | Strip the header manually
 
 In case the game does not start at all, make sure the following is satisfied:
 
