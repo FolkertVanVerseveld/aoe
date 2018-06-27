@@ -1,4 +1,4 @@
-/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2016-2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #ifndef GENIE_DRS_H
 #define GENIE_DRS_H
@@ -6,10 +6,10 @@
 /*
 drs item types:
 
-'bina'
-'wav '
-'slp '
-'shp '
+'bina' everything else
+'wav ' audio files
+'slp ' model files
+'shp ' shape files
 */
 
 #include <stddef.h>
@@ -23,6 +23,7 @@ struct drsmap {
 	uint32_t listend; // XXX go figure
 };
 
+// FIXME also support big-endian machines
 #define DT_BINARY 0x62696e61
 #define DT_SHP    0x73687020
 #define DT_SLP    0x736c7020

@@ -3,15 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <stdint.h>
 
-struct bmp_header {
-	uint16_t bfType;
-	uint32_t bfSize;
-	uint16_t bfReserved1;
-	uint16_t bfReserved2;
-	uint32_t bfOffBits;
-} __attribute__((packed));
+#include "bmp.h"
 
 struct img_header {
 	uint32_t biSize;

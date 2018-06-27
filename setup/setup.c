@@ -22,6 +22,7 @@
 #include <libpe/pe.h>
 
 #include "dbg.h"
+#include "bmp.h"
 
 #define TITLE "Age of Empires"
 
@@ -83,6 +84,7 @@ static void free_nodes(NODE_PERES *node)
 		}
 }
 
+// grabbed from peres.c demo
 static NODE_PERES *createNode(NODE_PERES *currentNode, NODE_TYPE_PERES typeOfNextNode)
 {
 	assert(currentNode != NULL);
@@ -94,6 +96,7 @@ static NODE_PERES *createNode(NODE_PERES *currentNode, NODE_TYPE_PERES typeOfNex
 	return newNode;
 }
 
+// grabbed from peres.c demo
 static const NODE_PERES *lastNodeByTypeAndLevel(const NODE_PERES *currentNode, NODE_TYPE_PERES nodeTypeSearch, NODE_LEVEL_PERES nodeLevelSearch)
 {
 	assert(currentNode != NULL);
@@ -109,6 +112,7 @@ static const NODE_PERES *lastNodeByTypeAndLevel(const NODE_PERES *currentNode, N
 	return NULL;
 }
 
+// grabbed from peres.c demo
 static NODE_PERES *pe_map_res(pe_ctx_t *ctx)
 {
 	const IMAGE_DATA_DIRECTORY * const resourceDirectory = pe_directory_by_entry(ctx, IMAGE_DIRECTORY_ENTRY_RESOURCE);
@@ -328,6 +332,7 @@ int load_lib_lang(void)
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
+// grabbed from peres.c demo
 static const RESOURCE_ENTRY resource_types[] = {
 	{ "RT_CURSOR",			1, ".cur",		"cursors"		},
 	{ "RT_BITMAP",			2, ".bmp",		"bitmaps"		},
@@ -363,54 +368,6 @@ static const RESOURCE_ENTRY *getResourceEntryByNameOffset(uint32_t nameOffset)
 	return NULL;
 }
 
-static void pe_node_get_path(pe_ctx_t *ctx, const NODE_PERES *node, char *path)
-{
-	for (unsigned level = RDT_LEVEL1; level <= node->nodeLevel; level++) {
-		char name[MAX_PATH];
-
-		const NODE_PERES *parent = lastNodeByTypeAndLevel(node, RDT_DIRECTORY_ENTRY, level);
-		if (parent->resource.directoryEntry->DirectoryName.name.NameIsString) {
-
-			const IMAGE_DATA_DIRECTORY * const resourceDirectory = pe_directory_by_entry(ctx, IMAGE_DIRECTORY_ENTRY_RESOURCE);
-			if (resourceDirectory == NULL || resourceDirectory->Size == 0)
-				return;
-
-			const uint64_t offsetString = pe_rva2ofs(ctx, resourceDirectory->VirtualAddress + parent->resource.directoryEntry->DirectoryName.name.NameOffset);
-			const IMAGE_RESOURCE_DATA_STRING *ptr = LIBPE_PTR_ADD(ctx->map_addr, offsetString);
-
-			if (!pe_can_read(ctx, ptr, sizeof(IMAGE_RESOURCE_DATA_STRING))) {
-				// TODO: Should we report something?
-				return;
-			}
-			const uint16_t stringSize = ptr->length;
-			if (stringSize + 2 <= MAX_PATH){
-				// quick & dirty UFT16 to ASCII conversion
-				for (uint16_t p = 0; p <= stringSize*2; p += 2){
-					memcpy(name + p/2, (char*)(ptr->string) + p, 1);
-				}
-				strncpy(name + stringSize, " \0", 2);
-			}
-		} else {
-			const RESOURCE_ENTRY *resourceEntry;
-			if (level == RDT_LEVEL1 && (resourceEntry = getResourceEntryByNameOffset(parent->resource.directoryEntry->DirectoryName.name.NameOffset))) {
-				snprintf(name, MAX_PATH, "%s ", resourceEntry->name);
-			} else
-				snprintf(name, MAX_PATH, "%04x ", parent->resource.directoryEntry->DirectoryName.name.NameOffset);
-		}
-		strncat(path, name, MAX_PATH - strlen(path));
-	}
-	path[strlen(path)-1] = 0;
-}
-
-static void pe_dump_data_entry(pe_ctx_t *ctx, const NODE_PERES *node)
-{
-	char path[MAX_PATH];
-	path[0] = '\0';
-
-	pe_node_get_path(ctx, node, path);
-	printf("%s (%d bytes)\n", path, node->resource.dataEntry->size);
-}
-
 #define PE_DATA_ENTRY_NAMESZ 64
 
 struct pe_data_entry {
@@ -424,12 +381,13 @@ struct pe_data_entry {
 
 #define MAX_MSG 4096
 
+#if 0
+// grabbed from peres.c demo
 static void showNode(const NODE_PERES *node)
 {
 	char value[MAX_MSG];
 
-	switch (node->nodeType)
-	{
+	switch (node->nodeType) {
 		default:
 			dbgf("ShowNode: %s\n", "ERROR - Invalid Node Type");
 			break;
@@ -515,7 +473,9 @@ static void showNode(const NODE_PERES *node)
 		}
 	}
 }
+#endif
 
+// grabbed from peres.c demo
 static int pe_find_data_entry(pe_ctx_t *ctx, const NODE_PERES *node, struct pe_data_entry *entry, unsigned type, unsigned id)
 {
 	unsigned entry_type = 0;
@@ -526,8 +486,7 @@ static int pe_find_data_entry(pe_ctx_t *ctx, const NODE_PERES *node, struct pe_d
 
 	for (unsigned level = RDT_LEVEL1; level <= node->nodeLevel; ++level) {
 		const NODE_PERES *parent = lastNodeByTypeAndLevel(node, RDT_DIRECTORY_ENTRY, level);
-		if (parent->resource.directoryEntry->DirectoryName.name.NameIsString)
-		{
+		if (parent->resource.directoryEntry->DirectoryName.name.NameIsString) {
 			const IMAGE_DATA_DIRECTORY * const resourceDirectory = pe_directory_by_entry(ctx, IMAGE_DIRECTORY_ENTRY_RESOURCE);
 			if (resourceDirectory == NULL || resourceDirectory->Size == 0)
 				return 0;
@@ -540,7 +499,7 @@ static int pe_find_data_entry(pe_ctx_t *ctx, const NODE_PERES *node, struct pe_d
 				return 0;
 
 			const uint16_t stringSize = ptr->length;
-			if (stringSize + 2 <= MAX_PATH){
+			if (stringSize + 2 <= MAX_PATH) {
 				// quick & dirty UFT16 to ASCII conversion
 				for (uint16_t p = 0; p <= stringSize*2; p += 2){
 					memcpy(name + p/2, (char*)(ptr->string) + p, 1);
@@ -621,32 +580,9 @@ int load_string(unsigned id, char *str, size_t size)
 	return 1;
 }
 
-struct bmp_header {
-	uint16_t bfType;
-	uint32_t bfSize;
-	uint16_t bfReserved1;
-	uint16_t bfReserved2;
-	uint32_t bfOffBits;
-} __attribute__((packed));
-
-struct img_header {
-	uint32_t biSize;
-	uint32_t biWidth;
-	uint32_t biHeight;
-	uint16_t biPlanes;
-	uint16_t biBitCount;
-	uint32_t biCompression;
-	uint32_t biSizeImage;
-	uint32_t biXPelsPerMeter;
-	uint32_t biYPelsPerMeter;
-	uint32_t biClrUsed;
-	uint32_t biClrImportant;
-};
-
 // NOTE strictly assumes file is at least 40 bytes
 uint32_t img_pixel_offset(const void *data, size_t n)
 {
-	uint32_t offset = 0;
 	const struct img_header *hdr = data;
 
 	if (n < 40 || hdr->biSize >= n || hdr->biBitCount != 8)
@@ -763,6 +699,8 @@ void panic(const char *str)
 	exit(1);
 }
 
+// XXX throw away surfaces?
+
 SDL_Surface *surf_start, *surf_reset, *surf_nuke, *surf_exit, *surf_website;
 SDL_Texture *tex_start, *tex_reset, *tex_nuke, *tex_exit, *tex_website;
 
@@ -863,10 +801,9 @@ void display_main_menu(void)
 
 int keydown(const SDL_Event *ev)
 {
-	unsigned mod, virt;
+	unsigned virt;
 	unsigned old_option;
 
-	mod = ev->key.keysym.mod;
 	virt = ev->key.keysym.sym;
 
 	old_option = menu_option;
@@ -923,7 +860,6 @@ void main_event_loop(void)
 	SDL_RenderPresent(renderer);
 
 	SDL_Event ev;
-	int code;
 	while (SDL_WaitEvent(&ev)) {
 		switch (ev.type) {
 		case SDL_QUIT:
