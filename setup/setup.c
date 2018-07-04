@@ -29,7 +29,7 @@
 
 #define TITLE "Age of Empires"
 
-#define WEBSITE "https://www.ageofempires.com"
+#define WEBSITE "http://web.archive.org/web/19980120120129/https://www.microsoft.com/games/empires"
 
 #define WIDTH 640
 #define HEIGHT 480
@@ -43,6 +43,9 @@ char path_cdrom[PATH_MAX];
 
 #define BUFSZ 4096
 
+#define BMP_MAIN_BKG 0xA2
+#define BMP_MAIN_BTN 0xD1
+
 #define STR_INSTALL_GAME 0x16
 #define STR_RESET_GAME 0x1A
 #define STR_NUKE_GAME 0x1B
@@ -52,7 +55,7 @@ char path_cdrom[PATH_MAX];
 // scratch buffer
 char buf[BUFSZ];
 
-static struct pe_lib pe_lib_lang;
+static struct pe_lib lib_lang;
 
 // XXX peres -x /media/methos/AOE/setupenu.dll
 
@@ -96,7 +99,7 @@ int find_setup_files(void)
 	dir = opendir(path);
 	if (!dir)
 		return 0;
-	
+
 	errno = 0;
 	while (item = readdir(dir)) {
 		if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, ".."))
@@ -117,7 +120,7 @@ int find_setup_files(void)
 int load_lib_lang(void)
 {
 	snprintf(buf, BUFSZ, "%s/setupenu.dll", path_cdrom);
-	return pe_lib_open(&pe_lib_lang, buf);
+	return pe_lib_open(&lib_lang, buf);
 }
 
 // XXX throw away surfaces?
@@ -151,15 +154,15 @@ void init_main_menu(void)
 	SDL_Color fg = {0, 0, 0, 255};
 
 	// FIXME proper error handling
-	load_string(&pe_lib_lang, STR_INSTALL_GAME, buf, BUFSZ);
+	load_string(&lib_lang, STR_INSTALL_GAME, buf, BUFSZ);
 	surf_start = TTF_RenderText_Solid(font, buf, fg);
-	load_string(&pe_lib_lang, STR_RESET_GAME, buf, BUFSZ);
+	load_string(&lib_lang, STR_RESET_GAME, buf, BUFSZ);
 	surf_reset = TTF_RenderText_Solid(font, buf, fg);
-	load_string(&pe_lib_lang, STR_NUKE_GAME, buf, BUFSZ);
+	load_string(&lib_lang, STR_NUKE_GAME, buf, BUFSZ);
 	surf_nuke = TTF_RenderText_Solid(font, buf, fg);
-	load_string(&pe_lib_lang, STR_EXIT_SETUP, buf, BUFSZ);
+	load_string(&lib_lang, STR_EXIT_SETUP, buf, BUFSZ);
 	surf_exit = TTF_RenderText_Solid(font, buf, fg);
-	load_string(&pe_lib_lang, STR_OPEN_WEBSITE, buf, BUFSZ);
+	load_string(&lib_lang, STR_OPEN_WEBSITE, buf, BUFSZ);
 	surf_website = TTF_RenderText_Solid(font, buf, fg);
 
 	tex_start = SDL_CreateTextureFromSurface(renderer, surf_start);
@@ -179,7 +182,7 @@ void init_main_menu(void)
 	SDL_RWops *mem;
 	Uint32 colkey;
 
-	ret = load_bitmap(&pe_lib_lang, 0xA2, &data, &size);
+	ret = load_bitmap(&lib_lang, BMP_MAIN_BKG, &data, &size);
 	assert(ret == 0);
 
 	mem = SDL_RWFromMem(data, size);
@@ -187,7 +190,7 @@ void init_main_menu(void)
 	tex_bkg = SDL_CreateTextureFromSurface(renderer, surf_bkg);
 	assert(tex_bkg);
 
-	ret = load_bitmap(&pe_lib_lang, 0xD1, &data, &size);
+	ret = load_bitmap(&lib_lang, BMP_MAIN_BTN, &data, &size);
 	assert(ret == 0);
 	mem = SDL_RWFromMem(data, size);
 	surf_btn = SDL_LoadBMP_RW(mem, 1);
@@ -224,6 +227,8 @@ void display_main_menu(void)
 	}
 }
 
+static int button_down = 0;
+
 int menu_btn_click(void)
 {
 	switch (menu_option) {
@@ -237,7 +242,64 @@ int menu_btn_click(void)
 		system("xdg-open '" WEBSITE "'");
 		break;
 	}
+	button_down = 0;
+	menu_items[menu_option].image = 2;
+	return 1;
+}
+
+unsigned mouse_find_button(int x, int y)
+{
+	unsigned i;
+
+	for (i = 0; i < ARRAY_SIZE(menu_items); ++i) {
+		struct menu_item *item = &menu_items[i];
+		if (x >= item->x && x < item->x + surf_btn->w &&
+			y >= item->y && y < item->y + surf_btn->h / 4)
+		{
+			break;
+		}
+	}
+	return i;
+}
+
+int mouse_move(const SDL_MouseMotionEvent *ev)
+{
+	unsigned old_option, index;
+
+	old_option = menu_option;
+	index = mouse_find_button(ev->x, ev->y);
+
+	if (index < ARRAY_SIZE(menu_items) && menu_items[index].image)
+		menu_option = index;
+
+	if (old_option != menu_option) {
+		//dbgf("mouse_move (%d,%d): %u\n", ev->x, ev->y, menu_option);
+		menu_items[old_option].image = 1;
+		menu_items[menu_option].image = 2;
+		return 1;
+	}
 	return 0;
+}
+
+int mouse_down(const SDL_MouseButtonEvent *ev)
+{
+	if (ev->button != SDL_BUTTON_LEFT)
+		return 0;
+	if (mouse_find_button(ev->x, ev->y) == menu_option) {
+		menu_items[menu_option].image = 3;
+		return 1;
+	}
+	return 0;
+}
+
+int mouse_up(const SDL_MouseButtonEvent *ev)
+{
+	if (ev->button != SDL_BUTTON_LEFT)
+		return 0;
+	if (mouse_find_button(ev->x, ev->y) == menu_option)
+		return menu_btn_click();
+	menu_items[menu_option].image = 2;
+	return 1;
 }
 
 int keydown(const SDL_Event *ev)
@@ -308,6 +370,26 @@ void main_event_loop(void)
 			break;
 		case SDL_KEYDOWN:
 			if ((code = keydown(&ev)) < 0)
+				return;
+			else if (code > 0) {
+				display_main_menu();
+				SDL_RenderPresent(renderer);
+			}
+			break;
+		case SDL_MOUSEMOTION:
+			if (mouse_move(&ev.motion)) {
+				display_main_menu();
+				SDL_RenderPresent(renderer);
+			}
+			break;
+		case SDL_MOUSEBUTTONDOWN:
+			if (mouse_down(&ev.button)) {
+				display_main_menu();
+				SDL_RenderPresent(renderer);
+			}
+			break;
+		case SDL_MOUSEBUTTONUP:
+			if ((code = mouse_up(&ev.button)) < 0)
 				return;
 			else if (code > 0) {
 				display_main_menu();
