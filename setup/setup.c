@@ -18,11 +18,14 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_surface.h>
 
 #include <libpe/pe.h>
 
 #include "dbg.h"
+#include "def.h"
 #include "bmp.h"
+#include "res.h"
 
 #define TITLE "Age of Empires"
 
@@ -53,205 +56,6 @@ void *scratch;
 
 static pe_ctx_t lib_lang;
 static NODE_PERES *lib_lang_res;
-
-void panic(const char *str) __attribute__((noreturn));
-
-void *malloc_s(size_t n)
-{
-	void *ptr = malloc(n);
-	if (!ptr)
-		panic("Out of memory");
-	return ptr;
-}
-
-// grabbed from peres.c demo
-static void free_nodes(NODE_PERES *node)
-{
-	if (!node)
-		return;
-
-	while (node->nextNode)
-		node = node->nextNode;
-
-	while (node)
-		if (!node->lastNode) {
-			free(node);
-			break;
-		} else {
-			node = node->lastNode;
-			if (node->nextNode)
-				free(node->nextNode);
-		}
-}
-
-// grabbed from peres.c demo
-static NODE_PERES *createNode(NODE_PERES *currentNode, NODE_TYPE_PERES typeOfNextNode)
-{
-	assert(currentNode != NULL);
-	NODE_PERES *newNode = malloc_s(sizeof(NODE_PERES));
-	newNode->lastNode = currentNode;
-	newNode->nextNode = NULL;
-	newNode->nodeType = typeOfNextNode;
-	currentNode->nextNode = newNode;
-	return newNode;
-}
-
-// grabbed from peres.c demo
-static const NODE_PERES *lastNodeByTypeAndLevel(const NODE_PERES *currentNode, NODE_TYPE_PERES nodeTypeSearch, NODE_LEVEL_PERES nodeLevelSearch)
-{
-	assert(currentNode != NULL);
-	if (currentNode->nodeType == nodeTypeSearch && currentNode->nodeLevel == nodeLevelSearch)
-		return currentNode;
-
-	while (currentNode != NULL) {
-		currentNode = currentNode->lastNode;
-		if (currentNode != NULL && currentNode->nodeType == nodeTypeSearch && currentNode->nodeLevel == nodeLevelSearch)
-			return currentNode;
-	}
-
-	return NULL;
-}
-
-// grabbed from peres.c demo
-static NODE_PERES *pe_map_res(pe_ctx_t *ctx)
-{
-	const IMAGE_DATA_DIRECTORY * const resourceDirectory = pe_directory_by_entry(ctx, IMAGE_DIRECTORY_ENTRY_RESOURCE);
-	if (resourceDirectory == NULL || resourceDirectory->Size == 0)
-		return NULL;
-
-	uint64_t resourceDirOffset = pe_rva2ofs(ctx, resourceDirectory->VirtualAddress);
-	uintptr_t offset = resourceDirOffset;
-	void *ptr = LIBPE_PTR_ADD(ctx->map_addr, offset);
-	if (!pe_can_read(ctx, ptr, sizeof(IMAGE_RESOURCE_DIRECTORY))) {
-		panic("Internal error: pe_map_res");
-		return NULL;
-	}
-
-	NODE_PERES *node = malloc_s(sizeof(NODE_PERES));
-	node->lastNode = NULL; // root
-	node->rootNode = NULL; // root
-	node->nodeType = RDT_RESOURCE_DIRECTORY;
-	node->nodeLevel = RDT_LEVEL1;
-	node->resource.resourceDirectory = ptr;
-
-	for (int i = 1, offsetDirectory1 = 0; i <= (lastNodeByTypeAndLevel(node, RDT_RESOURCE_DIRECTORY, RDT_LEVEL1)->resource.resourceDirectory->NumberOfNamedEntries +
-												lastNodeByTypeAndLevel(node, RDT_RESOURCE_DIRECTORY, RDT_LEVEL1)->resource.resourceDirectory->NumberOfIdEntries); i++)
-	{
-		offsetDirectory1 += (i == 1) ? 16 : 8;
-		offset = resourceDirOffset + offsetDirectory1;
-		ptr = LIBPE_PTR_ADD(ctx->map_addr, offset);
-		if (!pe_can_read(ctx, ptr, sizeof(IMAGE_RESOURCE_DIRECTORY_ENTRY))) {
-			// TODO: Should we report something?
-			goto _error;
-		}
-
-		node = createNode(node, RDT_DIRECTORY_ENTRY);
-		NODE_PERES *rootNode = node;
-		node->rootNode = rootNode;
-		node->nodeLevel = RDT_LEVEL1;
-		node->resource.directoryEntry = ptr;
-
-		const NODE_PERES * lastDirectoryEntryNodeAtLevel1 = lastNodeByTypeAndLevel(node, RDT_DIRECTORY_ENTRY, RDT_LEVEL1);
-
-		if (lastDirectoryEntryNodeAtLevel1->resource.directoryEntry->DirectoryData.data.DataIsDirectory)
-		{
-			offset = resourceDirOffset + lastDirectoryEntryNodeAtLevel1->resource.directoryEntry->DirectoryData.data.OffsetToDirectory;
-			ptr = LIBPE_PTR_ADD(ctx->map_addr, offset);
-			if (!pe_can_read(ctx, ptr, sizeof(IMAGE_RESOURCE_DIRECTORY))) {
-				// TODO: Should we report something?
-				goto _error;
-			}
-
-			node = createNode(node, RDT_RESOURCE_DIRECTORY);
-			node->rootNode = (NODE_PERES *)lastDirectoryEntryNodeAtLevel1;
-			node->nodeLevel = RDT_LEVEL2;
-			node->resource.resourceDirectory = ptr;
-			//showNode(node);
-
-			for (int j = 1, offsetDirectory2 = 0; j <= (lastNodeByTypeAndLevel(node, RDT_RESOURCE_DIRECTORY, RDT_LEVEL2)->resource.resourceDirectory->NumberOfNamedEntries +
-					lastNodeByTypeAndLevel(node, RDT_RESOURCE_DIRECTORY, RDT_LEVEL2)->resource.resourceDirectory->NumberOfIdEntries); j++)
-			{
-				offsetDirectory2 += (j == 1) ? 16 : 8;
-				offset = resourceDirOffset + lastNodeByTypeAndLevel(node, RDT_DIRECTORY_ENTRY, RDT_LEVEL1)->resource.directoryEntry->DirectoryData.data.OffsetToDirectory + offsetDirectory2;
-				ptr = LIBPE_PTR_ADD(ctx->map_addr, offset);
-				if (!pe_can_read(ctx, ptr, sizeof(IMAGE_RESOURCE_DIRECTORY_ENTRY))) {
-					// TODO: Should we report something?
-					goto _error;
-				}
-
-				node = createNode(node, RDT_DIRECTORY_ENTRY);
-				node->rootNode = rootNode;
-				node->nodeLevel = RDT_LEVEL2;
-				node->resource.directoryEntry = ptr;
-				//showNode(node);
-
-				offset = resourceDirOffset + node->resource.directoryEntry->DirectoryData.data.OffsetToDirectory; // posiciona em 0x72
-				ptr = LIBPE_PTR_ADD(ctx->map_addr, offset);
-				if (!pe_can_read(ctx, ptr, sizeof(IMAGE_RESOURCE_DIRECTORY))) {
-					// TODO: Should we report something?
-					goto _error;
-				}
-
-				node = createNode(node, RDT_RESOURCE_DIRECTORY);
-				node->rootNode = rootNode;
-				node->nodeLevel = RDT_LEVEL3;
-				node->resource.resourceDirectory = ptr;
-				//showNode(node);
-
-				offset += sizeof(IMAGE_RESOURCE_DIRECTORY);
-
-				for (int y = 1; y <= (lastNodeByTypeAndLevel(node, RDT_RESOURCE_DIRECTORY, RDT_LEVEL3)->resource.resourceDirectory->NumberOfNamedEntries +
-									lastNodeByTypeAndLevel(node, RDT_RESOURCE_DIRECTORY, RDT_LEVEL3)->resource.resourceDirectory->NumberOfIdEntries); y++)
-				{
-					ptr = LIBPE_PTR_ADD(ctx->map_addr, offset);
-					if (!pe_can_read(ctx, ptr, sizeof(IMAGE_RESOURCE_DIRECTORY_ENTRY))) {
-						// TODO: Should we report something?
-						goto _error;
-					}
-					node = createNode(node, RDT_DIRECTORY_ENTRY);
-					node->rootNode = rootNode;
-					node->nodeLevel = RDT_LEVEL3;
-					node->resource.directoryEntry = ptr;
-					//showNode(node);
-
-					offset = resourceDirOffset + node->resource.directoryEntry->DirectoryName.name.NameOffset;
-					ptr = LIBPE_PTR_ADD(ctx->map_addr, offset);
-					if (!pe_can_read(ctx, ptr, sizeof(IMAGE_RESOURCE_DATA_STRING))) {
-						// TODO: Should we report something?
-						goto _error;
-					}
-					node = createNode(node, RDT_DATA_STRING);
-					node->rootNode = rootNode;
-					node->nodeLevel = RDT_LEVEL3;
-					node->resource.dataString = ptr;
-					//showNode(node);
-
-					offset = resourceDirOffset + node->lastNode->resource.directoryEntry->DirectoryData.data.OffsetToDirectory;
-					ptr = LIBPE_PTR_ADD(ctx->map_addr, offset);
-					if (!pe_can_read(ctx, ptr, sizeof(IMAGE_RESOURCE_DATA_ENTRY))) {
-						// TODO: Should we report something?
-						goto _error;
-					}
-					node = createNode(node, RDT_DATA_ENTRY);
-					node->rootNode = rootNode;
-					node->nodeLevel = RDT_LEVEL3;
-					node->resource.dataEntry = ptr;
-					//showNode(node);
-
-					offset += sizeof(IMAGE_RESOURCE_DATA_ENTRY);
-				}
-			}
-		}
-	}
-
-	return node;
-
-_error:
-	if (node != NULL)
-		free_nodes(node);
-	panic("Internal error");
-	return NULL;
-}
 
 // XXX peres -x /media/methos/AOE/setupenu.dll
 
@@ -329,8 +133,6 @@ int load_lib_lang(void)
 #define RT_STRING 5
 
 #define MAX_PATH 256
-
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
 // grabbed from peres.c demo
 static const RESOURCE_ENTRY resource_types[] = {
@@ -689,16 +491,6 @@ int load_bitmap(unsigned id, void **data, size_t *size)
 	return 0;
 }
 
-#define PANIC_BUFSZ 1024
-
-void panic(const char *str)
-{
-	char buf[PANIC_BUFSZ];
-	snprintf(buf, PANIC_BUFSZ, "zenity --error --text=\"%s\"", str);
-	system(buf);
-	exit(1);
-}
-
 // XXX throw away surfaces?
 
 SDL_Surface *surf_start, *surf_reset, *surf_nuke, *surf_exit, *surf_website;
@@ -756,6 +548,7 @@ void init_main_menu(void)
 	size_t size;
 	int ret;
 	SDL_RWops *mem;
+	Uint32 colkey;
 
 	ret = load_bitmap(0xA2, &data, &size);
 	assert(ret == 0);
@@ -771,6 +564,9 @@ void init_main_menu(void)
 	surf_btn = SDL_LoadBMP_RW(mem, 1);
 	// FIXME remove transparent pixels
 	printf("format: %X\n", SDL_PIXELTYPE(surf_btn->format->format));
+	assert(surf_btn);
+	colkey = SDL_MapRGB(surf_btn->format, 0xff, 0, 0xff);
+	SDL_SetColorKey(surf_btn, 1, colkey);
 	tex_btn = SDL_CreateTextureFromSurface(renderer, surf_btn);
 	assert(tex_btn);
 }
@@ -799,6 +595,21 @@ void display_main_menu(void)
 	}
 }
 
+int menu_btn_click(void)
+{
+	switch (menu_option) {
+	case 0:
+	case 1:
+	case 2:
+		break;
+	case 3:
+		return -1;
+	case 4:
+		break;
+	}
+	return 0;
+}
+
 int keydown(const SDL_Event *ev)
 {
 	unsigned virt;
@@ -819,6 +630,9 @@ int keydown(const SDL_Event *ev)
 			menu_option = (menu_option + ARRAY_SIZE(menu_items) - 1) % ARRAY_SIZE(menu_items);
 		} while (menu_items[menu_option].image == 0);
 		break;
+	case '\r':
+	case '\n':
+		return menu_btn_click();
 	}
 
 	if (old_option != menu_option) {
@@ -834,19 +648,8 @@ int keyup(const SDL_Event *ev)
 	unsigned virt = ev->key.keysym.sym;
 
 	switch (virt) {
-	case '\r':
-	case '\n':
-		switch (menu_option) {
-		case 0:
-		case 1:
-		case 2:
-			break;
-		case 3:
-			return -1;
-		case 4:
-			break;
-		}
-		break;
+	case ' ':
+		return menu_btn_click();
 	}
 	return 0;
 }
@@ -860,16 +663,23 @@ void main_event_loop(void)
 	SDL_RenderPresent(renderer);
 
 	SDL_Event ev;
+	int code;
 	while (SDL_WaitEvent(&ev)) {
 		switch (ev.type) {
 		case SDL_QUIT:
 			return;
 		case SDL_KEYUP:
-			if (keyup(&ev) < 0)
+			if ((code = keyup(&ev)) < 0)
 				return;
+			else if (code > 0) {
+				display_main_menu();
+				SDL_RenderPresent(renderer);
+			}
 			break;
 		case SDL_KEYDOWN:
-			if (keydown(&ev)) {
+			if ((code = keydown(&ev)) < 0)
+				return;
+			else if (code > 0) {
 				display_main_menu();
 				SDL_RenderPresent(renderer);
 			}
