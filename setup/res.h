@@ -12,11 +12,22 @@
 #ifndef RES_H
 #define RES_H
 
+#include <stddef.h>
+
 #include <libpe/pe.h>
 
-void free_nodes(NODE_PERES *node);
-NODE_PERES *createNode(NODE_PERES *currentNode, NODE_TYPE_PERES typeOfNextNode);
-const NODE_PERES *lastNodeByTypeAndLevel(const NODE_PERES *currentNode, NODE_TYPE_PERES nodeTypeSearch, NODE_LEVEL_PERES nodeLevelSearch);
-NODE_PERES *pe_map_res(pe_ctx_t *ctx);
+struct pe_lib {
+	pe_ctx_t ctx;
+	NODE_PERES *res;
+};
+
+/** Open and parse dll */
+int pe_lib_open(struct pe_lib *lib, const char *name);
+
+/** Fetch text from resource table */
+int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size);
+
+/** Fetch image from resource table */
+int load_bitmap(struct pe_lib *lib, unsigned id, void **data, size_t *size);
 
 #endif
