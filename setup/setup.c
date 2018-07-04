@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <pwd.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -52,6 +53,11 @@ char path_cdrom[PATH_MAX];
 #define STR_EXIT_SETUP 0x51
 #define STR_OPEN_WEBSITE 0x3C
 
+#define IMG_BTN_DISABLED 0
+#define IMG_BTN_NORMAL   1
+#define IMG_BTN_FOCUS    2
+#define IMG_BTN_CLICKED  3
+
 // scratch buffer
 char buf[BUFSZ];
 
@@ -78,6 +84,7 @@ int find_setup_files(void)
 	const char *user;
 	DIR *dir;
 	struct dirent *item;
+	struct passwd *pwd;
 	int found = 0;
 
 	/*
@@ -90,7 +97,8 @@ int find_setup_files(void)
 	if (find_lib_lang("/media/cdrom"))
 		return 0;
 
-	user = getlogin();
+	pwd = getpwuid(getuid());
+	user = pwd->pw_name;
 	snprintf(path, PATH_MAX, "/media/%s/cdrom", user);
 	if (find_lib_lang(path))
 		return 0;
@@ -269,13 +277,25 @@ int mouse_move(const SDL_MouseMotionEvent *ev)
 	old_option = menu_option;
 	index = mouse_find_button(ev->x, ev->y);
 
-	if (index < ARRAY_SIZE(menu_items) && menu_items[index].image)
-		menu_option = index;
+	if (index < ARRAY_SIZE(menu_items)) {
+		if (menu_items[index].image && !button_down)
+			menu_option = index;
+		else if (button_down && index == menu_option && menu_items[index].image != IMG_BTN_CLICKED) {
+			menu_items[index].image = IMG_BTN_CLICKED;
+			return 1;
+		}
+	} else if (!button_down && menu_items[menu_option].image != IMG_BTN_DISABLED && menu_items[menu_option].image != IMG_BTN_NORMAL) {
+		menu_items[menu_option].image = IMG_BTN_FOCUS;
+		return 1;
+	}
+
+	if (button_down)
+		return 0;
 
 	if (old_option != menu_option) {
 		//dbgf("mouse_move (%d,%d): %u\n", ev->x, ev->y, menu_option);
-		menu_items[old_option].image = 1;
-		menu_items[menu_option].image = 2;
+		menu_items[old_option].image = IMG_BTN_NORMAL;
+		menu_items[menu_option].image = IMG_BTN_FOCUS;
 		return 1;
 	}
 	return 0;
@@ -286,7 +306,8 @@ int mouse_down(const SDL_MouseButtonEvent *ev)
 	if (ev->button != SDL_BUTTON_LEFT)
 		return 0;
 	if (mouse_find_button(ev->x, ev->y) == menu_option) {
-		menu_items[menu_option].image = 3;
+		menu_items[menu_option].image = IMG_BTN_CLICKED;
+		button_down = 1;
 		return 1;
 	}
 	return 0;
@@ -294,11 +315,23 @@ int mouse_down(const SDL_MouseButtonEvent *ev)
 
 int mouse_up(const SDL_MouseButtonEvent *ev)
 {
+	unsigned index;
+
 	if (ev->button != SDL_BUTTON_LEFT)
 		return 0;
 	if (mouse_find_button(ev->x, ev->y) == menu_option)
 		return menu_btn_click();
-	menu_items[menu_option].image = 2;
+	button_down = 0;
+
+	index = mouse_find_button(ev->x, ev->y);
+	if (index < ARRAY_SIZE(menu_items) && index != menu_option) {
+		menu_items[menu_option].image = IMG_BTN_NORMAL;
+		if (menu_items[index].image != IMG_BTN_DISABLED) {
+			menu_option = index;
+			menu_items[index].image = IMG_BTN_FOCUS;
+		}
+	} else
+		menu_items[menu_option].image = IMG_BTN_FOCUS;
 	return 1;
 }
 
@@ -313,23 +346,34 @@ int keydown(const SDL_Event *ev)
 
 	switch (virt) {
 	case SDLK_DOWN:
+		if (button_down)
+			break;
 		do {
 			menu_option = (menu_option + 1) % ARRAY_SIZE(menu_items);
-		} while (menu_items[menu_option].image == 0);
+		} while (menu_items[menu_option].image == IMG_BTN_DISABLED);
 		break;
 	case SDLK_UP:
+		if (button_down)
+			break;
 		do {
 			menu_option = (menu_option + ARRAY_SIZE(menu_items) - 1) % ARRAY_SIZE(menu_items);
-		} while (menu_items[menu_option].image == 0);
+		} while (menu_items[menu_option].image == IMG_BTN_DISABLED);
 		break;
 	case '\r':
 	case '\n':
+		button_down = 1;
 		return menu_btn_click();
+	case ' ':
+		if (menu_option < ARRAY_SIZE(menu_items) && menu_items[menu_option].image != IMG_BTN_DISABLED) {
+			menu_items[menu_option].image = IMG_BTN_CLICKED;
+			button_down = 1;
+			return 1;
+		}
 	}
 
 	if (old_option != menu_option) {
-		menu_items[old_option].image = 1;
-		menu_items[menu_option].image = 2;
+		menu_items[old_option].image = IMG_BTN_NORMAL;
+		menu_items[menu_option].image = IMG_BTN_FOCUS;
 		return 1;
 	}
 	return 0;
@@ -430,7 +474,7 @@ int main(void)
 		panic("Could not initialize fonts");
 
 	snprintf(buf, BUFSZ, "%s/system/fonts/arial.ttf", path_cdrom);
-	font = TTF_OpenFont(buf, 20);
+	font = TTF_OpenFont(buf, 18);
 	if (!font)
 		panic("Could not setup font");
 
