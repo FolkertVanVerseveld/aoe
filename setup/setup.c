@@ -27,6 +27,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_surface.h>
 
@@ -182,6 +183,8 @@ int load_lib_lang(void)
 	return pe_lib_open(&lib_lang, buf);
 }
 
+Mix_Chunk *sfx_btn;
+
 // XXX throw away surfaces?
 
 SDL_Surface *surf_start, *surf_reset, *surf_nuke, *surf_exit, *surf_website;
@@ -211,6 +214,7 @@ unsigned menu_option = 0;
 void init_main_menu(void)
 {
 	SDL_Color fg = {0, 0, 0, 255};
+	char path[PATH_MAX];
 
 	game_installed = find_wine_installation();
 	if (has_wine)
@@ -226,6 +230,10 @@ void init_main_menu(void)
 		menu_items[1].image = 0;
 		menu_items[2].image = 0;
 	}
+
+	snprintf(path, PATH_MAX, "%s/game/help/button2.wav", path_cdrom);
+	if (!(sfx_btn = Mix_LoadWAV(path)))
+		panic("audio not found");
 
 	// FIXME proper error handling
 	load_string(&lib_lang, game_installed ? STR_PLAY_GAME : STR_INSTALL_GAME, buf, BUFSZ);
@@ -303,25 +311,29 @@ void display_main_menu(void)
 
 static int button_down = 0;
 
-static void main_btn_install_or_play(void)
+static int main_btn_install_or_play(void)
 {
 	char path[PATH_MAX];
 
 	if (!game_installed)
 		// FIXME stub
-		return;
+		return 0;
 
 	// TODO show launching menu
 
 	snprintf(path, PATH_MAX, "wine '%s/Empires.exe'", path_wine);
-	system(path);
+	return system(path) == 0 ? -1 : 0;
 }
 
 int menu_btn_click(void)
 {
+	int code = 1;
+
+	Mix_PlayChannel(0, sfx_btn, 0);
+
 	switch (menu_option) {
 	case 0:
-		main_btn_install_or_play();
+		code = main_btn_install_or_play();
 		break;
 	case 1:
 	case 2:
@@ -335,7 +347,7 @@ int menu_btn_click(void)
 	}
 	button_down = 0;
 	menu_items[menu_option].image = 2;
-	return 1;
+	return code ? code : 1;
 }
 
 unsigned mouse_find_button(int x, int y)
@@ -529,7 +541,7 @@ int main(void)
 	if (load_lib_lang())
 		panic("CD-ROM files are corrupt");
 
-	if (SDL_Init(SDL_INIT_VIDEO))
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
 		panic("Could not initialize user interface");
 
 	if (!(window = SDL_CreateWindow(
@@ -555,6 +567,9 @@ int main(void)
 	font = TTF_OpenFont(buf, 18);
 	if (!font)
 		panic("Could not setup font");
+
+	if (Mix_OpenAudio(22050, AUDIO_S16LSB, 2, 1024) == -1)
+		panic("Could not open audio");
 
 	init_main_menu();
 	main_event_loop();
