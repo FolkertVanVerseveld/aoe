@@ -1,4 +1,13 @@
-/* Copyright 2018 Folkert van Verseveld. All rights reserved */
+/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
+/**
+ * Replicated installer and game launcher
+ *
+ * Licensed under Affero General Public License v3.0
+ * Copyright by Folkert van Verseveld.
+ *
+ * Custom setup that looks like the original one
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,23 +39,35 @@
 
 #define TITLE "Age of Empires"
 
+// Original website is dead, so use archived link
 #define WEBSITE "http://web.archive.org/web/19980120120129/https://www.microsoft.com/games/empires"
 
 #define WIDTH 640
 #define HEIGHT 480
+
+/* SDL handling */
 
 unsigned init = 0;
 SDL_Window *window;
 SDL_Renderer *renderer;
 TTF_Font *font;
 
+/* Paths to CDROM and wine installed directory */
+
 char path_cdrom[PATH_MAX];
+char path_wine[PATH_MAX];
+
+int has_wine = 0;
+int game_installed;
 
 #define BUFSZ 4096
+
+/* Resource IDs */
 
 #define BMP_MAIN_BKG 0xA2
 #define BMP_MAIN_BTN 0xD1
 
+#define STR_PLAY_GAME 0x15
 #define STR_INSTALL_GAME 0x16
 #define STR_RESET_GAME 0x1A
 #define STR_NUKE_GAME 0x1B
@@ -125,6 +146,36 @@ int find_setup_files(void)
 	return found;
 }
 
+int find_wine_installation(void)
+{
+	char path[PATH_MAX];
+	const char *user;
+	struct passwd *pwd;
+	int fd = -1;
+
+	/*
+	 * If we can find the system registry, assume wine is installed.
+	 * If found, check if the game has already been installed.
+	 */
+
+	pwd = getpwuid(getuid());
+	user = pwd->pw_name;
+
+	snprintf(path, PATH_MAX, "/home/%s/.wine/system.reg", user);
+	if ((fd = open(path, O_RDONLY)) == -1)
+		return 0;
+	has_wine = 1;
+	close(fd);
+
+	snprintf(path, PATH_MAX, "/home/%s/.wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires/Empires.exe", user);
+	if ((fd = open(path, O_RDONLY)) == -1)
+		return 0;
+	close(fd);
+	snprintf(path_wine, PATH_MAX, "/home/%s/.wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires", user);
+
+	return 1;
+}
+
 int load_lib_lang(void)
 {
 	snprintf(buf, BUFSZ, "%s/setupenu.dll", path_cdrom);
@@ -161,8 +212,23 @@ void init_main_menu(void)
 {
 	SDL_Color fg = {0, 0, 0, 255};
 
+	game_installed = find_wine_installation();
+	if (has_wine)
+		dbgs("wine detected");
+
+	if (game_installed) {
+		dbgs("windows installation detected");
+		// enable reset and nuke buttons
+		menu_items[1].image = 1;
+		menu_items[2].image = 1;
+	} else {
+		// disable reset and nuke buttons
+		menu_items[1].image = 0;
+		menu_items[2].image = 0;
+	}
+
 	// FIXME proper error handling
-	load_string(&lib_lang, STR_INSTALL_GAME, buf, BUFSZ);
+	load_string(&lib_lang, game_installed ? STR_PLAY_GAME : STR_INSTALL_GAME, buf, BUFSZ);
 	surf_start = TTF_RenderText_Solid(font, buf, fg);
 	load_string(&lib_lang, STR_RESET_GAME, buf, BUFSZ);
 	surf_reset = TTF_RenderText_Solid(font, buf, fg);
@@ -203,7 +269,7 @@ void init_main_menu(void)
 	mem = SDL_RWFromMem(data, size);
 	surf_btn = SDL_LoadBMP_RW(mem, 1);
 	// enable transparent pixels
-	printf("format: %X\n", SDL_PIXELTYPE(surf_btn->format->format));
+	dbgf("format: %X\n", SDL_PIXELTYPE(surf_btn->format->format));
 	assert(surf_btn);
 	colkey = SDL_MapRGB(surf_btn->format, 0xff, 0, 0xff);
 	SDL_SetColorKey(surf_btn, 1, colkey);
@@ -237,12 +303,29 @@ void display_main_menu(void)
 
 static int button_down = 0;
 
+static void main_btn_install_or_play(void)
+{
+	char path[PATH_MAX];
+
+	if (!game_installed)
+		// FIXME stub
+		return;
+
+	// TODO show launching menu
+
+	snprintf(path, PATH_MAX, "wine '%s/Empires.exe'", path_wine);
+	system(path);
+}
+
 int menu_btn_click(void)
 {
 	switch (menu_option) {
 	case 0:
+		main_btn_install_or_play();
+		break;
 	case 1:
 	case 2:
+		// FIXME stub
 		break;
 	case 3:
 		return -1;
@@ -390,13 +473,18 @@ int keyup(const SDL_Event *ev)
 	return 0;
 }
 
+void update_screen(void)
+{
+	display_main_menu();
+	SDL_RenderPresent(renderer);
+}
+
 void main_event_loop(void)
 {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 
-	display_main_menu();
-	SDL_RenderPresent(renderer);
+	update_screen();
 
 	SDL_Event ev;
 	int code;
@@ -407,38 +495,28 @@ void main_event_loop(void)
 		case SDL_KEYUP:
 			if ((code = keyup(&ev)) < 0)
 				return;
-			else if (code > 0) {
-				display_main_menu();
-				SDL_RenderPresent(renderer);
-			}
+			else if (code > 0)
+				update_screen();
 			break;
 		case SDL_KEYDOWN:
 			if ((code = keydown(&ev)) < 0)
 				return;
-			else if (code > 0) {
-				display_main_menu();
-				SDL_RenderPresent(renderer);
-			}
+			else if (code > 0)
+				update_screen();
 			break;
 		case SDL_MOUSEMOTION:
-			if (mouse_move(&ev.motion)) {
-				display_main_menu();
-				SDL_RenderPresent(renderer);
-			}
+			if (mouse_move(&ev.motion))
+				update_screen();
 			break;
 		case SDL_MOUSEBUTTONDOWN:
-			if (mouse_down(&ev.button)) {
-				display_main_menu();
-				SDL_RenderPresent(renderer);
-			}
+			if (mouse_down(&ev.button))
+				update_screen();
 			break;
 		case SDL_MOUSEBUTTONUP:
 			if ((code = mouse_up(&ev.button)) < 0)
 				return;
-			else if (code > 0) {
-				display_main_menu();
-				SDL_RenderPresent(renderer);
-			}
+			else if (code > 0)
+				update_screen();
 			break;
 		}
 	}
