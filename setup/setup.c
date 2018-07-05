@@ -67,6 +67,7 @@ int game_installed;
 
 #define BMP_MAIN_BKG 0xA2
 #define BMP_MAIN_BTN 0xD1
+#define BMP_LAUNCH_BKG 0xF1
 
 #define STR_PLAY_GAME 0x15
 #define STR_INSTALL_GAME 0x16
@@ -74,6 +75,8 @@ int game_installed;
 #define STR_NUKE_GAME 0x1B
 #define STR_EXIT_SETUP 0x51
 #define STR_OPEN_WEBSITE 0x3C
+#define STR_SETUP_TITLE 0x61
+#define STR_LAUNCH_GAME 0x1F
 
 #define IMG_BTN_DISABLED 0
 #define IMG_BTN_NORMAL   1
@@ -193,6 +196,14 @@ SDL_Texture *tex_start, *tex_reset, *tex_nuke, *tex_exit, *tex_website;
 SDL_Surface *surf_bkg, *surf_btn;
 SDL_Texture *tex_bkg, *tex_btn;
 
+/* launch menu stuff */
+
+SDL_Surface *surf_launch_bkg;
+SDL_Texture *tex_launch_bkg;
+
+SDL_Surface *surf_setup_title, *surf_launch_game;
+SDL_Texture *tex_setup_title, *tex_launch_game;
+
 struct menu_item {
 	SDL_Rect pos;
 	int x, y;
@@ -210,6 +221,35 @@ struct menu_item {
 
 unsigned menu_option = 0;
 
+void init_launch_menu(void)
+{
+	SDL_Color fg = {0, 0, 0, 255};
+
+	void *data;
+	size_t size;
+	int ret;
+	SDL_RWops *mem;
+
+	ret = load_bitmap(&lib_lang, BMP_LAUNCH_BKG, &data, &size);
+	assert(ret == 0);
+
+	mem = SDL_RWFromMem(data, size);
+	surf_launch_bkg = SDL_LoadBMP_RW(mem, 1);
+	tex_launch_bkg = SDL_CreateTextureFromSurface(renderer, surf_launch_bkg);
+	assert(tex_launch_bkg);
+
+	load_string(&lib_lang, STR_SETUP_TITLE, buf, BUFSZ);
+	dbgf("setup: %s\n", buf);
+	surf_setup_title = TTF_RenderText_Solid(font, buf, fg);
+	load_string(&lib_lang, STR_LAUNCH_GAME, buf, BUFSZ);
+	dbgf("launch: %s\n", buf);
+	surf_launch_game = TTF_RenderText_Solid(font, buf, fg);
+
+	tex_setup_title = SDL_CreateTextureFromSurface(renderer, surf_setup_title);
+	assert(tex_setup_title);
+	tex_launch_game = SDL_CreateTextureFromSurface(renderer, surf_launch_game);
+	assert(tex_launch_game);
+}
 
 void init_main_menu(void)
 {
@@ -285,6 +325,24 @@ void init_main_menu(void)
 	assert(tex_btn);
 }
 
+void display_launch_menu(void)
+{
+	SDL_Rect pos;
+	pos.x = 0; pos.y = 0;
+	pos.w = surf_launch_bkg->w; pos.h = surf_launch_bkg->h;
+	SDL_RenderCopy(renderer, tex_launch_bkg, NULL, &pos);
+
+	/* draw text */
+	pos.w = surf_setup_title->w; pos.h = surf_setup_title->h;
+	pos.x = WIDTH / 2 - pos.w / 2;
+	pos.y = 100;
+	SDL_RenderCopy(renderer, tex_setup_title, NULL, &pos);
+	pos.w = surf_launch_game->w; pos.h = surf_launch_game->h;
+	pos.x = WIDTH / 2 - pos.w / 2;
+	pos.y = 222;
+	SDL_RenderCopy(renderer, tex_launch_game, NULL, &pos);
+}
+
 void display_main_menu(void)
 {
 	SDL_Rect pos, img;
@@ -320,6 +378,9 @@ static int main_btn_install_or_play(void)
 		return 0;
 
 	// TODO show launching menu
+	init_launch_menu();
+	display_launch_menu();
+	SDL_RenderPresent(renderer);
 
 	snprintf(path, PATH_MAX, "wine '%s/Empires.exe'", path_wine);
 	return system(path) == 0 ? -1 : 0;
