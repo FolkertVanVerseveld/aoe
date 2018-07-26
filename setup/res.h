@@ -12,6 +12,10 @@
 #ifndef RES_H
 #define RES_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
 
 #include <libpe/pe.h>
@@ -29,5 +33,9 @@ int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size);
 
 /** Fetch image from resource table */
 int load_bitmap(struct pe_lib *lib, unsigned id, void **data, size_t *size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

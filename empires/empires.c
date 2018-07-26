@@ -70,6 +70,8 @@ int main(void)
 {
 	if (!find_setup_files())
 		panic("Please insert or mount the game CD-ROM");
+	if (load_lib_lang())
+		panic("CD-ROM files are corrupt");
 
 	game_installed = find_wine_installation();
 	if (has_wine)
