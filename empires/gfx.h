@@ -17,9 +17,17 @@
 #define FONT_NAME_DEFAULT "arial.ttf"
 #define FONT_PT_DEFAULT 18
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern TTF_Font *fnt_default;
 
 void gfx_init(void);
 void gfx_free(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

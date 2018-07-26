@@ -27,16 +27,18 @@ endif
 UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl) -lSDL2_image -lSDL2_mixer -lSDL2_ttf
 
 default: empires
-empires: empires.o fs.o gfx.o ../setup/res.o ../setup/def.o
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o fs.o gfx.o ../setup/res.o ../setup/def.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
-gfx.o: gfx.h
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) gfx.c -c -o gfx.o $(LDFLAGS) $(LDLIBS)
-fs.o: gfx.h
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) fs.c -c -o fs.o $(LDFLAGS) $(LDLIBS)
+empires: empires.o ui.o fs.o gfx.o ../setup/res.o ../setup/def.o
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o ui.o fs.o gfx.o ../setup/res.o ../setup/def.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
+ui.o: ui.h ui.cpp
+	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ui.cpp -c -o ui.o $(LDFLAGS) $(LDLIBS)
+gfx.o: gfx.h gfx.c
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) gfx.c -c -o gfx.o $(LDFLAGS) $(LDLIBS)
+fs.o: fs.h fs.c
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) fs.c -c -o fs.o $(LDFLAGS) $(LDLIBS)
 ../setup/res.o: ../setup/res.h ../setup/res.c
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ../setup/res.c -c -o ../setup/res.o $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ../setup/res.c -c -o ../setup/res.o $(LDFLAGS) $(LDLIBS)
 ../setup/def.o: ../setup/def.h ../setup/def.c
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ../setup/def.c -c -o ../setup/def.o $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ../setup/def.c -c -o ../setup/def.o $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm -f empires *.o

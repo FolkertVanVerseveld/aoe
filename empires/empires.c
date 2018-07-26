@@ -19,11 +19,9 @@
 
 #include "gfx.h"
 #include "fs.h"
+#include "ui.h"
 
 #define TITLE "Age of Empires"
-
-#define WIDTH 800
-#define HEIGHT 600
 
 /* SDL handling */
 
@@ -42,17 +40,28 @@ int load_lib_lang(void)
 	return pe_lib_open(&lib_lang, buf);
 }
 
+void update_screen(void)
+{
+	display(renderer);
+	SDL_RenderPresent(renderer);
+}
+
 void main_event_loop(void)
 {
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
-	SDL_RenderPresent(renderer);
+
+	update_screen();
 
 	SDL_Event ev;
 	while (SDL_WaitEvent(&ev)) {
 		switch (ev.type) {
 		case SDL_QUIT:
 			return;
+		case SDL_KEYDOWN:
+			if (ev.key.keysym.sym == ' ')
+				return;
+			break;
 		}
 	}
 }
@@ -85,9 +94,11 @@ int main(void)
 		panic("Could not create rendering context");
 
 	gfx_init();
+	ui_init(renderer);
 
 	main_event_loop();
 
+	ui_free();
 	gfx_free();
 
 	SDL_DestroyRenderer(renderer);

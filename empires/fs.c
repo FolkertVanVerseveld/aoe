@@ -3,6 +3,7 @@
 #include "fs.h"
 
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
 
