@@ -12,6 +12,28 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
+/* Paths to CDROM and wine installed directory */
+
+// XXX http://insanecoding.blogspot.com/2007/11/pathmax-simply-isnt.html
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
+extern char path_cdrom[PATH_MAX];
+extern char path_wine[PATH_MAX];
+
+#define WINE_PATH_FORMAT "/home/%s/.wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires"
+
+extern int has_wine;
+extern int game_installed;
+
+void show_error(const char *str);
 void panic(const char *str) __attribute__((noreturn));
+
+/* Wine auto detection */
+int find_wine_installation(void);
+
+/* CD-ROM/ISO auto detection */
+int find_setup_files(void);
 
 #endif

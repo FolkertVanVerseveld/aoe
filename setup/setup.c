@@ -31,8 +31,6 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_surface.h>
 
-#include <libpe/pe.h>
-
 #include "bmp.h"
 #include "dbg.h"
 #include "def.h"
@@ -52,14 +50,6 @@ unsigned init = 0;
 SDL_Window *window;
 SDL_Renderer *renderer;
 TTF_Font *font;
-
-/* Paths to CDROM and wine installed directory */
-
-char path_cdrom[PATH_MAX];
-char path_wine[PATH_MAX];
-
-int has_wine = 0;
-int game_installed;
 
 #define BUFSZ 4096
 
@@ -86,99 +76,9 @@ int game_installed;
 // scratch buffer
 char buf[BUFSZ];
 
-static struct pe_lib lib_lang;
+struct pe_lib lib_lang;
 
 // XXX peres -x /media/methos/AOE/setupenu.dll
-
-int find_lib_lang(char *path)
-{
-	char buf[PATH_MAX];
-	struct stat st;
-
-	snprintf(buf, PATH_MAX, "%s/setupenu.dll", path);
-	if (stat(buf, &st))
-		return 0;
-
-	strcpy(path_cdrom, path);
-	return 1;
-}
-
-int find_setup_files(void)
-{
-	char path[PATH_MAX];
-	const char *user;
-	DIR *dir;
-	struct dirent *item;
-	struct passwd *pwd;
-	int found = 0;
-
-	/*
-	 * Try following paths in specified order:
-	 * /media/cdrom
-	 * /media/username/cdrom
-	 * Finally, traverse every directory in /media/username
-	 */
-
-	if (find_lib_lang("/media/cdrom"))
-		return 0;
-
-	pwd = getpwuid(getuid());
-	user = pwd->pw_name;
-	snprintf(path, PATH_MAX, "/media/%s/cdrom", user);
-	if (find_lib_lang(path))
-		return 0;
-
-	snprintf(path, PATH_MAX, "/media/%s", user);
-	dir = opendir(path);
-	if (!dir)
-		return 0;
-
-	errno = 0;
-	while (item = readdir(dir)) {
-		if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, ".."))
-			continue;
-
-		snprintf(path, PATH_MAX, "/media/%s/%s", user, item->d_name);
-
-		if (find_lib_lang(path)) {
-			found = 1;
-			break;
-		}
-	}
-
-	closedir(dir);
-	return found;
-}
-
-int find_wine_installation(void)
-{
-	char path[PATH_MAX];
-	const char *user;
-	struct passwd *pwd;
-	int fd = -1;
-
-	/*
-	 * If we can find the system registry, assume wine is installed.
-	 * If found, check if the game has already been installed.
-	 */
-
-	pwd = getpwuid(getuid());
-	user = pwd->pw_name;
-
-	snprintf(path, PATH_MAX, "/home/%s/.wine/system.reg", user);
-	if ((fd = open(path, O_RDONLY)) == -1)
-		return 0;
-	has_wine = 1;
-	close(fd);
-
-	snprintf(path, PATH_MAX, "/home/%s/.wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires/Empires.exe", user);
-	if ((fd = open(path, O_RDONLY)) == -1)
-		return 0;
-	close(fd);
-	snprintf(path_wine, PATH_MAX, "/home/%s/.wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires", user);
-
-	return 1;
-}
 
 int load_lib_lang(void)
 {
