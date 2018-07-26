@@ -7,6 +7,7 @@
  * Copyright by Folkert van Verseveld.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 
 #include <SDL2/SDL.h>
@@ -40,10 +41,13 @@ int load_lib_lang(void)
 	return pe_lib_open(&lib_lang, buf);
 }
 
-void update_screen(void)
+bool update_screen(void)
 {
-	display(renderer);
+	if (!display())
+		return false;
 	SDL_RenderPresent(renderer);
+
+	return true;
 }
 
 void main_event_loop(void)
@@ -51,7 +55,8 @@ void main_event_loop(void)
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 
-	update_screen();
+	if (!update_screen())
+		return;
 
 	SDL_Event ev;
 	while (SDL_WaitEvent(&ev)) {
@@ -59,7 +64,11 @@ void main_event_loop(void)
 		case SDL_QUIT:
 			return;
 		case SDL_KEYDOWN:
-			if (ev.key.keysym.sym == ' ')
+			if (keydown(&ev.key) && !update_screen())
+				return;
+			break;
+		case SDL_KEYUP:
+			if (keyup(&ev.key) && !update_screen())
 				return;
 			break;
 		}
@@ -96,7 +105,7 @@ int main(void)
 		panic("Could not create rendering context");
 
 	gfx_init();
-	ui_init(renderer);
+	ui_init();
 
 	main_event_loop();
 

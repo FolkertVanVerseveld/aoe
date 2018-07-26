@@ -7,8 +7,9 @@
 
 #include <cstdio>
 
-#include <string>
 #include <memory>
+#include <string>
+#include <stack>
 #include <vector>
 
 #include "../setup/res.h"
@@ -18,6 +19,7 @@
 
 extern struct pe_lib lib_lang;
 
+/* load c-string from language dll and wrap into c++ string */
 std::string load_string(unsigned id)
 {
 	char buf[4096];
@@ -25,6 +27,29 @@ std::string load_string(unsigned id)
 	return std::string(buf);
 }
 
+/* Custom renderer */
+class Renderer {
+public:
+	SDL_Renderer *renderer;
+
+	Renderer() {
+		renderer = NULL;
+	}
+
+	void col(int r, int g, int b, int a = SDL_ALPHA_OPAQUE) {
+		SDL_SetRenderDrawColor(renderer, r, g, b, a);
+	}
+
+	void col(const SDL_Color &col) {
+		SDL_SetRenderDrawColor(renderer, col.r, col.g, col.b, col.a);
+	}
+} canvas;
+
+/**
+ * Core User Interface element.
+ * This is the minimum interface for anything User Interface related
+ * (e.g. text, buttons)
+ */
 class UI {
 protected:
 	int x, y;
@@ -35,9 +60,10 @@ public:
 		: x(x), y(y), w(w), h(h) {}
 	virtual ~UI() {}
 
-	virtual void draw(SDL_Renderer *renderer) const = 0;
+	virtual void draw() const = 0;
 };
 
+/** Text horizontal/vertical alignment */
 enum TextAlign {
 	LEFT = 0, TOP = 0,
 	CENTER = 1, MIDDLE = 1,
@@ -53,8 +79,7 @@ class Text final : public UI {
 	SDL_Texture *tex;
 
 public:
-	Text(SDL_Renderer *renderer
-		, int x, int y, unsigned id
+	Text(int x, int y, unsigned id
 		, TextAlign halign=LEFT
 		, TextAlign valign=TOP
 		, TTF_Font *fnt=fnt_default
@@ -86,7 +111,7 @@ public:
 	}
 
 public:
-	void draw(SDL_Renderer *renderer) const {
+	void draw() const {
 		SDL_Rect pos = {x, y, (int)w, (int)h};
 		SDL_RenderCopy(renderer, tex, NULL, &pos);
 	}
@@ -97,27 +122,44 @@ public:
 	Border(int x, int y, unsigned w=1, unsigned h=1)
 		: UI(x, y, w, h) {}
 
-	void draw(SDL_Renderer *renderer) const {
+	void draw() const {
+		draw(false);
+	}
+
+	void draw(bool invert) const {
 		unsigned w = this->w - 1, h = this->h - 1;
+
+		const SDL_Color cols[] = {
+			{41 , 33 , 16, SDL_ALPHA_OPAQUE},
+			{145, 136, 71, SDL_ALPHA_OPAQUE},
+			{78 , 61 , 49, SDL_ALPHA_OPAQUE},
+			{129, 112, 65, SDL_ALPHA_OPAQUE},
+			{107, 85 , 34, SDL_ALPHA_OPAQUE},
+			{97 , 78 , 50, SDL_ALPHA_OPAQUE},
+		};
+
+		int table[] = {0, 1, 2, 3, 4, 5}, table_r[] = {1, 0, 3, 2, 5, 4};
+		int *colptr = invert ? table_r : table;
+
 		// Draw outermost lines
-		SDL_SetRenderDrawColor(renderer, 41, 33, 16, SDL_ALPHA_OPAQUE);
+		canvas.col(cols[colptr[0]]);
 		SDL_RenderDrawLine(renderer, x, y    , x    , y + h);
 		SDL_RenderDrawLine(renderer, x, y + h, x + w, y + h);
-		SDL_SetRenderDrawColor(renderer, 145, 136, 71, SDL_ALPHA_OPAQUE);
+		canvas.col(cols[colptr[1]]);
 		SDL_RenderDrawLine(renderer, x + 1, y, x + w, y        );
 		SDL_RenderDrawLine(renderer, x + w, y, x + w, y + h - 1);
 		// Draw middle lines
-		SDL_SetRenderDrawColor(renderer, 78, 61, 49, SDL_ALPHA_OPAQUE);
+		canvas.col(cols[colptr[2]]);
 		SDL_RenderDrawLine(renderer, x + 1, y + 1    , x + 1    , y + h - 1);
 		SDL_RenderDrawLine(renderer, x + 1, y + h - 1, x + w - 1, y + h - 1);
-		SDL_SetRenderDrawColor(renderer, 129, 112, 65, SDL_ALPHA_OPAQUE);
+		canvas.col(cols[colptr[3]]);
 		SDL_RenderDrawLine(renderer, x + 2    , y + 1, x + w - 1, y + 1    );
 		SDL_RenderDrawLine(renderer, x + w - 1, y + 1, x + w - 1, y + h - 2);
 		// Draw innermost lines
-		SDL_SetRenderDrawColor(renderer, 107, 85, 34, SDL_ALPHA_OPAQUE);
+		canvas.col(cols[colptr[4]]);
 		SDL_RenderDrawLine(renderer, x + 2, y + 2    , x + 2    , y + h - 2);
 		SDL_RenderDrawLine(renderer, x + 2, y + h - 2, x + w - 2, y + h - 2);
-		SDL_SetRenderDrawColor(renderer, 97, 78, 50, SDL_ALPHA_OPAQUE);
+		canvas.col(cols[colptr[5]]);
 		SDL_RenderDrawLine(renderer, x + 3    , y + 2, x + w - 2, y + 2    );
 		SDL_RenderDrawLine(renderer, x + w - 2, y + 2, x + w - 2, y + h - 3);
 	}
@@ -125,55 +167,182 @@ public:
 
 class Button final : public Border {
 	Text text, text_focus;
-	bool focus;
 public:
-	Button(SDL_Renderer *renderer, int x, int y, unsigned w, unsigned h, unsigned id, bool focus=false)
+	bool focus;
+
+	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool focus=false)
 		: Border(x, y, w, h)
-		, text(renderer, x + w / 2, y + h / 2, id, CENTER, MIDDLE, fnt_button)
-		, text_focus(renderer, x + w / 2, y + h / 2, id, CENTER, MIDDLE, fnt_button, col_focus)
+		, text(x + w / 2, y + h / 2, id, CENTER, MIDDLE, fnt_button)
+		, text_focus(x + w / 2, y + h / 2, id, CENTER, MIDDLE, fnt_button, col_focus)
 		, focus(focus)
 	{
 	}
 
-	void draw(SDL_Renderer *renderer) const {
-		Border::draw(renderer);
+	void draw() const {
+		Border::draw();
 		if (focus)
-			text_focus.draw(renderer);
+			text_focus.draw();
 		else
-			text.draw(renderer);
+			text.draw();
 	}
 };
 
-std::vector<std::shared_ptr<UI>> ui_objects;
+/* Provides a group of buttons the user also can navigate through with arrow keys */
+class ButtonGroup final : public UI {
+	std::vector<std::shared_ptr<Button>> objects;
+	unsigned old_focus = 0;
+
+public:
+	unsigned focus = 0;
+
+	ButtonGroup(int x=212, int y=222, unsigned w=375, unsigned h=50)
+		: UI(x, y, w, h), objects() {}
+
+	void add(int rel_x, int rel_y, unsigned id, unsigned w=0, unsigned h=0) {
+		if (!w) w = this->w;
+		if (!h) h = this->h;
+
+		objects.emplace_back(new Button(x + rel_x, y + rel_y, w, h, id));
+	}
+
+	void update() {
+		auto old = objects[old_focus].get();
+		auto next = objects[focus].get();
+
+		old->focus = false;
+		next->focus = true;
+	}
+
+	void ror() {
+		old_focus = focus;
+		focus = (focus + 1) % objects.size();
+	}
+
+	void rol() {
+		old_focus = focus;
+		focus = (focus + objects.size() - 1) % objects.size();
+	}
+
+	void draw() const {
+		for (auto x : objects)
+			x.get()->draw();
+	}
+};
+
+class Menu : public UI {
+protected:
+	std::vector<std::shared_ptr<UI>> objects;
+	mutable ButtonGroup group;
+public:
+	bool stop = false;
+
+	Menu() : UI(0, 0, WIDTH, HEIGHT), objects(), group() {}
+
+	virtual void draw() const {
+		for (auto x : objects)
+			x.get()->draw();
+
+		group.update();
+		group.draw();
+	}
+
+	bool keydown(SDL_KeyboardEvent *event) {
+		unsigned virt = event->keysym.sym;
+		bool dirty = false;
+
+		if (virt == SDLK_DOWN) {
+			group.ror();
+			dirty = true;
+		} else if (virt == SDLK_UP) {
+			group.rol();
+			dirty = true;
+		}
+
+		return dirty;
+	}
+
+	bool keyup(SDL_KeyboardEvent *event) {
+		unsigned virt = event->keysym.sym;
+
+		if (virt == ' ')
+			return button_activate(group.focus);
+		return false;
+	}
+
+	virtual bool button_activate(unsigned id) = 0;
+};
+
+class MainMenu : public Menu {
+public:
+	MainMenu() : Menu() {
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
+
+		group.add(0, 0, STR_BTN_SINGLEPLAYER);
+		group.add(0, 285 - 222, STR_BTN_MULTIPLAYER);
+		group.add(0, 347 - 222, STR_BTN_HELP);
+		group.add(0, 410 - 222, STR_BTN_EDIT);
+		group.add(0, 472 - 222, STR_BTN_EXIT);
+
+		// FIXME (tm) gets truncated by resource handling in res.h (ascii, unicode stuff)
+		objects.emplace_back(new Text(WIDTH / 2, 542, STR_MAIN_COPY1, CENTER));
+		// FIXME (copy) and (p) before this line
+		objects.emplace_back(new Text(WIDTH / 2, 561, STR_MAIN_COPY2, CENTER));
+		objects.emplace_back(new Text(WIDTH / 2, 578, STR_MAIN_COPY3, CENTER));
+	}
+
+	bool button_activate(unsigned id) override final {
+		switch (id) {
+		case 4:
+			stop = true;
+			return true;
+		}
+		return false;
+	}
+};
+
+std::stack<std::shared_ptr<Menu>> ui_navigation;
 
 extern "C"
 {
 
-void ui_init(SDL_Renderer *renderer)
+void ui_init()
 {
-	ui_objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
-	ui_objects.emplace_back(new Button(renderer, 212, 222, 375, 50, STR_BTN_SINGLEPLAYER, true));
-	ui_objects.emplace_back(new Button(renderer, 212, 285, 375, 50, STR_BTN_MULTIPLAYER));
-	ui_objects.emplace_back(new Button(renderer, 212, 347, 375, 50, STR_BTN_HELP));
-	ui_objects.emplace_back(new Button(renderer, 212, 410, 375, 50, STR_BTN_EDIT));
-	ui_objects.emplace_back(new Button(renderer, 212, 472, 375, 50, STR_BTN_EXIT));
-	// FIXME (tm) gets truncated by resource handling in res.h (ascii, unicode stuff)
-	ui_objects.emplace_back(new Text(renderer, WIDTH / 2, 542, STR_MAIN_COPY1, CENTER));
-	// FIXME (copy) and (p) before this line
-	ui_objects.emplace_back(new Text(renderer, WIDTH / 2, 561, STR_MAIN_COPY2, CENTER));
-	ui_objects.emplace_back(new Text(renderer, WIDTH / 2, 578, STR_MAIN_COPY3, CENTER));
+	canvas.renderer = renderer;
+	ui_navigation.emplace(new MainMenu());
 }
 
 void ui_free(void)
 {
 }
 
-void display(SDL_Renderer *renderer)
+bool display()
 {
-	for (auto x : ui_objects) {
-		auto o = x.get();
-		o->draw(renderer);
-	}
+	if (ui_navigation.empty())
+		return false;
+
+	ui_navigation.top().get()->draw();
+	return true;
+}
+
+bool keydown(SDL_KeyboardEvent *event)
+{
+	if (ui_navigation.empty())
+		return true;
+	return ui_navigation.top().get()->keydown(event);
+}
+
+bool keyup(SDL_KeyboardEvent *event)
+{
+	if (ui_navigation.empty())
+		return true;
+
+	auto menu = ui_navigation.top().get();
+	bool dirty = menu->keyup(event);
+
+	if (menu->stop)
+		ui_navigation.pop();
+
+	return dirty;
 }
 
 }
