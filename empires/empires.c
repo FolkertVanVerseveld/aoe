@@ -43,6 +43,9 @@ int load_lib_lang(void)
 
 bool update_screen(void)
 {
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+	SDL_RenderClear(renderer);
+
 	if (!display())
 		return false;
 	SDL_RenderPresent(renderer);
@@ -52,9 +55,6 @@ bool update_screen(void)
 
 void main_event_loop(void)
 {
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-	SDL_RenderClear(renderer);
-
 	if (!update_screen())
 		return;
 
@@ -69,6 +69,14 @@ void main_event_loop(void)
 			break;
 		case SDL_KEYUP:
 			if (keyup(&ev.key) && !update_screen())
+				return;
+			break;
+		case SDL_MOUSEBUTTONDOWN:
+			if (mousedown(&ev.button) && !update_screen())
+				return;
+			break;
+		case SDL_MOUSEBUTTONUP:
+			if (mouseup(&ev.button) && !update_screen())
 				return;
 			break;
 		}

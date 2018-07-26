@@ -25,6 +25,9 @@ bool display(void);
 bool keydown(SDL_KeyboardEvent *event);
 bool keyup(SDL_KeyboardEvent *event);
 
+bool mousedown(SDL_MouseButtonEvent *event);
+bool mouseup(SDL_MouseButtonEvent *event);
+
 #ifdef __cplusplus
 }
 #endif

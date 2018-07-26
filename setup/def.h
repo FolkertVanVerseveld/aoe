@@ -10,6 +10,10 @@
 #ifndef DEF_H
 #define DEF_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
 /* Paths to CDROM and wine installed directory */
@@ -35,5 +39,9 @@ int find_wine_installation(void);
 
 /* CD-ROM/ISO auto detection */
 int find_setup_files(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
