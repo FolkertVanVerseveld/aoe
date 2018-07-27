@@ -17,6 +17,7 @@
 
 #include "gfx.h"
 #include "lang.h"
+#include "game.hpp"
 
 extern struct pe_lib lib_lang;
 
@@ -115,6 +116,17 @@ enum TextAlign {
 
 const SDL_Color col_default = {255, 208, 157, SDL_ALPHA_OPAQUE};
 const SDL_Color col_focus = {255, 255, 0, SDL_ALPHA_OPAQUE};
+
+const SDL_Color col_players[MAX_PLAYER_COUNT] = {
+	{0, 0, 196, SDL_ALPHA_OPAQUE},
+	{200, 0, 0, SDL_ALPHA_OPAQUE},
+	{234, 234, 0, SDL_ALPHA_OPAQUE},
+	{140, 90, 33, SDL_ALPHA_OPAQUE},
+	{255, 128, 0, SDL_ALPHA_OPAQUE},
+	{0, 128, 0, SDL_ALPHA_OPAQUE},
+	{128, 128, 128, SDL_ALPHA_OPAQUE},
+	{64, 128, 128, SDL_ALPHA_OPAQUE},
+};
 
 class Text final : public UI {
 	std::string str;
@@ -449,6 +461,91 @@ public:
 	}
 };
 
+class MenuTimeline final : public Menu {
+public:
+	MenuTimeline() : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551) {
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
+		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
+
+		objects.emplace_back(new Text(WIDTH / 2, 48, STR_BTN_TIMELINE, CENTER, TOP));
+
+		// TODO compute elapsed time
+		objects.emplace_back(new Text(685, 15, "00:00:00"));
+
+		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106));
+
+		group.add(250, 551, STR_BTN_BACK);
+	}
+
+	virtual void button_group_activate(unsigned) override final {
+		stop = 1;
+	}
+
+	void button_activate(unsigned id) override final {
+		switch (id) {
+		case 2: running = 0; break;
+		}
+	}
+};
+
+class MenuAchievements final : public Menu {
+	bool end;
+public:
+	MenuAchievements(bool end=false) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, end ? 775 - 550 : 375 - 125, 588 - 551), end(end) {
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
+		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
+
+		objects.emplace_back(new Text(WIDTH / 2, 48, STR_TITLE_SUMMARY, CENTER, TOP));
+
+		// TODO compute elapsed time
+		objects.emplace_back(new Text(685, 15, "00:00:00"));
+
+		if (end) {
+			group.add(550, 551, STR_BTN_CLOSE);
+			group.add(25, 551, STR_BTN_TIMELINE);
+			group.add(287, 551, STR_BTN_RESTART);
+		} else {
+			group.add(425, 551, STR_BTN_CLOSE);
+			group.add(125, 551, STR_BTN_TIMELINE);
+		}
+
+		objects.emplace_back(new Button(124, 187, 289 - 124, 212 - 187, STR_BTN_MILITARY, LEFT));
+		objects.emplace_back(new Button(191, 162, 354 - 191, 187 - 162, STR_BTN_ECONOMY, LEFT));
+		objects.emplace_back(new Button(266, 137, 420 - 266, 162 - 137, STR_BTN_RELIGION, LEFT));
+		objects.emplace_back(new Button(351, 112, 549 - 351, 137 - 112, STR_BTN_TECHNOLOGY));
+		//objects.emplace_back(new Text(485, 137, 639 - 485, 162 - 137, STR_SURVIVAL, RIGHT, TOP, fnt_default));
+		//objects.emplace_back(new Text(552, 162, 713 - 552, 187 - 162, STR_WONDER, RIGHT, TOP, fnt_default));
+		//objects.emplace_back(new Text(617, 187, 781 - 617, 212 - 187, STR_TOTAL_SCORE, RIGHT, TOP, fnt_default));
+		objects.emplace_back(new Text(633, 140, STR_SURVIVAL, RIGHT, TOP, fnt_default));
+		objects.emplace_back(new Text(710, 165, STR_WONDER, RIGHT, TOP, fnt_default));
+		objects.emplace_back(new Text(778, 190, STR_TOTAL_SCORE, RIGHT, TOP, fnt_default));
+
+		unsigned y = 225, nr = 0;
+
+		for (auto x : players) {
+			auto p = x.get();
+
+			objects.emplace_back(new Text(31, y, p->name, LEFT, TOP, fnt_default, col_players[nr % MAX_PLAYER_COUNT]));
+
+			y += 263 - 225;
+			++nr;
+		}
+	}
+
+	virtual void button_group_activate(unsigned id) override final {
+		switch (id) {
+		case 0: stop = end ? 5 : 1; break;
+		case 1: ui_state.go_to(new MenuTimeline()); break;
+		}
+	}
+
+	void button_activate(unsigned id) override final {
+		switch (id) {
+		case 2: running = 0; break;
+		}
+	}
+};
+
 // TODO make overlayed menu
 class MenuGameMenu final : public Menu {
 public:
@@ -467,9 +564,10 @@ public:
 		objects.emplace_back(new Border(200, 98, 600 - 200, 503 - 98));
 	}
 
-	virtual void button_group_activate(unsigned id) {
+	virtual void button_group_activate(unsigned id) override final {
 		switch (id) {
-		case 0: stop = 4; break;
+		case 0: ui_state.go_to(new MenuAchievements(true)); break;
+		case 1: ui_state.go_to(new MenuAchievements()); break;
 		case 9: stop = 1; break;
 		}
 	}
@@ -483,6 +581,22 @@ public:
 
 		objects.emplace_back(new Text(WIDTH / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
 		objects.emplace_back(new Text(WIDTH / 2, HEIGHT / 2, STR_PAUSED, MIDDLE, CENTER, fnt_button));
+
+		const Player *you = players[0].get();
+
+		char buf[32];
+		int x = 4;
+		snprintf(buf, sizeof buf, "F: %u", you->resources.food);
+		objects.emplace_back(new Text(x, 3, buf));
+		x += 80;
+		snprintf(buf, sizeof buf, "W: %u", you->resources.wood);
+		objects.emplace_back(new Text(x, 3, buf));
+		x += 80;
+		snprintf(buf, sizeof buf, "G: %u", you->resources.gold);
+		objects.emplace_back(new Text(x, 3, buf));
+		x += 80;
+		snprintf(buf, sizeof buf, "S: %u", you->resources.stone);
+		objects.emplace_back(new Text(x, 3, buf));
 	}
 
 	void button_group_activate(unsigned id) override final {
@@ -506,9 +620,17 @@ public:
 
 		// TODO add missing UI objects
 
+		// setup players
+		players.clear();
+		players.emplace_back(new PlayerHuman("You"));
+		players.emplace_back(new PlayerComputer("Minos"));
+
+		char str_count[2] = "0";
+		str_count[0] += players.size();
+
 		// FIXME hardcoded 2 player mode
 		objects.emplace_back(new Text(38, 374, STR_PLAYER_COUNT, LEFT, TOP, fnt_button));
-		objects.emplace_back(new Text(44, 410, "2"));
+		objects.emplace_back(new Text(44, 410, str_count));
 	}
 
 	void button_group_activate(unsigned id) override final {
