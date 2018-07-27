@@ -28,6 +28,37 @@ std::string load_string(unsigned id)
 	return std::string(buf);
 }
 
+class Menu;
+
+/**
+ * Global User Interface state handler.
+ * This `state machine' determines when the screen has to be redisplayed
+ * and does some navigation logic as well.
+ */
+class UI_State {
+	unsigned state;
+
+	static unsigned const DIRTY = 1;
+	static unsigned const BUTTON_DOWN = 2;
+public:
+	UI_State() : state(DIRTY) {}
+
+	void mousedown(SDL_MouseButtonEvent *event);
+	void mouseup(SDL_MouseButtonEvent *event);
+	void keydown(SDL_KeyboardEvent *event);
+	void keyup(SDL_KeyboardEvent *event);
+
+	/* Push new menu onto navigation stack */
+	void go_to(Menu *menu);
+
+	void dirty() {
+		state |= DIRTY;
+	}
+
+	void display();
+	void dispose();
+} ui_state;
+
 /* Custom renderer */
 class Renderer {
 public:
@@ -190,18 +221,29 @@ public:
 	{
 	}
 
-	// NOTE return value of mousedown indicates whether it is dirty
-	// but return value of mouseup indicates whether it has been clicked!!
-
+	/* Process mouse event if it has been clicked. */
 	bool mousedown(SDL_MouseButtonEvent *event) {
-		if (down = contains(event->x, event->y))
-			focus = true;
+		bool old_down = down;
+
+		focus = down = contains(event->x, event->y);
+
+		if (old_down != down)
+			ui_state.dirty();
+
 		return down;
 	}
 
+	/* Process mouse event if it has been clicked. */
 	bool mouseup(SDL_MouseButtonEvent *event) {
-		down = false;
-		return contains(event->x, event->y);
+		if (down) {
+			down = false;
+			ui_state.dirty();
+
+			return contains(event->x, event->y);
+		}
+
+		// Button wasn't pressed so we can't munge the event.
+		return false;
 	}
 
 	void draw() const {
@@ -240,41 +282,44 @@ public:
 		next->focus = true;
 	}
 
-	bool ror() {
+	/* Rotate right through button group */
+	void ror() {
 		if (down_)
-			return false;
+			return;
+
 		old_focus = focus;
 		focus = (focus + 1) % objects.size();
-		return true;
+
+		if (old_focus != focus)
+			ui_state.dirty();
 	}
 
-	bool rol() {
+	/* Rotate left through button group */
+	void rol() {
 		if (down_)
-			return false;
+			return;
+
 		old_focus = focus;
 		focus = (focus + objects.size() - 1) % objects.size();
-		return true;
+
+		if (old_focus != focus)
+			ui_state.dirty();
 	}
 
-	bool mousedown(SDL_MouseButtonEvent *event) {
-		bool dirty = false;
+	void mousedown(SDL_MouseButtonEvent *event) {
 		unsigned id = 0;
-
 		old_focus = focus;
 
 		for (auto x : objects) {
 			auto btn = x.get();
 
-			if (btn->mousedown(event)) {
-				dirty = true;
+			if (btn->mousedown(event))
 				focus = id;
-			} else
+			else
 				btn->focus = false;
 
 			++id;
 		}
-
-		return dirty;
 	}
 
 	bool mouseup(SDL_MouseButtonEvent *event) {
@@ -284,11 +329,13 @@ public:
 	void down() {
 		down_ = true;
 		objects[focus].get()->down = true;
+		ui_state.dirty();
 	}
 
 	void up() {
 		down_ = false;
 		objects[focus].get()->down = false;
+		ui_state.dirty();
 	}
 
 	void draw() const {
@@ -303,9 +350,16 @@ protected:
 	mutable ButtonGroup group;
 public:
 	bool stop = false;
-	bool terminate = false;
 
-	Menu() : UI(0, 0, WIDTH, HEIGHT), objects(), group() {}
+	Menu(unsigned title_id) : UI(0, 0, WIDTH, HEIGHT), objects(), group() {
+		objects.emplace_back(new Text(WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt_button));
+	}
+
+	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h)
+		: UI(0, 0, WIDTH, HEIGHT), objects(), group(x, y, w, h)
+	{
+		objects.emplace_back(new Text(WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt_button));
+	}
 
 	virtual void draw() const {
 		for (auto x : objects)
@@ -315,77 +369,91 @@ public:
 		group.draw();
 	}
 
-	bool keydown(SDL_KeyboardEvent *event) {
+	void keydown(SDL_KeyboardEvent *event) {
 		unsigned virt = event->keysym.sym;
-		bool dirty = false;
 
 		if (virt == SDLK_DOWN)
-			return group.ror();
+			group.ror();
 		else if (virt == SDLK_UP)
-			return group.rol();
-		else if (virt == ' ') {
+			group.rol();
+		else if (virt == ' ')
 			group.down();
-			dirty = true;
-		}
-
-		return dirty;
 	}
 
-	bool keyup(SDL_KeyboardEvent *event) {
+	void keyup(SDL_KeyboardEvent *event) {
 		unsigned virt = event->keysym.sym;
-		bool dirty = false;
 
 		if (virt == ' ') {
-			dirty = true;
 			group.up();
 			button_group_activate(group.focus);
 		}
-		return dirty;
 	}
 
-	bool mousedown(SDL_MouseButtonEvent *event) {
-		if (group.mousedown(event))
-			return true;
+	void mousedown(SDL_MouseButtonEvent *event) {
+		group.mousedown(event);
 
 		for (auto x : objects) {
 			Button *btn = dynamic_cast<Button*>(x.get());
 			// FIXME focus propagation (for all other buttons: focus=false)
-			if (btn && btn->mousedown(event))
-				return true;
+			if (btn)
+				btn->mousedown(event);
 		}
-
-		return false;
 	}
 
-	bool mouseup(SDL_MouseButtonEvent *event) {
+	void mouseup(SDL_MouseButtonEvent *event) {
 		if (group.mouseup(event)) {
 			button_group_activate(group.focus);
-			return true;
+			return;
 		}
 
 		unsigned id = 0;
 		for (auto x : objects) {
 			Button *btn = dynamic_cast<Button*>(x.get());
-			if (btn && btn->mouseup(event)) {
+			if (btn && btn->mouseup(event))
 				button_activate(id);
-				return true;
-			}
 			++id;
 		}
-
-		return false;
 	}
 
-	virtual bool button_group_activate(unsigned id) = 0;
-	virtual bool button_activate(unsigned id) = 0;
+	virtual void button_group_activate(unsigned id) = 0;
+
+	virtual void button_activate(unsigned) {
+		panic("Unimplemented");
+	}
 };
 
 std::stack<std::shared_ptr<Menu>> ui_navigation;
 
+class MenuSinglePlayerSettings final : public Menu {
+public:
+	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550) {
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
+		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
+
+		group.add(87, 550, STR_BTN_START_GAME);
+		group.add(412, 550, STR_BTN_CANCEL);
+		group.add(525, 62, STR_BTN_SETTINGS, 786 - 525, 98 - 62);
+
+		objects.emplace_back(new Text(38, 374, STR_PLAYER_COUNT, LEFT, TOP, fnt_button));
+	}
+
+	void button_group_activate(unsigned id) override final {
+		switch (id) {
+		case 1: stop = true; break;
+		}
+	}
+
+	void button_activate(unsigned id) override final {
+		switch (id) {
+		case 2: running = 0; break;
+		}
+	}
+};
+
 // FIXME color scheme
 class MenuSinglePlayer final : public Menu {
 public:
-	MenuSinglePlayer() : Menu() {
+	MenuSinglePlayer() : Menu(STR_TITLE_SINGLEPLAYER_MENU) {
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -397,22 +465,25 @@ public:
 		group.add(0, 460 - 222, STR_BTN_CANCEL);
 	}
 
-	bool button_group_activate(unsigned id) override final {
+	void button_group_activate(unsigned id) override final {
 		switch (id) {
+		case 0:
+			ui_state.go_to(new MenuSinglePlayerSettings());
+			break;
 		case 5:
-			return stop = true;
+			stop = true;
+			break;
 		}
-		return false;
 	}
 
-	bool button_activate(unsigned) override final {
-		return terminate = stop = true;
+	void button_activate(unsigned) override final {
+		running = 0;
 	}
 };
 
 class MenuMain final : public Menu {
 public:
-	MenuMain() : Menu() {
+	MenuMain() : Menu(STR_TITLE_MAIN) {
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
 
 		group.add(0, 0, STR_BTN_SINGLEPLAYER);
@@ -428,34 +499,17 @@ public:
 		objects.emplace_back(new Text(WIDTH / 2, 578, STR_MAIN_COPY3, CENTER));
 	}
 
-	bool button_group_activate(unsigned id) override final {
+	void button_group_activate(unsigned id) override final {
 		switch (id) {
 		case 0:
-			ui_navigation.emplace(new MenuSinglePlayer());
-			return true;
+			ui_state.go_to(new MenuSinglePlayer());
+			break;
 		case 4:
-			return stop = true;
+			running = 0;
+			break;
 		}
-		return false;
-	}
-
-	bool button_activate(unsigned) override final {
-		panic("Unimplemented");
-		return true;
 	}
 };
-
-bool button_epilogue(bool dirty, Menu *menu)
-{
-	if (menu->terminate) {
-		while (!ui_navigation.empty())
-			ui_navigation.pop();
-		dirty = true;
-	} else if (menu->stop)
-		ui_navigation.pop();
-
-	return dirty;
-}
 
 extern "C"
 {
@@ -463,57 +517,95 @@ extern "C"
 void ui_init()
 {
 	canvas.renderer = renderer;
-	ui_navigation.emplace(new MenuMain());
+	ui_state.go_to(new MenuMain());
 }
 
 void ui_free(void)
 {
+	running = 0;
+	ui_state.dispose();
 }
 
-bool display()
-{
-	if (ui_navigation.empty())
-		return false;
+/* Wrappers for ui_state */
+void display() { ui_state.display(); }
 
-	ui_navigation.top().get()->draw();
-	return true;
+void keydown(SDL_KeyboardEvent *event) { ui_state.keydown(event); }
+void keyup(SDL_KeyboardEvent *event) { ui_state.keyup(event); }
+
+void mousedown(SDL_MouseButtonEvent *event) { ui_state.mousedown(event); }
+void mouseup(SDL_MouseButtonEvent *event) { ui_state.mouseup(event); }
+
 }
 
-bool keydown(SDL_KeyboardEvent *event)
+void UI_State::mousedown(SDL_MouseButtonEvent *event)
 {
 	if (ui_navigation.empty())
-		return true;
-	return ui_navigation.top().get()->keydown(event);
+		return;
+
+	ui_navigation.top().get()->mousedown(event);
 }
 
-bool keyup(SDL_KeyboardEvent *event)
+void UI_State::mouseup(SDL_MouseButtonEvent *event)
 {
 	if (ui_navigation.empty())
-		return true;
+		return;
 
 	auto menu = ui_navigation.top().get();
-	bool dirty = menu->keyup(event);
+	menu->mouseup(event);
 
-	return button_epilogue(dirty, menu);
+	if (menu->stop)
+		ui_navigation.pop();
 }
 
-bool mousedown(SDL_MouseButtonEvent *event)
+void UI_State::go_to(Menu *menu)
 {
-	if (ui_navigation.empty())
-		return true;
-
-	return ui_navigation.top().get()->mousedown(event);
+	ui_navigation.emplace(menu);
 }
 
-bool mouseup(SDL_MouseButtonEvent *event)
+void UI_State::dispose()
+{
+	//puts("ui_state: dispose");
+	while (!ui_navigation.empty())
+		ui_navigation.pop();
+}
+
+void UI_State::display()
+{
+	//puts("ui_state: display");
+
+	if ((state & DIRTY) && !ui_navigation.empty()) {
+		//puts("ui_state: redraw");
+		// Clear screen
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+		SDL_RenderClear(renderer);
+		// Draw stuff
+		ui_navigation.top().get()->draw();
+		// Swap buffers
+		SDL_RenderPresent(renderer);
+	}
+
+	if (!running)
+		dispose();
+
+	state &= ~DIRTY;
+}
+
+void UI_State::keydown(SDL_KeyboardEvent *event)
 {
 	if (ui_navigation.empty())
-		return true;
+		return;
+
+	ui_navigation.top().get()->keydown(event);
+}
+
+void UI_State::keyup(SDL_KeyboardEvent *event)
+{
+	if (ui_navigation.empty())
+		return;
 
 	auto menu = ui_navigation.top().get();
-	bool dirty = menu->mouseup(event);
+	menu->keyup(event);
 
-	return button_epilogue(dirty, menu);
-}
-
+	if (menu->stop)
+		ui_navigation.pop();
 }

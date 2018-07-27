@@ -16,17 +16,18 @@ extern "C" {
 #include <stdbool.h>
 
 extern SDL_Renderer *renderer;
+extern int running;
 
 void ui_init(void);
 void ui_free(void);
 
-bool display(void);
+void display(void);
 
-bool keydown(SDL_KeyboardEvent *event);
-bool keyup(SDL_KeyboardEvent *event);
+void keydown(SDL_KeyboardEvent *event);
+void keyup(SDL_KeyboardEvent *event);
 
-bool mousedown(SDL_MouseButtonEvent *event);
-bool mouseup(SDL_MouseButtonEvent *event);
+void mousedown(SDL_MouseButtonEvent *event);
+void mouseup(SDL_MouseButtonEvent *event);
 
 #ifdef __cplusplus
 }

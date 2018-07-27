@@ -34,6 +34,8 @@ struct pe_lib lib_lang;
 
 #define BUFSZ 4096
 
+int running = 0;
+
 int load_lib_lang(void)
 {
 	char buf[BUFSZ];
@@ -41,45 +43,26 @@ int load_lib_lang(void)
 	return pe_lib_open(&lib_lang, buf);
 }
 
-bool update_screen(void)
-{
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-	SDL_RenderClear(renderer);
-
-	if (!display())
-		return false;
-	SDL_RenderPresent(renderer);
-
-	return true;
-}
-
 void main_event_loop(void)
 {
-	if (!update_screen())
-		return;
+	running = 1;
+	display();
 
 	SDL_Event ev;
-	while (SDL_WaitEvent(&ev)) {
+	while (running && SDL_WaitEvent(&ev)) {
 		switch (ev.type) {
 		case SDL_QUIT:
+			running = 0;
 			return;
-		case SDL_KEYDOWN:
-			if (keydown(&ev.key) && !update_screen())
-				return;
-			break;
-		case SDL_KEYUP:
-			if (keyup(&ev.key) && !update_screen())
-				return;
-			break;
-		case SDL_MOUSEBUTTONDOWN:
-			if (mousedown(&ev.button) && !update_screen())
-				return;
-			break;
-		case SDL_MOUSEBUTTONUP:
-			if (mouseup(&ev.button) && !update_screen())
-				return;
-			break;
+		case SDL_KEYDOWN: keydown(&ev.key); break;
+		case SDL_KEYUP: keyup(&ev.key); break;
+		case SDL_MOUSEBUTTONDOWN: mousedown(&ev.button); break;
+		case SDL_MOUSEBUTTONUP: mouseup(&ev.button); break;
+		default:
+			continue;
 		}
+
+		display();
 	}
 }
 

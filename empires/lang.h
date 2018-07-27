@@ -6,7 +6,9 @@
 // Quick exit button
 #define STR_EXIT 1002
 
-/* Main menu buttons */
+/* Main menu */
+#define STR_TITLE_MAIN 1001
+
 #define STR_BTN_SINGLEPLAYER 9202
 #define STR_BTN_MULTIPLAYER 9203
 #define STR_BTN_HELP 9205
@@ -18,12 +20,25 @@
 #define STR_MAIN_COPY2 9244
 #define STR_MAIN_COPY3 9253
 
-/* Single player menu buttons */
+/* Singleplayer menu */
+#define STR_TITLE_SINGLEPLAYER_MENU 9220
+
 #define STR_BTN_RANDOM_MAP 9226
 #define STR_BTN_CAMPAIGN 9224
 #define STR_BTN_DEATHMATCH 9227
 #define STR_BTN_SCENARIO 9221
 #define STR_BTN_SAVEDGAME 9223
 #define STR_BTN_CANCEL 9225
+
+/* Singleplayer random map settings */
+#define STR_TITLE_SINGLEPLAYER 9679
+
+#define STR_BTN_START_GAME 9472
+#define STR_BTN_SETTINGS 9682
+
+#define STR_PLAYER_COUNT 9688
+
+/* Multiplayer menu */
+#define STR_TITLE_MULTIPLAYER 9678
 
 #endif
