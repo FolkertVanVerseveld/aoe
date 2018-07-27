@@ -176,13 +176,15 @@ public:
 
 class Player {
 public:
-	const std::string name;
+	std::string name;
 	unsigned civ;
 	bool alive;
 	Resources resources;
+	Summary summary;
 
 	Player(const std::string &name, unsigned civ=0)
-		: name(name), civ(civ), alive(true), resources(res_low_default) {}
+		: name(name), civ(civ), alive(true)
+		, resources(res_low_default), summary() {}
 
 	void idle();
 
@@ -191,14 +193,14 @@ public:
 
 class PlayerHuman final : public Player {
 public:
-	PlayerHuman(const std::string &name, unsigned civ=0) : Player(name, civ) {}
+	PlayerHuman(const std::string &name="You");
 
 	virtual void tick() override final;
 };
 
 class PlayerComputer final : public Player {
 public:
-	PlayerComputer(const std::string &name, unsigned civ=0);
+	PlayerComputer();
 
 	virtual void tick() override final;
 };

@@ -483,6 +483,19 @@ public:
 		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106));
 
 		group.add(250, 551, STR_BTN_BACK);
+
+		unsigned i = 1, step = (474 - 151) / (players.size() + 1);
+
+		for (auto x : players) {
+			auto p = x.get();
+			char buf[64];
+			char civbuf[64];
+			load_string(&lib_lang, STR_CIV_EGYPTIAN + p->civ, civbuf, sizeof civbuf);
+			snprintf(buf, sizeof buf, "%s - %s", p->name.c_str(), civbuf);
+
+			objects.emplace_back(new Text(40, 151 + i * step , buf, LEFT, MIDDLE));
+			++i;
+		}
 	}
 
 	virtual void button_group_activate(unsigned) override final {
@@ -493,6 +506,15 @@ public:
 		switch (id) {
 		case 2: running = 0; break;
 		}
+	}
+
+	virtual void draw() const override {
+		canvas.col(255, 255, 255);
+		SDL_RenderDrawLine(renderer, 37, 151, 765, 151);
+		SDL_RenderDrawLine(renderer, 765, 151, 765, 474);
+		SDL_RenderDrawLine(renderer, 37, 151, 37, 474);
+		SDL_RenderDrawLine(renderer, 37, 474, 764, 474);
+		Menu::draw();
 	}
 };
 
@@ -642,7 +664,9 @@ public:
 		// setup players
 		players.clear();
 		players.emplace_back(new PlayerHuman("You"));
-		players.emplace_back(new PlayerComputer("Minos"));
+		players.emplace_back(new PlayerComputer());
+		players.emplace_back(new PlayerComputer());
+		players.emplace_back(new PlayerComputer());
 
 		char str_count[2] = "0";
 		str_count[0] += players.size();
