@@ -6,6 +6,9 @@
 // Quick exit button
 #define STR_EXIT 1002
 
+// Generic error or unknown button text
+#define STR_ERROR 2001
+
 /* Main menu */
 #define STR_TITLE_MAIN 1001
 
@@ -38,7 +41,46 @@
 
 #define STR_PLAYER_COUNT 9688
 
+/* Game */
+#define STR_BTN_DIPLOMACY 9851
+#define STR_BTN_MENU 10020
+
+#define STR_PAUSED 9001
+
+/* Game menu */
+#define STR_BTN_GAME_QUIT 9273
+#define STR_BTN_GAME_ACHIEVEMENTS 9271
+#define STR_BTN_GAME_INSTRUCTIONS 9278
+#define STR_BTN_GAME_SAVE 9272
+#define STR_BTN_GAME_LOAD 9276
+#define STR_BTN_GAME_RESTART 9279
+#define STR_BTN_GAME_SETTINGS 9274
+#define STR_BTN_GAME_ABOUT 9209
+#define STR_BTN_GAME_CANCEL 9275
+
 /* Multiplayer menu */
 #define STR_TITLE_MULTIPLAYER 9678
+
+/* Ages */
+#define STR_AGE_STONE 4201
+#define STR_AGE_TOOL 4202
+#define STR_AGE_BRONZE 4203
+#define STR_AGE_IRON 4204
+#define STR_AGE_POSTIRON 4205
+#define STR_AGE_NOMAD 4206
+
+#if 0
+#define STR_AGE_TOOL 7063
+#define STR_AGE_BRONZE 7064
+#define STR_AGE_IRON 7065
+// Not used
+#define STR_AGE_REPUBLIC 7066
+#endif
+
+/* Resources */
+#define STR_RES_FOOD 4301
+#define STR_RES_WOOD 4302
+#define STR_RES_STONE 4303
+#define STR_RES_GOLD 4304
 
 #endif

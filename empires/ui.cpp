@@ -40,8 +40,10 @@ class UI_State {
 
 	static unsigned const DIRTY = 1;
 	static unsigned const BUTTON_DOWN = 2;
+
+	std::stack<std::shared_ptr<Menu>> navigation;
 public:
-	UI_State() : state(DIRTY) {}
+	UI_State() : state(DIRTY), navigation() {}
 
 	void mousedown(SDL_MouseButtonEvent *event);
 	void mouseup(SDL_MouseButtonEvent *event);
@@ -130,6 +132,29 @@ public:
 		surf = TTF_RenderText_Solid(fnt, str.c_str(), col);
 		tex = SDL_CreateTextureFromSurface(renderer, surf);
 
+		reshape(halign, valign);
+	}
+
+	Text(int x, int y, const std::string &str
+		, TextAlign halign=LEFT
+		, TextAlign valign=TOP
+		, TTF_Font *fnt=fnt_default
+		, SDL_Color col=col_default)
+		: UI(x, y), str(str)
+	{
+		surf = TTF_RenderText_Solid(fnt, str.c_str(), col);
+		tex = SDL_CreateTextureFromSurface(renderer, surf);
+
+		reshape(halign, valign);
+	}
+
+	~Text() {
+		SDL_DestroyTexture(tex);
+		SDL_FreeSurface(surf);
+	}
+
+private:
+	void reshape(TextAlign halign, TextAlign valign) {
 		this->w = surf->w;
 		this->h = surf->h;
 
@@ -144,11 +169,6 @@ public:
 		case MIDDLE: this->y -= (int)h / 2; break;
 		case BOTTOM: this->y -= (int)h; break;
 		}
-	}
-
-	~Text() {
-		SDL_DestroyTexture(tex);
-		SDL_FreeSurface(surf);
 	}
 
 public:
@@ -267,11 +287,11 @@ public:
 	ButtonGroup(int x=212, int y=222, unsigned w=375, unsigned h=50)
 		: UI(x, y, w, h), objects() {}
 
-	void add(int rel_x, int rel_y, unsigned id, unsigned w=0, unsigned h=0) {
+	void add(int rel_x, int rel_y, unsigned id=STR_ERROR, unsigned w=0, unsigned h=0, bool def_fnt=false) {
 		if (!w) w = this->w;
 		if (!h) h = this->h;
 
-		objects.emplace_back(new Button(x + rel_x, y + rel_y, w, h, id));
+		objects.emplace_back(new Button(x + rel_x, y + rel_y, w, h, id, def_fnt));
 	}
 
 	void update() {
@@ -349,16 +369,24 @@ protected:
 	std::vector<std::shared_ptr<UI>> objects;
 	mutable ButtonGroup group;
 public:
-	bool stop = false;
+	int stop = 0;
 
-	Menu(unsigned title_id) : UI(0, 0, WIDTH, HEIGHT), objects(), group() {
-		objects.emplace_back(new Text(WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt_button));
+	Menu(unsigned title_id, bool show_title=true)
+		: UI(0, 0, WIDTH, HEIGHT), objects(), group()
+	{
+		if (show_title)
+			objects.emplace_back(new Text(
+				WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt_button
+			));
 	}
 
-	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h)
+	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h, bool show_title=true)
 		: UI(0, 0, WIDTH, HEIGHT), objects(), group(x, y, w, h)
 	{
-		objects.emplace_back(new Text(WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt_button));
+		if (show_title)
+			objects.emplace_back(new Text(
+				WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt_button
+			));
 	}
 
 	virtual void draw() const {
@@ -394,7 +422,6 @@ public:
 
 		for (auto x : objects) {
 			Button *btn = dynamic_cast<Button*>(x.get());
-			// FIXME focus propagation (for all other buttons: focus=false)
 			if (btn)
 				btn->mousedown(event);
 		}
@@ -422,7 +449,50 @@ public:
 	}
 };
 
-std::stack<std::shared_ptr<Menu>> ui_navigation;
+// TODO make overlayed menu
+class MenuGameMenu final : public Menu {
+public:
+	MenuGameMenu() : Menu(STR_TITLE_MAIN, 200, 98, 580 - 220, 143 - 113, false) {
+		group.add(220 - 200, 113 - 98, STR_BTN_GAME_QUIT);
+		group.add(220 - 200, 163 - 98, STR_BTN_GAME_ACHIEVEMENTS);
+		group.add(220 - 200, 198 - 98, STR_BTN_GAME_INSTRUCTIONS);
+		group.add(220 - 200, 233 - 98, STR_BTN_GAME_SAVE);
+		group.add(220 - 200, 268 - 98, STR_BTN_GAME_LOAD);
+		group.add(220 - 200, 303 - 98, STR_BTN_GAME_RESTART);
+		group.add(220 - 200, 338 - 98, STR_BTN_GAME_SETTINGS);
+		group.add(220 - 200, 373 - 98, STR_BTN_HELP);
+		group.add(220 - 200, 408 - 98, STR_BTN_GAME_ABOUT);
+		group.add(220 - 200, 458 - 98, STR_BTN_GAME_CANCEL);
+
+		objects.emplace_back(new Border(200, 98, 600 - 200, 503 - 98));
+	}
+
+	virtual void button_group_activate(unsigned id) {
+		switch (id) {
+		case 0: stop = 4; break;
+		case 9: stop = 1; break;
+		}
+	}
+};
+
+class MenuGame final : public Menu {
+public:
+	MenuGame() : Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false) {
+		group.add(728, 0, STR_BTN_MENU, WIDTH - 728, 18, true);
+		group.add(620, 0, STR_BTN_DIPLOMACY, 728 - 620, 18, true);
+
+		objects.emplace_back(new Text(WIDTH / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
+		objects.emplace_back(new Text(WIDTH / 2, HEIGHT / 2, STR_PAUSED, MIDDLE, CENTER, fnt_button));
+	}
+
+	void button_group_activate(unsigned id) override final {
+		switch (id) {
+		case 0:
+			ui_state.go_to(new MenuGameMenu());
+			break;
+		}
+	}
+};
 
 class MenuSinglePlayerSettings final : public Menu {
 public:
@@ -434,12 +504,21 @@ public:
 		group.add(412, 550, STR_BTN_CANCEL);
 		group.add(525, 62, STR_BTN_SETTINGS, 786 - 525, 98 - 62);
 
+		// TODO add missing UI objects
+
+		// FIXME hardcoded 2 player mode
 		objects.emplace_back(new Text(38, 374, STR_PLAYER_COUNT, LEFT, TOP, fnt_button));
+		objects.emplace_back(new Text(44, 410, "2"));
 	}
 
 	void button_group_activate(unsigned id) override final {
 		switch (id) {
-		case 1: stop = true; break;
+		case 0:
+			ui_state.go_to(new MenuGame());
+			break;
+		case 1:
+			stop = 1;
+			break;
 		}
 	}
 
@@ -471,7 +550,7 @@ public:
 			ui_state.go_to(new MenuSinglePlayerSettings());
 			break;
 		case 5:
-			stop = true;
+			stop = 1;
 			break;
 		}
 	}
@@ -539,47 +618,50 @@ void mouseup(SDL_MouseButtonEvent *event) { ui_state.mouseup(event); }
 
 void UI_State::mousedown(SDL_MouseButtonEvent *event)
 {
-	if (ui_navigation.empty())
+	if (navigation.empty())
 		return;
 
-	ui_navigation.top().get()->mousedown(event);
+	navigation.top().get()->mousedown(event);
 }
 
 void UI_State::mouseup(SDL_MouseButtonEvent *event)
 {
-	if (ui_navigation.empty())
+	if (navigation.empty())
 		return;
 
-	auto menu = ui_navigation.top().get();
+	auto menu = navigation.top().get();
 	menu->mouseup(event);
 
-	if (menu->stop)
-		ui_navigation.pop();
+	for (unsigned n = menu->stop; n; --n) {
+		if (navigation.empty())
+			return;
+		navigation.pop();
+	}
 }
 
 void UI_State::go_to(Menu *menu)
 {
-	ui_navigation.emplace(menu);
+	navigation.emplace(menu);
 }
 
 void UI_State::dispose()
 {
 	//puts("ui_state: dispose");
-	while (!ui_navigation.empty())
-		ui_navigation.pop();
+	while (!navigation.empty())
+		navigation.pop();
 }
 
 void UI_State::display()
 {
 	//puts("ui_state: display");
 
-	if ((state & DIRTY) && !ui_navigation.empty()) {
+	if ((state & DIRTY) && !navigation.empty()) {
 		//puts("ui_state: redraw");
 		// Clear screen
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
 		SDL_RenderClear(renderer);
 		// Draw stuff
-		ui_navigation.top().get()->draw();
+		navigation.top().get()->draw();
 		// Swap buffers
 		SDL_RenderPresent(renderer);
 	}
@@ -592,20 +674,23 @@ void UI_State::display()
 
 void UI_State::keydown(SDL_KeyboardEvent *event)
 {
-	if (ui_navigation.empty())
+	if (navigation.empty())
 		return;
 
-	ui_navigation.top().get()->keydown(event);
+	navigation.top().get()->keydown(event);
 }
 
 void UI_State::keyup(SDL_KeyboardEvent *event)
 {
-	if (ui_navigation.empty())
+	if (navigation.empty())
 		return;
 
-	auto menu = ui_navigation.top().get();
+	auto menu = navigation.top().get();
 	menu->keyup(event);
 
-	if (menu->stop)
-		ui_navigation.pop();
+	for (unsigned n = menu->stop; n; --n) {
+		if (navigation.empty())
+			return;
+		navigation.pop();
+	}
 }
