@@ -12,9 +12,11 @@ CXXFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -std=c++11
 
 ifdef STRICT
 	CFLAGS += -Werror
+	CXXFLAGS += -Werror
 endif
 ifdef DEBUG
 	CFLAGS += -g -DDEBUG
+	CXXFLAGS += -g -DDEBUG
 ifeq ($(DEBUG),2)
 	CFLAGS += -fsanitize=address $(shell pkg-config --libs check)
 	DEBUG_LDLIBS += $(shell pkg-config --libs check)

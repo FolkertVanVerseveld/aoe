@@ -16,7 +16,11 @@
 static inline void dump(const void *mem, size_t n)
 {
 	size_t i, j = 0;
+#ifdef __cplusplus
+	const unsigned char *data = (const unsigned char*)mem;
+#else
 	const unsigned char *data = mem;
+#endif
 
 	for (i = 0; i < n; ++i) {
 		printf("%02X ", data[i]);

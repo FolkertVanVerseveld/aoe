@@ -460,10 +460,10 @@ static int pe_load_data_entry(pe_ctx_t *ctx, const NODE_PERES *node, struct pe_d
 	while (node) {
 		if (node->nodeType == RDT_DATA_ENTRY)
 			if (pe_find_data_entry(ctx, node, entry, type, id)) {
-				dbgs("found:");
+				//dbgs("found:");
 				if (!entry->type)
-					dbgf("name: %s\n", entry->name);
-				dbgf("type: %u\n%04X,%04X\n", entry->type, entry->offset, entry->id);
+					;//dbgf("name: %s\n", entry->name);
+				//dbgf("type: %u\n%04X,%04X\n", entry->type, entry->offset, entry->id);
 				const IMAGE_RESOURCE_DATA_ENTRY *data_entry = node->resource.dataEntry;
 				uint64_t offsetData = pe_rva2ofs(ctx, data_entry->offsetToData);
 				entry->data = LIBPE_PTR_ADD(ctx->map_addr, offsetData);
@@ -567,7 +567,7 @@ int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size)
 {
 	struct pe_data_entry entry;
 	uint16_t *data;
-	dbgf("load_string %04X\n", id);
+	//dbgf("load_string %04X\n", id);
 	if (!pe_load_data_entry(&lib->ctx, lib->res, &entry, RT_STRING, id)) {
 		data = entry.data;
 		for (unsigned i = 0, n = id % 16; i < n; ++i)
@@ -579,7 +579,9 @@ int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size)
 			str[i] = data[i + 1];
 		if (i < size)
 			str[i] = '\0';
-		dbgf("str: %s\n", str);
+		else
+			str[size - 1] = '\0';
+		//dbgf("str: %s\n", str);
 		return 0;
 	}
 	return 1;

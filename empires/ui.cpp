@@ -253,6 +253,14 @@ public:
 	{
 	}
 
+	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false)
+		: Border(x, y, w, h)
+		, text(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
+		, text_focus(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button, col_focus)
+		, focus(false), down(false)
+	{
+	}
+
 	/* Process mouse event if it has been clicked. */
 	bool mousedown(SDL_MouseButtonEvent *event) {
 		bool old_down = down;
@@ -597,6 +605,10 @@ public:
 		x += 80;
 		snprintf(buf, sizeof buf, "S: %u", you->resources.stone);
 		objects.emplace_back(new Text(x, 3, buf));
+
+		objects.emplace_back(new Button(765, 482, 795 - 765, 512 - 482, STR_BTN_SCORE, true));
+		objects.emplace_back(new Button(765, 564, 795 - 765, 594 - 564, "?", true));
+		//objects.emplace_back(new Button(765, 564, "?"));
 	}
 
 	void button_group_activate(unsigned id) override final {
@@ -604,6 +616,13 @@ public:
 		case 0:
 			ui_state.go_to(new MenuGameMenu());
 			break;
+		}
+	}
+
+	void button_activate(unsigned id) override final {
+		switch (id) {
+		case 0: break;
+		case 1: break;
 		}
 	}
 };

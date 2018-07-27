@@ -31,7 +31,7 @@
 #define CIV_YAMATO 10
 #define CIV_CHOSON 11
 
-#define MAX_CIVILIZATION_COUNT (STR_CIV_CHOSON - STR_CIV_EGYPTIAN + 1)
+#define MAX_CIVILIZATION_COUNT (CIV_CHOSON + 1)
 
 class Resources {
 public:
@@ -198,7 +198,7 @@ public:
 
 class PlayerComputer final : public Player {
 public:
-	PlayerComputer(const std::string &name, unsigned civ=0) : Player(name, civ) {}
+	PlayerComputer(const std::string &name, unsigned civ=0);
 
 	virtual void tick() override final;
 };

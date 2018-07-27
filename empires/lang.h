@@ -44,6 +44,7 @@
 /* Game */
 #define STR_BTN_DIPLOMACY 9851
 #define STR_BTN_MENU 10020
+#define STR_BTN_SCORE 4131
 
 #define STR_PAUSED 9001
 
@@ -57,6 +58,8 @@
 #define STR_BTN_GAME_SETTINGS 9274
 #define STR_BTN_GAME_ABOUT 9209
 #define STR_BTN_GAME_CANCEL 9275
+
+#define STR_BTN_CIVTBL 4400
 
 /* Multiplayer menu */
 #define STR_TITLE_MULTIPLAYER 9678
