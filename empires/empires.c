@@ -20,6 +20,7 @@
 
 #include "gfx.h"
 #include "fs.h"
+#include "sfx.h"
 #include "ui.h"
 
 #define TITLE "Age of Empires"
@@ -95,6 +96,7 @@ int main(void)
 	if (!(renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)))
 		panic("Could not create rendering context");
 
+	sfx_init();
 	gfx_init();
 	ui_init();
 
@@ -102,6 +104,7 @@ int main(void)
 
 	ui_free();
 	gfx_free();
+	sfx_free();
 
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
