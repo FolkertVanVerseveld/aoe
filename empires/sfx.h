@@ -21,8 +21,12 @@ extern "C" {
 
 #define MUSIC_CHANNEL_COUNT 2
 
+#define SFX_BUTTON4 50300
+
 void sfx_init(void);
 void sfx_free(void);
+
+void sfx_play(unsigned id);
 
 #ifdef __cplusplus
 }

@@ -17,6 +17,8 @@
 
 #include "gfx.h"
 #include "lang.h"
+#include "sfx.h"
+
 #include "game.hpp"
 
 extern struct pe_lib lib_lang;
@@ -279,7 +281,10 @@ public:
 			down = false;
 			ui_state.dirty();
 
-			return contains(event->x, event->y);
+			bool hit = contains(event->x, event->y);
+			if (hit)
+				sfx_play(SFX_BUTTON4);
+			return hit;
 		}
 
 		// Button wasn't pressed so we can't munge the event.
@@ -432,6 +437,7 @@ public:
 		unsigned virt = event->keysym.sym;
 
 		if (virt == ' ') {
+			sfx_play(SFX_BUTTON4);
 			group.up();
 			button_group_activate(group.focus);
 		}
