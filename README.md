@@ -33,8 +33,8 @@ of simple low-level stuff in the game engine is implemented. See
 
 ## Support
 
-This project has been built primarly for Xubuntu 14.04.5, but it should build on
-any POSIX-compatible machine.
+This project has been built primarly for Xubuntu 16.04, but it should build on
+any POSIX-compatible machine (e.g. Xubuntu 14.04.5)
 
 For more information, see [INSTALL](INSTALL).
 

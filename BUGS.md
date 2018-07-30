@@ -19,6 +19,7 @@ depends on the symptoms and the source of the issue.
 Symptom                  | Cause                                     | Solution
 -------------------------|-------------------------------------------|-------------------------------------------------------
 Ugly user interface font | The original game font could not be found | No workaround at the moment
+"    "    "         "    | Or: rendered font looks misplaced         | "  "          "  "   "
 No music                 | The CD-ROM audio partition is not mounted | Open the directory in your filebrowser to automount it
 Cannot patch DRS bitmap  | The bitmap header is also included        | Strip the header manually
 

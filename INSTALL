@@ -22,9 +22,9 @@ clicking it or starting it from a shell/terminal/whatever you prefer.
 
 INSTALLATION RECIPIES
 
-Xubuntu 14 and Xubuntu 16:
+Xubuntu 16:
 
-This project has been built primarly on Xubuntu 14 and 16. You can install the
+This project has been built primarly on Xubuntu 16. You can install the
 packages using:
 
 $ sudo -s
@@ -34,3 +34,11 @@ $ sudo -s
 $ ./configure
 $ make
 $ ./game/aoe
+
+For empires/ you need libpe and openssl which you can install on Xubuntu 16
+using:
+
+sudo apt-get install pev libssl1.0.0
+
+Note that the linking order on Xubuntu 14 for openssl and pev is broken! You
+have to swap the crypto and ssl libs during linking.

@@ -27,7 +27,7 @@ See also [this document](CODINGSTYLE.md) for more details.
 
 ## Libraries and dependencies
 
-These packages are required for development on Xubuntu 14:
+These packages are required for development on Xubuntu 14 or 16:
 
 Name              | Description
 ------------------|----------------------------------------

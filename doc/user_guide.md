@@ -7,7 +7,8 @@
 This project does not provide binary builds at the moment, which means you have
 to build the project in order to play the game.
 
-Instructions are provided in [INSTALL](../INSTALL).
+Instructions for the game as well as the new launcher and game setup are
+provided in [INSTALL](../INSTALL).
 
 ## Running the game
 
