@@ -12,6 +12,7 @@
 #include <stack>
 #include <vector>
 
+#include "../setup/dbg.h"
 #include "../setup/def.h"
 #include "../setup/res.h"
 
@@ -246,20 +247,21 @@ class Button final : public Border {
 public:
 	bool focus;
 	bool down;
+	bool play_sfx;
 
-	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false)
+	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
 		, text_focus(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button, col_focus)
-		, focus(false), down(false)
+		, focus(false), down(false), play_sfx(play_sfx)
 	{
 	}
 
-	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false)
+	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
 		, text_focus(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button, col_focus)
-		, focus(false), down(false)
+		, focus(false), down(false), play_sfx(play_sfx)
 	{
 	}
 
@@ -282,7 +284,7 @@ public:
 			ui_state.dirty();
 
 			bool hit = contains(event->x, event->y);
-			if (hit)
+			if (hit && play_sfx)
 				sfx_play(SFX_BUTTON4);
 			return hit;
 		}
@@ -305,6 +307,7 @@ class ButtonGroup final : public UI {
 	std::vector<std::shared_ptr<Button>> objects;
 	unsigned old_focus = 0;
 	bool down_ = false;
+	bool no_focus = false;
 
 public:
 	unsigned focus = 0;
@@ -320,6 +323,8 @@ public:
 	}
 
 	void update() {
+		if (no_focus)
+			return;
 		auto old = objects[old_focus].get();
 		auto next = objects[focus].get();
 
@@ -329,6 +334,7 @@ public:
 
 	/* Rotate right through button group */
 	void ror() {
+		use_focus();
 		if (down_)
 			return;
 
@@ -341,6 +347,7 @@ public:
 
 	/* Rotate left through button group */
 	void rol() {
+		use_focus();
 		if (down_)
 			return;
 
@@ -358,9 +365,10 @@ public:
 		for (auto x : objects) {
 			auto btn = x.get();
 
-			if (btn->mousedown(event))
+			if (btn->mousedown(event)) {
+				use_focus();
 				focus = id;
-			else
+			} else
 				btn->focus = false;
 
 			++id;
@@ -372,6 +380,7 @@ public:
 	}
 
 	void down() {
+		use_focus();
 		down_ = true;
 		objects[focus].get()->down = true;
 		ui_state.dirty();
@@ -386,6 +395,20 @@ public:
 	void draw() const {
 		for (auto x : objects)
 			x.get()->draw();
+	}
+
+	void release_focus() {
+		auto btn = objects[focus].get();
+		btn->down = btn->focus = false;
+		no_focus = true;
+		ui_state.dirty();
+	}
+
+	void use_focus() {
+		if (no_focus) {
+			no_focus = false;
+			ui_state.dirty();
+		}
 	}
 };
 
@@ -449,7 +472,8 @@ public:
 		for (auto x : objects) {
 			Button *btn = dynamic_cast<Button*>(x.get());
 			if (btn)
-				btn->mousedown(event);
+				if (btn->mousedown(event))
+					group.release_focus();
 		}
 	}
 
