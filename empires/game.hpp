@@ -174,6 +174,33 @@ public:
 	}
 };
 
+class GameSettings final {
+public:
+	float gamespeed;
+	float music_volume, sound_volume;
+	float scrollspeed;
+
+	unsigned screen_mode;
+	bool twobutton;
+	bool help;
+	unsigned path_finding;
+
+	GameSettings()
+		: gamespeed(1)
+		, music_volume(1), sound_volume(1), scrollspeed(1)
+		, screen_mode(0)
+		, twobutton(true), help(true)
+		, path_finding(0) {}
+};
+
+class Unit {
+	unsigned hp;
+	double x, y;
+
+public:
+	Unit(unsigned hp, double x, double y) : hp(hp), x(x), y(y) {}
+};
+
 class Player {
 public:
 	std::string name;

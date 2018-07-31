@@ -19,7 +19,7 @@
 extern "C" {
 #endif
 
-#define MUSIC_CHANNEL_COUNT 2
+#define SFX_CHANNEL_COUNT 20
 
 #define SFX_BUTTON4 50300
 

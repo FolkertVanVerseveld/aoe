@@ -514,7 +514,7 @@ public:
 
 		group.add(250, 551, STR_BTN_BACK);
 
-		unsigned i = 1, step = (474 - 151) / (players.size() + 1);
+		unsigned i = 1, step = (474 - 151) / players.size();
 
 		for (auto x : players) {
 			auto p = x.get();
@@ -523,7 +523,12 @@ public:
 			load_string(&lib_lang, STR_CIV_EGYPTIAN + p->civ, civbuf, sizeof civbuf);
 			snprintf(buf, sizeof buf, "%s - %s", p->name.c_str(), civbuf);
 
-			objects.emplace_back(new Text(40, 151 + i * step , buf, LEFT, MIDDLE));
+			objects.emplace_back(
+				new Text(
+					40, 151 + i * step - step / 2,
+					buf, LEFT, MIDDLE
+				)
+			);
 			++i;
 		}
 	}
@@ -544,6 +549,16 @@ public:
 		SDL_RenderDrawLine(renderer, 765, 151, 765, 474);
 		SDL_RenderDrawLine(renderer, 37, 151, 37, 474);
 		SDL_RenderDrawLine(renderer, 37, 474, 764, 474);
+
+		unsigned i = 1, step = (454 - 151) / players.size();
+		for (unsigned n = players.size(); i < n; ++i) {
+			SDL_RenderDrawLine(
+				renderer,
+				37, 151 + i * step,
+				765, 151 + i * step
+			);
+		}
+
 		Menu::draw();
 	}
 };

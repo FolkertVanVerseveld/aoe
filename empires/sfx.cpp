@@ -129,8 +129,8 @@ void sfx_init(void)
 		snprintf(buf, sizeof buf, "SDL2 mixer failed to open audio: %s\n", Mix_GetError());
 		panic(buf);
 	}
-	if (Mix_AllocateChannels(MUSIC_CHANNEL_COUNT) < MUSIC_CHANNEL_COUNT) {
-		snprintf(buf, sizeof buf, "SDL2 mixer failed to allocate %d channels: %s\n", MUSIC_CHANNEL_COUNT, Mix_GetError());
+	if (Mix_AllocateChannels(SFX_CHANNEL_COUNT) < SFX_CHANNEL_COUNT) {
+		snprintf(buf, sizeof buf, "SDL2 mixer failed to allocate %d channels: %s\n", SFX_CHANNEL_COUNT, Mix_GetError());
 		panic(buf);
 	}
 	sfx_init_al();
