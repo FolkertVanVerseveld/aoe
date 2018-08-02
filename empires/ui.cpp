@@ -4,6 +4,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL2_gfxPrimitives.h>
 
 #include <cstdio>
 
@@ -72,6 +73,10 @@ public:
 
 	Renderer() {
 		renderer = NULL;
+	}
+
+	void col(int grayvalue) {
+		col(grayvalue, grayvalue, grayvalue);
 	}
 
 	void col(int r, int g, int b, int a = SDL_ALPHA_OPAQUE) {
@@ -499,8 +504,21 @@ public:
 	}
 };
 
+/*
+NOTE regarding implementing playername Y-position in timeline:
+the initial population for each player determines the Y-position for each playername
+
+TODO compute and plot timeline progression for each player
+*/
+
 class MenuTimeline final : public Menu {
 public:
+	static unsigned constexpr tl_left = 37;
+	static unsigned constexpr tl_right = 765;
+	static unsigned constexpr tl_top = 151;
+	static unsigned constexpr tl_bottom = 474;
+	static unsigned constexpr tl_height = tl_bottom - tl_top;
+
 	MenuTimeline() : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551) {
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
@@ -514,7 +532,7 @@ public:
 
 		group.add(250, 551, STR_BTN_BACK);
 
-		unsigned i = 1, step = (474 - 151) / players.size();
+		unsigned i = 1, step = tl_height / players.size();
 
 		for (auto x : players) {
 			auto p = x.get();
@@ -525,7 +543,7 @@ public:
 
 			objects.emplace_back(
 				new Text(
-					40, 151 + i * step - step / 2,
+					40, tl_top + i * step - step / 2,
 					buf, LEFT, MIDDLE
 				)
 			);
@@ -544,20 +562,28 @@ public:
 	}
 
 	virtual void draw() const override {
-		canvas.col(255, 255, 255);
-		SDL_RenderDrawLine(renderer, 37, 151, 765, 151);
-		SDL_RenderDrawLine(renderer, 765, 151, 765, 474);
-		SDL_RenderDrawLine(renderer, 37, 151, 37, 474);
-		SDL_RenderDrawLine(renderer, 37, 474, 764, 474);
-
-		unsigned i = 1, step = (454 - 151) / players.size();
+		unsigned i = 0, step = (tl_height + 1) / players.size();
 		for (unsigned n = players.size(); i < n; ++i) {
-			SDL_RenderDrawLine(
+			const SDL_Color *col = &col_players[i];
+
+			Sint16 xx[4], yy[4];
+
+			xx[0] = tl_left; yy[0] = tl_top + i * step;
+			xx[1] = xx[0]; yy[1] = tl_top + (i + 1) * step;
+			xx[2] = tl_right; yy[2] = yy[1];
+			xx[3] = xx[2]; yy[3] = yy[0];
+
+			filledPolygonRGBA(
 				renderer,
-				37, 151 + i * step,
-				765, 151 + i * step
+				xx, yy, 4, col->r, col->g, col->b, SDL_ALPHA_OPAQUE
 			);
 		}
+
+		canvas.col(255);
+		SDL_RenderDrawLine(renderer, tl_left, tl_top, tl_right, tl_top);
+		SDL_RenderDrawLine(renderer, tl_right, tl_top, tl_right, tl_bottom);
+		SDL_RenderDrawLine(renderer, tl_left, tl_top, tl_left, tl_bottom);
+		SDL_RenderDrawLine(renderer, tl_left, tl_bottom, tl_right, tl_bottom);
 
 		Menu::draw();
 	}

@@ -26,7 +26,7 @@ else
 	CFLAGS += -O3
 endif
 
-UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf
+UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx
 
 default: empires
 empires: empires.o ui.o game.o fs.o gfx.o sfx.o ../setup/res.o ../setup/def.o
