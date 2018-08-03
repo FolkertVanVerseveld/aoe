@@ -7,6 +7,7 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 
 #include <cstdio>
+#include <cstdlib>
 
 #include <memory>
 #include <string>
@@ -67,12 +68,23 @@ public:
 } ui_state;
 
 /* Custom renderer */
-class Renderer {
+class Renderer final {
+	SDL_Surface *capture;
+	SDL_Texture *tex;
+	void *pixels;
 public:
 	SDL_Renderer *renderer;
 
-	Renderer() {
-		renderer = NULL;
+	Renderer() : capture(NULL), tex(NULL), renderer(NULL) {
+		if (!(pixels = malloc(WIDTH * HEIGHT * 3)))
+			panic("Out of memory");
+	}
+
+	~Renderer() {
+		if (pixels)
+			free(pixels);
+		if (capture)
+			SDL_FreeSurface(capture);
 	}
 
 	void col(int grayvalue) {
@@ -85,6 +97,29 @@ public:
 
 	void col(const SDL_Color &col) {
 		SDL_SetRenderDrawColor(renderer, col.r, col.g, col.b, col.a);
+	}
+
+	void read_screen() {
+		if (capture)
+			SDL_FreeSurface(capture);
+		// FIXME support big endian byte order
+		if (!(capture = SDL_CreateRGBSurface(0, WIDTH, HEIGHT, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
+			panic("read_screen");
+
+		SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, capture->pixels, capture->pitch);
+
+		if (!(tex = SDL_CreateTextureFromSurface(renderer, capture)))
+			panic("read_screen");
+	}
+
+	void dump_screen() {
+		SDL_Rect pos = {0, 0, WIDTH, HEIGHT};
+		SDL_RenderCopy(renderer, tex, NULL, &pos);
+	}
+
+	void clear() {
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+		SDL_RenderClear(renderer);
 	}
 } canvas;
 
@@ -200,9 +235,10 @@ public:
 
 // FIXME more color schemes
 class Border : public UI {
+	bool fill;
 public:
-	Border(int x, int y, unsigned w=1, unsigned h=1)
-		: UI(x, y, w, h) {}
+	Border(int x, int y, unsigned w=1, unsigned h=1, bool fill=true)
+		: UI(x, y, w, h), fill(fill) {}
 
 	void draw() const {
 		draw(false);
@@ -222,6 +258,12 @@ public:
 
 		int table[] = {0, 1, 2, 3, 4, 5}, table_r[] = {1, 0, 3, 2, 5, 4};
 		int *colptr = invert ? table_r : table;
+
+		if (fill) {
+			SDL_Rect pos = {x, y, (int)w, (int)h};
+			canvas.col(0);
+			SDL_RenderFillRect(renderer, &pos);
+		}
 
 		// Draw outermost lines
 		canvas.col(cols[colptr[0]]);
@@ -520,7 +562,7 @@ public:
 	static unsigned constexpr tl_height = tl_bottom - tl_top;
 
 	MenuTimeline() : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551) {
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		objects.emplace_back(new Text(WIDTH / 2, 48, STR_BTN_TIMELINE, CENTER, TOP));
@@ -528,7 +570,7 @@ public:
 		// TODO compute elapsed time
 		objects.emplace_back(new Text(685, 15, "00:00:00"));
 
-		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106));
+		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106, false));
 
 		group.add(250, 551, STR_BTN_BACK);
 
@@ -549,6 +591,8 @@ public:
 			);
 			++i;
 		}
+
+		canvas.clear();
 	}
 
 	virtual void button_group_activate(unsigned) override final {
@@ -647,6 +691,43 @@ public:
 	}
 };
 
+class MenuGameSettings final : public Menu {
+public:
+	MenuGameSettings() : Menu(STR_TITLE_GAME_SETTINGS, 100, 105, 700 - 100, 495 - 105) {
+		objects.emplace_back(new Border(100, 105, 700 - 100, 495 - 105));
+
+		group.add(220 - 100, 450 - 105, STR_BTN_OK, 390 - 220, 480 - 450);
+		group.add(410 - 100, 450 - 105, STR_BTN_CANCEL, 580 - 410, 480 - 450);
+
+		objects.emplace_back(new Text(125, 163, STR_TITLE_SPEED));
+		objects.emplace_back(new Text(270, 154, STR_TITLE_MUSIC));
+		objects.emplace_back(new Text(410, 154, STR_TITLE_SOUND));
+		objects.emplace_back(new Text(550, 154, STR_TITLE_SCROLL));
+
+		// TODO create and replace with checkbox
+		objects.emplace_back(new Button(120, 190, 150 - 120, 220 - 190, STR_EXIT));
+		objects.emplace_back(new Button(120, 225, 150 - 120, 255 - 225, STR_EXIT));
+		objects.emplace_back(new Button(120, 260, 150 - 120, 290 - 260, STR_EXIT));
+
+		objects.emplace_back(new Text(125, 303, STR_TITLE_SCREEN));
+		objects.emplace_back(new Text(275, 303, STR_TITLE_MOUSE));
+		objects.emplace_back(new Text(435, 303, STR_TITLE_HELP));
+		objects.emplace_back(new Text(565, 303, STR_TITLE_PATH));
+	}
+
+	void button_group_activate(unsigned) override final {
+		stop = 1;
+	}
+
+	void button_activate(unsigned) override final {
+	}
+
+	void draw() const override {
+		canvas.dump_screen();
+		Menu::draw();
+	}
+};
+
 // TODO make overlayed menu
 class MenuGameMenu final : public Menu {
 public:
@@ -665,12 +746,18 @@ public:
 		objects.emplace_back(new Border(200, 98, 600 - 200, 503 - 98));
 	}
 
-	virtual void button_group_activate(unsigned id) override final {
+	void button_group_activate(unsigned id) override final {
 		switch (id) {
 		case 0: ui_state.go_to(new MenuAchievements(true)); break;
 		case 1: ui_state.go_to(new MenuAchievements()); break;
-		case 9: stop = 1; break;
+		case 6: ui_state.go_to(new MenuGameSettings()); break;
+		case 9: stop = 1; canvas.clear(); break;
 		}
+	}
+
+	void draw() const override {
+		canvas.dump_screen();
+		Menu::draw();
 	}
 };
 
@@ -702,9 +789,12 @@ public:
 		objects.emplace_back(new Button(765, 482, 795 - 765, 512 - 482, STR_BTN_SCORE, true));
 		objects.emplace_back(new Button(765, 564, 795 - 765, 594 - 564, "?", true));
 		//objects.emplace_back(new Button(765, 564, "?"));
+
+		canvas.clear();
 	}
 
 	void button_group_activate(unsigned id) override final {
+		canvas.read_screen();
 		switch (id) {
 		case 0:
 			ui_state.go_to(new MenuGameMenu());
@@ -893,9 +983,6 @@ void UI_State::display()
 
 	if ((state & DIRTY) && !navigation.empty()) {
 		//puts("ui_state: redraw");
-		// Clear screen
-		SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-		SDL_RenderClear(renderer);
 		// Draw stuff
 		navigation.top().get()->draw();
 		// Swap buffers

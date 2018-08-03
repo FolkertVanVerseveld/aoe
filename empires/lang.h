@@ -6,6 +6,8 @@
 // Quick exit button
 #define STR_EXIT 1002
 
+#define STR_BTN_OK 9858
+
 // Generic error or unknown button text
 #define STR_ERROR 2001
 
@@ -58,6 +60,28 @@
 #define STR_BTN_GAME_SETTINGS 9274
 #define STR_BTN_GAME_ABOUT 9209
 #define STR_BTN_GAME_CANCEL 9275
+
+/* Game settings menu */
+#define STR_TITLE_GAME_SETTINGS 9431
+
+#define STR_TITLE_SPEED 9439
+#define STR_BTN_SPEED_NORMAL 9432
+#define STR_BTN_SPEED_FAST 9433
+#define STR_BTN_SPEED_HYPER 9434
+
+#define STR_TITLE_MUSIC 9435
+
+#define STR_TITLE_SOUND 9438
+
+#define STR_TITLE_SCROLL 9456
+
+#define STR_TITLE_SCREEN 9440
+
+#define STR_TITLE_MOUSE 9450
+
+#define STR_TITLE_HELP 9453
+
+#define STR_TITLE_PATH 9741
 
 #define STR_BTN_CIVTBL 4400
 
