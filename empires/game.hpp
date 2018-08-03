@@ -150,7 +150,7 @@ public:
 		, bronze_first(false), iron_first(false) {}
 
 	virtual unsigned total_score() const {
-		unsigned score = technologies + 25 * bronze_first + 25 * iron_first;
+		unsigned score = 2 * technologies + 25 * bronze_first + 25 * iron_first;
 
 		if (technologies == max_technologies)
 			score += 25;
