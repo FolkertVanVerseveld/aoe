@@ -1,88 +1,95 @@
-This document contains things we would like to add to the original game
-(i.e. addenda) and things we would like to fix in the original game
-(i.e. corrigenda). There is no guarantee that these items will be
-implemented though.
-All items are in random order. We may assign them a priority in the
-future.
+This document contains things we would like to add to the original game (i.e.
+addenda) and things we would like to fix in the original game (i.e. corrigenda).
+There is no guarantee that these items will be implemented though.
+All items are in random order. We may assign them a priority in the future.
 
 ADDENDA
 
 Achievements
-It would be nice to add more items to the achievements menu after a game
-has ended. For example, in the military tab you can see which player has
-the largest army, but it does not tell the amount of army units.
-A kill ratio, e.g. ratio = killed_units / lots_units, would be nice.
+It would be nice to add more items to the achievements menu after a game has
+ended. For example, in the military tab you can see which player has the largest
+army, but it does not tell the amount of army units.  A kill ratio, e.g. ratio =
+killed_units / lots_units, would be nice.
 
 Network auto save/restore
-It is very important to be able to save and restore a multiplayer
-session. See also the corrigendum in Network.
+It is very important to be able to save and restore a multiplayer session. See
+also the corrigendum in Network.
 
 Midi support
-Music support when running the original game in wine is very difficult
-to setup to make it sound the same even when using something like
-timidity++ and a native windows XP soundfont. This is really hard to
-implement but really nice to have.
+Music support when running the original game in wine is very difficult to setup
+to make it sound the same even when using something like timidity++ and a native
+windows XP soundfont. This is really hard to implement but really nice to have.
 
 More shortcuts
 Some buildings cannot be selected since no shortcut is mapped to them.
 
-Auto-resign CPU if no population and not enough resources nor win 
-conditions (ruins/wonder etc.)
+Auto-resign CPU if no population and not enough resources nor win conditions
+(ruins/wonder etc.)
 Pretty self-explanatory.
 
 Add removed data resource set items
-Some buildings were removed from the final beta version before release.
-We can add an option to enable/disable them. For example, the trade
-workshop and a mercenary (same graphics as cataphract).
+Some buildings were removed from the final beta version before release.  We can
+add an option to enable/disable them. For example, the trade workshop and a
+mercenary (same graphics as cataphract).
 
 Debug console
 Obviously for debugging purposes, more control, easier navigating etc.
 
 Scenario triggers
-The genie game engine in AoE II has triggers which make it a lot easier
-to create complex scenario's.
+The genie game engine in AoE II has triggers which make it a lot easier to
+create complex scenario's.
 
 Session replay
 Record game like in AoE II.
 
 CORRIGENDA
 
+More screen size modes
+The default supported screen resolutions are 640x480, 800x600 and 1024x768. It
+is challenging to supported bigger resolutions as these resolutions hardcoded in
+many places as well as the User Interface graphics.
+
+Default Windowed mode
+Old games start in fullscreen by default. The frustrating part is that these
+games usually override/change the monitor's screen resolution and if it crashes,
+it doesn't restore the old resolution either. We will probably implement a
+fullscreen/windowed mode button or hotkey.
+
 Increase unit selection limit
 Current unit selection limit is not sufficient.
 
 Population overflow trick
-You can overflow your maximum population by queuing multiple units in
-multiple buildings since the engine only checks whether the pop cap has
-been exceeded before trying to build one. We think this should be an
-extra option which you can enable/disable since some users would still
-like to be able to use this.
+You can overflow your maximum population by queuing multiple units in multiple
+buildings since the engine only checks whether the pop cap has been exceeded
+before trying to build one. We think this should be an extra option which you
+can enable/disable since some users would still like to be able to use this.
 
 Show population limit by default
 Pretty self-explanatory.
 
 Improve volume control
-Audio sound effects or music is either off or very loud. It should be
-pretty simple to be able to regulate this properly.
+Audio sound effects or music is either off or very loud. It should be pretty
+simple to be able to regulate this properly.
 
 Projectile session restore bug
-If a session is saved while projectiles are in the air, since (I think)
-patch 1.c it crashes the game when restoring a session. This is of
-course unacceptable.
+If a session is saved while projectiles are in the air, since (I think) patch
+1.c it crashes the game when restoring a session. This is of course
+unacceptable.
 
 Improve non-A.I. siege units auto-aim
-Siege units can be really difficult to use effectively. It is tedious
-that the CPU has no problem aiming near-perfect at your units.
+Siege units can be really difficult to use effectively. It is tedious that the
+CPU has no problem aiming near-perfect at your units.
 
 Build queuing
-You can queue only one unit type at a time in a building. It would be
-nice to be able to queue different types of units.
+You can queue only one unit type at a time in a building. It would be nice to be
+able to queue different types of units.
 
 Network
-Multiplayer games are disrupted easily by desynchronisation errors. This
-is very frustrating since the game does not support saving and restoring
-multiplayer sessions.
+Multiplayer games are disrupted easily by desynchronisation errors. This is very
+frustrating since the game does not support saving and restoring multiplayer
+sessions.
 
 Pathfinding
-The genie game engine's pathfinding was redesigned for AoE II. We think
-it should be upgraded as well by providing an option to select the
-pathfinding method used.
+The genie game engine's pathfinding was redesigned for AoE II. We think it
+should be upgraded as well by providing an option to select the pathfinding
+method used.
