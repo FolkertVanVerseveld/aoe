@@ -769,102 +769,102 @@ ID        type description
 50202    shape ??
 50204    shape ??
 50406    shape ??
-50100    model ??
-50103    model ??
-50105    model ??
-50107    model ??
-50109    model ??
-50111    model ??
-50113    model ??
-50115    model ??
-50117    model ??
-50119    model ??
-50121    model ??
-50123    model ??
-50125    model ??
-50127    model ??
-50129    model ??
-50131    model ??
-50133    model ??
-50135    model ??
-50137    model ??
-50139    model ??
-50141    model ??
-50143    model ??
-50145    model ??
-50147    model ??
-50149    model ??
-50151    model ??
-50153    model ??
-50210    model ??
-50212    model ??
-50214    model ??
-50216    model ??
-50400    model ??
-50403    model groupnum.shp
-50404    model waypoint.shp
-50405    model moveto.shp
-50601    model ??
-50602    model ??
-50603    model ??
-50604    model ??
-50605    model ??
-50606    model ??
-50607    model ??
-50608    model ?? btn6_3 ??
-50609    model ??
-50610    model ??
-50611    model ??
-50612    model ??
-50704    model ?? button bldg ??
-50705    model ?? button bldg ??
-50706    model ?? button bldg ??
-50707    model ?? button bldg ??
-50713    model ??
-50714    model ??
-50715    model ??
-50716    model ??
-50717    model button border b
-50718    model button border b
-50719    model button border b
-50720    model button border b
-50721    model command button
-50725    model command button
-50726    model command button
-50727    model command button
-50728    model command button
-50729    model unit button
-50730    model technology button
-50731    model ??
+50100    model main menu background 640x480 (custom pallette)
+50103    model main menu background 800x600 (custom pallette)
+50105    model main menu background 1024x768 (custom pallette)
+50107    model ?? mission background ?? 640x480 (custom palette)
+50109    model ?? mission background ?? 800x600 (custom palette)
+50111    model ?? mission background ?? 1024x768 (custom palette)
+50113    model ?? campaign background ?? 640x480 (custom palette)
+50115    model ?? campaign background ?? 800x600 (custom palette)
+50117    model ?? campaign background ?? 1024x768 (custom palette)
+50119    model ?? mission background 2 ?? 640x480 (custom palette)
+50121    model ?? mission background 2 ?? 800x600 (custom palette)
+50123    model ?? mission background 2 ?? 1024x768 (custom palette)
+50125    model editor background 640x480
+50127    model editor background 800x600
+50129    model editor background 1024x768
+50131    model victory background 640x480 (custom palette)
+50133    model victory background 800x600 (custom palette)
+50135    model victory background 1024x768 (custom palette)
+50137    model defeat background 640x480 (custom palette)
+50139    model defeat background 800x600 (custom palette)
+50141    model defeat background 1024x768 (custom palette)
+50143    model scenario instructions background 640x480 (custom palette)
+50145    model scenario instructions background 800x600 (custom palette)
+50147    model scenario instructions background 1024x768 (custom palette)
+50149    model achievements background 640x480 (custom palette)
+50151    model achievements background 800x600 (custom palette)
+50153    model achievements background 1024x768 (custom palette)
+50210    model light brown border background
+50212    model white border background
+50214    model black border background
+50216    model brown border background
+50400    model patent pending logo
+50403    model group numbers (groupnum.shp)
+50404    model animation waypoint (waypoint.shp)
+50405    model animation move to (moveto.shp)
+50601    model button overlays and hud
+50602    model button overlays and hud 2
+50603    model button overlays and hud 3
+50604    model light brown button overlays and hud
+50605    model light brown button overlays and hud 2
+50606    model white button overlays and hud
+50607    model black button overlays and hud
+50608    model brown button overlays and hud
+50609    model button overlays and hud 4
+50610    model button overlays and hud 5
+50611    model button overlays and hud 6
+50612    model button overlays and hud 7
+50704    model egyptian game building icons
+50705    model minoan game building icons
+50706    model babylonian game building icons
+50707    model yamato game building icons
+50713    model ?? light brown/green button place holder ??
+50714    model ?? white button place holder ??
+50715    model ?? black button place holder ??
+50716    model ?? brown/green button place holder ??
+50717    model light brown button border b
+50718    model white button border b
+50719    model black button border b
+50720    model brown button border b
+50721    model unit command buttons
+50725    model light brown command arrow buttons
+50726    model white command arrow buttons
+50727    model black command arrow buttons
+50728    model brown command arrow buttons
+50729    model technology icons
+50730    model game unit icons
+50731    model unit resource and statistic icons
 50732    model diplomacy dialog tradicon
-50733    model game a
-50734    model game a
-50735    model game a
-50736    model game a
-50737    model game b
-50738    model game b
-50739    model game b
-50740    model game b
-50741    model game c
-50742    model game c
-50743    model game c
-50744    model game c
-50745    model ??
-50746    model menu dialog plain button
-50747    model button border c
-50748    model button border c
-50749    model button border c
-50750    model button border c
-51000    model ?? mouse cursor ??
-51001    model ??
-51002    model ??
-51003    model ??
-51004    model ??
-51005    model ??
-51007    model ??
-51008    model ??
-51009    model ??
-51010    model ??
+50733    model light brown game top and bottom menu bar 640x480
+50734    model white game top and bottom menu bar 640x480
+50735    model black game top and bottom menu bar 640x480
+50736    model brown game top and bottom menu bar 640x480
+50737    model light brown game top and bottom menu bar 800x600
+50738    model white game top and bottom menu bar 800x600
+50739    model black game top and bottom menu bar 800x600
+50740    model brown game top and bottom menu bar 800x600
+50741    model light brown game top and bottom menu bar 1024x768
+50742    model white game top and bottom menu bar 1024x768
+50743    model black game top and bottom menu bar 1024x768
+50744    model brown game top and bottom menu bar 1024x768
+50745    model unit healthbar progress
+50746    model menu dialog player diplomacy button
+50747    model light brown button border c
+50748    model white button border c
+50749    model black button border c
+50750    model brown button border c
+51000    model mouse cursors
+51001    model unused black mouse cursor
+51002    model unused light purple mouse cursor
+51003    model unused black mouse cursor 2
+51004    model unused red mouse cursor
+51005    model unused white mouse cursor
+51007    model unused black mouse cursor 3
+51008    model unused black mouse cursor 4
+51009    model unused brown mouse cursor
+51010    model unused purple mouse cursor
 52001    model menu achievements victory check fshape
 52002    model menu achievements defeat check fshape
 50300    audio menu button click
