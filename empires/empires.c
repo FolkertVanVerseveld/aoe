@@ -18,9 +18,12 @@
 #include "../setup/def.h"
 #include "../setup/res.h"
 
-#include "gfx.h"
+#include "drs.h"
 #include "fs.h"
+
+#include "gfx.h"
 #include "sfx.h"
+
 #include "ui.h"
 
 #define TITLE "Age of Empires"
@@ -96,13 +99,21 @@ int main(void)
 	if (!(renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)))
 		panic("Could not create rendering context");
 
+	drs_add("Border.drs");
+	drs_add("graphics.drs");
+	drs_add("Interfac.drs");
+	drs_add("sounds.drs");
+	drs_add("Terrain.drs");
+
 	sfx_init();
 	gfx_init();
+	drs_init();
 	ui_init();
 
 	main_event_loop();
 
 	ui_free();
+	drs_free();
 	gfx_free();
 	sfx_free();
 

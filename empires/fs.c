@@ -22,6 +22,11 @@ void fs_game_path(char *buf, size_t bufsz, const char *file)
 		snprintf(buf, bufsz, "%s/game/%s", path_cdrom, file);
 }
 
+void fs_data_path(char *buf, size_t bufsz, const char *file)
+{
+	snprintf(buf, bufsz, WINE_PATH_FORMAT "/data/%s", username(), file);
+}
+
 void fs_help_path(char *buf, size_t bufsz, const char *file)
 {
 	snprintf(buf, bufsz, "%s/game/help/%s", path_cdrom, file);

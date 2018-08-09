@@ -29,8 +29,8 @@ endif
 UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx
 
 default: empires
-empires: empires.o ui.o game.o fs.o gfx.o sfx.o ../setup/res.o ../setup/def.o
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o ui.o game.o fs.o gfx.o sfx.o ../setup/res.o ../setup/def.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
+empires: empires.o ui.o game.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o ui.o game.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
 game.o: game.hpp game.cpp ui.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) game.cpp -c -o game.o $(LDFLAGS) $(LDLIBS)
 ui.o: ui.h ui.cpp game.hpp
@@ -41,6 +41,8 @@ sfx.o: sfx.h sfx.cpp
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) sfx.cpp -c -o sfx.o $(LDFLAGS) $(LDLIBS)
 fs.o: fs.h fs.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) fs.c -c -o fs.o $(LDFLAGS) $(LDLIBS)
+drs.o: drs.h drs.c
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) drs.c -c -o drs.o $(LDFLAGS) $(LDLIBS)
 ../setup/res.o: ../setup/res.h ../setup/res.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ../setup/res.c -c -o ../setup/res.o $(LDFLAGS) $(LDLIBS)
 ../setup/def.o: ../setup/def.h ../setup/def.c

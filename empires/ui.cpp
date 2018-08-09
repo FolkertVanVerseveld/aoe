@@ -8,6 +8,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #include <memory>
 #include <string>
@@ -18,6 +19,7 @@
 #include "../setup/def.h"
 #include "../setup/res.h"
 
+#include "drs.h"
 #include "gfx.h"
 #include "lang.h"
 #include "sfx.h"
@@ -286,6 +288,77 @@ public:
 		canvas.col(cols[colptr[5]]);
 		SDL_RenderDrawLine(renderer, x + 3    , y + 2, x + w - 2, y + 2    );
 		SDL_RenderDrawLine(renderer, x + w - 2, y + 2, x + w - 2, y + h - 3);
+	}
+};
+
+class Background final : public UI {
+	unsigned id;
+public:
+	Background(unsigned id, int x, int y, unsigned w = 1, unsigned h = 1)
+		: UI(x, y, w, h), id(id)
+	{
+		size_t n;
+		const char *data = (const char*)drs_get_item(DT_BINARY, id, &n);
+
+		char bkg_name1[16], bkg_name2[16], bkg_name3[16];
+		unsigned bkg_id[3];
+		char pal_name[16];
+		unsigned pal_id;
+		char cur_name[16];
+		unsigned cur_id;
+		unsigned shade;
+		int btn_id;
+
+		char dlg_name[16];
+		unsigned dlg_id;
+		unsigned bkg_pos, bkg_col;
+		unsigned bevel_col[6];
+		unsigned text_col[6];
+		unsigned focus_col[6];
+		unsigned state_col[6];
+
+		if (sscanf(data,
+			"background1_files %15s none %u -1\n"
+			"background2_files %15s none %u -1\n"
+			"background3_files %15s none %u -1\n"
+			"palette_file %15s %u\n"
+			"cursor_file %15s %u\n"
+			"shade_amount percent %u\n"
+			"button_file none %d\n"
+			"popup_dialog_sin %15s %u\n"
+			"background_position %u\n"
+			"background_color %u\n"
+			"bevel_colors %u %u %u %u %u %u\n"
+			"text_color1 %u %u %u\n"
+			"text_color2 %u %u %u\n"
+			"focus_color1 %u %u %u\n"
+			"focus_color2 %u %u %u\n"
+			"state_color1 %u %u %u\n"
+			"state_color2 %u %u %u\n",
+			bkg_name1, &bkg_id[0],
+			bkg_name2, &bkg_id[1],
+			bkg_name3, &bkg_id[2],
+			pal_name, &pal_id,
+			cur_name, &cur_id,
+			&shade, &btn_id,
+			dlg_name, &dlg_id,
+			&bkg_pos, &bkg_col,
+			&bevel_col[0], &bevel_col[1], &bevel_col[2],
+			&bevel_col[3], &bevel_col[4], &bevel_col[5],
+			&text_col[0], &text_col[1], &text_col[2],
+			&text_col[3], &text_col[4], &text_col[5],
+			&focus_col[0], &focus_col[1], &focus_col[2],
+			&focus_col[3], &focus_col[4], &focus_col[5],
+			&state_col[0], &state_col[1], &state_col[2],
+			&state_col[3], &state_col[4], &state_col[5]) != 6 + 10 + 4 * 6)
+		{
+			panicf("Bad background: id = %u", id);
+		}
+
+		dbgf("TODO read %u\n", bkg_id[1]);
+	}
+
+	void draw() const {
 	}
 };
 
@@ -889,6 +962,7 @@ public:
 class MenuMain final : public Menu {
 public:
 	MenuMain() : Menu(STR_TITLE_MAIN) {
+		objects.emplace_back(new Background(DRS_BACKGROUND_MAIN, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
 
 		group.add(0, 0, STR_BTN_SINGLEPLAYER);

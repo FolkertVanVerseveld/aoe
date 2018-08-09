@@ -9,13 +9,16 @@
  */
 
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
 #include <pwd.h>
 #include <dirent.h>
 
@@ -29,6 +32,22 @@ char path_wine[PATH_MAX];
 int has_wine = 0;
 int game_installed;
 
+void *fmalloc(size_t size)
+{
+	void *ptr;
+	if (!(ptr = malloc(size)))
+		panic("Out of memory");
+	return ptr;
+}
+
+void *frealloc(void *ptr, size_t size)
+{
+	void *blk;
+	if (!(blk = realloc(ptr, size)))
+		panic("Out of memory");
+	return blk;
+}
+
 void show_error(const char *str)
 {
 	char buf[PANIC_BUFSZ];
@@ -39,6 +58,21 @@ void show_error(const char *str)
 void panic(const char *str)
 {
 	show_error(str);
+	exit(1);
+}
+
+void panicf(const char *format, ...)
+{
+	char buf[1024];
+	va_list args;
+
+	va_start(args, format);
+
+	vsnprintf(buf, sizeof buf, format, args);
+	show_error(buf);
+
+	va_end(args);
+
 	exit(1);
 }
 

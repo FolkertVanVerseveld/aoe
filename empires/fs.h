@@ -17,6 +17,8 @@ extern "C" {
  */
 void fs_game_path(char *buf, size_t bufsz, const char *file);
 
+void fs_data_path(char *buf, size_t bufsz, const char *file);
+
 void fs_help_path(char *buf, size_t bufsz, const char *file);
 
 #ifdef __cplusplus

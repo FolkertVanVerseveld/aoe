@@ -208,10 +208,11 @@ public:
 	bool alive;
 	Resources resources;
 	Summary summary;
+	unsigned color;
 
-	Player(const std::string &name, unsigned civ=0)
+	Player(const std::string &name, unsigned civ=0, unsigned color=0)
 		: name(name), civ(civ), alive(true)
-		, resources(res_low_default), summary() {}
+		, resources(res_low_default), summary(), color(color) {}
 
 	void idle();
 

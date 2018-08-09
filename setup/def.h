@@ -16,6 +16,9 @@ extern "C" {
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
+void *fmalloc(size_t size);
+void *frealloc(void *ptr, size_t size);
+
 /* Paths to CDROM and wine installed directory */
 
 // XXX http://insanecoding.blogspot.com/2007/11/pathmax-simply-isnt.html
@@ -33,6 +36,7 @@ extern int game_installed;
 
 void show_error(const char *str);
 void panic(const char *str) __attribute__((noreturn));
+void panicf(const char *format, ...) __attribute__((noreturn));
 
 /* Wine auto detection */
 int find_wine_installation(void);

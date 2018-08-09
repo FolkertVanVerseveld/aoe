@@ -8,12 +8,12 @@ Original data assets:
 data/Border.drs
 models: 6
 ID        type description
-20000    model ??
-20001    model ??
-20002    model ??
-20003    model ??
-20004    model ??
-20006    model ??
+20000    model water desert border tiles 1
+20001    model grass desert border tiles
+20002    model desert border tiles
+20003    model grass desert special border tiles
+20004    model water desert border tiles 2
+20006    model water border tiles
 
 Graphics:
 data/graphics.drs
@@ -722,7 +722,7 @@ ID        type description
 50011   object ?? background ??
 50012   object ?? background ??
 50013   object ?? background ??
-50051   object ?? background ??
+50051   object background main menu
 50052   object ?? background ??
 50053   object ?? background ??
 50054   object ?? background ??
@@ -772,9 +772,9 @@ ID        type description
 50100    model main menu background 640x480 (custom pallette)
 50103    model main menu background 800x600 (custom pallette)
 50105    model main menu background 1024x768 (custom pallette)
-50107    model ?? mission background ?? 640x480 (custom palette)
-50109    model ?? mission background ?? 800x600 (custom palette)
-50111    model ?? mission background ?? 1024x768 (custom palette)
+50107    model ?? mission background 1 ?? 640x480 (custom palette)
+50109    model ?? mission background 1 ?? 800x600 (custom palette)
+50111    model ?? mission background 1 ?? 1024x768 (custom palette)
 50113    model ?? campaign background ?? 640x480 (custom palette)
 50115    model ?? campaign background ?? 800x600 (custom palette)
 50117    model ?? campaign background ?? 1024x768 (custom palette)
@@ -804,10 +804,10 @@ ID        type description
 50403    model group numbers (groupnum.shp)
 50404    model animation waypoint (waypoint.shp)
 50405    model animation move to (moveto.shp)
-50601    model button overlays and hud
+50601    model button overlays and hud 1
 50602    model button overlays and hud 2
 50603    model button overlays and hud 3
-50604    model light brown button overlays and hud
+50604    model light brown button overlays and hud 1
 50605    model light brown button overlays and hud 2
 50606    model white button overlays and hud
 50607    model black button overlays and hud
@@ -856,7 +856,7 @@ ID        type description
 50749    model black button border c
 50750    model brown button border c
 51000    model mouse cursors
-51001    model unused black mouse cursor
+51001    model unused black mouse cursor 1
 51002    model unused light purple mouse cursor
 51003    model unused black mouse cursor 2
 51004    model unused red mouse cursor
@@ -896,7 +896,7 @@ ID        type description
  5006    audio villager assign move
  5007    audio trade workshop
  5008    audio archery
- 5009    audio bowman throw
+ 5009    audio bowman throw 1
  5010    audio bowman throw 2
  5011    audio bowman throw 3
  5012    audio bowman throw 4
@@ -904,7 +904,7 @@ ID        type description
  5014    audio under attack signal
  5016    audio siege die
  5017    audio ballista
- 5018    audio ballista throw
+ 5018    audio ballista throw 1
  5019    audio ballista throw 2
  5020    audio ballista throw 3
  5021    audio ballista throw 4
@@ -917,21 +917,21 @@ ID        type description
  5035    audio user interface button click
  5036    audio research button click
  5037    audio villager
- 5038    audio warship throw
+ 5038    audio warship throw 1
  5039    audio warship throw 2
  5040    audio warship throw 3
  5041    audio catapult spawn
  5042    audio catapult die
  5043    audio catapult assign move
  5044    audio town center
- 5045    audio villager gather food deer
+ 5045    audio villager gather food deer 1
  5048    audio villager gather wood
- 5050    audio priest convert
+ 5050    audio priest convert 1
  5051    audio priest convert 2
  5052    audio siege throw 2 (unused)
  5053    audio villager 2
  5054    audio villager 3
- 5055    audio villager die
+ 5055    audio villager die 1
  5056    audio villager die 2
  5057    audio villager die 3
  5058    audio villager die 4
@@ -946,7 +946,7 @@ ID        type description
  5071    audio elephant
  5072    audio elephant 2
  5074    audio siege workshop
- 5075    audio infantry assign move
+ 5075    audio infantry assign move 1
  5076    audio infantry assign move 2
  5077    audio building die
  5078    audio building die 2
@@ -961,15 +961,15 @@ ID        type description
  5093    audio alligator attack
  5096    audio ganary
  5100    audio jason attack
- 5102    audio jason die
+ 5102    audio jason die 1
  5103    audio jason die 2
  5104    audio jason die 3
- 5105    audio infantry attack
+ 5105    audio infantry attack 1
  5106    audio infantry attack 2
  5107    audio villager build
  5108    audio horse die
  5109    audio priest heal
- 5111    audio horse attack
+ 5111    audio horse attack 1
  5112    audio horse attack 2
  5113    audio ??
  5116    audio horse attack 3
@@ -982,9 +982,9 @@ ID        type description
  5126    audio house
  5128    audio infantry assign move 3
  5129    audio academy
- 5132    audio lion attack
+ 5132    audio lion attack 1
  5133    audio lion attack 2
- 5134    audio lion
+ 5134    audio lion 1
  5135    audio lion 2
  5138    audio villager attack
  5139    audio villager attack 2
@@ -996,7 +996,7 @@ ID        type description
  5158    audio villager 4
  5159    audio villager gather stone/gold
  5162    audio axeman
- 5164    audio axeman assign move
+ 5164    audio axeman assign move 1
  5165    audio priest spawn
  5166    audio villager spawn
  5167    audio axeman assign move 2
@@ -1036,10 +1036,10 @@ ID        type description
 data/Terrain.drs
 models: 4
 ID        type description
-15000    model ??
-15001    model ??
-15002    model ??
-15003    model ??
+15000    model desert tiles
+15001    model grass tiles
+15002    model water tiles
+15003    model deep water tiles
 
 data2/graphics.drs
 models: 153
@@ -1248,33 +1248,33 @@ audio: 46
 ID        type description
  5070    audio elephant attack
  5168    audio civilization upgrade (advance age)
- 5242    audio camel
+ 5242    audio camel 1
  5243    audio camel 2
  5244    audio camel assign move
- 5245    audio camel die
+ 5245    audio camel die 1
  5246    audio camel die 2
  5247    audio ??
  5248    audio war galley attack
- 5249    audio Z assign move
+ 5249    audio Z assign move 1
  5250    audio Z assign move 2
- 5251    audio Z
+ 5251    audio Z 1
  5252    audio Z 2
  5253    audio Z 3
  5254    audio Z assign attack
  5255    audio Z 4
- 5256    audio boom
+ 5256    audio boom 1
  5257    audio boom 2
  5258    audio boom 3
  5259    audio boom 4
  5260    audio burning 3
- 5261    audio laser
+ 5261    audio laser 1
  5262    audio laser 2
- 5263    audio slinger attack
+ 5263    audio slinger attack 1
  5264    audio slinger attack 2
  5265    audio slinger attack 3
- 5266    audio alligator die
+ 5266    audio alligator die 1
  5267    audio alligator die 2
- 5268    audio elephant warrior attack
+ 5268    audio elephant warrior attack 1
  5269    audio elephant warrior attack 2
  5270    audio elephant warrior attack 3
  5271    audio war galley attack 2
@@ -1286,9 +1286,9 @@ ID        type description
  5277    audio baby
  5278    audio baby die
  5279    audio baby
- 5280    audio baby assign move
+ 5280    audio baby assign move 1
  5281    audio baby assign move 2
- 5282    audio baby attack
+ 5282    audio baby attack 1
  5283    audio baby attack 2
  5284    audio baby attack 3
  5285    audio baby assign move 3
