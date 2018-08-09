@@ -7,6 +7,7 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 
 #include <cstdio>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 
@@ -291,11 +292,67 @@ public:
 	}
 };
 
+class Palette final {
+	SDL_Palette *pal;
+
+public:
+	Palette() : pal(NULL) {}
+	Palette(unsigned id) : pal(NULL) { open(id); }
+
+	~Palette() {
+		if (pal)
+			SDL_FreePalette(pal);
+	}
+
+	void open(unsigned id) {
+		size_t n;
+		const char *data = (const char*)drs_get_item(DT_BINARY, id, &n);
+
+		unsigned colors;
+		int offset;
+
+		if (sscanf(data,
+			"JASC-PAL\n"
+			"%*s\n"
+			"%u%n\n", &colors, &offset) != 1)
+		{
+			panicf("Bad palette id %u\n", id);
+		}
+
+		if (colors > 256)
+			panicf("Bad palette id %u: too many colors", id);
+
+		if (!(pal = SDL_AllocPalette(colors)))
+			panic("Out of memory");
+
+		for (unsigned i = 0; i < colors; ++i) {
+			int n;
+			unsigned cols[3];
+			SDL_Color col;
+
+			if (sscanf(data + offset,
+				"%u %u %u%n\n", &cols[0], &cols[1], &cols[2], &n) != 3 || n < 0)
+				goto fail;
+
+			col.r = cols[0];
+			col.g = cols[1];
+			col.b = cols[2];
+			col.a = SDL_ALPHA_OPAQUE;
+
+			if (SDL_SetPaletteColors(pal, &col, i, 1))
+fail:
+				panicf("Bad palette id %u: bad color %u\n", id, i);
+			offset += n;
+		}
+	}
+};
+
 class Background final : public UI {
 	unsigned id;
+	Palette palette;
 public:
 	Background(unsigned id, int x, int y, unsigned w = 1, unsigned h = 1)
-		: UI(x, y, w, h), id(id)
+		: UI(x, y, w, h), id(id), palette()
 	{
 		size_t n;
 		const char *data = (const char*)drs_get_item(DT_BINARY, id, &n);
@@ -356,6 +413,8 @@ public:
 		}
 
 		dbgf("TODO read %u\n", bkg_id[1]);
+
+		palette.open(pal_id);
 	}
 
 	void draw() const {
