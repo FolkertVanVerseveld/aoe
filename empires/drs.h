@@ -9,6 +9,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include <sys/types.h>
+
 #define DRS_BACKGROUND_MAIN 50051
 
 #define DRS_NO_REF ((uint32_t)-1)
@@ -31,7 +33,30 @@ struct drs_item {
 	uint32_t size;
 };
 
-#include <sys/types.h>
+struct slp_header {
+	char version[4];
+	int32_t frame_count;
+	char comment[24];
+};
+
+struct slp_frame_info {
+	uint32_t cmd_table_offset;
+	uint32_t outline_table_offset;
+	uint32_t palette_offset;
+	uint32_t properties;
+	int32_t width;
+	int32_t height;
+	int32_t hotspot_x;
+	int32_t hotspot_y;
+};
+
+struct slp {
+	struct slp_header *hdr;
+	struct slp_frame_info *info;
+};
+
+// FIXME error handling
+void slp_read(struct slp *dst, const void *data);
 
 void drs_add(const char *name);
 

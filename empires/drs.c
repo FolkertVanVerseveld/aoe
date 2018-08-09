@@ -172,3 +172,9 @@ const void *drs_get_item(unsigned type, unsigned id, size_t *count)
 
 	return data + offset;
 }
+
+void slp_read(struct slp *dst, const void *data)
+{
+	dst->hdr = (void*)data;
+	dst->info = (struct slp_frame_info*)((char*)data + sizeof(struct slp_header));
+}

@@ -293,9 +293,9 @@ public:
 };
 
 class Palette final {
+public:
 	SDL_Palette *pal;
 
-public:
 	Palette() : pal(NULL) {}
 	Palette(unsigned id) : pal(NULL) { open(id); }
 
@@ -347,12 +347,102 @@ fail:
 	}
 };
 
+class Image final {
+public:
+	SDL_Surface *surface;
+	SDL_Texture *texture;
+
+	Image() : surface(NULL), texture(NULL) {}
+
+	void load(Palette *pal, const void *data, const struct slp_frame_info *frame)
+	{
+		dbgf("dimensions: %u x %u\n", frame->width, frame->height);
+		dbgf("command table offset: %X\n", frame->cmd_table_offset);
+		dbgf("outline table offset: %X\n", frame->outline_table_offset);
+
+		// FIXME big endian support
+		surface = SDL_CreateRGBSurface(0, frame->width, frame->height, 8, 0, 0, 0, 0);
+
+		if (!surface || SDL_SetSurfacePalette(surface, pal->pal))
+			panicf("Cannot create image: %s\n", SDL_GetError());
+		if (surface->format->format != SDL_PIXELFORMAT_INDEX8)
+			panicf("Unexpected image format: %s\n", SDL_GetPixelFormatName(surface->format->format));
+
+		// TODO read pixel data
+		// fill with random data for now
+		unsigned char *pixels = (unsigned char*)surface->pixels;
+		for (int y = 0, h = frame->height; y < h; ++y)
+			for (int x = 0, w = frame->width; x < w; ++x)
+				pixels[y * w + x] = rand();
+
+		if (!(texture = SDL_CreateTextureFromSurface(renderer, surface)))
+			panicf("Cannot create texture: %s\n", SDL_GetError());
+	}
+
+	~Image() {
+		if (texture)
+			SDL_DestroyTexture(texture);
+		if (surface)
+			SDL_FreeSurface(surface);
+	}
+
+	void draw(int x, int y) const {
+		if (!texture)
+			return;
+
+		SDL_Rect pos = {x, y, surface->w, surface->h};
+		SDL_RenderCopy(renderer, texture, NULL, &pos);
+	}
+};
+
+/** SLP image wrapper. */
+class AnimationTexture final {
+	struct slp image;
+	Image *images;
+
+public:
+	AnimationTexture() : images(NULL) {}
+	AnimationTexture(Palette *pal, unsigned id) : images(NULL) { open(pal, id); }
+
+	~AnimationTexture() {
+		if (images)
+			delete[] images;
+	}
+
+	void open(Palette *pal, unsigned id) {
+		size_t n;
+		const void *data = drs_get_item(DT_SLP, id, &n);
+
+		slp_read(&image, data);
+
+		if (memcmp(image.hdr->version, "2.0N", 4))
+			panicf("Bad Animation Texture id %u", id);
+
+		dbgf("slp info %u:\n", id);
+		dbgf("frame count: %u\n", image.hdr->frame_count);
+
+		images = new Image[image.hdr->frame_count];
+
+		// FIXME parse all frames
+		for (size_t i = 0, n = image.hdr->frame_count; i < n; ++i) {
+			dbgf("frame %zu:\n", i);
+			struct slp_frame_info *frame = &image.info[i];
+			images[i].load(pal, data, frame);
+		}
+	}
+
+	void draw(int x, int y, unsigned index) const {
+		images[index % image.hdr->frame_count].draw(x, y);
+	}
+};
+
 class Background final : public UI {
 	unsigned id;
 	Palette palette;
+	AnimationTexture animation;
 public:
 	Background(unsigned id, int x, int y, unsigned w = 1, unsigned h = 1)
-		: UI(x, y, w, h), id(id), palette()
+		: UI(x, y, w, h), id(id), palette(), animation()
 	{
 		size_t n;
 		const char *data = (const char*)drs_get_item(DT_BINARY, id, &n);
@@ -412,12 +502,14 @@ public:
 			panicf("Bad background: id = %u", id);
 		}
 
-		dbgf("TODO read %u\n", bkg_id[1]);
-
 		palette.open(pal_id);
+		// FIXME use different screen sizes
+		// FIXME revert this when it works
+		animation.open(&palette, 2);//bkg_id[1]);
 	}
 
 	void draw() const {
+		animation.draw(x, y, 0);
 	}
 };
 
@@ -1022,7 +1114,7 @@ class MenuMain final : public Menu {
 public:
 	MenuMain() : Menu(STR_TITLE_MAIN) {
 		objects.emplace_back(new Background(DRS_BACKGROUND_MAIN, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 
 		group.add(0, 0, STR_BTN_SINGLEPLAYER);
 		group.add(0, 285 - 222, STR_BTN_MULTIPLAYER);
