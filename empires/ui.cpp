@@ -347,6 +347,34 @@ fail:
 	}
 };
 
+unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
+{
+	const unsigned char *ptr = *cmd;
+	unsigned v = *ptr >> n;
+	if (!v)
+		v = *(++ptr);
+	*cmd = ptr;
+	return v;
+}
+#if 0
+// source: openage/openage/convert/slp.pyx:509
+cdef inline cmd_pack cmd_or_next(self, uint8_t cmd,
+                                 uint8_t n, Py_ssize_t pos):
+    """
+    to save memory, the draw amount may be encoded into
+    the drawing command itself in the upper n bits.
+    """
+
+    cdef uint8_t packed_in_cmd = cmd >> n
+
+    if packed_in_cmd != 0:
+        return cmd_pack(packed_in_cmd, pos)
+
+    else:
+        pos += 1
+        return cmd_pack(self.get_byte_at(pos), pos)
+#endif
+
 class Image final {
 public:
 	SDL_Surface *surface;
@@ -371,9 +399,70 @@ public:
 		// TODO read pixel data
 		// fill with random data for now
 		unsigned char *pixels = (unsigned char*)surface->pixels;
-		for (int y = 0, h = frame->height; y < h; ++y)
+		for (int y = 0, h = frame->height, p = surface->pitch; y < h; ++y)
 			for (int x = 0, w = frame->width; x < w; ++x)
-				pixels[y * w + x] = rand();
+				pixels[y * p + x] = 0;
+
+		const struct slp_frame_row_edge *edge =
+			(const struct slp_frame_row_edge*)
+				((char*)data + frame->outline_table_offset);
+		const unsigned char *cmd = (const unsigned char*)
+			//((char*)data + frame->cmd_table_offset);
+			((char*)data + frame->cmd_table_offset + 4 * frame->height);
+
+		for (int y = 0, h = frame->height; y < h; ++y, ++edge) {
+			if (edge->left_space == 0x8000 || edge->right_space == 0x8000)
+				continue;
+
+			int line_size = frame->width - edge->left_space - edge->right_space;
+			printf("%3d: %d (%hu, %hu)\n", y, line_size, edge->left_space, edge->right_space);
+
+			// fill line_size with default value
+			for (int x = edge->left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
+				pixels[y * p + x] = rand();
+
+			for (int i = edge->left_space, x = i, w = x + line_size, p = surface->pitch; i < w; ++i, ++cmd) {
+				unsigned command, higher_nibble, lower_bits, count;
+
+				command = *cmd & 0x0f;
+				higher_nibble = *cmd & 0xf0;
+				lower_bits = *cmd & 3;
+
+				switch (command) {
+				case 0x00:
+					dbgf("lesser block copy: %u\n", *cmd >> 2);
+					break;
+				case 0x07:
+					count = cmd_or_next(&cmd, 4);
+					dbgf("fill: %u\n", count);
+					for (++cmd; count; --count)
+						pixels[y * p + x++] = *cmd;
+					break;
+#if 0
+// source: openage/openage/convert/slp.pyx:385
+// fill command
+// draw 'count' pixels with color of next byte
+
+cpack = self.cmd_or_next(cmd, 4, dpos)
+dpos = cpack.dpos
+
+dpos += 1
+color = self.get_byte_at(dpos)
+
+for _ in range(cpack.count):
+row_data.push_back(pixel(color_standard, color))
+#endif
+				case 0x0f:
+					dbgs("break");
+					i = w;
+					break;
+				default:
+					dbgf("unknown cmd: %u\n", command);
+					break;
+				}
+			}
+		}
+		putchar('\n');
 
 		if (!(texture = SDL_CreateTextureFromSurface(renderer, surface)))
 			panicf("Cannot create texture: %s\n", SDL_GetError());
@@ -428,6 +517,7 @@ public:
 			dbgf("frame %zu:\n", i);
 			struct slp_frame_info *frame = &image.info[i];
 			images[i].load(pal, data, frame);
+			break;
 		}
 	}
 
@@ -502,10 +592,10 @@ public:
 			panicf("Bad background: id = %u", id);
 		}
 
-		palette.open(pal_id);
-		// FIXME use different screen sizes
 		// FIXME revert this when it works
-		animation.open(&palette, 2);//bkg_id[1]);
+		palette.open(50500);//pal_id);
+		// FIXME use different screen sizes
+		animation.open(&palette, 21);//bkg_id[1]);
 	}
 
 	void draw() const {
@@ -1113,7 +1203,8 @@ public:
 class MenuMain final : public Menu {
 public:
 	MenuMain() : Menu(STR_TITLE_MAIN) {
-		objects.emplace_back(new Background(DRS_BACKGROUND_MAIN, 0, 0));
+		// FIXME /100/0
+		objects.emplace_back(new Background(DRS_BACKGROUND_MAIN, 100, 100));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 
 		group.add(0, 0, STR_BTN_SINGLEPLAYER);

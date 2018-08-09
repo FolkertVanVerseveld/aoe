@@ -50,6 +50,11 @@ struct slp_frame_info {
 	int32_t hotspot_y;
 };
 
+struct slp_frame_row_edge {
+	uint16_t left_space;
+	uint16_t right_space;
+};
+
 struct slp {
 	struct slp_header *hdr;
 	struct slp_frame_info *info;
