@@ -437,35 +437,54 @@ public:
 				// TODO figure out if lesser skip behaves different compared to aoe2
 
 				switch (*cmd) {
+				case 0xc1: pixels[y * p + x++] = 0; // skip 48
+				case 0xbd: pixels[y * p + x++] = 0; // skip 47
+				case 0xb9: pixels[y * p + x++] = 0; // skip 46
+				case 0xb5: pixels[y * p + x++] = 0; // skip 45
+				case 0xb1: pixels[y * p + x++] = 0; // skip 44
+				case 0xad: pixels[y * p + x++] = 0; // skip 43
+				case 0xa9: pixels[y * p + x++] = 0; // skip 42
+				case 0xa5: pixels[y * p + x++] = 0; // skip 41
+				case 0xa1: pixels[y * p + x++] = 0; // skip 40
+				case 0x9d: pixels[y * p + x++] = 0; // skip 39
+				case 0x99: pixels[y * p + x++] = 0; // skip 38
+				case 0x95: pixels[y * p + x++] = 0; // skip 37
+				case 0x91: pixels[y * p + x++] = 0; // skip 36
+				case 0x8d: pixels[y * p + x++] = 0; // skip 35
+				case 0x89: pixels[y * p + x++] = 0; // skip 34
+				case 0x85: pixels[y * p + x++] = 0; // skip 33
+				case 0x81: pixels[y * p + x++] = 0; // skip 32
+				case 0x7d: pixels[y * p + x++] = 0; // skip 31
+				case 0x79: pixels[y * p + x++] = 0; // skip 30
+				case 0x75: pixels[y * p + x++] = 0; // skip 29
+				case 0x71: pixels[y * p + x++] = 0; // skip 28
+				case 0x6d: pixels[y * p + x++] = 0; // skip 27
+				case 0x69: pixels[y * p + x++] = 0; // skip 26
+				case 0x65: pixels[y * p + x++] = 0; // skip 25
+				case 0x61: pixels[y * p + x++] = 0; // skip 24
+				case 0x5d: pixels[y * p + x++] = 0; // skip 23
+				case 0x59: pixels[y * p + x++] = 0; // skip 22
+				case 0x55: pixels[y * p + x++] = 0; // skip 21
+				case 0x51: pixels[y * p + x++] = 0; // skip 20
+				case 0x4d: pixels[y * p + x++] = 0; // skip 19
+				case 0x49: pixels[y * p + x++] = 0; // skip 18
+				case 0x45: pixels[y * p + x++] = 0; // skip 17
+				case 0x41: pixels[y * p + x++] = 0; // skip 16
+				case 0x3d: pixels[y * p + x++] = 0; // skip 15
+				case 0x39: pixels[y * p + x++] = 0; // skip 14
+				case 0x35: pixels[y * p + x++] = 0; // skip 13
+				case 0x31: pixels[y * p + x++] = 0; // skip 12
+				case 0x2d: pixels[y * p + x++] = 0; // skip 11
+				case 0x29: pixels[y * p + x++] = 0; // skip 10
+				case 0x25: pixels[y * p + x++] = 0; // skip 9
+				case 0x21: pixels[y * p + x++] = 0; // skip 8
+				case 0x1d: pixels[y * p + x++] = 0; // skip 7
+				case 0x19: pixels[y * p + x++] = 0; // skip 6
 				case 0x15: pixels[y * p + x++] = 0; // skip 5
 				case 0x11: pixels[y * p + x++] = 0; // skip 4
 				case 0x0d: pixels[y * p + x++] = 0; // skip 3
 				case 0x09: pixels[y * p + x++] = 0; // skip 2
 				case 0x05: pixels[y * p + x++] = 0; // skip 1
-					continue;
-				case 0xc1: // skip 48
-					for (count = 48; count; --count)
-						pixels[y * p + x++] = 0;
-					continue;
-				case 0x81: pixels[y * p + x++] = 0; // 32
-				case 0x7d: pixels[y * p + x++] = 0; // 31
-				case 0x79: pixels[y * p + x++] = 0; // 30
-				case 0x75: pixels[y * p + x++] = 0; // 29
-				case 0x71: pixels[y * p + x++] = 0; // 28
-				case 0x6d: pixels[y * p + x++] = 0; // 27
-				case 0x69: pixels[y * p + x++] = 0; // 26
-				case 0x65: pixels[y * p + x++] = 0; // 25
-				case 0x61:
-					//dbgs("weird skip 24 pixels");
-					for (count = 24; count; --count)
-						pixels[y * p + x++] = 0;
-					continue;
-				//case 0x51: 20 pixels?
-				case 0x45: pixels[y * p + x++] = 0; // 16
-				case 0x41:
-					//dbgs("weird skip 16 pixels");
-					for (count = 16; count; --count)
-						pixels[y * p + x++] = 0;
 					continue;
 				}
 
