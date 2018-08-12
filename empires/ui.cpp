@@ -468,6 +468,23 @@ public:
 					pixels[y * p + x++] = 0;
 					pixels[y * p + x++] = 0;
 					continue;
+				case 0x41: // XXX is this correct??
+					//dbgs("weird skip 16 pixels");
+					for (count = 16; count; --count)
+						pixels[y * p + x++] = 0;
+					continue;
+				case 0x45: // XXX is this correct??
+					//dbgs("weird skip 17 pixels");
+					for (count = 17; count; --count)
+						pixels[y * p + x++] = 0;
+					continue;
+				//case 0x41: 16 pixels?
+				//case 0x51: 20 pixels?
+				case 0x61:
+					//dbgs("weird skip 24 pixels");
+					for (count = 24; count; --count)
+						pixels[y * p + x++] = 0;
+					continue;
 				case 0x71:
 					//dbgs("weird skip 28 pixels");
 					for (count = 28; count; --count)
@@ -484,7 +501,7 @@ public:
 						pixels[y * p + x++] = 0;
 					continue;
 				case 0xc1:
-					for (count = 47; count; --count)
+					for (count = 48; count; --count)
 						pixels[y * p + x++] = 0;
 					continue;
 				}
