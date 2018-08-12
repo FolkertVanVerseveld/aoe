@@ -1,0 +1,99 @@
+slp dissassembly log:
+
+fire slp hand-made dissassembly:
+
+first 256 bytes hexdump:
+
+00000000: 322e 304e 1400 0000 5247 4520 524c 4520  2.0N....RGE RLE
+00000010: 7368 6170 6520 6669 6c65 0000 0000 0000  shape file......
+00000020: 4004 0000 a002 0000 0000 0000 0000 0000  @...............
+00000030: 8900 0000 6800 0000 3c00 0000 4f00 0000  ....h...<...O...
+00000040: fd1d 0000 551c 0000 0000 0000 0000 0000  ....U...........
+00000050: 8200 0000 6a00 0000 3d00 0000 5100 0000  ....j...=...Q...
+00000060: 8b35 0000 d333 0000 0000 0000 0000 0000  .5...3..........
+00000070: 8200 0000 6e00 0000 3c00 0000 5500 0000  ....n...<...U...
+00000080: 3e4e 0000 ca4c 0000 0000 0000 0000 0000  >N...L..........
+00000090: 8300 0000 5d00 0000 3c00 0000 4400 0000  ....]...<...D...
+000000a0: 0e64 0000 aa62 0000 0000 0000 0000 0000  .d...b..........
+000000b0: 8300 0000 5900 0000 3c00 0000 4000 0000  ....Y...<...@...
+000000c0: 307b 0000 7079 0000 0000 0000 0000 0000  0{..py..........
+000000d0: 8800 0000 7000 0000 3e00 0000 5700 0000  ....p...>...W...
+000000e0: 0694 0000 7e92 0000 0000 0000 0000 0000  ....~...........
+000000f0: 8600 0000 6200 0000 3d00 0000 4800 0000  ....b...=...H...
+
+slp_header:
+
+NOTE: all offset and size values are in hexadecimal
+
+offset: 0
+size  : 20
+
+member      offset size value
+version          0    4 2.0N
+frame_count      4    4
+comment          8   14 RGE RLE shape file\0\0\0\0\0\0
+
+frame #0
+
+slp_frame_info:
+
+offset: 20
+
+member               offset size value
+cmd_table_offset         20    4   440
+outline_table_offset     24    4   2a0
+palette_offset           28    4     0
+properties               2c    4     0
+width                    30    4    89
+height                   34    4    68
+hotspot_x                38    4    3c
+hotspot_y                3c    4    4f
+
+frames #1 ... #20
+
+...
+
+command table frame #0
+
+offset: 440
+
+palette id: 50500
+raw color index data:
+row 0: 0xcf
+row 1: 0xcf
+row 2: 0xcf
+row 3: 0x99 0xcf
+row 4: 0x99 0xce
+
+converted rgb pixel data: (IN DECIMAL)
+row 0: (199, 75, 0)
+row 1: (199, 75, 0)
+row 2: (199, 75, 0)
+row 3: (115, 35, 0), (199, 75, 0)
+row 4: (115, 35, 0), (139, 95, 11)
+
+command data starts probably at 0x5e0
+
+offset value command
+5e0       17
+
+row 0:
+offset: 5e0
+data: 17 cf 0f
+command: fill 1: cf, end
+
+row 13:
+offset: 617
+data: 17 99 17 cf 05 17 cf 17 36 ...
+
+row 21:
+offset: 684
+data: 17 ce 11 17 36 17 43 17 f0 27 ce 17 36 57 cf 17 43 0f
+
+11: probably a skip 4 pixels command??
+
+row 22:
+offset: 696
+data: 17 cf 17 ce 15 27 43 17 36 57 ce 27 cf 17 36 17 42 17 f0 17 36 17 cf 0f
+
+15: 27

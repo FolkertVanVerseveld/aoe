@@ -385,6 +385,7 @@ public:
 	void load(Palette *pal, const void *data, const struct slp_frame_info *frame)
 	{
 		dbgf("dimensions: %u x %u\n", frame->width, frame->height);
+		dbgf("hostpot: %u,%u\n", frame->hotspot_x, frame->hotspot_y);
 		dbgf("command table offset: %X\n", frame->cmd_table_offset);
 		dbgf("outline table offset: %X\n", frame->outline_table_offset);
 
@@ -410,33 +411,90 @@ public:
 			//((char*)data + frame->cmd_table_offset);
 			((char*)data + frame->cmd_table_offset + 4 * frame->height);
 
+		dbgf("command data offset: %X\n", frame->cmd_table_offset + 4 * frame->height);
+
 		for (int y = 0, h = frame->height; y < h; ++y, ++edge) {
 			if (edge->left_space == 0x8000 || edge->right_space == 0x8000)
 				continue;
 
 			int line_size = frame->width - edge->left_space - edge->right_space;
-			printf("%3d: %d (%hu, %hu)\n", y, line_size, edge->left_space, edge->right_space);
+			printf("%8X: %3d: %d (%hu, %hu)\n",
+				(unsigned)(cmd - (const unsigned char*)data),
+				y, line_size, edge->left_space, edge->right_space
+			);
 
 			// fill line_size with default value
 			for (int x = edge->left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
 				pixels[y * p + x] = rand();
 
-			for (int i = edge->left_space, x = i, w = x + line_size, p = surface->pitch; i < w; ++i, ++cmd) {
+			for (int i = edge->left_space, x = i, w = x + line_size, p = surface->pitch; i <= w; ++i, ++cmd) {
 				unsigned command, higher_nibble, lower_bits, count;
 
 				command = *cmd & 0x0f;
 				higher_nibble = *cmd & 0xf0;
 				lower_bits = *cmd & 3;
 
+				// TODO figure out if lesser skip behaves different compared to aoe2
+
+				// not documented yet by related projects
+				if (*cmd == 0x05) {
+					dbgs("magic skip command 1");
+					pixels[y * p + x++] = 0;
+					continue;
+				} else if (*cmd == 0x09) {
+					dbgs("magic skip command 2");
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					continue;
+				} else if (*cmd == 0x11) {
+					dbgs("weird lesser skip 4 pixels");
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					continue;
+				} else if (*cmd == 0x15) {
+					dbgs("weird lesser skip 5 pixels");
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					continue;
+				}
+
 				switch (command) {
 				case 0x00:
 					dbgf("lesser block copy: %u\n", *cmd >> 2);
 					break;
+					#if 0
+				case 0x01:
+					//count = higher_nibble >> 4;
+					count = cmd_or_next(&cmd, 2);
+					dbgf("lesser skip: %u pixels\n", count);
+					for (++cmd; count; --count)
+						pixels[y * p + x++] = 0;
+					break;
+					#endif
+#if 0
+elif lower_bits == 0b00000001:
+    # skip command
+    # draw 'count' transparent pixels
+    # count = cmd >> 2; if count == 0: count = nextbyte
+
+    cpack = self.cmd_or_next(cmd, 2, dpos)
+    dpos = cpack.dpos
+    for _ in range(cpack.count):
+        row_data.push_back(pixel(color_transparent, 0))
+#endif
 				case 0x07:
 					count = cmd_or_next(&cmd, 4);
-					dbgf("fill: %u\n", count);
-					for (++cmd; count; --count)
+					//dbgf("fill: %u pixels\n", count);
+					for (++cmd; count; --count) {
+						//dbgf(" %x", (unsigned)(*cmd) & 0xff);
 						pixels[y * p + x++] = *cmd;
+					}
+					//dbgs("");
 					break;
 #if 0
 // source: openage/openage/convert/slp.pyx:385
@@ -457,7 +515,7 @@ row_data.push_back(pixel(color_standard, color))
 					i = w;
 					break;
 				default:
-					dbgf("unknown cmd: %u\n", command);
+					dbgf("unknown cmd: %X, %X, %X\n", *cmd, command, higher_nibble);
 					break;
 				}
 			}
@@ -595,7 +653,7 @@ public:
 		// FIXME revert this when it works
 		palette.open(50500);//pal_id);
 		// FIXME use different screen sizes
-		animation.open(&palette, 21);//bkg_id[1]);
+		animation.open(&palette, 2);//bkg_id[1]);
 	}
 
 	void draw() const {
