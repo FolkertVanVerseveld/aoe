@@ -436,72 +436,35 @@ public:
 
 				// TODO figure out if lesser skip behaves different compared to aoe2
 
-				// not documented yet by related projects
 				switch (*cmd) {
-				case 0x05:
-					//dbgs("magic skip command 1");
-					pixels[y * p + x++] = 0;
+				case 0x15: pixels[y * p + x++] = 0; // skip 5
+				case 0x11: pixels[y * p + x++] = 0; // skip 4
+				case 0x0d: pixels[y * p + x++] = 0; // skip 3
+				case 0x09: pixels[y * p + x++] = 0; // skip 2
+				case 0x05: pixels[y * p + x++] = 0; // skip 1
 					continue;
-				case 0x09:
-					//dbgs("magic skip command 2");
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					continue;
-				case 0x0d:
-					//dbgs("weird lesser skip 3 pixels");
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					continue;
-				case 0x11:
-					//dbgs("weird lesser skip 4 pixels");
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					continue;
-				case 0x15:
-					//dbgs("weird lesser skip 5 pixels");
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					continue;
-				case 0x41: // XXX is this correct??
-					//dbgs("weird skip 16 pixels");
-					for (count = 16; count; --count)
+				case 0xc1: // skip 48
+					for (count = 48; count; --count)
 						pixels[y * p + x++] = 0;
 					continue;
-				case 0x45: // XXX is this correct??
-					//dbgs("weird skip 17 pixels");
-					for (count = 17; count; --count)
-						pixels[y * p + x++] = 0;
-					continue;
-				//case 0x41: 16 pixels?
-				//case 0x51: 20 pixels?
+				case 0x81: pixels[y * p + x++] = 0; // 32
+				case 0x7d: pixels[y * p + x++] = 0; // 31
+				case 0x79: pixels[y * p + x++] = 0; // 30
+				case 0x75: pixels[y * p + x++] = 0; // 29
+				case 0x71: pixels[y * p + x++] = 0; // 28
+				case 0x6d: pixels[y * p + x++] = 0; // 27
+				case 0x69: pixels[y * p + x++] = 0; // 26
+				case 0x65: pixels[y * p + x++] = 0; // 25
 				case 0x61:
 					//dbgs("weird skip 24 pixels");
 					for (count = 24; count; --count)
 						pixels[y * p + x++] = 0;
 					continue;
-				case 0x71:
-					//dbgs("weird skip 28 pixels");
-					for (count = 28; count; --count)
-						pixels[y * p + x++] = 0;
-					continue;
-				case 0x75:
-					//dbgs("weird skip 29 pixels");
-					for (count = 29; count; --count)
-						pixels[y * p + x++] = 0;
-					continue;
-				case 0x79:
-					//dbgs("weird skip 30 pixels");
-					for (count = 30; count; --count)
-						pixels[y * p + x++] = 0;
-					continue;
-				case 0xc1:
-					for (count = 48; count; --count)
+				//case 0x51: 20 pixels?
+				case 0x45: pixels[y * p + x++] = 0; // 16
+				case 0x41:
+					//dbgs("weird skip 16 pixels");
+					for (count = 16; count; --count)
 						pixels[y * p + x++] = 0;
 					continue;
 				}
