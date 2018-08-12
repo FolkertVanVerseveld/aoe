@@ -723,19 +723,19 @@ ID        type description
 50012   object ?? background ??
 50013   object ?? background ??
 50051   object background main menu
-50052   object ?? background ??
+50052   object background single player
 50053   object ?? background ??
 50054   object ?? background ??
 50055   object ?? background ??
 50056   object ?? background ??
 50057   object ?? background ??
-50058   object ?? background ??
+50058   object background defeat
 50059   object background credits screen
 50060   object ?? background ??
-50061   object ?? background ??
+50061   object background achievements
 50401   object ??
 50402   object ??
-50500   object ?? jasc palette ??
+50500   object main game palette
 50501   object ?? jasc palette ??
 50502   object ?? jasc palette ??
 50503   object ?? jasc palette ??

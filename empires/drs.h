@@ -12,6 +12,9 @@ extern "C" {
 #include <sys/types.h>
 
 #define DRS_BACKGROUND_MAIN 50051
+#define DRS_BACKGROUND_SINGLEPLAYER 50052
+#define DRS_BACKGROUND_DEFEAT 50058
+#define DRS_BACKGROUND_ACHIEVEMENTS 50061
 
 #define DRS_NO_REF ((uint32_t)-1)
 

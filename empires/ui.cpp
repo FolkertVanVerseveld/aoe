@@ -418,10 +418,12 @@ public:
 				continue;
 
 			int line_size = frame->width - edge->left_space - edge->right_space;
+			#if 0
 			printf("%8X: %3d: %d (%hu, %hu)\n",
 				(unsigned)(cmd - (const unsigned char*)data),
 				y, line_size, edge->left_space, edge->right_space
 			);
+			#endif
 
 			// fill line_size with default value
 			for (int x = edge->left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
@@ -489,31 +491,6 @@ public:
 				}
 
 				switch (command) {
-				#if 0
-				case 0x00:
-					dbgf("lesser block copy: %u\n", *cmd >> 2);
-					break;
-				#endif
-					#if 0
-				case 0x01:
-					//count = higher_nibble >> 4;
-					count = cmd_or_next(&cmd, 2);
-					dbgf("lesser skip: %u pixels\n", count);
-					for (++cmd; count; --count)
-						pixels[y * p + x++] = 0;
-					break;
-					#endif
-#if 0
-elif lower_bits == 0b00000001:
-    # skip command
-    # draw 'count' transparent pixels
-    # count = cmd >> 2; if count == 0: count = nextbyte
-
-    cpack = self.cmd_or_next(cmd, 2, dpos)
-    dpos = cpack.dpos
-    for _ in range(cpack.count):
-        row_data.push_back(pixel(color_transparent, 0))
-#endif
 				case 0x07:
 					count = cmd_or_next(&cmd, 4);
 					//dbgf("fill: %u pixels\n", count);
@@ -538,7 +515,7 @@ for _ in range(cpack.count):
 row_data.push_back(pixel(color_standard, color))
 #endif
 				case 0x0f:
-					dbgs("break");
+					//dbgs("break");
 					i = w;
 					break;
 				default:
@@ -602,7 +579,6 @@ public:
 			dbgf("frame %zu:\n", i);
 			struct slp_frame_info *frame = &image.info[i];
 			images[i].load(pal, data, frame);
-			break;
 		}
 	}
 
@@ -629,6 +605,7 @@ public:
 		char cur_name[16];
 		unsigned cur_id;
 		unsigned shade;
+		char btn_file[16];
 		int btn_id;
 
 		char dlg_name[16];
@@ -646,7 +623,7 @@ public:
 			"palette_file %15s %u\n"
 			"cursor_file %15s %u\n"
 			"shade_amount percent %u\n"
-			"button_file none %d\n"
+			"button_file %s %d\n"
 			"popup_dialog_sin %15s %u\n"
 			"background_position %u\n"
 			"background_color %u\n"
@@ -662,7 +639,8 @@ public:
 			bkg_name3, &bkg_id[2],
 			pal_name, &pal_id,
 			cur_name, &cur_id,
-			&shade, &btn_id,
+			&shade,
+			btn_file, &btn_id,
 			dlg_name, &dlg_id,
 			&bkg_pos, &bkg_col,
 			&bevel_col[0], &bevel_col[1], &bevel_col[2],
@@ -672,15 +650,13 @@ public:
 			&focus_col[0], &focus_col[1], &focus_col[2],
 			&focus_col[3], &focus_col[4], &focus_col[5],
 			&state_col[0], &state_col[1], &state_col[2],
-			&state_col[3], &state_col[4], &state_col[5]) != 6 + 10 + 4 * 6)
+			&state_col[3], &state_col[4], &state_col[5]) != 6 + 11 + 4 * 6)
 		{
 			panicf("Bad background: id = %u", id);
 		}
 
-		// FIXME revert this when it works
-		palette.open(50500);//pal_id);
-		// FIXME use different screen sizes
-		animation.open(&palette, 2);//bkg_id[1]);
+		palette.open(pal_id);
+		animation.open(&palette, bkg_id[1]);
 	}
 
 	void draw() const {
@@ -696,7 +672,7 @@ public:
 	bool play_sfx;
 
 	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true)
-		: Border(x, y, w, h)
+		: Border(x, y, w, h, false)
 		, text(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
 		, text_focus(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button, col_focus)
 		, focus(false), down(false), play_sfx(play_sfx)
@@ -704,7 +680,7 @@ public:
 	}
 
 	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true)
-		: Border(x, y, w, h)
+		: Border(x, y, w, h, false)
 		, text(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
 		, text_focus(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button, col_focus)
 		, focus(false), down(false), play_sfx(play_sfx)
@@ -1036,7 +1012,8 @@ class MenuAchievements final : public Menu {
 	bool end;
 public:
 	MenuAchievements(bool end=false) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, end ? 775 - 550 : 375 - 125, 588 - 551), end(end) {
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
+		objects.emplace_back(new Background(end ? DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		objects.emplace_back(new Text(WIDTH / 2, 48, STR_TITLE_SUMMARY, CENTER, TOP));
@@ -1085,7 +1062,7 @@ public:
 
 	void button_activate(unsigned id) override final {
 		switch (id) {
-		case 2: running = 0; break;
+		case 3: running = 0; break;
 		}
 	}
 };
@@ -1212,7 +1189,8 @@ public:
 class MenuSinglePlayerSettings final : public Menu {
 public:
 	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550) {
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
+		objects.emplace_back(new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		group.add(87, 550, STR_BTN_START_GAME);
@@ -1249,7 +1227,7 @@ public:
 
 	void button_activate(unsigned id) override final {
 		switch (id) {
-		case 2: running = 0; break;
+		case 3: running = 0; break;
 		}
 	}
 };
@@ -1258,7 +1236,8 @@ public:
 class MenuSinglePlayer final : public Menu {
 public:
 	MenuSinglePlayer() : Menu(STR_TITLE_SINGLEPLAYER_MENU) {
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT));
+		objects.emplace_back(new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		group.add(0, 147 - 222, STR_BTN_RANDOM_MAP);
@@ -1288,8 +1267,7 @@ public:
 class MenuMain final : public Menu {
 public:
 	MenuMain() : Menu(STR_TITLE_MAIN) {
-		// FIXME /100/0
-		objects.emplace_back(new Background(DRS_BACKGROUND_MAIN, 100, 100));
+		objects.emplace_back(new Background(DRS_BACKGROUND_MAIN, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 
 		group.add(0, 0, STR_BTN_SINGLEPLAYER);
