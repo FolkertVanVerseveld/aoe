@@ -437,36 +437,64 @@ public:
 				// TODO figure out if lesser skip behaves different compared to aoe2
 
 				// not documented yet by related projects
-				if (*cmd == 0x05) {
-					dbgs("magic skip command 1");
+				switch (*cmd) {
+				case 0x05:
+					//dbgs("magic skip command 1");
 					pixels[y * p + x++] = 0;
 					continue;
-				} else if (*cmd == 0x09) {
-					dbgs("magic skip command 2");
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
-					continue;
-				} else if (*cmd == 0x11) {
-					dbgs("weird lesser skip 4 pixels");
-					pixels[y * p + x++] = 0;
-					pixels[y * p + x++] = 0;
+				case 0x09:
+					//dbgs("magic skip command 2");
 					pixels[y * p + x++] = 0;
 					pixels[y * p + x++] = 0;
 					continue;
-				} else if (*cmd == 0x15) {
-					dbgs("weird lesser skip 5 pixels");
+				case 0x0d:
+					//dbgs("weird lesser skip 3 pixels");
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					continue;
+				case 0x11:
+					//dbgs("weird lesser skip 4 pixels");
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					pixels[y * p + x++] = 0;
+					continue;
+				case 0x15:
+					//dbgs("weird lesser skip 5 pixels");
 					pixels[y * p + x++] = 0;
 					pixels[y * p + x++] = 0;
 					pixels[y * p + x++] = 0;
 					pixels[y * p + x++] = 0;
 					pixels[y * p + x++] = 0;
+					continue;
+				case 0x71:
+					//dbgs("weird skip 28 pixels");
+					for (count = 28; count; --count)
+						pixels[y * p + x++] = 0;
+					continue;
+				case 0x75:
+					//dbgs("weird skip 29 pixels");
+					for (count = 29; count; --count)
+						pixels[y * p + x++] = 0;
+					continue;
+				case 0x79:
+					//dbgs("weird skip 30 pixels");
+					for (count = 30; count; --count)
+						pixels[y * p + x++] = 0;
+					continue;
+				case 0xc1:
+					for (count = 47; count; --count)
+						pixels[y * p + x++] = 0;
 					continue;
 				}
 
 				switch (command) {
+				#if 0
 				case 0x00:
 					dbgf("lesser block copy: %u\n", *cmd >> 2);
 					break;
+				#endif
 					#if 0
 				case 0x01:
 					//count = higher_nibble >> 4;
