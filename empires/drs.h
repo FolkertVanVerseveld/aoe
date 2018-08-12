@@ -18,6 +18,9 @@ extern "C" {
 
 #define DRS_NO_REF ((uint32_t)-1)
 
+#define DRS_MAIN_PALETTE 50500
+#define DRS_MENU_BAR 50737
+
 // FIXME also support big-endian machines
 #define DT_BINARY 0x62696e61
 #define DT_SHP    0x73687020

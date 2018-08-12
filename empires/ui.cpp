@@ -1121,8 +1121,13 @@ public:
 };
 
 class MenuGame final : public Menu {
+	Palette palette;
+	AnimationTexture menu_bar;
 public:
-	MenuGame() : Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false) {
+	MenuGame()
+		: Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false)
+		, palette(), menu_bar()
+	{
 		group.add(728, 0, STR_BTN_MENU, WIDTH - 728, 18, true);
 		group.add(620, 0, STR_BTN_DIPLOMACY, 728 - 620, 18, true);
 
@@ -1147,9 +1152,11 @@ public:
 
 		objects.emplace_back(new Button(765, 482, 795 - 765, 512 - 482, STR_BTN_SCORE, true));
 		objects.emplace_back(new Button(765, 564, 795 - 765, 594 - 564, "?", true));
-		//objects.emplace_back(new Button(765, 564, "?"));
 
 		canvas.clear();
+
+		palette.open(DRS_MAIN_PALETTE);
+		menu_bar.open(&palette, DRS_MENU_BAR);
 	}
 
 	void button_group_activate(unsigned id) override final {
@@ -1166,6 +1173,12 @@ public:
 		case 0: break;
 		case 1: break;
 		}
+	}
+
+	void draw() const override final {
+		menu_bar.draw(0, 0, 0);
+		menu_bar.draw(0, HEIGHT - 126, 1);
+		Menu::draw();
 	}
 };
 
