@@ -24,6 +24,7 @@
 #include "gfx.h"
 #include "lang.h"
 #include "sfx.h"
+#include "fs.h"
 
 #include "game.hpp"
 
@@ -356,24 +357,6 @@ unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
 	*cmd = ptr;
 	return v;
 }
-#if 0
-// source: openage/openage/convert/slp.pyx:509
-cdef inline cmd_pack cmd_or_next(self, uint8_t cmd,
-                                 uint8_t n, Py_ssize_t pos):
-    """
-    to save memory, the draw amount may be encoded into
-    the drawing command itself in the upper n bits.
-    """
-
-    cdef uint8_t packed_in_cmd = cmd >> n
-
-    if packed_in_cmd != 0:
-        return cmd_pack(packed_in_cmd, pos)
-
-    else:
-        pos += 1
-        return cmd_pack(self.get_byte_at(pos), pos)
-#endif
 
 class Image final {
 public:
@@ -1288,6 +1271,13 @@ public:
 		case 0:
 			ui_state.go_to(new MenuSinglePlayer());
 			break;
+		case 2: {
+			char path[FS_BUFSZ], buf[FS_BUFSZ];
+			fs_cdrom_path(path, sizeof path, "readme.doc");
+			snprintf(buf, sizeof buf, "xdg-open \"%s\"", path);
+			system(buf);
+			break;
+		}
 		case 4:
 			running = 0;
 			break;

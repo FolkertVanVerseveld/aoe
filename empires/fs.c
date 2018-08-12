@@ -31,3 +31,8 @@ void fs_help_path(char *buf, size_t bufsz, const char *file)
 {
 	snprintf(buf, bufsz, "%s/game/help/%s", path_cdrom, file);
 }
+
+void fs_cdrom_path(char *buf, size_t bufsz, const char *file)
+{
+	snprintf(buf, bufsz, "%s/%s", path_cdrom, file);
+}
