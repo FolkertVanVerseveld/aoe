@@ -78,6 +78,7 @@ class Renderer final {
 	void *pixels;
 public:
 	SDL_Renderer *renderer;
+	unsigned shade;
 
 	Renderer() : capture(NULL), tex(NULL), renderer(NULL) {
 		if (!(pixels = malloc(WIDTH * HEIGHT * 3)))
@@ -263,10 +264,18 @@ public:
 		int table[] = {0, 1, 2, 3, 4, 5}, table_r[] = {1, 0, 3, 2, 5, 4};
 		int *colptr = invert ? table_r : table;
 
+		// Draw background
 		if (fill) {
+			SDL_BlendMode old;
+			SDL_GetRenderDrawBlendMode(renderer, &old);
+
 			SDL_Rect pos = {x, y, (int)w, (int)h};
-			canvas.col(0);
+			SDL_Color col = {0, 0, 0, 255 - (canvas.shade * 255 / 100)};
+			canvas.col(col);
+			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 			SDL_RenderFillRect(renderer, &pos);
+
+			SDL_SetRenderDrawBlendMode(renderer, old);
 		}
 
 		// Draw outermost lines
@@ -587,7 +596,6 @@ public:
 		unsigned pal_id;
 		char cur_name[16];
 		unsigned cur_id;
-		unsigned shade;
 		char btn_file[16];
 		int btn_id;
 
@@ -622,7 +630,7 @@ public:
 			bkg_name3, &bkg_id[2],
 			pal_name, &pal_id,
 			cur_name, &cur_id,
-			&shade,
+			&canvas.shade,
 			btn_file, &btn_id,
 			dlg_name, &dlg_id,
 			&bkg_pos, &bkg_col,
@@ -655,7 +663,7 @@ public:
 	bool play_sfx;
 
 	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true)
-		: Border(x, y, w, h, false)
+		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
 		, text_focus(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button, col_focus)
 		, focus(false), down(false), play_sfx(play_sfx)
@@ -663,7 +671,7 @@ public:
 	}
 
 	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true)
-		: Border(x, y, w, h, false)
+		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
 		, text_focus(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button, col_focus)
 		, focus(false), down(false), play_sfx(play_sfx)
@@ -919,9 +927,12 @@ public:
 	static unsigned constexpr tl_bottom = 474;
 	static unsigned constexpr tl_height = tl_bottom - tl_top;
 
-	MenuTimeline() : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551) {
+	MenuTimeline() : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551, false) {
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
+		objects.emplace_back(new Text(
+			WIDTH / 2, 12, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_button
+		));
 
 		objects.emplace_back(new Text(WIDTH / 2, 48, STR_BTN_TIMELINE, CENTER, TOP));
 
@@ -1184,9 +1195,12 @@ public:
 
 class MenuSinglePlayerSettings final : public Menu {
 public:
-	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550) {
+	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550, false) {
 		objects.emplace_back(new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Text(
+			WIDTH / 2, 12, STR_TITLE_SINGLEPLAYER, MIDDLE, TOP, fnt_button
+		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		group.add(87, 550, STR_BTN_START_GAME);
@@ -1231,9 +1245,12 @@ public:
 // FIXME color scheme
 class MenuSinglePlayer final : public Menu {
 public:
-	MenuSinglePlayer() : Menu(STR_TITLE_SINGLEPLAYER_MENU) {
+	MenuSinglePlayer() : Menu(STR_TITLE_SINGLEPLAYER_MENU, false) {
 		objects.emplace_back(new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Text(
+			WIDTH / 2, 12, STR_TITLE_SINGLEPLAYER_MENU, MIDDLE, TOP, fnt_button
+		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		group.add(0, 147 - 222, STR_BTN_RANDOM_MAP);
@@ -1262,7 +1279,7 @@ public:
 
 class MenuMain final : public Menu {
 public:
-	MenuMain() : Menu(STR_TITLE_MAIN) {
+	MenuMain() : Menu(STR_TITLE_MAIN, false) {
 		objects.emplace_back(new Background(DRS_BACKGROUND_MAIN, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 
