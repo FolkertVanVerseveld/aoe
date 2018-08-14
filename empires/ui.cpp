@@ -233,7 +233,13 @@ private:
 
 public:
 	void draw() const {
-		SDL_Rect pos = {x, y, (int)w, (int)h};
+		SDL_Rect pos = {x - 1, y + 1, (int)w, (int)h};
+		// draw shadow
+		SDL_SetTextureColorMod(tex, 0, 0, 0);
+		SDL_RenderCopy(renderer, tex, NULL, &pos);
+		++pos.x;
+		--pos.y;
+		SDL_SetTextureColorMod(tex, 255, 255, 255);
 		SDL_RenderCopy(renderer, tex, NULL, &pos);
 	}
 };
@@ -270,7 +276,7 @@ public:
 			SDL_GetRenderDrawBlendMode(renderer, &old);
 
 			SDL_Rect pos = {x, y, (int)w, (int)h};
-			SDL_Color col = {0, 0, 0, 255 - (canvas.shade * 255 / 100)};
+			SDL_Color col = {0, 0, 0, (Uint8)(255 - (canvas.shade * 255 / 100))};
 			canvas.col(col);
 			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 			SDL_RenderFillRect(renderer, &pos);
@@ -422,11 +428,10 @@ public:
 				pixels[y * p + x] = rand();
 
 			for (int i = edge->left_space, x = i, w = x + line_size, p = surface->pitch; i <= w; ++i, ++cmd) {
-				unsigned command, higher_nibble, lower_bits, count;
+				unsigned command, higher_nibble, count;
 
 				command = *cmd & 0x0f;
 				higher_nibble = *cmd & 0xf0;
-				lower_bits = *cmd & 3;
 
 				// TODO figure out if lesser skip behaves different compared to aoe2
 
@@ -1277,6 +1282,65 @@ public:
 	}
 };
 
+class MenuMultiplayer final : public Menu {
+public:
+	MenuMultiplayer() : Menu(STR_TITLE_MULTIPLAYER, 87, 550, 387 - 87, 587 - 550) {
+		objects.emplace_back(new Background(DRS_BACKGROUND_MULTIPLAYER, 0, 0));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Text(
+			WIDTH / 2, 12, STR_TITLE_MULTIPLAYER, MIDDLE, TOP, fnt_button
+		));
+		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
+
+		objects.emplace_back(new Text(30, 96, STR_MULTIPLAYER_NAME, LEFT, TOP, fnt_button));
+		objects.emplace_back(new Text(30, 209, STR_MULTIPLAYER_TYPE, LEFT, TOP, fnt_button));
+
+		group.add(0, 0, STR_BTN_OK);
+		group.add(412 - 87, 0, STR_BTN_CANCEL);
+	}
+
+	void button_group_activate(unsigned id) override final {
+		switch (id) {
+		case 1:
+			stop = 1;
+			break;
+		}
+	}
+
+	void button_activate(unsigned) override final {
+		running = 0;
+	}
+};
+
+class MenuScenarioBuilder final : public Menu {
+public:
+	MenuScenarioBuilder() : Menu(STR_TITLE_SCENARIO_EDITOR) {
+		objects.emplace_back(new Background(DRS_BACKGROUND_SCENARIO, 0, 0));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Text(
+			WIDTH / 2, 12, STR_TITLE_SCENARIO_EDITOR, MIDDLE, TOP, fnt_button
+		));
+		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
+
+		group.add(0, 212 - 222, STR_BTN_SCENARIO_CREATE);
+		group.add(0, 275 - 222, STR_BTN_SCENARIO_EDIT);
+		group.add(0, 337 - 222, STR_BTN_SCENARIO_CAMPAIGN);
+		group.add(0, 400 - 222, STR_BTN_SCENARIO_CANCEL);
+	}
+
+	void button_group_activate(unsigned id) override final {
+		switch (id) {
+		case 3:
+			stop = 1;
+			break;
+		}
+	}
+
+	void button_activate(unsigned) override final {
+		running = 0;
+	}
+};
+
 class MenuMain final : public Menu {
 public:
 	MenuMain() : Menu(STR_TITLE_MAIN, false) {
@@ -1301,6 +1365,9 @@ public:
 		case 0:
 			ui_state.go_to(new MenuSinglePlayer());
 			break;
+		case 1:
+			ui_state.go_to(new MenuMultiplayer());
+			break;
 		case 2: {
 			char path[FS_BUFSZ], buf[FS_BUFSZ];
 			fs_cdrom_path(path, sizeof path, "readme.doc");
@@ -1308,6 +1375,9 @@ public:
 			system(buf);
 			break;
 		}
+		case 3:
+			ui_state.go_to(new MenuScenarioBuilder());
+			break;
 		case 4:
 			running = 0;
 			break;
@@ -1371,17 +1441,13 @@ void UI_State::go_to(Menu *menu)
 
 void UI_State::dispose()
 {
-	//puts("ui_state: dispose");
 	while (!navigation.empty())
 		navigation.pop();
 }
 
 void UI_State::display()
 {
-	//puts("ui_state: display");
-
 	if ((state & DIRTY) && !navigation.empty()) {
-		//puts("ui_state: redraw");
 		// Draw stuff
 		navigation.top().get()->draw();
 		// Swap buffers

@@ -775,12 +775,12 @@ ID        type description
 50107    model ?? mission background 1 ?? 640x480 (custom palette)
 50109    model ?? mission background 1 ?? 800x600 (custom palette)
 50111    model ?? mission background 1 ?? 1024x768 (custom palette)
-50113    model ?? campaign background ?? 640x480 (custom palette)
-50115    model ?? campaign background ?? 800x600 (custom palette)
-50117    model ?? campaign background ?? 1024x768 (custom palette)
-50119    model ?? mission background 2 ?? 640x480 (custom palette)
-50121    model ?? mission background 2 ?? 800x600 (custom palette)
-50123    model ?? mission background 2 ?? 1024x768 (custom palette)
+50113    model multiplayer background 640x480 (custom palette)
+50115    model multiplayer background 800x600 (custom palette)
+50117    model multiplayer background 1024x768 (custom palette)
+50119    model scenario builder background 640x480 (custom palette)
+50121    model scenario builder background 800x600 (custom palette)
+50123    model scenario builder background 1024x768 (custom palette)
 50125    model editor background 640x480
 50127    model editor background 800x600
 50129    model editor background 1024x768

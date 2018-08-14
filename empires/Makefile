@@ -33,7 +33,7 @@ empires: empires.o ui.o game.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/de
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o ui.o game.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
 game.o: game.hpp game.cpp ui.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) game.cpp -c -o game.o $(LDFLAGS) $(LDLIBS)
-ui.o: ui.h ui.cpp game.hpp
+ui.o: ui.h ui.cpp game.hpp drs.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ui.cpp -c -o ui.o $(LDFLAGS) $(LDLIBS)
 gfx.o: gfx.h gfx.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) gfx.c -c -o gfx.o $(LDFLAGS) $(LDLIBS)
