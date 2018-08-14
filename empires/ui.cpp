@@ -244,6 +244,8 @@ public:
 	}
 };
 
+SDL_Color border_cols[6] = {};
+
 // FIXME more color schemes
 class Border : public UI {
 	bool fill;
@@ -257,15 +259,6 @@ public:
 
 	void draw(bool invert) const {
 		unsigned w = this->w - 1, h = this->h - 1;
-
-		const SDL_Color cols[] = {
-			{41 , 33 , 16, SDL_ALPHA_OPAQUE},
-			{145, 136, 71, SDL_ALPHA_OPAQUE},
-			{78 , 61 , 49, SDL_ALPHA_OPAQUE},
-			{129, 112, 65, SDL_ALPHA_OPAQUE},
-			{107, 85 , 34, SDL_ALPHA_OPAQUE},
-			{97 , 78 , 50, SDL_ALPHA_OPAQUE},
-		};
 
 		int table[] = {0, 1, 2, 3, 4, 5}, table_r[] = {1, 0, 3, 2, 5, 4};
 		int *colptr = invert ? table_r : table;
@@ -285,24 +278,24 @@ public:
 		}
 
 		// Draw outermost lines
-		canvas.col(cols[colptr[0]]);
+		canvas.col(border_cols[colptr[0]]);
 		SDL_RenderDrawLine(renderer, x, y    , x    , y + h);
 		SDL_RenderDrawLine(renderer, x, y + h, x + w, y + h);
-		canvas.col(cols[colptr[1]]);
+		canvas.col(border_cols[colptr[1]]);
 		SDL_RenderDrawLine(renderer, x + 1, y, x + w, y        );
 		SDL_RenderDrawLine(renderer, x + w, y, x + w, y + h - 1);
 		// Draw middle lines
-		canvas.col(cols[colptr[2]]);
+		canvas.col(border_cols[colptr[2]]);
 		SDL_RenderDrawLine(renderer, x + 1, y + 1    , x + 1    , y + h - 1);
 		SDL_RenderDrawLine(renderer, x + 1, y + h - 1, x + w - 1, y + h - 1);
-		canvas.col(cols[colptr[3]]);
+		canvas.col(border_cols[colptr[3]]);
 		SDL_RenderDrawLine(renderer, x + 2    , y + 1, x + w - 1, y + 1    );
 		SDL_RenderDrawLine(renderer, x + w - 1, y + 1, x + w - 1, y + h - 2);
 		// Draw innermost lines
-		canvas.col(cols[colptr[4]]);
+		canvas.col(border_cols[colptr[4]]);
 		SDL_RenderDrawLine(renderer, x + 2, y + 2    , x + 2    , y + h - 2);
 		SDL_RenderDrawLine(renderer, x + 2, y + h - 2, x + w - 2, y + h - 2);
-		canvas.col(cols[colptr[5]]);
+		canvas.col(border_cols[colptr[5]]);
 		SDL_RenderDrawLine(renderer, x + 3    , y + 2, x + w - 2, y + 2    );
 		SDL_RenderDrawLine(renderer, x + w - 2, y + 2, x + w - 2, y + h - 3);
 	}
@@ -360,6 +353,13 @@ fail:
 				panicf("Bad palette id %u: bad color %u\n", id, i);
 			offset += n;
 		}
+	}
+
+	void set_border_color(unsigned id, unsigned col_id) const {
+		border_cols[id].r = pal->colors[col_id].r;
+		border_cols[id].g = pal->colors[col_id].g;
+		border_cols[id].b = pal->colors[col_id].b;
+		border_cols[id].a = SDL_ALPHA_OPAQUE;
 	}
 };
 
@@ -588,6 +588,7 @@ class Background final : public UI {
 	unsigned id;
 	Palette palette;
 	AnimationTexture animation;
+	unsigned bevel_col[6];
 public:
 	Background(unsigned id, int x, int y, unsigned w = 1, unsigned h = 1)
 		: UI(x, y, w, h), id(id), palette(), animation()
@@ -607,7 +608,6 @@ public:
 		char dlg_name[16];
 		unsigned dlg_id;
 		unsigned bkg_pos, bkg_col;
-		unsigned bevel_col[6];
 		unsigned text_col[6];
 		unsigned focus_col[6];
 		unsigned state_col[6];
@@ -652,7 +652,19 @@ public:
 		}
 
 		palette.open(pal_id);
+		// Apply palette to border colors
+		restore();
+
 		animation.open(&palette, bkg_id[1]);
+	}
+
+	void restore() {
+		palette.set_border_color(0, bevel_col[5]);
+		palette.set_border_color(1, bevel_col[0]);
+		palette.set_border_color(2, bevel_col[4]);
+		palette.set_border_color(3, bevel_col[1]);
+		palette.set_border_color(4, bevel_col[3]);
+		palette.set_border_color(5, bevel_col[2]);
 	}
 
 	void draw() const {
@@ -834,11 +846,12 @@ class Menu : public UI {
 protected:
 	std::vector<std::shared_ptr<UI>> objects;
 	mutable ButtonGroup group;
+	Background *bkg;
 public:
 	int stop = 0;
 
 	Menu(unsigned title_id, bool show_title=true)
-		: UI(0, 0, WIDTH, HEIGHT), objects(), group()
+		: UI(0, 0, WIDTH, HEIGHT), objects(), group(), bkg(nullptr)
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
@@ -847,7 +860,7 @@ public:
 	}
 
 	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h, bool show_title=true)
-		: UI(0, 0, WIDTH, HEIGHT), objects(), group(x, y, w, h)
+		: UI(0, 0, WIDTH, HEIGHT), objects(), group(x, y, w, h), bkg(nullptr)
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
@@ -910,6 +923,11 @@ public:
 		}
 	}
 
+	virtual void restore() {
+		if (bkg)
+			bkg->restore();
+	}
+
 	virtual void button_group_activate(unsigned id) = 0;
 
 	virtual void button_activate(unsigned) {
@@ -932,7 +950,10 @@ public:
 	static unsigned constexpr tl_bottom = 474;
 	static unsigned constexpr tl_height = tl_bottom - tl_top;
 
-	MenuTimeline() : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551, false) {
+	std::vector<std::shared_ptr<UI>> player_objects;
+
+	MenuTimeline() : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551) {
+		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 		objects.emplace_back(new Text(
@@ -944,7 +965,7 @@ public:
 		// TODO compute elapsed time
 		objects.emplace_back(new Text(685, 15, "00:00:00"));
 
-		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106, false));
+		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106));
 
 		group.add(250, 551, STR_BTN_BACK);
 
@@ -957,7 +978,7 @@ public:
 			load_string(&lib_lang, STR_CIV_EGYPTIAN + p->civ, civbuf, sizeof civbuf);
 			snprintf(buf, sizeof buf, "%s - %s", p->name.c_str(), civbuf);
 
-			objects.emplace_back(
+			player_objects.emplace_back(
 				new Text(
 					40, tl_top + i * step - step / 2,
 					buf, LEFT, MIDDLE
@@ -980,6 +1001,8 @@ public:
 	}
 
 	virtual void draw() const override {
+		Menu::draw();
+
 		unsigned i = 0, step = (tl_height + 1) / players.size();
 		for (unsigned n = players.size(); i < n; ++i) {
 			const SDL_Color *col = &col_players[i];
@@ -1003,7 +1026,8 @@ public:
 		SDL_RenderDrawLine(renderer, tl_left, tl_top, tl_left, tl_bottom);
 		SDL_RenderDrawLine(renderer, tl_left, tl_bottom, tl_right, tl_bottom);
 
-		Menu::draw();
+		for (auto x : player_objects)
+			x.get()->draw();
 	}
 };
 
@@ -1011,7 +1035,7 @@ class MenuAchievements final : public Menu {
 	bool end;
 public:
 	MenuAchievements(bool end=false) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, end ? 775 - 550 : 375 - 125, 588 - 551), end(end) {
-		objects.emplace_back(new Background(end ? DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
+		objects.emplace_back(bkg = new Background(end ? DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -1201,7 +1225,7 @@ public:
 class MenuSinglePlayerSettings final : public Menu {
 public:
 	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550, false) {
-		objects.emplace_back(new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
+		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Text(
 			WIDTH / 2, 12, STR_TITLE_SINGLEPLAYER, MIDDLE, TOP, fnt_button
@@ -1251,7 +1275,7 @@ public:
 class MenuSinglePlayer final : public Menu {
 public:
 	MenuSinglePlayer() : Menu(STR_TITLE_SINGLEPLAYER_MENU, false) {
-		objects.emplace_back(new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
+		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Text(
 			WIDTH / 2, 12, STR_TITLE_SINGLEPLAYER_MENU, MIDDLE, TOP, fnt_button
@@ -1285,7 +1309,7 @@ public:
 class MenuMultiplayer final : public Menu {
 public:
 	MenuMultiplayer() : Menu(STR_TITLE_MULTIPLAYER, 87, 550, 387 - 87, 587 - 550) {
-		objects.emplace_back(new Background(DRS_BACKGROUND_MULTIPLAYER, 0, 0));
+		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_MULTIPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Text(
 			WIDTH / 2, 12, STR_TITLE_MULTIPLAYER, MIDDLE, TOP, fnt_button
@@ -1315,7 +1339,7 @@ public:
 class MenuScenarioBuilder final : public Menu {
 public:
 	MenuScenarioBuilder() : Menu(STR_TITLE_SCENARIO_EDITOR) {
-		objects.emplace_back(new Background(DRS_BACKGROUND_SCENARIO, 0, 0));
+		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SCENARIO, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Text(
 			WIDTH / 2, 12, STR_TITLE_SCENARIO_EDITOR, MIDDLE, TOP, fnt_button
@@ -1344,7 +1368,7 @@ public:
 class MenuMain final : public Menu {
 public:
 	MenuMain() : Menu(STR_TITLE_MAIN, false) {
-		objects.emplace_back(new Background(DRS_BACKGROUND_MAIN, 0, 0));
+		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_MAIN, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 
 		group.add(0, 0, STR_BTN_SINGLEPLAYER);
@@ -1432,6 +1456,7 @@ void UI_State::mouseup(SDL_MouseButtonEvent *event)
 			return;
 		navigation.pop();
 	}
+	navigation.top().get()->restore();
 }
 
 void UI_State::go_to(Menu *menu)
@@ -1481,4 +1506,5 @@ void UI_State::keyup(SDL_KeyboardEvent *event)
 			return;
 		navigation.pop();
 	}
+	navigation.top().get()->restore();
 }
