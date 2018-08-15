@@ -106,6 +106,26 @@ public:
 		SDL_SetRenderDrawColor(renderer, col.r, col.g, col.b, col.a);
 	}
 
+	void save_screen() {
+		SDL_Surface *screen;
+		int err = 1;
+
+		// FIXME support big endian byte order
+		if (!(screen = SDL_CreateRGBSurface(0, WIDTH, HEIGHT, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
+			goto fail;
+		if (SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, screen->pixels, screen->pitch))
+			goto fail;
+		if (SDL_SaveBMP(screen, "empires.bmp"))
+			goto fail;
+
+		err = 0;
+fail:
+		if (err)
+			show_error("Cannot take screen shot");
+		if (screen)
+			SDL_FreeSurface(screen);
+	}
+
 	void read_screen() {
 		if (capture)
 			SDL_FreeSurface(capture);
@@ -248,7 +268,6 @@ public:
 
 SDL_Color border_cols[6] = {};
 
-// FIXME more color schemes
 class Border : public UI {
 	bool fill;
 	int shade;
@@ -401,8 +420,7 @@ public:
 		if (surface->format->format != SDL_PIXELFORMAT_INDEX8)
 			panicf("Unexpected image format: %s\n", SDL_GetPixelFormatName(surface->format->format));
 
-		// TODO read pixel data
-		// fill with random data for now
+		// fill with random data so we can easily spot garbled image data
 		unsigned char *pixels = (unsigned char*)surface->pixels;
 		for (int y = 0, h = frame->height, p = surface->pitch; y < h; ++y)
 			for (int x = 0, w = frame->width; x < w; ++x)
@@ -412,7 +430,6 @@ public:
 			(const struct slp_frame_row_edge*)
 				((char*)data + frame->outline_table_offset);
 		const unsigned char *cmd = (const unsigned char*)
-			//((char*)data + frame->cmd_table_offset);
 			((char*)data + frame->cmd_table_offset + 4 * frame->height);
 
 		dbgf("command data offset: %X\n", frame->cmd_table_offset + 4 * frame->height);
@@ -434,14 +451,32 @@ public:
 				pixels[y * p + x] = rand();
 
 			for (int i = edge->left_space, x = i, w = x + line_size, p = surface->pitch; i <= w; ++i, ++cmd) {
-				unsigned command, higher_nibble, count;
+				unsigned command, count;
 
 				command = *cmd & 0x0f;
-				higher_nibble = *cmd & 0xf0;
 
 				// TODO figure out if lesser skip behaves different compared to aoe2
 
 				switch (*cmd) {
+				case 0x03:
+					for (count = *++cmd; count; --count)
+						pixels[y * p + x++] = 0;
+					break;
+				case 0xfd: pixels[y * p + x++] = 0; // skip 63
+				case 0xf9: pixels[y * p + x++] = 0; // skip 62
+				case 0xf5: pixels[y * p + x++] = 0; // skip 61
+				case 0xf1: pixels[y * p + x++] = 0; // skip 60
+				case 0xed: pixels[y * p + x++] = 0; // skip 59
+				case 0xe9: pixels[y * p + x++] = 0; // skip 58
+				case 0xe5: pixels[y * p + x++] = 0; // skip 57
+				case 0xe1: pixels[y * p + x++] = 0; // skip 56
+				case 0xdd: pixels[y * p + x++] = 0; // skip 55
+				case 0xd9: pixels[y * p + x++] = 0; // skip 54
+				case 0xd5: pixels[y * p + x++] = 0; // skip 53
+				case 0xd1: pixels[y * p + x++] = 0; // skip 52
+				case 0xcd: pixels[y * p + x++] = 0; // skip 51
+				case 0xc9: pixels[y * p + x++] = 0; // skip 50
+				case 0xc5: pixels[y * p + x++] = 0; // skip 49
 				case 0xc1: pixels[y * p + x++] = 0; // skip 48
 				case 0xbd: pixels[y * p + x++] = 0; // skip 47
 				case 0xb9: pixels[y * p + x++] = 0; // skip 46
@@ -522,10 +557,23 @@ row_data.push_back(pixel(color_standard, color))
 					i = w;
 					break;
 				default:
-					dbgf("unknown cmd: %X, %X, %X\n", *cmd, command, higher_nibble);
+					dbgf("unknown cmd at %X: %X, %X\n",
+						 (unsigned)(cmd - (const unsigned char*)data),
+						*cmd, command
+					);
+					#if 0
+					while (*cmd != 0xf)
+						++cmd;
+					i = w;
+					#endif
 					break;
 				}
 			}
+
+			#if 0
+			while (cmd[-1] != 0xf)
+				++cmd;
+			#endif
 		}
 		putchar('\n');
 
@@ -1511,6 +1559,11 @@ void UI_State::keyup(SDL_KeyboardEvent *event)
 {
 	if (navigation.empty())
 		return;
+
+	if (event->keysym.sym == SDLK_F10) {
+		canvas.save_screen();
+		return;
+	}
 
 	auto menu = navigation.top().get();
 	menu->keyup(event);
