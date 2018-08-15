@@ -1080,11 +1080,20 @@ public:
 			y += 263 - 225;
 			++nr;
 		}
+
+		if (type)
+			mus_play(MUS_DEFEAT);
 	}
 
 	virtual void button_group_activate(unsigned id) override final {
 		switch (id) {
-		case 0: stop = type ? 5 : 1; break;
+		case 0:
+			if (type) {
+				stop = 5;
+				mus_play(MUS_MAIN);
+			} else
+				stop = 1;
+			break;
 		case 1: ui_state.go_to(new MenuTimeline(type)); break;
 		}
 	}
@@ -1203,6 +1212,8 @@ public:
 
 		palette.open(DRS_MAIN_PALETTE);
 		menu_bar.open(&palette, DRS_MENU_BAR);
+
+		mus_play(MUS_GAME);
 	}
 
 	void button_group_activate(unsigned id) override final {
@@ -1388,6 +1399,8 @@ public:
 		// FIXME (copy) and (p) before this line
 		objects.emplace_back(new Text(WIDTH / 2, 561, STR_MAIN_COPY2, CENTER));
 		objects.emplace_back(new Text(WIDTH / 2, 578, STR_MAIN_COPY3, CENTER));
+
+		mus_play(MUS_MAIN);
 	}
 
 	void button_group_activate(unsigned id) override final {

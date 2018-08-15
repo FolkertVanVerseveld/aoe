@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 
+#include "cfg.h"
 #include "fs.h"
 #include "../setup/dbg.h"
 #include "../setup/def.h"
@@ -57,7 +58,27 @@ public:
 	}
 };
 
+class ClipMusicFile final : public Clip {
+	Mix_Music *music;
+public:
+	ClipMusicFile(unsigned id, Mix_Music *music) : Clip(id), music(music) {}
+
+	virtual ~ClipMusicFile() {
+		Mix_FreeMusic(music);
+	}
+
+	virtual void play() override {
+		Mix_PlayMusic(music, 0);
+	}
+};
+
 std::map<unsigned, std::shared_ptr<Clip>> sfx;
+/**
+ * Currently playing music. We don't cache music files because only one
+ * music track can play at any time and it may affect I/O performance if
+ * loaded from a real CD-ROM.
+ */
+std::shared_ptr<ClipMusicFile> music;
 
 void sfx_init_al(void)
 {
@@ -144,6 +165,9 @@ void sfx_free(void)
 
 void sfx_play(unsigned id)
 {
+	if (cfg.options & CFG_NO_SOUND)
+		return;
+
 	auto clip = sfx.find(id);
 
 	if (clip == sfx.end())
@@ -154,6 +178,39 @@ void sfx_play(unsigned id)
 		clip->second.get()->play();
 	else
 		fprintf(stderr, "sfx: could not play sound ID %u\n", id);
+}
+
+void mus_play(unsigned id)
+{
+	if (cfg.options & CFG_NO_MUSIC)
+		return;
+
+	char buf[FS_BUFSZ];
+
+	const char *name = "";
+
+	switch (id) {
+	case MUS_MAIN   : name = "Track 2.wav"; break;
+	case MUS_VICTORY: name = "Track 3.wav"; break;
+	case MUS_DEFEAT : name = "Track 4.wav"; break;
+	case MUS_GAME   : name = "Track 5.wav"; break;
+	default:
+		fprintf(stderr, "sfx: bad music ID %u\n", id);
+		return;
+	}
+
+	if (fs_cdrom_audio_path(buf, sizeof buf, name)) {
+		fprintf(stderr, "sfx: could not load music ID %u\n", id);
+		return;
+	}
+
+	Mix_Music *mus = Mix_LoadMUS(buf);
+	if (!mus) {
+		fprintf(stderr, "sfx: could not load music ID %u: %s\n", id, Mix_GetError());
+		return;
+	}
+	music.reset(new ClipMusicFile(id, mus));
+	music->play();
 }
 
 }

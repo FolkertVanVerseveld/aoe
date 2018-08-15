@@ -23,10 +23,17 @@ extern "C" {
 
 #define SFX_BUTTON4 50300
 
+#define MUS_MAIN 0
+#define MUS_VICTORY 1
+#define MUS_DEFEAT 2
+#define MUS_GAME 3
+
 void sfx_init(void);
 void sfx_free(void);
 
 void sfx_play(unsigned id);
+
+void mus_play(unsigned id);
 
 #ifdef __cplusplus
 }
