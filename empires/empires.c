@@ -9,6 +9,8 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
+#include <strings.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -18,6 +20,7 @@
 #include "../setup/def.h"
 #include "../setup/res.h"
 
+#include "cfg.h"
 #include "drs.h"
 #include "fs.h"
 
@@ -39,6 +42,8 @@ struct pe_lib lib_lang;
 #define BUFSZ 4096
 
 int running = 0;
+
+struct config cfg = {0, CFG_MODE_800x600, 50};
 
 int load_lib_lang(void)
 {
@@ -70,8 +75,60 @@ void main_event_loop(void)
 	}
 }
 
-int main(void)
+void cfg_parse(struct config *cfg, int argc, char **argv)
 {
+	for (int i = 1; i < argc; ++i) {
+		if (!strcasecmp(argv[i], "nostartup"))
+			cfg->options |= CFG_NO_VIDEO;
+		else if (!strcmp(argv[i], "640"))
+			cfg->screen_mode = CFG_MODE_640x480;
+		else if (!strcmp(argv[i], "800"))
+			cfg->screen_mode = CFG_MODE_800x600;
+		else if (!strcmp(argv[i], "1024"))
+			cfg->screen_mode = CFG_MODE_1024x768;
+		else if (!strcasecmp(argv[i], "normalmouse"))
+			cfg->options |= CFG_NORMAL_MOUSE;
+		else if (!strcasecmp(argv[i], "nosound"))
+			cfg->options |= CFG_NO_SOUND;
+		else if (!strcasecmp(argv[i], "noterrainsound"))
+			cfg->options |= CFG_NO_AMBIENT;
+		else if (!strcasecmp(argv[i], "nomusic"))
+			cfg->options |= CFG_NO_MUSIC;
+		else if (!strcasecmp(argv[i], "mfill"))
+			fputs("Matrox Video adapter not supported\n", stderr);
+		else if (!strcasecmp(argv[i], "msync"))
+			fputs("SoundBlaster AWE not supported\n", stderr);
+		else if (!strcasecmp(argv[i], "midimusic"))
+			fputs("Midi support unavailable\n", stderr);
+		else if (i + 1 < argc &&
+			(!strcasecmp(argv[i], "limit") || !strcasecmp(argv[i], "limit=")))
+		{
+			int n = atoi(argv[i + 1]);
+			if (n < POP_MIN)
+				n = POP_MIN;
+			else if (n > POP_MAX)
+				n = POP_MAX;
+			cfg->limit = (unsigned)n;
+		}
+	}
+
+	const char *mode = "???";
+	switch (cfg->screen_mode) {
+	case CFG_MODE_640x480: mode = "640x480"; break;
+	case CFG_MODE_800x600: mode = "800x600"; break;
+	case CFG_MODE_1024x768: mode = "1024x768"; break;
+	}
+	dbgf("screen mode: %s\n", mode);
+
+	// TODO support different screen resolutions
+	if (cfg->screen_mode != CFG_MODE_800x600)
+		fputs("Unsupported screen resolution\n", stderr);
+}
+
+int main(int argc, char **argv)
+{
+	cfg_parse(&cfg, argc, argv);
+
 	if (!find_setup_files())
 		panic("Please insert or mount the game CD-ROM");
 	if (load_lib_lang())
