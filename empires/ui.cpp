@@ -69,6 +69,8 @@ public:
 
 	void display();
 	void dispose();
+private:
+	void update();
 } ui_state;
 
 /* Custom renderer */
@@ -249,9 +251,13 @@ SDL_Color border_cols[6] = {};
 // FIXME more color schemes
 class Border : public UI {
 	bool fill;
+	int shade;
 public:
 	Border(int x, int y, unsigned w=1, unsigned h=1, bool fill=true)
-		: UI(x, y, w, h), fill(fill) {}
+		: UI(x, y, w, h), fill(fill), shade(-1) {}
+
+	Border(int x, int y, unsigned w, unsigned h, int shade)
+		: UI(x, y, w, h), fill(true), shade(shade) {}
 
 	void draw() const {
 		draw(false);
@@ -269,7 +275,7 @@ public:
 			SDL_GetRenderDrawBlendMode(renderer, &old);
 
 			SDL_Rect pos = {x, y, (int)w, (int)h};
-			SDL_Color col = {0, 0, 0, (Uint8)(255 - (canvas.shade * 255 / 100))};
+			SDL_Color col = {0, 0, 0, (Uint8)(255 - ((shade != -1 ? shade : canvas.shade) * 255 / 100))};
 			canvas.col(col);
 			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 			SDL_RenderFillRect(renderer, &pos);
@@ -952,8 +958,8 @@ public:
 
 	std::vector<std::shared_ptr<UI>> player_objects;
 
-	MenuTimeline() : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551) {
-		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
+	MenuTimeline(unsigned type) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551) {
+		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 		objects.emplace_back(new Text(
@@ -965,7 +971,7 @@ public:
 		// TODO compute elapsed time
 		objects.emplace_back(new Text(685, 15, "00:00:00"));
 
-		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106));
+		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106, 0));
 
 		group.add(250, 551, STR_BTN_BACK);
 
@@ -1032,10 +1038,10 @@ public:
 };
 
 class MenuAchievements final : public Menu {
-	bool end;
+	unsigned type;
 public:
-	MenuAchievements(bool end=false) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, end ? 775 - 550 : 375 - 125, 588 - 551), end(end) {
-		objects.emplace_back(bkg = new Background(end ? DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
+	MenuAchievements(unsigned type = 0) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, type ? 775 - 550 : 375 - 125, 588 - 551), type(type) {
+		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -1044,7 +1050,7 @@ public:
 		// TODO compute elapsed time
 		objects.emplace_back(new Text(685, 15, "00:00:00"));
 
-		if (end) {
+		if (type) {
 			group.add(550, 551, STR_BTN_CLOSE);
 			group.add(25, 551, STR_BTN_TIMELINE);
 			group.add(287, 551, STR_BTN_RESTART);
@@ -1078,8 +1084,8 @@ public:
 
 	virtual void button_group_activate(unsigned id) override final {
 		switch (id) {
-		case 0: stop = end ? 5 : 1; break;
-		case 1: ui_state.go_to(new MenuTimeline()); break;
+		case 0: stop = type ? 5 : 1; break;
+		case 1: ui_state.go_to(new MenuTimeline(type)); break;
 		}
 	}
 
@@ -1147,7 +1153,7 @@ public:
 
 	void button_group_activate(unsigned id) override final {
 		switch (id) {
-		case 0: ui_state.go_to(new MenuAchievements(true)); break;
+		case 0: ui_state.go_to(new MenuAchievements(1)); break;
 		case 1: ui_state.go_to(new MenuAchievements()); break;
 		case 6: ui_state.go_to(new MenuGameSettings()); break;
 		case 9: stop = 1; canvas.clear(); break;
@@ -1451,12 +1457,7 @@ void UI_State::mouseup(SDL_MouseButtonEvent *event)
 	auto menu = navigation.top().get();
 	menu->mouseup(event);
 
-	for (unsigned n = menu->stop; n; --n) {
-		if (navigation.empty())
-			return;
-		navigation.pop();
-	}
-	navigation.top().get()->restore();
+	update();
 }
 
 void UI_State::go_to(Menu *menu)
@@ -1501,7 +1502,12 @@ void UI_State::keyup(SDL_KeyboardEvent *event)
 	auto menu = navigation.top().get();
 	menu->keyup(event);
 
-	for (unsigned n = menu->stop; n; --n) {
+	update();
+}
+
+void UI_State::update()
+{
+	for (unsigned n = navigation.top().get()->stop; n; --n) {
 		if (navigation.empty())
 			return;
 		navigation.pop();
