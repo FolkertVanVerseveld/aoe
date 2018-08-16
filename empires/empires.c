@@ -67,6 +67,13 @@ void main_event_loop(void)
 		case SDL_KEYUP: keyup(&ev.key); break;
 		case SDL_MOUSEBUTTONDOWN: mousedown(&ev.button); break;
 		case SDL_MOUSEBUTTONUP: mouseup(&ev.button); break;
+		case SDL_WINDOWEVENT:
+			switch (ev.window.event) {
+			case SDL_WINDOWEVENT_FOCUS_GAINED:
+				repaint();
+				break;
+			}
+			break;
 		default:
 			continue;
 		}

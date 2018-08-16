@@ -1494,6 +1494,12 @@ void ui_free(void)
 /* Wrappers for ui_state */
 void display() { ui_state.display(); }
 
+void repaint()
+{
+	ui_state.dirty();
+	display();
+}
+
 void keydown(SDL_KeyboardEvent *event) { ui_state.keydown(event); }
 void keyup(SDL_KeyboardEvent *event) { ui_state.keyup(event); }
 

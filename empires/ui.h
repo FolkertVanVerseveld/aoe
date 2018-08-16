@@ -22,6 +22,7 @@ void ui_init(void);
 void ui_free(void);
 
 void display(void);
+void repaint(void);
 
 void keydown(SDL_KeyboardEvent *event);
 void keyup(SDL_KeyboardEvent *event);
