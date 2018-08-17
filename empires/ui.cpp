@@ -462,6 +462,42 @@ public:
 					for (count = *++cmd; count; --count)
 						pixels[y * p + x++] = 0;
 					continue;
+				// TODO what does this do?
+				// XXX pixel count if lower_nibble == 4: 1 + cmd >> 2
+				case 0x54:
+					dbgf("magic 21 pixels %02X\n", cmd[1] & 0xff);
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+				case 0x44:
+					dbgf("magic 17 pixels %02X\n", cmd[1] & 0xff);
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+				case 0x34:
+					dbgf("magic 13 pixels %02X\n", cmd[1] & 0xff);
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+				case 0x24:
+					dbgf("magic 9 pixels %02X\n", cmd[1] & 0xff);
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+				case 0x14:
+					dbgf("magic 5 pixels %02X\n", cmd[1] & 0xff);
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = magic_table[*++cmd];
+				case 0x04:
+					dbgf("magic 1 pixel %02X\n", cmd[1] & 0xff);
+					pixels[y * p + x++] = magic_table[*++cmd];
+					continue;
 				case 0xfd: pixels[y * p + x++] = 0; // skip 63
 				case 0xf9: pixels[y * p + x++] = 0; // skip 62
 				case 0xf5: pixels[y * p + x++] = 0; // skip 61
