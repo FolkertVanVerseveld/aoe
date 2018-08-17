@@ -24,11 +24,6 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
-
-// Magic slp conversion table
-extern uint8_t magic_table[256];
-
 // Default small text font
 extern TTF_Font *fnt_default;
 // Default user interface button font

@@ -463,40 +463,102 @@ public:
 						pixels[y * p + x++] = 0;
 					continue;
 				// TODO what does this do?
+				case 0x02:
+					for (count = *++cmd; count; --count)
+						pixels[y * p + x++] = *++cmd;
+					continue;
+				case 0x30:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					continue;
 				// XXX pixel count if lower_nibble == 4: 1 + cmd >> 2
+				case 0xF4:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+				case 0xE4:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+				case 0xD4:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+				case 0xC4:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+				case 0xB4:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+				case 0xA4:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+				case 0x94:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+				case 0x84:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+				case 0x74:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+				case 0x64:
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
 				case 0x54:
-					dbgf("magic 21 pixels %02X\n", cmd[1] & 0xff);
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
 				case 0x44:
-					dbgf("magic 17 pixels %02X\n", cmd[1] & 0xff);
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
 				case 0x34:
-					dbgf("magic 13 pixels %02X\n", cmd[1] & 0xff);
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
 				case 0x24:
-					dbgf("magic 9 pixels %02X\n", cmd[1] & 0xff);
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
 				case 0x14:
-					dbgf("magic 5 pixels %02X\n", cmd[1] & 0xff);
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
-					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
+					pixels[y * p + x++] = *++cmd;
 				case 0x04:
-					dbgf("magic 1 pixel %02X\n", cmd[1] & 0xff);
-					pixels[y * p + x++] = magic_table[*++cmd];
+					pixels[y * p + x++] = *++cmd;
 					continue;
 				case 0xfd: pixels[y * p + x++] = 0; // skip 63
 				case 0xf9: pixels[y * p + x++] = 0; // skip 62
@@ -612,6 +674,9 @@ row_data.push_back(pixel(color_standard, color))
 			#endif
 		}
 		putchar('\n');
+
+		if (SDL_SetColorKey(surface, SDL_TRUE, 0))
+			fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());
 
 		if (!(texture = SDL_CreateTextureFromSurface(renderer, surface)))
 			panicf("Cannot create texture: %s\n", SDL_GetError());
@@ -1337,9 +1402,24 @@ public:
 	}
 
 	void draw() const override final {
+		// draw terrain
+		int y, x, w = 32, h = 16;
+
+		int bottom = HEIGHT - menu_bar.images[1].surface->h;
+
+		for (y = -h; y < bottom; y += h * 2) {
+			for (x = -w; x < WIDTH; x += w * 2) {
+				terrain_desert.draw(x, y, 0);
+				terrain_desert.draw(x + w, y + h, 0);
+			}
+		}
+
+		/* Draw HUD */
+
+		// draw background layers
 		menu_bar.draw(0, 0, 0);
-		menu_bar.draw(0, HEIGHT - 126, 1);
-		terrain_desert.draw(100, 100, 0);
+		menu_bar.draw(0, bottom, 1);
+		// draw buttons
 		Menu::draw();
 	}
 };
