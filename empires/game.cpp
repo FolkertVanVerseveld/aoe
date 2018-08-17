@@ -17,6 +17,7 @@
 #include "../setup/res.h"
 
 std::vector<std::shared_ptr<Player>> players;
+Map map;
 
 unsigned StatsMilitary::max_army_count = 0;
 
@@ -72,4 +73,25 @@ PlayerComputer::PlayerComputer() : Player(random_name(), 0) {
 }
 
 void PlayerComputer::tick() {
+}
+
+Map::Map(unsigned w, unsigned h)
+	: map(new uint8_t[w * h])
+{
+}
+
+void Map::resize(MapSize size)
+{
+	switch (size) {
+	default:
+		dbgf("unknown map size: %d\n", size);
+	case TINY:
+		resize(72, 72);
+		break;
+	}
+}
+
+void Map::resize(unsigned w, unsigned h)
+{
+	map.reset(new uint8_t[w * h]);
 }

@@ -23,6 +23,7 @@ extern "C" {
 
 #define DRS_MAIN_PALETTE 50500
 #define DRS_MENU_BAR 50740
+#define DRS_TERRAIN_DESERT 15000
 
 // FIXME also support big-endian machines
 #define DT_BINARY 0x62696e61

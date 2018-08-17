@@ -461,7 +461,7 @@ public:
 				case 0x03:
 					for (count = *++cmd; count; --count)
 						pixels[y * p + x++] = 0;
-					break;
+					continue;
 				case 0xfd: pixels[y * p + x++] = 0; // skip 63
 				case 0xf9: pixels[y * p + x++] = 0; // skip 62
 				case 0xf5: pixels[y * p + x++] = 0; // skip 61
@@ -561,7 +561,7 @@ row_data.push_back(pixel(color_standard, color))
 						 (unsigned)(cmd - (const unsigned char*)data),
 						*cmd, command
 					);
-					#if 0
+					#if 1
 					while (*cmd != 0xf)
 						++cmd;
 					i = w;
@@ -600,9 +600,10 @@ row_data.push_back(pixel(color_standard, color))
 /** SLP image wrapper. */
 class AnimationTexture final {
 	struct slp image;
+public:
+	// FIXME make private and wrap in unique_ptr
 	Image *images;
 
-public:
 	AnimationTexture() : images(NULL) {}
 	AnimationTexture(Palette *pal, unsigned id) : images(NULL) { open(pal, id); }
 
@@ -1025,6 +1026,8 @@ public:
 
 		unsigned i = 1, step = tl_height / players.size();
 
+		TTF_SetFontStyle(fnt_default, TTF_STYLE_BOLD);
+
 		for (auto x : players) {
 			auto p = x.get();
 			char buf[64];
@@ -1041,6 +1044,8 @@ public:
 			++i;
 		}
 
+		TTF_SetFontStyle(fnt_default, TTF_STYLE_NORMAL);
+
 		canvas.clear();
 	}
 
@@ -1050,7 +1055,7 @@ public:
 
 	void button_activate(unsigned id) override final {
 		switch (id) {
-		case 2: running = 0; break;
+		case 3: running = 0; break;
 		}
 	}
 
@@ -1120,6 +1125,8 @@ public:
 
 		unsigned y = 225, nr = 0;
 
+		TTF_SetFontStyle(fnt_default, TTF_STYLE_BOLD);
+
 		for (auto x : players) {
 			auto p = x.get();
 
@@ -1128,6 +1135,8 @@ public:
 			y += 263 - 225;
 			++nr;
 		}
+
+		TTF_SetFontStyle(fnt_default, TTF_STYLE_NORMAL);
 
 		if (type)
 			mus_play(MUS_DEFEAT);
@@ -1225,32 +1234,31 @@ public:
 
 class MenuGame final : public Menu {
 	Palette palette;
-	AnimationTexture menu_bar;
+	AnimationTexture menu_bar, terrain_desert;
 public:
 	MenuGame()
 		: Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false)
-		, palette(), menu_bar()
+		, palette(), menu_bar(), terrain_desert()
 	{
 		group.add(728, 0, STR_BTN_MENU, WIDTH - 728, 18, true);
 		group.add(620, 0, STR_BTN_DIPLOMACY, 728 - 620, 18, true);
 
 		objects.emplace_back(new Text(WIDTH / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
-		objects.emplace_back(new Text(WIDTH / 2, HEIGHT / 2, STR_PAUSED, MIDDLE, CENTER, fnt_button));
 
 		const Player *you = players[0].get();
 
 		char buf[32];
-		int x = 4;
-		snprintf(buf, sizeof buf, "F: %u", you->resources.food);
+		int x = 32;
+		snprintf(buf, sizeof buf, "%u", you->resources.food);
 		objects.emplace_back(new Text(x, 3, buf));
-		x += 80;
-		snprintf(buf, sizeof buf, "W: %u", you->resources.wood);
+		x = 98;
+		snprintf(buf, sizeof buf, "%u", you->resources.wood);
 		objects.emplace_back(new Text(x, 3, buf));
-		x += 80;
-		snprintf(buf, sizeof buf, "G: %u", you->resources.gold);
+		x = 166;
+		snprintf(buf, sizeof buf, "%u", you->resources.gold);
 		objects.emplace_back(new Text(x, 3, buf));
-		x += 80;
-		snprintf(buf, sizeof buf, "S: %u", you->resources.stone);
+		x = 234;
+		snprintf(buf, sizeof buf, "%u", you->resources.stone);
 		objects.emplace_back(new Text(x, 3, buf));
 
 		objects.emplace_back(new Button(765, 482, 795 - 765, 512 - 482, STR_BTN_SCORE, true));
@@ -1260,6 +1268,18 @@ public:
 
 		palette.open(DRS_MAIN_PALETTE);
 		menu_bar.open(&palette, DRS_MENU_BAR);
+		terrain_desert.open(&palette, DRS_TERRAIN_DESERT);
+
+		int top = menu_bar.images[0].surface->h;
+
+		objects.emplace_back(
+			new Text(
+				WIDTH / 2, top + (HEIGHT - 126 - top) / 2,
+				STR_PAUSED, MIDDLE, CENTER, fnt_button
+			)
+		);
+
+		map.resize(TINY);
 
 		mus_play(MUS_GAME);
 	}
@@ -1283,6 +1303,7 @@ public:
 	void draw() const override final {
 		menu_bar.draw(0, 0, 0);
 		menu_bar.draw(0, HEIGHT - 126, 1);
+		terrain_desert.draw(100, 100, 0);
 		Menu::draw();
 	}
 };

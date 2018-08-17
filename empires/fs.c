@@ -71,7 +71,7 @@ int fs_cdrom_audio_path(char *buf, size_t bufsz, const char *file)
 		if ((devtype = strstr(line, BLKID_TYPE)) && (end = strchr(devtype + strlen(BLKID_TYPE), '"'))) {
 			*end = '\0';
 			devtype += strlen(BLKID_TYPE);
-			dbgf("device: %s, type: %s\n", basename(devname), devtype);
+			//dbgf("device: %s, type: %s\n", basename(devname), devtype);
 			if (!strcmp(devtype, "iso9660")) {
 				struct stat st;
 				snprintf(buf, bufsz, "/run/user/1000/gvfs/cdda:host=%s/%s", basename(devname), file);

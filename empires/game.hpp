@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -234,3 +236,24 @@ public:
 };
 
 extern std::vector<std::shared_ptr<Player>> players;
+
+enum MapSize {
+	TINY,
+	SMALL,
+	MEDIUM,
+	LARGE,
+	HUGE_, // HUGE is already being used somewhere...
+};
+
+class Map final {
+public:
+	std::unique_ptr<uint8_t[]> map;
+
+	Map() : map() {}
+	Map(unsigned w, unsigned h);
+
+	void resize(MapSize size);
+	void resize(unsigned w, unsigned h);
+};
+
+extern Map map;

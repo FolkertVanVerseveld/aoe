@@ -15,7 +15,7 @@
 #include <SDL2/SDL_ttf.h>
 
 #define FONT_NAME_DEFAULT "arial.ttf"
-#define FONT_PT_DEFAULT 14
+#define FONT_PT_DEFAULT 12
 
 #define FONT_NAME_BUTTON "coprgtl.ttf"
 #define FONT_PT_BUTTON 18
