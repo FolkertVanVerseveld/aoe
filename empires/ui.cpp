@@ -26,6 +26,7 @@
 #include "sfx.h"
 #include "fs.h"
 
+#include "image.hpp"
 #include "game.hpp"
 
 extern struct pe_lib lib_lang;
@@ -150,7 +151,7 @@ fail:
 	}
 } canvas;
 
-bool point_in_rect(int x, int y, int w, int h, int px, int py)
+static bool point_in_rect(int x, int y, int w, int h, int px, int py)
 {
 	return px >= x && px < x + w && py >= y && py < y + h;
 }
@@ -326,67 +327,54 @@ public:
 	}
 };
 
-class Palette final {
-public:
-	SDL_Palette *pal;
+void Palette::open(unsigned id) {
+	size_t n;
+	const char *data = (const char*)drs_get_item(DT_BINARY, id, &n);
 
-	Palette() : pal(NULL) {}
-	Palette(unsigned id) : pal(NULL) { open(id); }
+	unsigned colors;
+	int offset;
 
-	~Palette() {
-		if (pal)
-			SDL_FreePalette(pal);
+	if (sscanf(data,
+		"JASC-PAL\n"
+		"%*s\n"
+		"%u%n\n", &colors, &offset) != 1)
+	{
+		panicf("Bad palette id %u\n", id);
 	}
 
-	void open(unsigned id) {
-		size_t n;
-		const char *data = (const char*)drs_get_item(DT_BINARY, id, &n);
+	if (colors > 256)
+		panicf("Bad palette id %u: too many colors", id);
 
-		unsigned colors;
-		int offset;
+	if (!(pal = SDL_AllocPalette(colors)))
+		panic("Out of memory");
 
-		if (sscanf(data,
-			"JASC-PAL\n"
-			"%*s\n"
-			"%u%n\n", &colors, &offset) != 1)
-		{
-			panicf("Bad palette id %u\n", id);
-		}
+	for (unsigned i = 0; i < colors; ++i) {
+		int n;
+		unsigned cols[3];
+		SDL_Color col;
 
-		if (colors > 256)
-			panicf("Bad palette id %u: too many colors", id);
+		if (sscanf(data + offset,
+			"%u %u %u%n\n", &cols[0], &cols[1], &cols[2], &n) != 3 || n < 0)
+			goto fail;
 
-		if (!(pal = SDL_AllocPalette(colors)))
-			panic("Out of memory");
+		col.r = cols[0];
+		col.g = cols[1];
+		col.b = cols[2];
+		col.a = SDL_ALPHA_OPAQUE;
 
-		for (unsigned i = 0; i < colors; ++i) {
-			int n;
-			unsigned cols[3];
-			SDL_Color col;
-
-			if (sscanf(data + offset,
-				"%u %u %u%n\n", &cols[0], &cols[1], &cols[2], &n) != 3 || n < 0)
-				goto fail;
-
-			col.r = cols[0];
-			col.g = cols[1];
-			col.b = cols[2];
-			col.a = SDL_ALPHA_OPAQUE;
-
-			if (SDL_SetPaletteColors(pal, &col, i, 1))
+		if (SDL_SetPaletteColors(pal, &col, i, 1))
 fail:
-				panicf("Bad palette id %u: bad color %u\n", id, i);
-			offset += n;
-		}
+			panicf("Bad palette id %u: bad color %u\n", id, i);
+		offset += n;
 	}
+}
 
-	void set_border_color(unsigned id, unsigned col_id) const {
-		border_cols[id].r = pal->colors[col_id].r;
-		border_cols[id].g = pal->colors[col_id].g;
-		border_cols[id].b = pal->colors[col_id].b;
-		border_cols[id].a = SDL_ALPHA_OPAQUE;
-	}
-};
+void Palette::set_border_color(unsigned id, unsigned col_id) const {
+	border_cols[id].r = pal->colors[col_id].r;
+	border_cols[id].g = pal->colors[col_id].g;
+	border_cols[id].b = pal->colors[col_id].b;
+	border_cols[id].a = SDL_ALPHA_OPAQUE;
+}
 
 unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
 {
@@ -398,244 +386,239 @@ unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
 	return v;
 }
 
-class Image final {
-public:
-	SDL_Surface *surface;
-	SDL_Texture *texture;
+Image::Image() : surface(NULL), texture(NULL) {}
 
-	Image() : surface(NULL), texture(NULL) {}
+void Image::load(Palette *pal, const void *data, const struct slp_frame_info *frame)
+{
+	dbgf("dimensions: %u x %u\n", frame->width, frame->height);
+	dbgf("hostpot: %u,%u\n", frame->hotspot_x, frame->hotspot_y);
+	dbgf("command table offset: %X\n", frame->cmd_table_offset);
+	dbgf("outline table offset: %X\n", frame->outline_table_offset);
 
-	void load(Palette *pal, const void *data, const struct slp_frame_info *frame)
-	{
-		dbgf("dimensions: %u x %u\n", frame->width, frame->height);
-		dbgf("hostpot: %u,%u\n", frame->hotspot_x, frame->hotspot_y);
-		dbgf("command table offset: %X\n", frame->cmd_table_offset);
-		dbgf("outline table offset: %X\n", frame->outline_table_offset);
+	// FIXME big endian support
+	surface = SDL_CreateRGBSurface(0, frame->width, frame->height, 8, 0, 0, 0, 0);
 
-		// FIXME big endian support
-		surface = SDL_CreateRGBSurface(0, frame->width, frame->height, 8, 0, 0, 0, 0);
+	if (!surface || SDL_SetSurfacePalette(surface, pal->pal))
+		panicf("Cannot create image: %s\n", SDL_GetError());
+	if (surface->format->format != SDL_PIXELFORMAT_INDEX8)
+		panicf("Unexpected image format: %s\n", SDL_GetPixelFormatName(surface->format->format));
 
-		if (!surface || SDL_SetSurfacePalette(surface, pal->pal))
-			panicf("Cannot create image: %s\n", SDL_GetError());
-		if (surface->format->format != SDL_PIXELFORMAT_INDEX8)
-			panicf("Unexpected image format: %s\n", SDL_GetPixelFormatName(surface->format->format));
+	// fill with random data so we can easily spot garbled image data
+	unsigned char *pixels = (unsigned char*)surface->pixels;
+	for (int y = 0, h = frame->height, p = surface->pitch; y < h; ++y)
+		for (int x = 0, w = frame->width; x < w; ++x)
+			pixels[y * p + x] = 0;
 
-		// fill with random data so we can easily spot garbled image data
-		unsigned char *pixels = (unsigned char*)surface->pixels;
-		for (int y = 0, h = frame->height, p = surface->pitch; y < h; ++y)
-			for (int x = 0, w = frame->width; x < w; ++x)
-				pixels[y * p + x] = 0;
+	const struct slp_frame_row_edge *edge =
+		(const struct slp_frame_row_edge*)
+			((char*)data + frame->outline_table_offset);
+	const unsigned char *cmd = (const unsigned char*)
+		((char*)data + frame->cmd_table_offset + 4 * frame->height);
 
-		const struct slp_frame_row_edge *edge =
-			(const struct slp_frame_row_edge*)
-				((char*)data + frame->outline_table_offset);
-		const unsigned char *cmd = (const unsigned char*)
-			((char*)data + frame->cmd_table_offset + 4 * frame->height);
+	dbgf("command data offset: %X\n", frame->cmd_table_offset + 4 * frame->height);
 
-		dbgf("command data offset: %X\n", frame->cmd_table_offset + 4 * frame->height);
+	for (int y = 0, h = frame->height; y < h; ++y, ++edge) {
+		if (edge->left_space == 0x8000 || edge->right_space == 0x8000)
+			continue;
 
-		for (int y = 0, h = frame->height; y < h; ++y, ++edge) {
-			if (edge->left_space == 0x8000 || edge->right_space == 0x8000)
+		int line_size = frame->width - edge->left_space - edge->right_space;
+		#if 0
+		printf("%8X: %3d: %d (%hu, %hu)\n",
+			(unsigned)(cmd - (const unsigned char*)data),
+			y, line_size, edge->left_space, edge->right_space
+		);
+		#endif
+
+		// fill line_size with default value
+		for (int x = edge->left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
+			pixels[y * p + x] = rand();
+
+		for (int i = edge->left_space, x = i, w = x + line_size, p = surface->pitch; i <= w; ++i, ++cmd) {
+			unsigned command, count;
+
+			command = *cmd & 0x0f;
+
+			// TODO figure out if lesser skip behaves different compared to aoe2
+
+			switch (*cmd) {
+			case 0x03:
+				for (count = *++cmd; count; --count)
+					pixels[y * p + x++] = 0;
 				continue;
+			// TODO what does this do?
+			case 0x02:
+				for (count = *++cmd; count; --count)
+					pixels[y * p + x++] = *++cmd;
+				continue;
+			case 0x30:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				continue;
+			// XXX pixel count if lower_nibble == 4: 1 + cmd >> 2
+			case 0xF4:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0xE4:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0xD4:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0xC4:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0xB4:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0xA4:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x94:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x84:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x74:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x64:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x54:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x44:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x34:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x24:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x14:
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+				pixels[y * p + x++] = *++cmd;
+			case 0x04:
+				pixels[y * p + x++] = *++cmd;
+				continue;
+			case 0xfd: pixels[y * p + x++] = 0; // skip 63
+			case 0xf9: pixels[y * p + x++] = 0; // skip 62
+			case 0xf5: pixels[y * p + x++] = 0; // skip 61
+			case 0xf1: pixels[y * p + x++] = 0; // skip 60
+			case 0xed: pixels[y * p + x++] = 0; // skip 59
+			case 0xe9: pixels[y * p + x++] = 0; // skip 58
+			case 0xe5: pixels[y * p + x++] = 0; // skip 57
+			case 0xe1: pixels[y * p + x++] = 0; // skip 56
+			case 0xdd: pixels[y * p + x++] = 0; // skip 55
+			case 0xd9: pixels[y * p + x++] = 0; // skip 54
+			case 0xd5: pixels[y * p + x++] = 0; // skip 53
+			case 0xd1: pixels[y * p + x++] = 0; // skip 52
+			case 0xcd: pixels[y * p + x++] = 0; // skip 51
+			case 0xc9: pixels[y * p + x++] = 0; // skip 50
+			case 0xc5: pixels[y * p + x++] = 0; // skip 49
+			case 0xc1: pixels[y * p + x++] = 0; // skip 48
+			case 0xbd: pixels[y * p + x++] = 0; // skip 47
+			case 0xb9: pixels[y * p + x++] = 0; // skip 46
+			case 0xb5: pixels[y * p + x++] = 0; // skip 45
+			case 0xb1: pixels[y * p + x++] = 0; // skip 44
+			case 0xad: pixels[y * p + x++] = 0; // skip 43
+			case 0xa9: pixels[y * p + x++] = 0; // skip 42
+			case 0xa5: pixels[y * p + x++] = 0; // skip 41
+			case 0xa1: pixels[y * p + x++] = 0; // skip 40
+			case 0x9d: pixels[y * p + x++] = 0; // skip 39
+			case 0x99: pixels[y * p + x++] = 0; // skip 38
+			case 0x95: pixels[y * p + x++] = 0; // skip 37
+			case 0x91: pixels[y * p + x++] = 0; // skip 36
+			case 0x8d: pixels[y * p + x++] = 0; // skip 35
+			case 0x89: pixels[y * p + x++] = 0; // skip 34
+			case 0x85: pixels[y * p + x++] = 0; // skip 33
+			case 0x81: pixels[y * p + x++] = 0; // skip 32
+			case 0x7d: pixels[y * p + x++] = 0; // skip 31
+			case 0x79: pixels[y * p + x++] = 0; // skip 30
+			case 0x75: pixels[y * p + x++] = 0; // skip 29
+			case 0x71: pixels[y * p + x++] = 0; // skip 28
+			case 0x6d: pixels[y * p + x++] = 0; // skip 27
+			case 0x69: pixels[y * p + x++] = 0; // skip 26
+			case 0x65: pixels[y * p + x++] = 0; // skip 25
+			case 0x61: pixels[y * p + x++] = 0; // skip 24
+			case 0x5d: pixels[y * p + x++] = 0; // skip 23
+			case 0x59: pixels[y * p + x++] = 0; // skip 22
+			case 0x55: pixels[y * p + x++] = 0; // skip 21
+			case 0x51: pixels[y * p + x++] = 0; // skip 20
+			case 0x4d: pixels[y * p + x++] = 0; // skip 19
+			case 0x49: pixels[y * p + x++] = 0; // skip 18
+			case 0x45: pixels[y * p + x++] = 0; // skip 17
+			case 0x41: pixels[y * p + x++] = 0; // skip 16
+			case 0x3d: pixels[y * p + x++] = 0; // skip 15
+			case 0x39: pixels[y * p + x++] = 0; // skip 14
+			case 0x35: pixels[y * p + x++] = 0; // skip 13
+			case 0x31: pixels[y * p + x++] = 0; // skip 12
+			case 0x2d: pixels[y * p + x++] = 0; // skip 11
+			case 0x29: pixels[y * p + x++] = 0; // skip 10
+			case 0x25: pixels[y * p + x++] = 0; // skip 9
+			case 0x21: pixels[y * p + x++] = 0; // skip 8
+			case 0x1d: pixels[y * p + x++] = 0; // skip 7
+			case 0x19: pixels[y * p + x++] = 0; // skip 6
+			case 0x15: pixels[y * p + x++] = 0; // skip 5
+			case 0x11: pixels[y * p + x++] = 0; // skip 4
+			case 0x0d: pixels[y * p + x++] = 0; // skip 3
+			case 0x09: pixels[y * p + x++] = 0; // skip 2
+			case 0x05: pixels[y * p + x++] = 0; // skip 1
+				continue;
+			}
 
-			int line_size = frame->width - edge->left_space - edge->right_space;
-			#if 0
-			printf("%8X: %3d: %d (%hu, %hu)\n",
-				(unsigned)(cmd - (const unsigned char*)data),
-				y, line_size, edge->left_space, edge->right_space
-			);
-			#endif
-
-			// fill line_size with default value
-			for (int x = edge->left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
-				pixels[y * p + x] = rand();
-
-			for (int i = edge->left_space, x = i, w = x + line_size, p = surface->pitch; i <= w; ++i, ++cmd) {
-				unsigned command, count;
-
-				command = *cmd & 0x0f;
-
-				// TODO figure out if lesser skip behaves different compared to aoe2
-
-				switch (*cmd) {
-				case 0x03:
-					for (count = *++cmd; count; --count)
-						pixels[y * p + x++] = 0;
-					continue;
-				// TODO what does this do?
-				case 0x02:
-					for (count = *++cmd; count; --count)
-						pixels[y * p + x++] = *++cmd;
-					continue;
-				case 0x30:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					continue;
-				// XXX pixel count if lower_nibble == 4: 1 + cmd >> 2
-				case 0xF4:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0xE4:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0xD4:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0xC4:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0xB4:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0xA4:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x94:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x84:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x74:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x64:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x54:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x44:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x34:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x24:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x14:
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-					pixels[y * p + x++] = *++cmd;
-				case 0x04:
-					pixels[y * p + x++] = *++cmd;
-					continue;
-				case 0xfd: pixels[y * p + x++] = 0; // skip 63
-				case 0xf9: pixels[y * p + x++] = 0; // skip 62
-				case 0xf5: pixels[y * p + x++] = 0; // skip 61
-				case 0xf1: pixels[y * p + x++] = 0; // skip 60
-				case 0xed: pixels[y * p + x++] = 0; // skip 59
-				case 0xe9: pixels[y * p + x++] = 0; // skip 58
-				case 0xe5: pixels[y * p + x++] = 0; // skip 57
-				case 0xe1: pixels[y * p + x++] = 0; // skip 56
-				case 0xdd: pixels[y * p + x++] = 0; // skip 55
-				case 0xd9: pixels[y * p + x++] = 0; // skip 54
-				case 0xd5: pixels[y * p + x++] = 0; // skip 53
-				case 0xd1: pixels[y * p + x++] = 0; // skip 52
-				case 0xcd: pixels[y * p + x++] = 0; // skip 51
-				case 0xc9: pixels[y * p + x++] = 0; // skip 50
-				case 0xc5: pixels[y * p + x++] = 0; // skip 49
-				case 0xc1: pixels[y * p + x++] = 0; // skip 48
-				case 0xbd: pixels[y * p + x++] = 0; // skip 47
-				case 0xb9: pixels[y * p + x++] = 0; // skip 46
-				case 0xb5: pixels[y * p + x++] = 0; // skip 45
-				case 0xb1: pixels[y * p + x++] = 0; // skip 44
-				case 0xad: pixels[y * p + x++] = 0; // skip 43
-				case 0xa9: pixels[y * p + x++] = 0; // skip 42
-				case 0xa5: pixels[y * p + x++] = 0; // skip 41
-				case 0xa1: pixels[y * p + x++] = 0; // skip 40
-				case 0x9d: pixels[y * p + x++] = 0; // skip 39
-				case 0x99: pixels[y * p + x++] = 0; // skip 38
-				case 0x95: pixels[y * p + x++] = 0; // skip 37
-				case 0x91: pixels[y * p + x++] = 0; // skip 36
-				case 0x8d: pixels[y * p + x++] = 0; // skip 35
-				case 0x89: pixels[y * p + x++] = 0; // skip 34
-				case 0x85: pixels[y * p + x++] = 0; // skip 33
-				case 0x81: pixels[y * p + x++] = 0; // skip 32
-				case 0x7d: pixels[y * p + x++] = 0; // skip 31
-				case 0x79: pixels[y * p + x++] = 0; // skip 30
-				case 0x75: pixels[y * p + x++] = 0; // skip 29
-				case 0x71: pixels[y * p + x++] = 0; // skip 28
-				case 0x6d: pixels[y * p + x++] = 0; // skip 27
-				case 0x69: pixels[y * p + x++] = 0; // skip 26
-				case 0x65: pixels[y * p + x++] = 0; // skip 25
-				case 0x61: pixels[y * p + x++] = 0; // skip 24
-				case 0x5d: pixels[y * p + x++] = 0; // skip 23
-				case 0x59: pixels[y * p + x++] = 0; // skip 22
-				case 0x55: pixels[y * p + x++] = 0; // skip 21
-				case 0x51: pixels[y * p + x++] = 0; // skip 20
-				case 0x4d: pixels[y * p + x++] = 0; // skip 19
-				case 0x49: pixels[y * p + x++] = 0; // skip 18
-				case 0x45: pixels[y * p + x++] = 0; // skip 17
-				case 0x41: pixels[y * p + x++] = 0; // skip 16
-				case 0x3d: pixels[y * p + x++] = 0; // skip 15
-				case 0x39: pixels[y * p + x++] = 0; // skip 14
-				case 0x35: pixels[y * p + x++] = 0; // skip 13
-				case 0x31: pixels[y * p + x++] = 0; // skip 12
-				case 0x2d: pixels[y * p + x++] = 0; // skip 11
-				case 0x29: pixels[y * p + x++] = 0; // skip 10
-				case 0x25: pixels[y * p + x++] = 0; // skip 9
-				case 0x21: pixels[y * p + x++] = 0; // skip 8
-				case 0x1d: pixels[y * p + x++] = 0; // skip 7
-				case 0x19: pixels[y * p + x++] = 0; // skip 6
-				case 0x15: pixels[y * p + x++] = 0; // skip 5
-				case 0x11: pixels[y * p + x++] = 0; // skip 4
-				case 0x0d: pixels[y * p + x++] = 0; // skip 3
-				case 0x09: pixels[y * p + x++] = 0; // skip 2
-				case 0x05: pixels[y * p + x++] = 0; // skip 1
-					continue;
+			switch (command) {
+			case 0x07:
+				count = cmd_or_next(&cmd, 4);
+				//dbgf("fill: %u pixels\n", count);
+				for (++cmd; count; --count) {
+					//dbgf(" %x", (unsigned)(*cmd) & 0xff);
+					pixels[y * p + x++] = *cmd;
 				}
-
-				switch (command) {
-				case 0x07:
-					count = cmd_or_next(&cmd, 4);
-					//dbgf("fill: %u pixels\n", count);
-					for (++cmd; count; --count) {
-						//dbgf(" %x", (unsigned)(*cmd) & 0xff);
-						pixels[y * p + x++] = *cmd;
-					}
-					//dbgs("");
-					break;
+				//dbgs("");
+				break;
 #if 0
 // source: openage/openage/convert/slp.pyx:385
 // fill command
@@ -650,95 +633,83 @@ color = self.get_byte_at(dpos)
 for _ in range(cpack.count):
 row_data.push_back(pixel(color_standard, color))
 #endif
-				case 0x0f:
-					//dbgs("break");
-					i = w;
-					break;
-				default:
-					dbgf("unknown cmd at %X: %X, %X\n",
-						 (unsigned)(cmd - (const unsigned char*)data),
-						*cmd, command
-					);
-					#if 1
-					while (*cmd != 0xf)
-						++cmd;
-					i = w;
-					#endif
-					break;
-				}
+			case 0x0f:
+				//dbgs("break");
+				i = w;
+				break;
+			default:
+				dbgf("unknown cmd at %X: %X, %X\n",
+					 (unsigned)(cmd - (const unsigned char*)data),
+					*cmd, command
+				);
+				#if 1
+				while (*cmd != 0xf)
+					++cmd;
+				i = w;
+				#endif
+				break;
 			}
-
-			#if 0
-			while (cmd[-1] != 0xf)
-				++cmd;
-			#endif
 		}
-		putchar('\n');
 
-		if (SDL_SetColorKey(surface, SDL_TRUE, 0))
-			fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());
-
-		if (!(texture = SDL_CreateTextureFromSurface(renderer, surface)))
-			panicf("Cannot create texture: %s\n", SDL_GetError());
+		#if 0
+		while (cmd[-1] != 0xf)
+			++cmd;
+		#endif
 	}
+	putchar('\n');
 
-	~Image() {
-		if (texture)
-			SDL_DestroyTexture(texture);
-		if (surface)
-			SDL_FreeSurface(surface);
+	if (SDL_SetColorKey(surface, SDL_TRUE, 0))
+		fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());
+
+	if (!(texture = SDL_CreateTextureFromSurface(renderer, surface)))
+		panicf("Cannot create texture: %s\n", SDL_GetError());
+}
+
+Image::~Image() {
+	if (texture)
+		SDL_DestroyTexture(texture);
+	if (surface)
+		SDL_FreeSurface(surface);
+}
+
+void Image::draw(int x, int y) const {
+	if (!texture)
+		return;
+
+	SDL_Rect pos = {x, y, surface->w, surface->h};
+	SDL_RenderCopy(renderer, texture, NULL, &pos);
+}
+
+AnimationTexture::~AnimationTexture() {
+	if (images)
+		delete[] images;
+}
+
+void AnimationTexture::open(Palette *pal, unsigned id) {
+	size_t n;
+	const void *data = drs_get_item(DT_SLP, id, &n);
+
+	slp_read(&image, data);
+
+	if (memcmp(image.hdr->version, "2.0N", 4))
+		panicf("Bad Animation Texture id %u", id);
+
+	dbgf("slp info %u:\n", id);
+	dbgf("frame count: %u\n", image.hdr->frame_count);
+
+	images = new Image[image.hdr->frame_count];
+
+	// FIXME parse all frames
+	for (size_t i = 0, n = image.hdr->frame_count; i < n; ++i) {
+		dbgf("frame %zu:\n", i);
+		struct slp_frame_info *frame = &image.info[i];
+		images[i].load(pal, data, frame);
 	}
+}
 
-	void draw(int x, int y) const {
-		if (!texture)
-			return;
-
-		SDL_Rect pos = {x, y, surface->w, surface->h};
-		SDL_RenderCopy(renderer, texture, NULL, &pos);
-	}
-};
-
-/** SLP image wrapper. */
-class AnimationTexture final {
-	struct slp image;
-public:
-	// FIXME make private and wrap in unique_ptr
-	Image *images;
-
-	AnimationTexture() : images(NULL) {}
-	AnimationTexture(Palette *pal, unsigned id) : images(NULL) { open(pal, id); }
-
-	~AnimationTexture() {
-		if (images)
-			delete[] images;
-	}
-
-	void open(Palette *pal, unsigned id) {
-		size_t n;
-		const void *data = drs_get_item(DT_SLP, id, &n);
-
-		slp_read(&image, data);
-
-		if (memcmp(image.hdr->version, "2.0N", 4))
-			panicf("Bad Animation Texture id %u", id);
-
-		dbgf("slp info %u:\n", id);
-		dbgf("frame count: %u\n", image.hdr->frame_count);
-
-		images = new Image[image.hdr->frame_count];
-
-		// FIXME parse all frames
-		for (size_t i = 0, n = image.hdr->frame_count; i < n; ++i) {
-			dbgf("frame %zu:\n", i);
-			struct slp_frame_info *frame = &image.info[i];
-			images[i].load(pal, data, frame);
-		}
-	}
-
-	void draw(int x, int y, unsigned index) const {
-		images[index % image.hdr->frame_count].draw(x, y);
-	}
-};
+void AnimationTexture::draw(int x, int y, unsigned index) const {
+	images[index % image.hdr->frame_count].draw(x, y);
+}
 
 class Background final : public UI {
 	unsigned id;
@@ -1336,10 +1307,12 @@ public:
 class MenuGame final : public Menu {
 	Palette palette;
 	AnimationTexture menu_bar, terrain_desert;
+	AnimationTexture town_center_base, town_center_player;
 public:
 	MenuGame()
 		: Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false)
 		, palette(), menu_bar(), terrain_desert()
+		, town_center_base(), town_center_player()
 	{
 		group.add(728, 0, STR_BTN_MENU, WIDTH - 728, 18, true);
 		group.add(620, 0, STR_BTN_DIPLOMACY, 728 - 620, 18, true);
@@ -1370,6 +1343,8 @@ public:
 		palette.open(DRS_MAIN_PALETTE);
 		menu_bar.open(&palette, DRS_MENU_BAR);
 		terrain_desert.open(&palette, DRS_TERRAIN_DESERT);
+		town_center_base.open(&palette, DRS_TOWN_CENTER_BASE);
+		town_center_player.open(&palette, DRS_TOWN_CENTER_PLAYER);
 
 		int top = menu_bar.images[0].surface->h;
 
@@ -1413,6 +1388,9 @@ public:
 				terrain_desert.draw(x + w, y + h, 0);
 			}
 		}
+
+		town_center_base.draw(200, 100, 0);
+		town_center_player.draw(200, 100, 0);
 
 		/* Draw HUD */
 

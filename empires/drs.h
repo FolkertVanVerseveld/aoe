@@ -22,8 +22,16 @@ extern "C" {
 #define DRS_NO_REF ((uint32_t)-1)
 
 #define DRS_MAIN_PALETTE 50500
+
+// User interface stuff
 #define DRS_MENU_BAR 50740
+
+// Terrain tiles
 #define DRS_TERRAIN_DESERT 15000
+
+// Buildings
+#define DRS_TOWN_CENTER_BASE 280
+#define DRS_TOWN_CENTER_PLAYER 230
 
 // FIXME also support big-endian machines
 #define DT_BINARY 0x62696e61

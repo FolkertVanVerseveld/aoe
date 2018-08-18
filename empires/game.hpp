@@ -18,6 +18,8 @@
 
 #include "lang.h"
 
+#include "image.hpp"
+
 #define MAX_PLAYER_COUNT 8
 
 #define CIV_EGYPTIAN 0
@@ -196,11 +198,38 @@ public:
 };
 
 class Unit {
+protected:
 	unsigned hp;
-	double x, y;
+	int x, y;
+	unsigned w, h;
+	const AnimationTexture &animation;
+	unsigned image_index;
 
 public:
-	Unit(unsigned hp, double x, double y) : hp(hp), x(x), y(y) {}
+	Unit(
+		unsigned hp, int x, int y,
+		unsigned w, unsigned h,
+		const AnimationTexture &animation
+	);
+	virtual ~Unit() {}
+
+	virtual void draw(unsigned color) const = 0;
+};
+
+class Building final : public Unit {
+public:
+	Building(unsigned id, int x, int y);
+	void draw(unsigned color) const override final;
+};
+
+class ImageCache {
+public:
+	std::vector<std::shared_ptr<AnimationTexture>> cache;
+
+	ImageCache();
+	~ImageCache();
+
+	const AnimationTexture &get(unsigned id);
 };
 
 class Player {
@@ -211,14 +240,14 @@ public:
 	Resources resources;
 	Summary summary;
 	unsigned color;
+	std::vector<std::shared_ptr<Unit>> units;
 
-	Player(const std::string &name, unsigned civ=0, unsigned color=0)
-		: name(name), civ(civ), alive(true)
-		, resources(res_low_default), summary(), color(color) {}
+	Player(const std::string &name, unsigned civ = 0, unsigned color = 0);
 
 	void idle();
 
 	virtual void tick() = 0;
+	void draw() const;
 };
 
 class PlayerHuman final : public Player {

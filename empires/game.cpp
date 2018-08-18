@@ -30,9 +30,30 @@ unsigned StatsReligion::total_religious_objects = 0;
 
 unsigned StatsTechnology::max_technologies = 0;
 
+Unit::Unit(unsigned hp, int x, int y, unsigned w, unsigned h, const AnimationTexture &animation)
+	: hp(hp), x(x), y(y), w(w), h(h), animation(animation), image_index(0)
+{
+}
+
+void Unit::draw(unsigned color) const
+{
+	animation.draw(x, y, image_index);
+}
+
+Player::Player(const std::string &name, unsigned civ, unsigned color)
+	: name(name), civ(civ), alive(true)
+	, resources(res_low_default), summary(), color(color), units()
+{
+}
+
 void Player::idle() {
 	// TODO do logic
 	tick();
+}
+
+void Player::draw() const {
+	for (auto &x : units)
+		x->draw(color);
 }
 
 void PlayerHuman::tick() {
