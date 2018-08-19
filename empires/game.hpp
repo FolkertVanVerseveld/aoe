@@ -14,6 +14,8 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+
+#include <map>
 #include <vector>
 
 #include "lang.h"
@@ -197,37 +199,58 @@ public:
 		, path_finding(0) {}
 };
 
+enum MapSize {
+	TINY,
+	SMALL,
+	MEDIUM,
+	LARGE,
+	HUGE_, // HUGE is already being used somewhere...
+};
+
+class Map final {
+public:
+	std::unique_ptr<uint8_t[]> map;
+
+	Map() : map() {}
+	Map(unsigned w, unsigned h);
+
+	void resize(MapSize size);
+private:
+	void resize(unsigned w, unsigned h);
+};
+
 class Unit {
 protected:
 	unsigned hp;
+
 	int x, y;
 	unsigned w, h;
-	const AnimationTexture &animation;
+
+	unsigned sprite_index;
 	unsigned image_index;
 
 public:
 	Unit(
 		unsigned hp, int x, int y,
 		unsigned w, unsigned h,
-		const AnimationTexture &animation
+		unsigned sprite_index
 	);
 	virtual ~Unit() {}
 
-	virtual void draw(unsigned color) const = 0;
+	virtual void draw(unsigned color) const;
 };
 
 class Building final : public Unit {
 public:
 	Building(unsigned id, int x, int y);
-	void draw(unsigned color) const override final;
 };
 
 class ImageCache {
+	Palette pal;
 public:
-	std::vector<std::shared_ptr<AnimationTexture>> cache;
+	std::map<unsigned, AnimationTexture> cache;
 
 	ImageCache();
-	~ImageCache();
 
 	const AnimationTexture &get(unsigned id);
 };
@@ -243,6 +266,11 @@ public:
 	std::vector<std::shared_ptr<Unit>> units;
 
 	Player(const std::string &name, unsigned civ = 0, unsigned color = 0);
+
+	/**
+	 * Initialize default stuff
+	 */
+	void init_dummy(Map &map);
 
 	void idle();
 
@@ -264,35 +292,30 @@ public:
 	virtual void tick() override final;
 };
 
-enum MapSize {
-	TINY,
-	SMALL,
-	MEDIUM,
-	LARGE,
-	HUGE_, // HUGE is already being used somewhere...
-};
-
-class Map final {
-public:
-	std::unique_ptr<uint8_t[]> map;
-
-	Map() : map() {}
-	Map(unsigned w, unsigned h);
-
-	void resize(MapSize size);
-private:
-	void resize(unsigned w, unsigned h);
-};
-
 class Game final {
+	bool run;
+	int x, y, w, h;
 public:
 	Map map;
+	std::unique_ptr<ImageCache> cache;
 	std::vector<std::shared_ptr<Player>> players;
 
 	Game();
 
+	void reset(unsigned players = 4);
+
 	void resize(MapSize size);
 	size_t player_count() { return players.size(); }
+
+	void start();
+	void stop();
+
+	void reshape(int x, int y, int w, int h) {
+		this->x = x; this->y = y;
+		this->w = w; this->h = h;
+	}
+
+	void draw();
 };
 
 extern Game game;

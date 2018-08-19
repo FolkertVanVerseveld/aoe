@@ -1211,6 +1211,7 @@ public:
 		case 0:
 			if (type) {
 				stop = 5;
+				game.stop();
 				mus_play(MUS_MAIN);
 			} else
 				stop = 1;
@@ -1298,12 +1299,12 @@ public:
 
 class MenuGame final : public Menu {
 	Palette palette;
-	AnimationTexture menu_bar, terrain_desert;
+	AnimationTexture menu_bar;
 	AnimationTexture town_center_base, town_center_player;
 public:
 	MenuGame()
 		: Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false)
-		, palette(), menu_bar(), terrain_desert()
+		, palette(), menu_bar()
 		, town_center_base(), town_center_player()
 	{
 		group.add(728, 0, STR_BTN_MENU, WIDTH - 728, 18, true);
@@ -1334,7 +1335,6 @@ public:
 
 		palette.open(DRS_MAIN_PALETTE);
 		menu_bar.open(&palette, DRS_MENU_BAR);
-		terrain_desert.open(&palette, DRS_TERRAIN_DESERT);
 		town_center_base.open(&palette, DRS_TOWN_CENTER_BASE);
 		town_center_player.open(&palette, DRS_TOWN_CENTER_PLAYER);
 
@@ -1347,7 +1347,8 @@ public:
 			)
 		);
 
-		game.resize(TINY);
+		game.reshape(0, top, WIDTH, HEIGHT - top);
+		game.start();
 
 		mus_play(MUS_GAME);
 	}
@@ -1369,22 +1370,12 @@ public:
 	}
 
 	void draw() const override final {
-		// draw terrain
-		int y, x, w = 32, h = 16;
-
-		int bottom = HEIGHT - menu_bar.images[1].surface->h;
-
-		for (y = -h; y < bottom; y += h * 2) {
-			for (x = -w; x < WIDTH; x += w * 2) {
-				terrain_desert.draw(x, y, 0);
-				terrain_desert.draw(x + w, y + h, 0);
-			}
-		}
-
-		town_center_base.draw(200, 100, 0);
-		town_center_player.draw(200, 100, 0);
+		//town_center_base.draw(200, 100, 0);
+		//town_center_player.draw(200, 100, 0);
+		game.draw();
 
 		/* Draw HUD */
+		int bottom = HEIGHT - menu_bar.images[1].surface->h;
 
 		// draw background layers
 		menu_bar.draw(0, 0, 0);
@@ -1411,11 +1402,9 @@ public:
 		// TODO add missing UI objects
 
 		// setup players
-		game.players.clear();
-		game.players.emplace_back(new PlayerHuman("You"));
-		game.players.emplace_back(new PlayerComputer());
-		game.players.emplace_back(new PlayerComputer());
-		game.players.emplace_back(new PlayerComputer());
+		game.reset();
+
+		game.resize(TINY);
 
 		char str_count[2] = "0";
 		str_count[0] += game.player_count();

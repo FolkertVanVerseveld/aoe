@@ -12,6 +12,8 @@
 #include <cstdio>
 #include <random>
 
+#include "drs.h"
+
 #include "../setup/dbg.h"
 #include "../setup/def.h"
 #include "../setup/res.h"
@@ -29,20 +31,52 @@ unsigned StatsReligion::total_religious_objects = 0;
 
 unsigned StatsTechnology::max_technologies = 0;
 
-Unit::Unit(unsigned hp, int x, int y, unsigned w, unsigned h, const AnimationTexture &animation)
-	: hp(hp), x(x), y(y), w(w), h(h), animation(animation), image_index(0)
+/** Reset statistics. */
+void stats_reset() {
+	StatsMilitary::max_army_count = 0;
+
+	StatsEconomy::max_explored = 0;
+	StatsEconomy::explore_count = 0;
+	StatsEconomy::max_villagers = 0;
+
+	StatsReligion::max_conversion = 0;
+	StatsReligion::total_religious_objects = 0;
+
+	StatsTechnology::max_technologies = 0;
+}
+
+Unit::Unit(
+	unsigned hp,
+	int x, int y, unsigned w, unsigned h,
+	unsigned sprite_index
+)
+	: hp(hp)
+	, x(x), y(y), w(w), h(h)
+	, sprite_index(sprite_index)
+	, image_index(0)
 {
 }
 
 void Unit::draw(unsigned color) const
 {
-	animation.draw(x, y, image_index);
+	game.cache->get(sprite_index).draw(x, y, image_index);
 }
 
 Player::Player(const std::string &name, unsigned civ, unsigned color)
 	: name(name), civ(civ), alive(true)
 	, resources(res_low_default), summary(), color(color), units()
 {
+}
+
+Building::Building(unsigned id, int x, int y)
+	: Unit(0, x, y, 1, 1, id) {}
+
+void Player::init_dummy(Map &map) {
+	int x, y;
+	x = 200 + rand() % 300;
+	y = 100 + rand() % 200;
+
+	units.emplace_back(new Building(DRS_TOWN_CENTER_BASE, x, y));
 }
 
 void Player::idle() {
@@ -56,6 +90,7 @@ void Player::draw() const {
 }
 
 void PlayerHuman::tick() {
+	dbgf("stub: %s\n", __func__);
 }
 
 extern struct pe_lib lib_lang;
@@ -93,6 +128,7 @@ PlayerComputer::PlayerComputer() : Player(random_name(), 0) {
 }
 
 void PlayerComputer::tick() {
+	dbgf("stub: %s\n", __func__);
 }
 
 Map::Map(unsigned w, unsigned h)
@@ -116,8 +152,77 @@ void Map::resize(unsigned w, unsigned h)
 	map.reset(new uint8_t[w * h]);
 }
 
-Game::Game() : map(), players() {}
+Game::Game()
+	: run(false), map(), cache(), players()
+	, x(0), y(0), w(640), h(480)
+{
+}
+
+void Game::reset(unsigned players) {
+	if (run)
+		panic("Bad game state");
+
+	cache.reset(new ImageCache());
+	resize(TINY);
+
+	this->players.clear();
+
+	if (players) {
+		this->players.emplace_back(new PlayerHuman("you"));
+
+		while (--players)
+			this->players.emplace_back(new PlayerComputer());
+	}
+
+	stats_reset();
+}
 
 void Game::resize(MapSize size) {
 	map.resize(size);
+}
+
+void Game::start() {
+	for (auto p : players)
+		p->init_dummy(map);
+
+	run = true;
+}
+
+void Game::stop() {
+	run = false;
+}
+
+void Game::draw() {
+	// draw terrain
+	int y, x, tile_w = 32, tile_h = 16;
+
+	const AnimationTexture &bkg = cache->get(DRS_TERRAIN_DESERT);
+
+	for (y = this->y - h; y < h; y += tile_h * 2) {
+		for (x = this->x - w; x < w; x += tile_w * 2) {
+			bkg.draw(x, y, 0);
+			bkg.draw(x + tile_w, y + tile_h, 0);
+		}
+	}
+
+	for (auto p : players)
+		p->draw();
+}
+
+/* Image cache stuff */
+
+ImageCache::ImageCache() : pal(DRS_MAIN_PALETTE), cache() {}
+
+const AnimationTexture &ImageCache::get(unsigned id)
+{
+	auto search = cache.find(id);
+	if (search != cache.end())
+		return search->second;
+
+	cache.emplace(id, AnimationTexture(&pal, id));
+	search = cache.find(id);
+	if (search != cache.end())
+		return search->second;
+
+	panicf("Bad id: %u\n", id);
 }
