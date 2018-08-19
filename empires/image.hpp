@@ -56,12 +56,10 @@ class AnimationTexture final {
 	struct slp image;
 public:
 	// FIXME make private and wrap in unique_ptr
-	Image *images;
+	std::unique_ptr<Image[]> images;
 
-	AnimationTexture() : images(NULL) {}
-	AnimationTexture(Palette *pal, unsigned id) : images(NULL) { open(pal, id); }
-
-	~AnimationTexture();
+	AnimationTexture() : images() {}
+	AnimationTexture(Palette *pal, unsigned id) : images() { open(pal, id); }
 
 	void open(Palette *pal, unsigned id);
 	void draw(int x, int y, unsigned index) const;

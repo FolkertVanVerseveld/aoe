@@ -680,11 +680,6 @@ void Image::draw(int x, int y) const {
 	SDL_RenderCopy(renderer, texture, NULL, &pos);
 }
 
-AnimationTexture::~AnimationTexture() {
-	if (images)
-		delete[] images;
-}
-
 void AnimationTexture::open(Palette *pal, unsigned id) {
 	size_t n;
 	const void *data = drs_get_item(DT_SLP, id, &n);
@@ -697,7 +692,7 @@ void AnimationTexture::open(Palette *pal, unsigned id) {
 	dbgf("slp info %u:\n", id);
 	dbgf("frame count: %u\n", image.hdr->frame_count);
 
-	images = new Image[image.hdr->frame_count];
+	images.reset(new Image[image.hdr->frame_count]);
 
 	// FIXME parse all frames
 	for (size_t i = 0, n = image.hdr->frame_count; i < n; ++i) {
@@ -1096,12 +1091,11 @@ public:
 
 		group.add(250, 551, STR_BTN_BACK);
 
-		unsigned i = 1, step = tl_height / players.size();
+		unsigned i = 1, step = tl_height / game.player_count();
 
 		TTF_SetFontStyle(fnt_default, TTF_STYLE_BOLD);
 
-		for (auto x : players) {
-			auto p = x.get();
+		for (auto p : game.players) {
 			char buf[64];
 			char civbuf[64];
 			load_string(&lib_lang, STR_CIV_EGYPTIAN + p->civ, civbuf, sizeof civbuf);
@@ -1134,8 +1128,8 @@ public:
 	virtual void draw() const override {
 		Menu::draw();
 
-		unsigned i = 0, step = (tl_height + 1) / players.size();
-		for (unsigned n = players.size(); i < n; ++i) {
+		unsigned i, n = game.player_count(), step = (tl_height + 1) / n;
+		for (i = 0; i < n; ++i) {
 			const SDL_Color *col = &col_players[i];
 
 			Sint16 xx[4], yy[4];
@@ -1199,9 +1193,7 @@ public:
 
 		TTF_SetFontStyle(fnt_default, TTF_STYLE_BOLD);
 
-		for (auto x : players) {
-			auto p = x.get();
-
+		for (auto p : game.players) {
 			objects.emplace_back(new Text(31, y, p->name, LEFT, TOP, fnt_default, col_players[nr % MAX_PLAYER_COUNT]));
 
 			y += 263 - 225;
@@ -1319,7 +1311,7 @@ public:
 
 		objects.emplace_back(new Text(WIDTH / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
 
-		const Player *you = players[0].get();
+		const Player *you = game.players[0].get();
 
 		char buf[32];
 		int x = 32;
@@ -1355,7 +1347,7 @@ public:
 			)
 		);
 
-		map.resize(TINY);
+		game.resize(TINY);
 
 		mus_play(MUS_GAME);
 	}
@@ -1419,14 +1411,14 @@ public:
 		// TODO add missing UI objects
 
 		// setup players
-		players.clear();
-		players.emplace_back(new PlayerHuman("You"));
-		players.emplace_back(new PlayerComputer());
-		players.emplace_back(new PlayerComputer());
-		players.emplace_back(new PlayerComputer());
+		game.players.clear();
+		game.players.emplace_back(new PlayerHuman("You"));
+		game.players.emplace_back(new PlayerComputer());
+		game.players.emplace_back(new PlayerComputer());
+		game.players.emplace_back(new PlayerComputer());
 
 		char str_count[2] = "0";
-		str_count[0] += players.size();
+		str_count[0] += game.player_count();
 
 		// FIXME hardcoded 2 player mode
 		objects.emplace_back(new Text(38, 374, STR_PLAYER_COUNT, LEFT, TOP, fnt_button));

@@ -16,8 +16,7 @@
 #include "../setup/def.h"
 #include "../setup/res.h"
 
-std::vector<std::shared_ptr<Player>> players;
-Map map;
+Game game;
 
 unsigned StatsMilitary::max_army_count = 0;
 
@@ -115,4 +114,10 @@ void Map::resize(MapSize size)
 void Map::resize(unsigned w, unsigned h)
 {
 	map.reset(new uint8_t[w * h]);
+}
+
+Game::Game() : map(), players() {}
+
+void Game::resize(MapSize size) {
+	map.resize(size);
 }

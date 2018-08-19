@@ -264,8 +264,6 @@ public:
 	virtual void tick() override final;
 };
 
-extern std::vector<std::shared_ptr<Player>> players;
-
 enum MapSize {
 	TINY,
 	SMALL,
@@ -282,7 +280,19 @@ public:
 	Map(unsigned w, unsigned h);
 
 	void resize(MapSize size);
+private:
 	void resize(unsigned w, unsigned h);
 };
 
-extern Map map;
+class Game final {
+public:
+	Map map;
+	std::vector<std::shared_ptr<Player>> players;
+
+	Game();
+
+	void resize(MapSize size);
+	size_t player_count() { return players.size(); }
+};
+
+extern Game game;
