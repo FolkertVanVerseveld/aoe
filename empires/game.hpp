@@ -226,7 +226,7 @@ protected:
 	int x, y;
 	unsigned w, h;
 
-	unsigned sprite_index;
+	const AnimationTexture &animation;
 	unsigned image_index;
 
 public:
@@ -306,6 +306,8 @@ public:
 
 	void resize(MapSize size);
 	size_t player_count() { return players.size(); }
+
+	void idle();
 
 	void start();
 	void stop();

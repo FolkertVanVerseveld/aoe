@@ -31,6 +31,8 @@
 
 extern struct pe_lib lib_lang;
 
+extern "C" int polling;
+
 /* load c-string from language dll and wrap into c++ string */
 std::string load_string(unsigned id)
 {
@@ -1347,6 +1349,8 @@ public:
 			)
 		);
 
+		polling = 1;
+
 		game.reshape(0, top, WIDTH, HEIGHT - top);
 		game.start();
 
@@ -1357,6 +1361,7 @@ public:
 		canvas.read_screen();
 		switch (id) {
 		case 0:
+			polling = 0;
 			ui_state.go_to(new MenuGameMenu());
 			break;
 		}
@@ -1382,6 +1387,10 @@ public:
 		menu_bar.draw(0, bottom, 1);
 		// draw buttons
 		Menu::draw();
+	}
+
+	void restore() override final {
+		polling = 1;
 	}
 };
 

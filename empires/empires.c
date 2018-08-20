@@ -41,6 +41,7 @@ struct pe_lib lib_lang;
 
 #define BUFSZ 4096
 
+int polling = 0;
 int running = 0;
 
 struct config cfg = {0, CFG_MODE_800x600, 50};
@@ -52,34 +53,62 @@ int load_lib_lang(void)
 	return pe_lib_open(&lib_lang, buf);
 }
 
+void handle_event(SDL_Event *ev)
+{
+	switch (ev->type) {
+	case SDL_QUIT:
+		running = 0;
+		return;
+	case SDL_KEYDOWN: keydown(&ev->key); break;
+	case SDL_KEYUP: keyup(&ev->key); break;
+	case SDL_MOUSEBUTTONDOWN: mousedown(&ev->button); break;
+	case SDL_MOUSEBUTTONUP: mouseup(&ev->button); break;
+	case SDL_WINDOWEVENT:
+		switch (ev->window.event) {
+		case SDL_WINDOWEVENT_FOCUS_GAINED:
+			repaint();
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+void wait_event_loop(void)
+{
+	SDL_Event ev;
+
+	if (!SDL_WaitEvent(&ev))
+		return;
+
+	handle_event(&ev);
+	display();
+}
+
+void poll_event_loop(void)
+{
+	SDL_Event ev;
+
+	while (SDL_PollEvent(&ev))
+		handle_event(&ev);
+
+	display();
+
+	SDL_Delay(50);
+
+}
+
 void main_event_loop(void)
 {
 	running = 1;
 	display();
 
-	SDL_Event ev;
-	while (running && SDL_WaitEvent(&ev)) {
-		switch (ev.type) {
-		case SDL_QUIT:
-			running = 0;
-			return;
-		case SDL_KEYDOWN: keydown(&ev.key); break;
-		case SDL_KEYUP: keyup(&ev.key); break;
-		case SDL_MOUSEBUTTONDOWN: mousedown(&ev.button); break;
-		case SDL_MOUSEBUTTONUP: mouseup(&ev.button); break;
-		case SDL_WINDOWEVENT:
-			switch (ev.window.event) {
-			case SDL_WINDOWEVENT_FOCUS_GAINED:
-				repaint();
-				break;
-			}
-			break;
-		default:
-			continue;
-		}
-
-		display();
-	}
+	while (running)
+		if (polling)
+			poll_event_loop();
+		else
+			wait_event_loop();
 }
 
 void cfg_parse(struct config *cfg, int argc, char **argv)

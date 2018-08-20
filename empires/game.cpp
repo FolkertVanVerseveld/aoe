@@ -52,14 +52,14 @@ Unit::Unit(
 )
 	: hp(hp)
 	, x(x), y(y), w(w), h(h)
-	, sprite_index(sprite_index)
+	, animation(game.cache->get(sprite_index))
 	, image_index(0)
 {
 }
 
 void Unit::draw(unsigned color) const
 {
-	game.cache->get(sprite_index).draw(x, y, image_index);
+	animation.draw(x, y, image_index);
 }
 
 Player::Player(const std::string &name, unsigned civ, unsigned color)
@@ -153,8 +153,8 @@ void Map::resize(unsigned w, unsigned h)
 }
 
 Game::Game()
-	: run(false), map(), cache(), players()
-	, x(0), y(0), w(640), h(480)
+	: run(false), x(0), y(0), w(640), h(480)
+	, map(), cache(), players()
 {
 }
 
@@ -179,6 +179,9 @@ void Game::reset(unsigned players) {
 
 void Game::resize(MapSize size) {
 	map.resize(size);
+}
+
+void Game::idle() {
 }
 
 void Game::start() {
