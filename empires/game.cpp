@@ -13,6 +13,7 @@
 #include <random>
 
 #include "drs.h"
+#include "ui.h"
 
 #include "../setup/dbg.h"
 #include "../setup/def.h"
@@ -77,6 +78,10 @@ void Player::init_dummy(Map &map) {
 	y = 100 + rand() % 200;
 
 	units.emplace_back(new Building(DRS_TOWN_CENTER_BASE, x, y));
+
+	x = 32 + rand() % (640 - 2 * 32);
+	y = 32 + rand() % (480 - 2 * 32);
+	units.emplace_back(new Unit(0, x, y, 1, 1, DRS_VILLAGER_CARRY));
 }
 
 void Player::idle() {
@@ -152,9 +157,15 @@ void Map::resize(unsigned w, unsigned h)
 	map.reset(new uint8_t[w * h]);
 }
 
+#define KEY_LEFT 1
+#define KEY_RIGHT 2
+#define KEY_UP 4
+#define KEY_DOWN 8
+
 Game::Game()
 	: run(false), x(0), y(0), w(640), h(480)
-	, map(), cache(), players()
+	, keys(0), paused(false)
+	, map(), cache(), players(), state()
 {
 }
 
@@ -182,6 +193,26 @@ void Game::resize(MapSize size) {
 }
 
 void Game::idle() {
+	if (paused)
+		return;
+
+	// Always repaint the screen
+	canvas_dirty();
+
+	int dx, dy;
+
+	dx = dy = 0;
+
+	if (keys & KEY_DOWN)
+		dy += MOVE_SPEED;
+	if (keys & KEY_UP)
+		dy -= MOVE_SPEED;
+	if (keys & KEY_RIGHT)
+		dx += MOVE_SPEED;
+	if (keys & KEY_LEFT)
+		dx -= MOVE_SPEED;
+
+	state.move_view(dx, dy);
 }
 
 void Game::start() {
@@ -201,15 +232,81 @@ void Game::draw() {
 
 	const AnimationTexture &bkg = cache->get(DRS_TERRAIN_DESERT);
 
-	for (y = this->y - h; y < h; y += tile_h * 2) {
+	canvas.push_state(state);
+
+	for (y = this->y - h; y < h; y += tile_h * 2)
 		for (x = this->x - w; x < w; x += tile_w * 2) {
 			bkg.draw(x, y, 0);
 			bkg.draw(x + tile_w, y + tile_h, 0);
 		}
-	}
 
 	for (auto p : players)
 		p->draw();
+
+	canvas.pop_state();
+}
+
+bool Game::keydown(SDL_KeyboardEvent *event) {
+	unsigned virt = event->keysym.sym;
+
+	if (paused) {
+		switch (virt) {
+		case SDLK_F3:
+			break;
+		default:
+			return false;
+		}
+
+		return true;
+	}
+
+	switch (virt) {
+	case SDLK_DOWN : keys |= KEY_DOWN ; break;
+	case SDLK_UP   : keys |= KEY_UP   ; break;
+	case SDLK_RIGHT: keys |= KEY_RIGHT; break;
+	case SDLK_LEFT : keys |= KEY_LEFT ; break;
+	case ' ':
+		break;
+	default:
+		return false;
+	}
+
+	canvas_dirty();
+	return true;
+}
+
+bool Game::keyup(SDL_KeyboardEvent *event) {
+	unsigned virt = event->keysym.sym;
+
+	if (paused) {
+		switch (virt) {
+		case SDLK_F3:
+			goto pause;
+		default:
+			return false;
+		}
+
+		return true;
+	}
+
+	switch (virt) {
+	case SDLK_DOWN : keys &= ~KEY_DOWN ; break;
+	case SDLK_UP   : keys &= ~KEY_UP   ; break;
+	case SDLK_RIGHT: keys &= ~KEY_RIGHT; break;
+	case SDLK_LEFT : keys &= ~KEY_LEFT ; break;
+	case SDLK_F3:
+pause:
+		paused = !paused;
+
+		if (paused)
+			keys = 0;
+
+		canvas_dirty();
+		break;
+	default: return false;
+	}
+
+	return true;
 }
 
 /* Image cache stuff */

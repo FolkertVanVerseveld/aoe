@@ -60,8 +60,8 @@ public:
 
 	void mousedown(SDL_MouseButtonEvent *event);
 	void mouseup(SDL_MouseButtonEvent *event);
-	void keydown(SDL_KeyboardEvent *event);
-	void keyup(SDL_KeyboardEvent *event);
+	virtual void keydown(SDL_KeyboardEvent *event);
+	virtual void keyup(SDL_KeyboardEvent *event);
 
 	/* Push new menu onto navigation stack */
 	void go_to(Menu *menu);
@@ -70,88 +70,90 @@ public:
 		state |= DIRTY;
 	}
 
+	void idle();
 	void display();
 	void dispose();
 private:
 	void update();
 } ui_state;
 
+void canvas_dirty() {
+	ui_state.dirty();
+}
+
 /* Custom renderer */
-class Renderer final {
-	SDL_Surface *capture;
-	SDL_Texture *tex;
-	void *pixels;
-public:
-	SDL_Renderer *renderer;
-	unsigned shade;
+Renderer::Renderer()
+	: capture(NULL), tex(NULL)
+	, state(), renderer(NULL), shade(0)
+{
+	if (!(pixels = malloc(WIDTH * HEIGHT * 3)))
+		panic("Out of memory");
 
-	Renderer() : capture(NULL), tex(NULL), renderer(NULL) {
-		if (!(pixels = malloc(WIDTH * HEIGHT * 3)))
-			panic("Out of memory");
-	}
+	state.emplace();
+}
 
-	~Renderer() {
-		if (pixels)
-			free(pixels);
-		if (capture)
-			SDL_FreeSurface(capture);
-	}
+Renderer::~Renderer() {
+	if (pixels)
+		free(pixels);
+	if (capture)
+		SDL_FreeSurface(capture);
+}
 
-	void col(int grayvalue) {
-		col(grayvalue, grayvalue, grayvalue);
-	}
+void Renderer::draw(SDL_Texture *tex, SDL_Surface *surf, int x, int y)
+{
+	if (!tex)
+		return;
 
-	void col(int r, int g, int b, int a = SDL_ALPHA_OPAQUE) {
-		SDL_SetRenderDrawColor(renderer, r, g, b, a);
-	}
+	RendererState &s = get_state();
 
-	void col(const SDL_Color &col) {
-		SDL_SetRenderDrawColor(renderer, col.r, col.g, col.b, col.a);
-	}
+	SDL_Rect pos = {x - s.view_x, y - s.view_y, surf->w, surf->h};
+	SDL_RenderCopy(renderer, tex, NULL, &pos);
+}
 
-	void save_screen() {
-		SDL_Surface *screen;
-		int err = 1;
+void Renderer::save_screen() {
+	SDL_Surface *screen;
+	int err = 1;
 
-		// FIXME support big endian byte order
-		if (!(screen = SDL_CreateRGBSurface(0, WIDTH, HEIGHT, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
-			goto fail;
-		if (SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, screen->pixels, screen->pitch))
-			goto fail;
-		if (SDL_SaveBMP(screen, "empires.bmp"))
-			goto fail;
+	// FIXME support big endian byte order
+	if (!(screen = SDL_CreateRGBSurface(0, WIDTH, HEIGHT, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
+		goto fail;
+	if (SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, screen->pixels, screen->pitch))
+		goto fail;
+	if (SDL_SaveBMP(screen, "empires.bmp"))
+		goto fail;
 
-		err = 0;
+	err = 0;
 fail:
-		if (err)
-			show_error("Cannot take screen shot");
-		if (screen)
-			SDL_FreeSurface(screen);
-	}
+	if (err)
+		show_error("Cannot take screen shot");
+	if (screen)
+		SDL_FreeSurface(screen);
+}
 
-	void read_screen() {
-		if (capture)
-			SDL_FreeSurface(capture);
-		// FIXME support big endian byte order
-		if (!(capture = SDL_CreateRGBSurface(0, WIDTH, HEIGHT, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
-			panic("read_screen");
+void Renderer::read_screen() {
+	if (capture)
+		SDL_FreeSurface(capture);
+	// FIXME support big endian byte order
+	if (!(capture = SDL_CreateRGBSurface(0, WIDTH, HEIGHT, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
+		panic("read_screen");
 
-		SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, capture->pixels, capture->pitch);
+	SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, capture->pixels, capture->pitch);
 
-		if (!(tex = SDL_CreateTextureFromSurface(renderer, capture)))
-			panic("read_screen");
-	}
+	if (!(tex = SDL_CreateTextureFromSurface(renderer, capture)))
+		panic("read_screen");
+}
 
-	void dump_screen() {
-		SDL_Rect pos = {0, 0, WIDTH, HEIGHT};
-		SDL_RenderCopy(renderer, tex, NULL, &pos);
-	}
+void Renderer::dump_screen() {
+	SDL_Rect pos = {0, 0, WIDTH, HEIGHT};
+	SDL_RenderCopy(renderer, tex, NULL, &pos);
+}
 
-	void clear() {
-		SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-		SDL_RenderClear(renderer);
-	}
-} canvas;
+void Renderer::clear() {
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+	SDL_RenderClear(renderer);
+}
+
+Renderer canvas;
 
 static bool point_in_rect(int x, int y, int w, int h, int px, int py)
 {
@@ -257,6 +259,13 @@ private:
 	}
 
 public:
+	void move(int x, int y, TextAlign halign, TextAlign valign) {
+		this->x = x;
+		this->y = y;
+
+		reshape(halign, valign);
+	}
+
 	void draw() const {
 		SDL_Rect pos = {x - 1, y + 1, (int)w, (int)h};
 		// draw shadow
@@ -675,11 +684,7 @@ Image::~Image() {
 }
 
 void Image::draw(int x, int y) const {
-	if (!texture)
-		return;
-
-	SDL_Rect pos = {x, y, surface->w, surface->h};
-	SDL_RenderCopy(renderer, texture, NULL, &pos);
+	canvas.draw(texture, surface, x, y);
 }
 
 void AnimationTexture::open(Palette *pal, unsigned id) {
@@ -992,6 +997,8 @@ public:
 			));
 	}
 
+	virtual void idle() {}
+
 	virtual void draw() const {
 		for (auto x : objects)
 			x.get()->draw();
@@ -1000,7 +1007,7 @@ public:
 		group.draw();
 	}
 
-	void keydown(SDL_KeyboardEvent *event) {
+	virtual void keydown(SDL_KeyboardEvent *event) {
 		unsigned virt = event->keysym.sym;
 
 		if (virt == SDLK_DOWN)
@@ -1011,7 +1018,7 @@ public:
 			group.down();
 	}
 
-	void keyup(SDL_KeyboardEvent *event) {
+	virtual void keyup(SDL_KeyboardEvent *event) {
 		unsigned virt = event->keysym.sym;
 
 		if (virt == ' ') {
@@ -1303,11 +1310,13 @@ class MenuGame final : public Menu {
 	Palette palette;
 	AnimationTexture menu_bar;
 	AnimationTexture town_center_base, town_center_player;
+	Text str_paused;
 public:
 	MenuGame()
 		: Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false)
 		, palette(), menu_bar()
 		, town_center_base(), town_center_player()
+		, str_paused(0, 0, STR_PAUSED, MIDDLE, CENTER, fnt_button)
 	{
 		group.add(728, 0, STR_BTN_MENU, WIDTH - 728, 18, true);
 		group.add(620, 0, STR_BTN_DIPLOMACY, 728 - 620, 18, true);
@@ -1342,11 +1351,10 @@ public:
 
 		int top = menu_bar.images[0].surface->h;
 
-		objects.emplace_back(
-			new Text(
-				WIDTH / 2, top + (HEIGHT - 126 - top) / 2,
-				STR_PAUSED, MIDDLE, CENTER, fnt_button
-			)
+		str_paused.move(
+			WIDTH / 2,
+			top + (HEIGHT - 126 - top) / 2,
+			CENTER, MIDDLE
 		);
 
 		polling = 1;
@@ -1374,6 +1382,20 @@ public:
 		}
 	}
 
+	virtual void keydown(SDL_KeyboardEvent *event) {
+		if (!game.keydown(event))
+			Menu::keydown(event);
+	}
+
+	virtual void keyup(SDL_KeyboardEvent *event) {
+		if (!game.keyup(event))
+			Menu::keyup(event);
+	}
+
+	void idle() override final {
+		game.idle();
+	}
+
 	void draw() const override final {
 		//town_center_base.draw(200, 100, 0);
 		//town_center_player.draw(200, 100, 0);
@@ -1387,6 +1409,9 @@ public:
 		menu_bar.draw(0, bottom, 1);
 		// draw buttons
 		Menu::draw();
+
+		if (game.paused)
+			str_paused.draw();
 	}
 
 	void restore() override final {
@@ -1597,6 +1622,8 @@ void ui_free(void)
 }
 
 /* Wrappers for ui_state */
+void idle() { ui_state.idle(); }
+
 void display() { ui_state.display(); }
 
 void repaint()
@@ -1643,11 +1670,19 @@ void UI_State::dispose()
 		navigation.pop();
 }
 
+void UI_State::idle()
+{
+	if (navigation.empty())
+		return;
+
+	navigation.top()->idle();
+}
+
 void UI_State::display()
 {
 	if ((state & DIRTY) && !navigation.empty()) {
 		// Draw stuff
-		navigation.top().get()->draw();
+		navigation.top()->draw();
 		// Swap buffers
 		SDL_RenderPresent(renderer);
 	}

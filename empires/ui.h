@@ -10,6 +10,9 @@
 #define HEIGHT 600
 
 #ifdef __cplusplus
+
+#include "render.hpp"
+
 extern "C" {
 #endif
 
@@ -21,6 +24,7 @@ extern int running;
 void ui_init(void);
 void ui_free(void);
 
+void idle(void);
 void display(void);
 void repaint(void);
 

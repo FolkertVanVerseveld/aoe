@@ -18,9 +18,15 @@
 #include <map>
 #include <vector>
 
+#include <SDL2/SDL.h>
+
 #include "lang.h"
 
 #include "image.hpp"
+
+#include "render.hpp"
+
+#define MOVE_SPEED 8
 
 #define MAX_PLAYER_COUNT 8
 
@@ -295,10 +301,14 @@ public:
 class Game final {
 	bool run;
 	int x, y, w, h;
+	unsigned keys;
 public:
+	bool paused;
 	Map map;
 	std::unique_ptr<ImageCache> cache;
 	std::vector<std::shared_ptr<Player>> players;
+
+	RendererState state;
 
 	Game();
 
@@ -311,6 +321,9 @@ public:
 
 	void start();
 	void stop();
+
+	bool keydown(SDL_KeyboardEvent *event);
+	bool keyup(SDL_KeyboardEvent *event);
 
 	void reshape(int x, int y, int w, int h) {
 		this->x = x; this->y = y;

@@ -33,6 +33,9 @@ extern "C" {
 #define DRS_TOWN_CENTER_BASE 280
 #define DRS_TOWN_CENTER_PLAYER 230
 
+// Units
+#define DRS_VILLAGER_CARRY 270
+
 // FIXME also support big-endian machines
 #define DT_BINARY 0x62696e61
 #define DT_SHP    0x73687020

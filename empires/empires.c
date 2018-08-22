@@ -83,6 +83,8 @@ void wait_event_loop(void)
 		return;
 
 	handle_event(&ev);
+
+	idle();
 	display();
 }
 
@@ -93,6 +95,7 @@ void poll_event_loop(void)
 	while (SDL_PollEvent(&ev))
 		handle_event(&ev);
 
+	idle();
 	display();
 
 	SDL_Delay(50);
