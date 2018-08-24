@@ -1397,8 +1397,8 @@ public:
 	}
 
 	void draw() const override final {
-		//town_center_base.draw(200, 100, 0);
-		//town_center_player.draw(200, 100, 0);
+		canvas.clear();
+
 		game.draw();
 
 		/* Draw HUD */

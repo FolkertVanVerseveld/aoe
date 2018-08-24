@@ -155,6 +155,16 @@ void Map::resize(MapSize size)
 void Map::resize(unsigned w, unsigned h)
 {
 	map.reset(new uint8_t[w * h]);
+
+	this->w = w;
+	this->h = h;
+
+	// dummy init
+	uint8_t *data = map.get();
+
+	for (unsigned y = 0; y < h; ++ y)
+		for (unsigned x = 0; x < w; ++x)
+			data[y * w + x] = rand() % 4;
 }
 
 #define KEY_LEFT 1
@@ -234,11 +244,33 @@ void Game::draw() {
 
 	canvas.push_state(state);
 
-	for (y = this->y - h; y < h; y += tile_h * 2)
-		for (x = this->x - w; x < w; x += tile_w * 2) {
-			bkg.draw(x, y, 0);
-			bkg.draw(x + tile_w, y + tile_h, 0);
+	const uint8_t *data = map.map.get();
+
+	int ty, tx, th, tw;
+	x = y = 0;
+
+	/*
+	y+ axis is going from left to top corner
+	x+ axis is going from top to right corner
+	*/
+
+	th = map.h; tw = map.w;
+
+	x = 0;
+	y = th * tile_h / 2;
+
+	for (ty = 0; ty < th; ++ty) {
+		int xp = x, yp = y;
+		for (tx = 0; tx < tw; ++tx) {
+			bkg.draw(
+				x, y, data[ty * tw + tx]
+			);
+			x += tile_w;
+			y += tile_h;
 		}
+		x = xp + tile_w;
+		y = yp - tile_h;
+	}
 
 	for (auto p : players)
 		p->draw();

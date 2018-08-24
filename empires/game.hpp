@@ -26,7 +26,7 @@
 
 #include "render.hpp"
 
-#define MOVE_SPEED 8
+#define MOVE_SPEED 16
 
 #define MAX_PLAYER_COUNT 8
 
@@ -216,6 +216,7 @@ enum MapSize {
 class Map final {
 public:
 	std::unique_ptr<uint8_t[]> map;
+	unsigned w, h;
 
 	Map() : map() {}
 	Map(unsigned w, unsigned h);
