@@ -1404,6 +1404,11 @@ public:
 		/* Draw HUD */
 		int bottom = HEIGHT - menu_bar.images[1].surface->h;
 
+		canvas.col(0);
+
+		SDL_Rect pos = {0, bottom, WIDTH, HEIGHT};
+		SDL_RenderFillRect(renderer, &pos);
+
 		// draw background layers
 		menu_bar.draw(0, 0, 0);
 		menu_bar.draw(0, bottom, 1);
