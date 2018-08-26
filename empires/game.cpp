@@ -164,7 +164,7 @@ void Map::resize(unsigned w, unsigned h)
 
 	for (unsigned y = 0; y < h; ++ y)
 		for (unsigned x = 0; x < w; ++x)
-			data[y * w + x] = rand() % 4;
+			data[y * w + x] = rand() % 9;
 }
 
 #define KEY_LEFT 1

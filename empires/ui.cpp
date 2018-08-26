@@ -457,102 +457,88 @@ void Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 					pixels[y * p + x++] = 0;
 				continue;
 			// TODO what does this do?
+			// probably fills as much as the next byte says
 			case 0x02:
 				for (count = *++cmd; count; --count)
 					pixels[y * p + x++] = *++cmd;
 				continue;
-			case 0x30:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
+			case 0xA7: // dup 10
+				++cmd;
+				pixels[y * p + x++] = *cmd;
+				pixels[y * p + x++] = *cmd;
+				pixels[y * p + x++] = *cmd;
+				pixels[y * p + x++] = *cmd;
+				pixels[y * p + x++] = *cmd;
+				pixels[y * p + x++] = *cmd;
+				pixels[y * p + x++] = *cmd;
+				pixels[y * p + x++] = *cmd;
+				pixels[y * p + x++] = *cmd;
+				pixels[y * p + x++] = *cmd;
 				continue;
 			// XXX pixel count if lower_nibble == 4: 1 + cmd >> 2
-			case 0xF4:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0xE4:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0xD4:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0xC4:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0xB4:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0xA4:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x94:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x84:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x74:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x64:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x54:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x44:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x34:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x24:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x14:
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-				pixels[y * p + x++] = *++cmd;
-			case 0x04:
-				pixels[y * p + x++] = *++cmd;
+			case 0xfc: pixels[y * p + x++] = *++cmd; // fill 63
+			case 0xf8: pixels[y * p + x++] = *++cmd; // fill 62
+			case 0xf4: pixels[y * p + x++] = *++cmd; // fill 61
+			case 0xf0: pixels[y * p + x++] = *++cmd; // fill 60
+			case 0xec: pixels[y * p + x++] = *++cmd; // fill 59
+			case 0xe8: pixels[y * p + x++] = *++cmd; // fill 58
+			case 0xe4: pixels[y * p + x++] = *++cmd; // fill 57
+			case 0xe0: pixels[y * p + x++] = *++cmd; // fill 56
+			case 0xdc: pixels[y * p + x++] = *++cmd; // fill 55
+			case 0xd8: pixels[y * p + x++] = *++cmd; // fill 54
+			case 0xd4: pixels[y * p + x++] = *++cmd; // fill 53
+			case 0xd0: pixels[y * p + x++] = *++cmd; // fill 52
+			case 0xcc: pixels[y * p + x++] = *++cmd; // fill 51
+			case 0xc8: pixels[y * p + x++] = *++cmd; // fill 50
+			case 0xc4: pixels[y * p + x++] = *++cmd; // fill 49
+			case 0xc0: pixels[y * p + x++] = *++cmd; // fill 48
+			case 0xbc: pixels[y * p + x++] = *++cmd; // fill 47
+			case 0xb8: pixels[y * p + x++] = *++cmd; // fill 46
+			case 0xb4: pixels[y * p + x++] = *++cmd; // fill 45
+			case 0xb0: pixels[y * p + x++] = *++cmd; // fill 44
+			case 0xac: pixels[y * p + x++] = *++cmd; // fill 43
+			case 0xa8: pixels[y * p + x++] = *++cmd; // fill 42
+			case 0xa4: pixels[y * p + x++] = *++cmd; // fill 41
+			case 0xa0: pixels[y * p + x++] = *++cmd; // fill 40
+			case 0x9c: pixels[y * p + x++] = *++cmd; // fill 39
+			case 0x98: pixels[y * p + x++] = *++cmd; // fill 38
+			case 0x94: pixels[y * p + x++] = *++cmd; // fill 37
+			case 0x90: pixels[y * p + x++] = *++cmd; // fill 36
+			case 0x8c: pixels[y * p + x++] = *++cmd; // fill 35
+			case 0x88: pixels[y * p + x++] = *++cmd; // fill 34
+			case 0x84: pixels[y * p + x++] = *++cmd; // fill 33
+			case 0x80: pixels[y * p + x++] = *++cmd; // fill 32
+			case 0x7c: pixels[y * p + x++] = *++cmd; // fill 31
+			case 0x78: pixels[y * p + x++] = *++cmd; // fill 30
+			case 0x74: pixels[y * p + x++] = *++cmd; // fill 29
+			case 0x70: pixels[y * p + x++] = *++cmd; // fill 28
+			case 0x6c: pixels[y * p + x++] = *++cmd; // fill 27
+			case 0x68: pixels[y * p + x++] = *++cmd; // fill 26
+			case 0x64: pixels[y * p + x++] = *++cmd; // fill 25
+			case 0x60: pixels[y * p + x++] = *++cmd; // fill 24
+			case 0x5c: pixels[y * p + x++] = *++cmd; // fill 23
+			case 0x58: pixels[y * p + x++] = *++cmd; // fill 22
+			case 0x54: pixels[y * p + x++] = *++cmd; // fill 21
+			case 0x50: pixels[y * p + x++] = *++cmd; // fill 20
+			case 0x4c: pixels[y * p + x++] = *++cmd; // fill 19
+			case 0x48: pixels[y * p + x++] = *++cmd; // fill 18
+			case 0x44: pixels[y * p + x++] = *++cmd; // fill 17
+			case 0x40: pixels[y * p + x++] = *++cmd; // fill 16
+			case 0x3c: pixels[y * p + x++] = *++cmd; // fill 15
+			case 0x38: pixels[y * p + x++] = *++cmd; // fill 14
+			case 0x34: pixels[y * p + x++] = *++cmd; // fill 13
+			case 0x30: pixels[y * p + x++] = *++cmd; // fill 12
+			case 0x2c: pixels[y * p + x++] = *++cmd; // fill 11
+			case 0x28: pixels[y * p + x++] = *++cmd; // fill 10
+			case 0x24: pixels[y * p + x++] = *++cmd; // fill 9
+			case 0x20: pixels[y * p + x++] = *++cmd; // fill 8
+			case 0x1c: pixels[y * p + x++] = *++cmd; // fill 7
+			case 0x18: pixels[y * p + x++] = *++cmd; // fill 6
+			case 0x14: pixels[y * p + x++] = *++cmd; // fill 5
+			case 0x10: pixels[y * p + x++] = *++cmd; // fill 4
+			case 0x0c: pixels[y * p + x++] = *++cmd; // fill 3
+			case 0x08: pixels[y * p + x++] = *++cmd; // fill 2
+			case 0x04: pixels[y * p + x++] = *++cmd; // fill 1
 				continue;
 			case 0xfd: pixels[y * p + x++] = 0; // skip 63
 			case 0xf9: pixels[y * p + x++] = 0; // skip 62
@@ -653,6 +639,10 @@ row_data.push_back(pixel(color_standard, color))
 					 (unsigned)(cmd - (const unsigned char*)data),
 					*cmd, command
 				);
+				// dump some more bytes
+				for (size_t i = 0; i < 16; ++i)
+					dbgf(" %02hhX", *((const unsigned char*)cmd + i));
+				dbgs("");
 				#if 1
 				while (*cmd != 0xf)
 					++cmd;

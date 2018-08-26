@@ -30,7 +30,8 @@ UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2
 
 default: empires
 empires: empires.o ui.o game.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o ui.o game.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
+#	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o ui.o game.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
+	gcc -Wall -Wextra -pedantic -Wno-parentheses -std=gnu11 -g -DDEBUG -fsanitize=address -pthread -lcheck_pic -lrt -lm    -fsanitize=address  -pthread -lcheck_pic -lrt -lm   empires.o ui.o game.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o -o empires   -D_REENTRANT -I/usr/include/SDL2 -I/usr/include/libdrm  -lSDL2 -lGL -lopenal   -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx -lpe  -lcrypto -lssl -lstdc++
 empires.o: empires.c cfg.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.c -c -o empires.o $(LDFLAGS) $(LDLIBS)
 game.o: game.hpp game.cpp ui.h
