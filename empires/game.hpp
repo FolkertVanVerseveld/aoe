@@ -287,14 +287,14 @@ public:
 
 class PlayerHuman final : public Player {
 public:
-	PlayerHuman(const std::string &name="You");
+	PlayerHuman(const std::string &name = "You", unsigned color = 0);
 
 	virtual void tick() override final;
 };
 
 class PlayerComputer final : public Player {
 public:
-	PlayerComputer();
+	PlayerComputer(unsigned color = 0);
 
 	virtual void tick() override final;
 };

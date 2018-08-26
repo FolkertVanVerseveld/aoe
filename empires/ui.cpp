@@ -399,8 +399,10 @@ unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
 
 Image::Image() : surface(NULL), texture(NULL) {}
 
-void Image::load(Palette *pal, const void *data, const struct slp_frame_info *frame)
+bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *frame, unsigned player)
 {
+	bool dynamic = false;
+
 	dbgf("dimensions: %u x %u\n", frame->width, frame->height);
 	dbgf("hostpot: %u,%u\n", frame->hotspot_x, frame->hotspot_y);
 	dbgf("command table offset: %X\n", frame->cmd_table_offset);
@@ -474,6 +476,17 @@ void Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 				pixels[y * p + x++] = *cmd;
 				pixels[y * p + x++] = *cmd;
 				pixels[y * p + x++] = *cmd;
+				continue;
+			// player color fill
+			case 0x86: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 8
+			case 0x76: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 7
+			case 0x66: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 6
+			case 0x56: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 5
+			case 0x46: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 4
+			case 0x36: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 3
+			case 0x26: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 2
+			case 0x16: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 1
+				dynamic = true;
 				continue;
 			// XXX pixel count if lower_nibble == 4: 1 + cmd >> 2
 			case 0xfc: pixels[y * p + x++] = *++cmd; // fill 63
@@ -616,20 +629,6 @@ void Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 				}
 				//dbgs("");
 				break;
-#if 0
-// source: openage/openage/convert/slp.pyx:385
-// fill command
-// draw 'count' pixels with color of next byte
-
-cpack = self.cmd_or_next(cmd, 4, dpos)
-dpos = cpack.dpos
-
-dpos += 1
-color = self.get_byte_at(dpos)
-
-for _ in range(cpack.count):
-row_data.push_back(pixel(color_standard, color))
-#endif
 			case 0x0f:
 				//dbgs("break");
 				i = w;
@@ -664,6 +663,8 @@ row_data.push_back(pixel(color_standard, color))
 
 	if (!(texture = SDL_CreateTextureFromSurface(renderer, surface)))
 		panicf("Cannot create texture: %s\n", SDL_GetError());
+
+	return dynamic;
 }
 
 Image::~Image() {
@@ -691,16 +692,41 @@ void AnimationTexture::open(Palette *pal, unsigned id) {
 
 	images.reset(new Image[image.hdr->frame_count]);
 
-	// FIXME parse all frames
+	dynamic = false;
+
+	// parse all frames
 	for (size_t i = 0, n = image.hdr->frame_count; i < n; ++i) {
 		dbgf("frame %zu:\n", i);
 		struct slp_frame_info *frame = &image.info[i];
-		images[i].load(pal, data, frame);
+		if (images[i].load(pal, data, frame)) {
+			dynamic = true;
+			break;
+		}
 	}
+
+	// use custom parsing if dynamic
+	if (!dynamic)
+		return;
+
+	dbgf("AnimationTexture::open: dynamic id %u\n", id);
+
+	images.reset(new Image[image.hdr->frame_count * MAX_PLAYER_COUNT]);
+
+	// parse all dynamic frames
+	for (size_t p = 0; p < MAX_PLAYER_COUNT; ++p)
+		for (size_t i = 0, n = image.hdr->frame_count; i < n; ++i) {
+			struct slp_frame_info *frame = &image.info[i];
+			images[p * n + i].load(pal, data, frame, p);
+		}
 }
 
-void AnimationTexture::draw(int x, int y, unsigned index) const {
-	images[index % image.hdr->frame_count].draw(x, y);
+void AnimationTexture::draw(int x, int y, unsigned index, unsigned player) const {
+	if (!dynamic)
+		player = 0;
+
+	size_t n = image.hdr->frame_count;
+
+	images[player * n + index % n].draw(x, y);
 }
 
 class Background final : public UI {
@@ -1398,6 +1424,9 @@ public:
 
 		SDL_Rect pos = {0, bottom, WIDTH, HEIGHT};
 		SDL_RenderFillRect(renderer, &pos);
+
+		const AnimationTexture &bkg = game.cache->get(DRS_TOWN_CENTER_PLAYER);
+		bkg.draw(100, 100, 0);
 
 		// draw background layers
 		menu_bar.draw(0, 0, 0);

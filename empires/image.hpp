@@ -41,9 +41,10 @@ public:
 	Image();
 	~Image();
 
-	void load(
+	bool load(
 		Palette *pal, const void *data,
-		const struct slp_frame_info *frame
+		const struct slp_frame_info *frame,
+		unsigned player = 0
 	);
 
 	void draw(int x, int y) const;
@@ -57,10 +58,11 @@ class AnimationTexture final {
 public:
 	// FIXME make private and wrap in unique_ptr
 	std::unique_ptr<Image[]> images;
+	bool dynamic;
 
-	AnimationTexture() : images() {}
-	AnimationTexture(Palette *pal, unsigned id) : images() { open(pal, id); }
+	AnimationTexture() : images(), dynamic(false) {}
+	AnimationTexture(Palette *pal, unsigned id) : images(), dynamic(false) { open(pal, id); }
 
 	void open(Palette *pal, unsigned id);
-	void draw(int x, int y, unsigned index) const;
+	void draw(int x, int y, unsigned index, unsigned player = 0) const;
 };

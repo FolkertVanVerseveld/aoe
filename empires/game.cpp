@@ -60,7 +60,7 @@ Unit::Unit(
 
 void Unit::draw(unsigned color) const
 {
-	animation.draw(x, y, image_index);
+	animation.draw(x, y, image_index, color);
 }
 
 Player::Player(const std::string &name, unsigned civ, unsigned color)
@@ -123,12 +123,12 @@ std::string random_name() {
 	return std::string(buf);
 }
 
-PlayerHuman::PlayerHuman(const std::string &name) : Player(name, 0) {
+PlayerHuman::PlayerHuman(const std::string &name, unsigned color) : Player(name, 0) {
 	random_name();
 	civ = random_civ;
 }
 
-PlayerComputer::PlayerComputer() : Player(random_name(), 0) {
+PlayerComputer::PlayerComputer(unsigned color) : Player(random_name(), 0, color) {
 	civ = random_civ;
 }
 
@@ -188,11 +188,13 @@ void Game::reset(unsigned players) {
 
 	this->players.clear();
 
+	unsigned color = 0;
+
 	if (players) {
-		this->players.emplace_back(new PlayerHuman("you"));
+		this->players.emplace_back(new PlayerHuman("you", color++));
 
 		while (--players)
-			this->players.emplace_back(new PlayerComputer());
+			this->players.emplace_back(new PlayerComputer(color++));
 	}
 
 	stats_reset();
