@@ -32,7 +32,7 @@ ID        type description
    12    model desert debris 3
    13    model ??
    15    model dock base
-   16    model academy base
+   16    model academy base 1
    17    model barracks base
    18    model town center base
    19    model siege workshop
@@ -74,7 +74,7 @@ ID        type description
    56    model ??
    57    model ??
    59    model dock base
-   60    model ??
+   60    model academy base 2
    61    model ??
    62    model ??
    63    model ??

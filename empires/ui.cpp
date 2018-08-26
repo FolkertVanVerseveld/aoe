@@ -31,6 +31,21 @@
 
 extern struct pe_lib lib_lang;
 
+const unsigned menu_bar_tbl[MAX_CIVILIZATION_COUNT] = {
+	0, // egyptian
+	1, // greek
+	2, // babylonian
+	0, // assyrian
+	1, // minoan
+	2, // hittite
+	1, // phoenician
+	0, // sumerian
+	2, // persian
+	3, // shang
+	3, // yamato
+	3, // choson
+};
+
 extern "C" int polling;
 
 /* load c-string from language dll and wrap into c++ string */
@@ -403,6 +418,9 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 {
 	bool dynamic = false;
 
+	hotspot_x = frame->hotspot_x;
+	hotspot_y = frame->hotspot_y;
+
 	dbgf("dimensions: %u x %u\n", frame->width, frame->height);
 	dbgf("hostpot: %u,%u\n", frame->hotspot_x, frame->hotspot_y);
 	dbgf("command table offset: %X\n", frame->cmd_table_offset);
@@ -675,7 +693,7 @@ Image::~Image() {
 }
 
 void Image::draw(int x, int y) const {
-	canvas.draw(texture, surface, x, y);
+	canvas.draw(texture, surface, x - hotspot_x, y - hotspot_y);
 }
 
 void AnimationTexture::open(Palette *pal, unsigned id) {
@@ -1325,13 +1343,11 @@ public:
 class MenuGame final : public Menu {
 	Palette palette;
 	AnimationTexture menu_bar;
-	AnimationTexture town_center_base, town_center_player;
 	Text str_paused;
 public:
 	MenuGame()
 		: Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false)
 		, palette(), menu_bar()
-		, town_center_base(), town_center_player()
 		, str_paused(0, 0, STR_PAUSED, MIDDLE, CENTER, fnt_button)
 	{
 		group.add(728, 0, STR_BTN_MENU, WIDTH - 728, 18, true);
@@ -1361,9 +1377,10 @@ public:
 		canvas.clear();
 
 		palette.open(DRS_MAIN_PALETTE);
-		menu_bar.open(&palette, DRS_MENU_BAR);
-		town_center_base.open(&palette, DRS_TOWN_CENTER_BASE);
-		town_center_player.open(&palette, DRS_TOWN_CENTER_PLAYER);
+		menu_bar.open(
+			&palette,
+			DRS_MENU_BAR_800_600_0 + menu_bar_tbl[you->civ]
+		);
 
 		int top = menu_bar.images[0].surface->h;
 
@@ -1424,9 +1441,6 @@ public:
 
 		SDL_Rect pos = {0, bottom, WIDTH, HEIGHT};
 		SDL_RenderFillRect(renderer, &pos);
-
-		const AnimationTexture &bkg = game.cache->get(DRS_TOWN_CENTER_PLAYER);
-		bkg.draw(100, 100, 0);
 
 		// draw background layers
 		menu_bar.draw(0, 0, 0);

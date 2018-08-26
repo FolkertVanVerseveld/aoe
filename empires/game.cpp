@@ -69,15 +69,30 @@ Player::Player(const std::string &name, unsigned civ, unsigned color)
 {
 }
 
-Building::Building(unsigned id, int x, int y)
-	: Unit(0, x, y, 1, 1, id) {}
+Building::Building(unsigned id, unsigned p_id, int x, int y)
+	: Unit(0, x, y, 1, 1, id)
+	, overlay(game.cache->get(p_id))
+	, overlay_index(0)
+{
+}
+
+void Building::draw(unsigned color) const {
+	Unit::draw(color);
+	overlay.draw(x, y, overlay_index, color);
+}
 
 void Player::init_dummy(Map &map) {
 	int x, y;
 	x = 200 + rand() % 300;
 	y = 100 + rand() % 200;
 
-	units.emplace_back(new Building(DRS_TOWN_CENTER_BASE, x, y));
+	units.emplace_back(
+		new Building(
+			DRS_TOWN_CENTER_BASE,
+			DRS_TOWN_CENTER_PLAYER,
+			x, y
+		)
+	);
 
 	x = 32 + rand() % (640 - 2 * 32);
 	y = 32 + rand() % (480 - 2 * 32);
@@ -123,7 +138,7 @@ std::string random_name() {
 	return std::string(buf);
 }
 
-PlayerHuman::PlayerHuman(const std::string &name, unsigned color) : Player(name, 0) {
+PlayerHuman::PlayerHuman(const std::string &name, unsigned color) : Player(name, 0, color) {
 	random_name();
 	civ = random_civ;
 }

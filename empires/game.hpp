@@ -45,6 +45,8 @@
 
 #define MAX_CIVILIZATION_COUNT (CIV_CHOSON + 1)
 
+extern const unsigned menu_bar_tbl[MAX_CIVILIZATION_COUNT];
+
 class Resources {
 public:
 	unsigned food;
@@ -248,8 +250,11 @@ public:
 };
 
 class Building final : public Unit {
+	const AnimationTexture &overlay;
+	unsigned overlay_index;
 public:
-	Building(unsigned id, int x, int y);
+	Building(unsigned id, unsigned p_id, int x, int y);
+	void draw(unsigned color) const override;
 };
 
 class ImageCache {

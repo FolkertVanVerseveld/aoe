@@ -37,6 +37,7 @@ class Image final {
 public:
 	SDL_Surface *surface;
 	SDL_Texture *texture;
+	int hotspot_x, hotspot_y;
 
 	Image();
 	~Image();
