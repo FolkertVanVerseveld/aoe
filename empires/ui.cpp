@@ -1327,7 +1327,10 @@ public:
 
 	void button_group_activate(unsigned id) override final {
 		switch (id) {
-		case 0: ui_state.go_to(new MenuAchievements(1)); break;
+		case 0:
+			in_game = 0;
+			ui_state.go_to(new MenuAchievements(1));
+			break;
 		case 1: ui_state.go_to(new MenuAchievements()); break;
 		case 6: ui_state.go_to(new MenuGameSettings()); break;
 		case 9: stop = 1; canvas.clear(); break;
@@ -1394,8 +1397,6 @@ public:
 
 		game.reshape(0, top, WIDTH, HEIGHT - top);
 		game.start();
-
-		mus_play(MUS_GAME);
 	}
 
 	void button_group_activate(unsigned id) override final {

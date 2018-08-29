@@ -46,6 +46,15 @@ int running = 0;
 
 struct config cfg = {0, CFG_MODE_800x600, 50};
 
+unsigned const music_list[] = {
+	MUS_GAME1, MUS_GAME2, MUS_GAME3, MUS_GAME4, MUS_GAME5,
+	MUS_GAME6, MUS_GAME7, MUS_GAME8, MUS_GAME9, MUS_GAME10,
+};
+
+unsigned music_index = 0;
+
+int in_game = 0;
+
 int load_lib_lang(void)
 {
 	char buf[BUFSZ];
@@ -107,12 +116,19 @@ void main_event_loop(void)
 	running = 1;
 	display();
 
-	while (running)
+	while (running) {
 		if (polling)
 			poll_event_loop();
 		else
 			wait_event_loop();
+
+		if (!music_playing && in_game) {
+			music_index = (music_index + 1) % ARRAY_SIZE(music_list);
+			mus_play(music_list[music_index]);
+		}
+	}
 }
+
 
 void cfg_parse(struct config *cfg, int argc, char **argv)
 {

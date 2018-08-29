@@ -17,7 +17,6 @@
 #define SFX_CHANNEL_COUNT 20
 
 Mix_Chunk *music_chunk = NULL;
-int music_playing = 0;
 
 ALCdevice *alc_dev = NULL;
 ALCcontext *alc_ctx = NULL;
@@ -137,6 +136,15 @@ void sfx_load(unsigned id)
 
 extern "C" {
 
+volatile int music_playing = 0;
+
+void hook_finished()
+{
+	music_playing = 0;
+
+	puts("sfx: music stop");
+}
+
 void sfx_init(void)
 {
 	char buf[256];
@@ -154,6 +162,7 @@ void sfx_init(void)
 		snprintf(buf, sizeof buf, "SDL2 mixer failed to allocate %d channels: %s\n", SFX_CHANNEL_COUNT, Mix_GetError());
 		panic(buf);
 	}
+	Mix_HookMusicFinished(hook_finished);
 	sfx_init_al();
 }
 
@@ -193,7 +202,16 @@ void mus_play(unsigned id)
 	case MUS_MAIN   : name = "Track 2.wav"; break;
 	case MUS_VICTORY: name = "Track 3.wav"; break;
 	case MUS_DEFEAT : name = "Track 4.wav"; break;
-	case MUS_GAME   : name = "Track 5.wav"; break;
+	case MUS_GAME1  : name = "Track 5.wav"; break;
+	case MUS_GAME2  : name = "Track 6.wav"; break;
+	case MUS_GAME3  : name = "Track 7.wav"; break;
+	case MUS_GAME4  : name = "Track 8.wav"; break;
+	case MUS_GAME5  : name = "Track 9.wav"; break;
+	case MUS_GAME6  : name = "Track 10.wav"; break;
+	case MUS_GAME7  : name = "Track 11.wav"; break;
+	case MUS_GAME8  : name = "Track 12.wav"; break;
+	case MUS_GAME9  : name = "Track 13.wav"; break;
+	case MUS_GAME10  : name = "Track 14.wav"; break;
 	default:
 		fprintf(stderr, "sfx: bad music ID %u\n", id);
 		return;
@@ -211,6 +229,8 @@ void mus_play(unsigned id)
 	}
 	music.reset(new ClipMusicFile(id, mus));
 	music->play();
+
+	music_playing = 1;
 }
 
 }

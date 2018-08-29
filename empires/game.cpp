@@ -13,6 +13,7 @@
 #include <random>
 
 #include "drs.h"
+#include "sfx.h"
 #include "ui.h"
 
 #include "../setup/dbg.h"
@@ -247,6 +248,9 @@ void Game::start() {
 		p->init_dummy(map);
 
 	run = true;
+	in_game = 1;
+	music_index = 0;
+	mus_play(MUS_GAME1);
 }
 
 void Game::stop() {
