@@ -13,7 +13,7 @@ documentation about unit statistics, cheat codes etc. is documented in doc/.
 
 Game engine and windows API specific file formats are discussed in doc/ with
 pointers to external sources. We have written tools for some of these file
-formats that you can find in section Tools.
+formats that you can find in the Tools section.
 
 ## Coding style
 
@@ -27,7 +27,7 @@ See also [this document](CODINGSTYLE.md) for more details.
 
 ## Libraries and dependencies
 
-These packages are required for development on Xubuntu 14 or 16:
+These packages are required for development on Xubuntu:
 
 Name              | Description
 ------------------|----------------------------------------

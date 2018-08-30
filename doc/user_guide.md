@@ -66,5 +66,5 @@ On Xubuntu, add the PPA like this and press ENTER to confirm:
 Then, update your packages and install cdemu:
 ```
   sudo apt-get update
-  sudo apt-get install gcdemu cdemu-client
+  sudo apt-get install gcdemu
 ```

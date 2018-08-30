@@ -1,16 +1,20 @@
 BUILDING THE GAME
 
-All code is spread across multiple directories. The game engine itself is
+All code is spread across multiple directories. The game setup installer is
+located in setup/, the original game in empires/. The game engine itself is
 located in genie/, the game in game/ and tools in tools/ (as you can see, it is
 pretty self-explanatory).
 
-You can build the game and the tools using:
+Note that game/, genie/ and tools/ are pretty outdated. setup/ and empires/ are
+actively maintained.
 
-  ./configure && make
+You can build the game using:
+
+  make
 
 Or if you prefer running it in parallel:
 
-  ./configure && make -j8
+  make -j8
 
 Where `-j8' means `use 8 cores'.
 
@@ -22,23 +26,17 @@ clicking it or starting it from a shell/terminal/whatever you prefer.
 
 INSTALLATION RECIPIES
 
-Xubuntu 16:
+Xubuntu 18 and 16:
 
-This project has been built primarly on Xubuntu 16. You can install the
-packages using:
+This project has been built primarly on Xubuntu 16. The following packages are
+needed:
 
-$ sudo -s
-# apt-get update
-# apt-get install bash gcc git make pkg-config libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libopenal-dev
-# exit
-$ ./configure
-$ make
-$ ./game/aoe
+  gcc make libssl-dev pkg-config libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libopenal-dev
 
 For empires/ you need libpe and openssl which you can install on Xubuntu 16
 using:
 
-sudo apt-get install pev libssl1.0.0
+sudo apt-get install pev libssl-dev
 
 Note that the linking order on Xubuntu 14 for openssl and pev is broken! You
 have to swap the crypto and ssl libs during linking.
