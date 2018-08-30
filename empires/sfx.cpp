@@ -149,11 +149,6 @@ void sfx_init(void)
 {
 	char buf[256];
 
-	int flags = MIX_INIT_OGG;
-	if ((Mix_Init(flags) & flags) != flags) {
-		snprintf(buf, sizeof buf, "SDL2 mixer failed to initialize ogg support: %s\n", Mix_GetError());
-		panic(buf);
-	}
 	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) == -1) {
 		snprintf(buf, sizeof buf, "SDL2 mixer failed to open audio: %s\n", Mix_GetError());
 		panic(buf);

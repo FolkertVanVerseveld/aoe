@@ -51,6 +51,7 @@ void *frealloc(void *ptr, size_t size)
 void show_error(const char *str)
 {
 	char buf[PANIC_BUFSZ];
+	fprintf(stderr, "panic: %s\n", str);
 	snprintf(buf, PANIC_BUFSZ, "zenity --error --text=\"%s\"", str);
 	system(buf);
 }

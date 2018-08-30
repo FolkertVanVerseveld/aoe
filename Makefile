@@ -1,10 +1,11 @@
-.PHONY: default clean genie game
+.PHONY: default clean setup empires
 
 default: genie game
-genie:
-	cd genie && $(MAKE) && cd ..
-game: genie
-	cd game && $(MAKE) && cd ..
+default: setup empires
+setup:
+	cd setup && $(MAKE) && cd ..
+empires: setup
+	cd empires && $(MAKE) && cd ..
 clean:
-	cd genie && $(MAKE) clean && cd ..
-	cd game && $(MAKE) clean && cd ..
+	cd setup && $(MAKE) clean && cd ..
+	cd empires && $(MAKE) clean && cd ..

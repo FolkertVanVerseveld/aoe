@@ -2,6 +2,7 @@
 
 #include "fs.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -12,6 +13,12 @@
 
 #include "../setup/dbg.h"
 #include "../setup/def.h"
+
+static void strtolower(char *str)
+{
+	for (unsigned char *ptr = (unsigned char*)str; *ptr; ++ptr)
+		*ptr = tolower(*ptr);
+}
 
 static const char *username()
 {
@@ -28,7 +35,12 @@ void fs_game_path(char *buf, size_t bufsz, const char *file)
 
 void fs_data_path(char *buf, size_t bufsz, const char *file)
 {
-	snprintf(buf, bufsz, WINE_PATH_FORMAT "/data/%s", username(), file);
+	if (game_installed)
+		snprintf(buf, bufsz, WINE_PATH_FORMAT "/data/%s", username(), file);
+	else {
+		snprintf(buf, bufsz, "%s/game/data/%s", path_cdrom, file);
+		strtolower(buf + strlen(path_cdrom) + 1);
+	}
 }
 
 void fs_help_path(char *buf, size_t bufsz, const char *file)
