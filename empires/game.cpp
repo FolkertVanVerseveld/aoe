@@ -97,7 +97,7 @@ void Player::init_dummy(Map &map) {
 
 	x = 32 + rand() % (640 - 2 * 32);
 	y = 32 + rand() % (480 - 2 * 32);
-	units.emplace_back(new Unit(0, x, y, 1, 1, DRS_VILLAGER_CARRY));
+	units.emplace_back(new Unit(0, x, y, 1, 1, DRS_VILLAGER_STAND));
 }
 
 void Player::idle() {
@@ -162,9 +162,8 @@ void Map::resize(MapSize size)
 	switch (size) {
 	default:
 		dbgf("unknown map size: %d\n", size);
-	case TINY:
-		resize(72, 72);
-		break;
+	case TINY : resize(72); break;
+	case MICRO: resize(16); break;
 	}
 }
 
@@ -200,7 +199,7 @@ void Game::reset(unsigned players) {
 		panic("Bad game state");
 
 	cache.reset(new ImageCache());
-	resize(TINY);
+	resize(MICRO);
 
 	this->players.clear();
 
@@ -277,8 +276,8 @@ void Game::draw() {
 
 	th = map.h; tw = map.w;
 
-	x = 0;
 	y = th * tile_h / 2;
+	x = y = 0;
 
 	for (ty = 0; ty < th; ++ty) {
 		int xp = x, yp = y;

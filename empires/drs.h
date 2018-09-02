@@ -46,6 +46,7 @@ extern "C" {
 
 // Units
 #define DRS_VILLAGER_CARRY 270
+#define DRS_VILLAGER_STAND 418
 
 // FIXME also support big-endian machines
 #define DT_BINARY 0x62696e61

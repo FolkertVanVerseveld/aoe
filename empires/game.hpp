@@ -210,6 +210,7 @@ public:
 };
 
 enum MapSize {
+	MICRO, // for debug purposes...
 	TINY,
 	SMALL,
 	MEDIUM,
@@ -228,6 +229,7 @@ public:
 	void resize(MapSize size);
 private:
 	void resize(unsigned w, unsigned h);
+	void resize(unsigned size) { resize(size, size); }
 };
 
 class Unit {
