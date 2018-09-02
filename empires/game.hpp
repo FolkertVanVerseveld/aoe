@@ -7,6 +7,8 @@
  * Copyright by Folkert van Verseveld.
  */
 
+// TODO use quadtree for units etc.
+
 #pragma once
 
 #include <cstdint>

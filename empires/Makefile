@@ -1,14 +1,14 @@
 .PHONY: default clean
 
-CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -std=gnu11
+CC?=gcc
+CFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -Wno-implicit-fallthrough -std=gnu11
 LDLIBS=
 LDFLAGS?=
 DEBUG_LDLIBS?=
 DEBUG_LDFLAGS?=
 
-CXX=g++
-CXXFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -std=c++11
+CXX?=g++
+CXXFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -Wno-implicit-fallthrough -std=c++11
 
 ifdef STRICT
 	CFLAGS += -Werror

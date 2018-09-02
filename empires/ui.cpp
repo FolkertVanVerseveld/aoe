@@ -46,9 +46,7 @@ const unsigned menu_bar_tbl[MAX_CIVILIZATION_COUNT] = {
 	3, // choson
 };
 
-extern "C" int polling;
-
-/* load c-string from language dll and wrap into c++ string */
+/** load c-string from language dll and wrap into c++ string */
 std::string load_string(unsigned id)
 {
 	char buf[4096];
@@ -674,7 +672,7 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 			++cmd;
 		#endif
 	}
-	putchar('\n');
+	dbgs("");
 
 	if (SDL_SetColorKey(surface, SDL_TRUE, 0))
 		fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());
@@ -1393,8 +1391,6 @@ public:
 			CENTER, MIDDLE
 		);
 
-		polling = 1;
-
 		game.reshape(0, top, WIDTH, HEIGHT - top);
 		game.start();
 	}
@@ -1403,7 +1399,6 @@ public:
 		canvas.read_screen();
 		switch (id) {
 		case 0:
-			polling = 0;
 			ui_state.go_to(new MenuGameMenu());
 			break;
 		}
@@ -1452,10 +1447,6 @@ public:
 		if (game.paused)
 			str_paused.draw();
 	}
-
-	void restore() override final {
-		polling = 1;
-	}
 };
 
 class MenuSinglePlayerSettings final : public Menu {
@@ -1476,8 +1467,6 @@ public:
 
 		// setup players
 		game.reset();
-
-		game.resize(TINY);
 
 		char str_count[2] = "0";
 		str_count[0] += game.player_count();
@@ -1758,10 +1747,10 @@ void UI_State::keyup(SDL_KeyboardEvent *event)
 
 void UI_State::update()
 {
-	for (unsigned n = navigation.top().get()->stop; n; --n) {
+	for (unsigned n = navigation.top()->stop; n; --n) {
 		if (navigation.empty())
 			return;
 		navigation.pop();
 	}
-	navigation.top().get()->restore();
+	navigation.top()->restore();
 }

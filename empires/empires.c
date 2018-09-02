@@ -41,7 +41,6 @@ struct pe_lib lib_lang;
 
 #define BUFSZ 4096
 
-int polling = 0;
 int running = 0;
 
 struct config cfg = {0, CFG_MODE_800x600, 50};
@@ -84,43 +83,21 @@ void handle_event(SDL_Event *ev)
 	}
 }
 
-void wait_event_loop(void)
-{
-	SDL_Event ev;
-
-	if (!SDL_WaitEvent(&ev))
-		return;
-
-	handle_event(&ev);
-
-	idle();
-	display();
-}
-
-void poll_event_loop(void)
-{
-	SDL_Event ev;
-
-	while (SDL_PollEvent(&ev))
-		handle_event(&ev);
-
-	idle();
-	display();
-
-	SDL_Delay(50);
-
-}
-
 void main_event_loop(void)
 {
+	SDL_Event ev;
+
 	running = 1;
 	display();
 
 	while (running) {
-		if (polling)
-			poll_event_loop();
-		else
-			wait_event_loop();
+		while (SDL_PollEvent(&ev))
+			handle_event(&ev);
+
+		idle();
+		display();
+
+		SDL_Delay(50);
 
 		if (!music_playing && in_game) {
 			music_index = (music_index + 1) % ARRAY_SIZE(music_list);
