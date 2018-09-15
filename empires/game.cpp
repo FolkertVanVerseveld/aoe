@@ -361,6 +361,11 @@ pause:
 	return true;
 }
 
+// FIXME get real controlling player
+const Player *Game::get_controlling_player() const {
+	return players[0].get();
+}
+
 /* Image cache stuff */
 
 ImageCache::ImageCache() : pal(DRS_MAIN_PALETTE), cache() {}

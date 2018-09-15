@@ -50,7 +50,7 @@ public:
 		SDL_SetRenderDrawColor(renderer, col.r, col.g, col.b, col.a);
 	}
 
-	void draw(SDL_Texture *tex, SDL_Surface *surf, int x, int y);
+	void draw(SDL_Texture *tex, SDL_Surface *surf, int x, int y, unsigned w=0, unsigned h=0);
 
 	void save_screen();
 	void read_screen();

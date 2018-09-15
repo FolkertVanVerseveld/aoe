@@ -48,7 +48,7 @@ public:
 		unsigned player = 0
 	);
 
-	void draw(int x, int y) const;
+	void draw(int x, int y, unsigned w=0, unsigned h=0) const;
 };
 
 /**
@@ -66,4 +66,5 @@ public:
 
 	void open(Palette *pal, unsigned id);
 	void draw(int x, int y, unsigned index, unsigned player = 0) const;
+	void draw(int x, int y, unsigned w, unsigned h, unsigned index, unsigned player = 0) const;
 };

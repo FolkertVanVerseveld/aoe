@@ -341,6 +341,8 @@ public:
 	}
 
 	void draw();
+
+	const Player *get_controlling_player() const;
 };
 
 extern Game game;

@@ -97,7 +97,7 @@ void canvas_dirty() {
 /* Custom renderer */
 Renderer::Renderer()
 	: capture(NULL), tex(NULL)
-	, state(), renderer(NULL), shade(0)
+	, state(), renderer(NULL), shade(100)
 {
 	if (!(pixels = malloc(WIDTH * HEIGHT * 3)))
 		panic("Out of memory");
@@ -112,15 +112,27 @@ Renderer::~Renderer() {
 		SDL_FreeSurface(capture);
 }
 
-void Renderer::draw(SDL_Texture *tex, SDL_Surface *surf, int x, int y)
+void Renderer::draw(SDL_Texture *tex, SDL_Surface *surf, int x, int y, unsigned w, unsigned h)
 {
 	if (!tex)
 		return;
 
 	RendererState &s = get_state();
 
-	SDL_Rect pos = {x - s.view_x, y - s.view_y, surf->w, surf->h};
-	SDL_RenderCopy(renderer, tex, NULL, &pos);
+	if (!w) w = surf->w;
+	if (!h) h = surf->h;
+
+	// repeat if w > surf->w or h > surf->h
+	for (int top = y, bottom = y + h; top < bottom; top += surf->h) {
+		for (int left = x, right = x + w; left < right; left += surf->w) {
+		#define min(a, b) ((a) < (b) ? (a) : (b))
+			unsigned sw = min(surf->w, right - left), sh = min(surf->h, bottom - top);
+			SDL_Rect src = {0, 0, sw, sh};
+			SDL_Rect dst = {left - s.view_x, top - s.view_y, sw, sh};
+		#undef min
+			SDL_RenderCopy(renderer, tex, &src, &dst);
+		}
+	}
 }
 
 void Renderer::save_screen() {
@@ -202,9 +214,11 @@ enum TextAlign {
 	RIGHT = 2, BOTTOM = 2
 };
 
+// FIXME grab these from the color palette
 const SDL_Color col_default = {255, 208, 157, SDL_ALPHA_OPAQUE};
 const SDL_Color col_focus = {255, 255, 0, SDL_ALPHA_OPAQUE};
 
+// FIXME grab these from the game palette
 const SDL_Color col_players[MAX_PLAYER_COUNT] = {
 	{0, 0, 196, SDL_ALPHA_OPAQUE},
 	{200, 0, 0, SDL_ALPHA_OPAQUE},
@@ -319,7 +333,7 @@ public:
 			SDL_GetRenderDrawBlendMode(renderer, &old);
 
 			SDL_Rect pos = {x, y, (int)w, (int)h};
-			SDL_Color col = {0, 0, 0, (Uint8)(255 - ((shade != -1 ? shade : canvas.shade) * 255 / 100))};
+			SDL_Color col = {0, 0, 0, (Uint8)((shade != -1 ? shade : canvas.shade) * 255 / 100)};
 			canvas.col(col);
 			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 			SDL_RenderFillRect(renderer, &pos);
@@ -690,8 +704,8 @@ Image::~Image() {
 		SDL_FreeSurface(surface);
 }
 
-void Image::draw(int x, int y) const {
-	canvas.draw(texture, surface, x - hotspot_x, y - hotspot_y);
+void Image::draw(int x, int y, unsigned w, unsigned h) const {
+	canvas.draw(texture, surface, x - hotspot_x, y - hotspot_y, w, h);
 }
 
 void AnimationTexture::open(Palette *pal, unsigned id) {
@@ -745,20 +759,30 @@ void AnimationTexture::draw(int x, int y, unsigned index, unsigned player) const
 	images[player * n + index % n].draw(x, y);
 }
 
+void AnimationTexture::draw(int x, int y, unsigned w, unsigned h, unsigned index, unsigned player) const {
+	if (!dynamic)
+		player = 0;
+
+	size_t n = image.hdr->frame_count;
+
+	//dbgf("draw (%d,%d) (%u,%u)\n", x, y, w, h);
+	images[player * n + index % n].draw(x, y, w, h);
+}
+
 class Background final : public UI {
 	unsigned id;
 	Palette palette;
 	AnimationTexture animation;
 	unsigned bevel_col[6];
 public:
-	Background(unsigned id, int x, int y, unsigned w = 1, unsigned h = 1)
+	Background(unsigned id, int x, int y, unsigned w = 800, unsigned h = 600)
 		: UI(x, y, w, h), id(id), palette(), animation()
 	{
 		size_t n;
 		const char *data = (const char*)drs_get_item(DT_BINARY, id, &n);
 
 		char bkg_name1[16], bkg_name2[16], bkg_name3[16];
-		unsigned bkg_id[3];
+		int bkg_id[3];
 		char pal_name[16];
 		unsigned pal_id;
 		char cur_name[16];
@@ -774,9 +798,9 @@ public:
 		unsigned state_col[6];
 
 		if (sscanf(data,
-			"background1_files %15s none %u -1\n"
-			"background2_files %15s none %u -1\n"
-			"background3_files %15s none %u -1\n"
+			"background1_files %15s none %d -1\n"
+			"background2_files %15s none %d -1\n"
+			"background3_files %15s none %d -1\n"
 			"palette_file %15s %u\n"
 			"cursor_file %15s %u\n"
 			"shade_amount percent %u\n"
@@ -816,7 +840,10 @@ public:
 		// Apply palette to border colors
 		restore();
 
-		animation.open(&palette, bkg_id[1]);
+		if (bkg_id[1] < 0)
+			bkg_id[1] = bkg_id[0];
+
+		animation.open(&palette, (unsigned)bkg_id[1]);
 	}
 
 	void restore() {
@@ -829,7 +856,8 @@ public:
 	}
 
 	void draw() const {
-		animation.draw(x, y, 0);
+		// FIXME repeat background
+		animation.draw(x, y, w, h, 0);
 	}
 };
 
@@ -1128,12 +1156,11 @@ public:
 		// TODO compute elapsed time
 		objects.emplace_back(new Text(685, 15, "00:00:00"));
 
-		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106, 0));
+		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106, 100));
 
 		group.add(250, 551, STR_BTN_BACK);
 
 		unsigned i = 1, step = tl_height / game.player_count();
-
 		TTF_SetFontStyle(fnt_default, TTF_STYLE_BOLD);
 
 		for (auto p : game.players) {
@@ -1152,7 +1179,6 @@ public:
 		}
 
 		TTF_SetFontStyle(fnt_default, TTF_STYLE_NORMAL);
-
 		canvas.clear();
 	}
 
@@ -1320,7 +1346,15 @@ public:
 		group.add(220 - 200, 408 - 98, STR_BTN_GAME_ABOUT);
 		group.add(220 - 200, 458 - 98, STR_BTN_GAME_CANCEL);
 
-		objects.emplace_back(new Border(200, 98, 600 - 200, 503 - 98));
+		const Player *you = game.get_controlling_player();
+
+		objects.emplace_back(
+			new Background(
+				DRS_BACKGROUND_GAME_0 + menu_bar_tbl[you->civ],
+				200, 98, 600 - 200, 503 - 98
+			)
+		);
+		objects.emplace_back(new Border(200, 98, 600 - 200, 503 - 98, false));
 	}
 
 	void button_group_activate(unsigned id) override final {
@@ -1356,7 +1390,7 @@ public:
 
 		objects.emplace_back(new Text(WIDTH / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
 
-		const Player *you = game.players[0].get();
+		const Player *you = game.get_controlling_player();
 
 		char buf[32];
 		int x = 32;
