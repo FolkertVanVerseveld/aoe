@@ -9,6 +9,7 @@
 #include "drs.h"
 
 #include <SDL2/SDL_image.h>
+#include <memory>
 
 /**
  * Holds all current available indexed colors.

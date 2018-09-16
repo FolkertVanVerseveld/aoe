@@ -99,7 +99,7 @@ void Player::init_dummy(Map &map) {
 	);
 
 	x = TILE_WIDTH + rand() % (800 - 2 * TILE_WIDTH);
-	y = TILE_WIDTH + rand() % (600 - 2 * TILE_WIDTH) - 600 / 2;
+y = TILE_WIDTH + rand() % (600 - 2 * TILE_WIDTH) - 600 / 2;
 	units.emplace_back(new Unit(0, x, y, 1, 1, DRS_VILLAGER_STAND));
 }
 
@@ -156,7 +156,7 @@ void PlayerComputer::tick() {
 }
 
 Map::Map(unsigned w, unsigned h)
-	: map(new uint8_t[w * h])
+	: map(new uint8_t[w * h]), heightmap(new uint8_t[w * h])
 {
 }
 
@@ -173,16 +173,19 @@ void Map::resize(MapSize size)
 void Map::resize(unsigned w, unsigned h)
 {
 	map.reset(new uint8_t[w * h]);
+	heightmap.reset(new uint8_t[w * h]);
 
 	this->w = w;
 	this->h = h;
 
 	// dummy init
-	uint8_t *data = map.get();
+	uint8_t *data = map.get(), *hdata = heightmap.get();
 
 	for (unsigned y = 0; y < h; ++ y)
-		for (unsigned x = 0; x < w; ++x)
+		for (unsigned x = 0; x < w; ++x) {
 			data[y * w + x] = rand() % 9;
+			hdata[y * w + x] = 0;
+		}
 }
 
 void Map::reshape()

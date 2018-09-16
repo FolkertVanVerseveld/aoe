@@ -25,8 +25,8 @@
 #include "lang.h"
 
 #include "image.hpp"
-
 #include "render.hpp"
+#include "world.hpp"
 
 #define MOVE_SPEED 16
 
@@ -220,7 +220,7 @@ enum MapSize {
 
 class Map final {
 public:
-	std::unique_ptr<uint8_t[]> map;
+	std::unique_ptr<uint8_t[]> map, heightmap;
 	unsigned w, h;
 	int left, bottom, right, top;
 
@@ -233,35 +233,6 @@ public:
 private:
 	void resize(unsigned w, unsigned h);
 	void resize(unsigned size) { resize(size, size); }
-};
-
-class Unit {
-protected:
-	unsigned hp;
-
-	int x, y;
-	unsigned w, h;
-
-	const AnimationTexture &animation;
-	unsigned image_index;
-
-public:
-	Unit(
-		unsigned hp, int x, int y,
-		unsigned w, unsigned h,
-		unsigned sprite_index
-	);
-	virtual ~Unit() {}
-
-	virtual void draw(unsigned color) const;
-};
-
-class Building final : public Unit {
-	const AnimationTexture &overlay;
-	unsigned overlay_index;
-public:
-	Building(unsigned id, unsigned p_id, int x, int y);
-	void draw(unsigned color) const override;
 };
 
 class ImageCache {
@@ -282,7 +253,9 @@ public:
 	Resources resources;
 	Summary summary;
 	unsigned color;
+	// FIXME port units to units2
 	std::vector<std::shared_ptr<Unit>> units;
+	Quadtree units2;
 
 	Player(const std::string &name, unsigned civ = 0, unsigned color = 0);
 
@@ -319,7 +292,10 @@ public:
 	bool paused;
 	Map map;
 	std::unique_ptr<ImageCache> cache;
+	// XXX use set?
 	std::vector<std::shared_ptr<Player>> players;
+	// TODO create list with all units
+	Quadtree units;
 
 	RendererState state;
 
