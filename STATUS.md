@@ -11,12 +11,13 @@ Note: the genie game engine is being redesigned and integrated directly in
 empires/. Once the game is playable the engine is extracted once again to
 genie/. These items are implemented in either the genie game engine or the game:
 
-Subsystem   | Task / Purpose          | Notes
-------------|-------------------------|----------------------------------------------------
-CD-ROM      | File I/O                | Known issues regarding auto-mounting audio tracks
-File I/O    | Parse basic game assets | Audio works, partial slp and bin parsing
-Tools       | (Un)packing game assets | Pretty stable, but outdated and needs some cleanup
-Game assets | PE parsing              | Integrated libpe in empires and aoesetup
+Subsystem      | Task / Purpose           | Notes
+---------------|--------------------------|----------------------------------------------------
+CD-ROM         | File I/O                 | Known issues regarding auto-mounting audio tracks
+File I/O       | Parse basic game assets  | Audio works, partial slp and bin parsing
+Tools          | (Un)packing game assets  | Pretty stable, but outdated and needs some cleanup
+Game assets    | PE parsing               | Integrated libpe in empires and aoesetup
+User Interface | Background image parsing | Minor problems with dialogs
 
 Unfortunately, the audio tracks mounting issue is related to the particular
 Linux distribution the game is running on and we do not know if this is possible
@@ -34,7 +35,6 @@ Empires folder  | Replicate and port    | Basic graphics and audio
 User Interface  | True Type Fonts       | Porting to new launcher
 "    "          | Menu navigation       | Basic buttons and group navigation
 "    "          | Main menu             | See next task
-"    "          | Background image      | Requires lots of reverse engineering
 DRS Game assets | Asset parsing         | Completed for palettes, backgrounds and some slps, very time consuming
 Slp parsing     | Game gfx assets       | Working for backgrounds, but has glitches with most images
 

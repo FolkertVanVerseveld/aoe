@@ -1297,7 +1297,16 @@ public:
 class MenuGameSettings final : public Menu {
 public:
 	MenuGameSettings() : Menu(STR_TITLE_GAME_SETTINGS, 100, 105, 700 - 100, 495 - 105) {
-		objects.emplace_back(new Border(100, 105, 700 - 100, 495 - 105));
+		const Player *you = game.get_controlling_player();
+
+		objects.emplace_back(
+			new Background(
+				DRS_BACKGROUND_GAME_0 + menu_bar_tbl[you->civ],
+				100, 105, 700 - 100, 495 - 105
+			)
+		);
+
+		objects.emplace_back(new Border(100, 105, 700 - 100, 495 - 105, false));
 
 		group.add(220 - 100, 450 - 105, STR_BTN_OK, 390 - 220, 480 - 450);
 		group.add(410 - 100, 450 - 105, STR_BTN_CANCEL, 580 - 410, 480 - 450);

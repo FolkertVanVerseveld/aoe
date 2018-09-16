@@ -3,6 +3,10 @@
 *All copyrighted material and trademarks belong to their respective owners. This
 is an educational non-profit project we are writing in our free time.*
 
+## Preview
+
+![Main Menu](https://user-images.githubusercontent.com/5989565/45595158-bd376000-b9a7-11e8-8ad7-ab536e1ff497.png)
+
 ## Overview
 
 Linux native game port of windows game Age of Empires Rise of Rome
@@ -13,8 +17,7 @@ code is reconstructed from the dissassembly. We have provided a couple of tools
 that verify, test, and inspect the original data files.
 
 You still need to own an original legitimate copy of Age of Empires in order to
-run this program, since you need to specify the location of the original data
-directory.
+run this program, since you need the original game data to run the game.
 
 Community free assets are not supported at the moment, but there are tools
 included if you want to make your own. It is not recommended to create your own
@@ -33,8 +36,8 @@ of simple low-level stuff in the game engine is implemented. See
 
 ## Support
 
-This project has been built primarly for Xubuntu 16.04, but it should build on
-any POSIX-compatible machine (e.g. Xubuntu 18.04.1 and 14.04.5)
+This project has been built primarly for Xubuntu 18.04.1 and 14.04.5, but it
+should build on any POSIX-compatible machine.
 
 For more information, see [INSTALL](INSTALL).
 
