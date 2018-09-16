@@ -9,8 +9,16 @@
 class RendererState final {
 public:
 	int view_x, view_y;
+	SDL_Color col_text, col_text_f;
 
-	RendererState() : view_x(0), view_y(0) {}
+	RendererState() : view_x(0), view_y(0) {
+		col_text.r = 225;
+		col_text.g = 208;
+		col_text.b = 157;
+		col_text.a = 255;
+		col_text_f.r = col_text_f.g = col_text_f.a = 255;
+		col_text_f.b = 0;
+	}
 
 	RendererState(int view_x, int view_y)
 		: view_x(view_x), view_y(view_y) {}

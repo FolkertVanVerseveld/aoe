@@ -222,10 +222,13 @@ class Map final {
 public:
 	std::unique_ptr<uint8_t[]> map;
 	unsigned w, h;
+	int left, bottom, right, top;
 
 	Map() : map() {}
 	Map(unsigned w, unsigned h);
 
+	/** Update viewport limits. */
+	void reshape();
 	void resize(MapSize size);
 private:
 	void resize(unsigned w, unsigned h);
@@ -335,9 +338,11 @@ public:
 	bool keydown(SDL_KeyboardEvent *event);
 	bool keyup(SDL_KeyboardEvent *event);
 
+	/* Change game viewport */
 	void reshape(int x, int y, int w, int h) {
 		this->x = x; this->y = y;
 		this->w = w; this->h = h;
+		map.reshape();
 	}
 
 	void draw();

@@ -215,8 +215,7 @@ enum TextAlign {
 };
 
 // FIXME grab these from the color palette
-const SDL_Color col_default = {255, 208, 157, SDL_ALPHA_OPAQUE};
-const SDL_Color col_focus = {255, 255, 0, SDL_ALPHA_OPAQUE};
+const SDL_Color col_default = {255, 255, 255, SDL_ALPHA_OPAQUE};
 
 // FIXME grab these from the game palette
 const SDL_Color col_players[MAX_PLAYER_COUNT] = {
@@ -239,10 +238,10 @@ public:
 	Text(int x, int y, unsigned id
 		, TextAlign halign=LEFT
 		, TextAlign valign=TOP
-		, TTF_Font *fnt=fnt_default
-		, SDL_Color col=col_default)
+		, TTF_Font *fnt=fnt_default)
 		: UI(x, y), str(load_string(id))
 	{
+		SDL_Color col = {255, 255, 255, SDL_ALPHA_OPAQUE};
 		surf = TTF_RenderText_Solid(fnt, str.c_str(), col);
 		tex = SDL_CreateTextureFromSurface(renderer, surf);
 
@@ -293,14 +292,21 @@ public:
 		reshape(halign, valign);
 	}
 
-	void draw() const {
+	void draw() const override {
+		draw(false);
+	}
+
+	void draw(bool focus) const {
 		SDL_Rect pos = {x - 1, y + 1, (int)w, (int)h};
 		// draw shadow
 		SDL_SetTextureColorMod(tex, 0, 0, 0);
 		SDL_RenderCopy(renderer, tex, NULL, &pos);
 		++pos.x;
 		--pos.y;
-		SDL_SetTextureColorMod(tex, 255, 255, 255);
+		// draw foreground text
+		RendererState &s = canvas.get_state();
+		SDL_Color &col = focus ? s.col_text_f : s.col_text;
+		SDL_SetTextureColorMod(tex, col.r, col.g, col.b);
 		SDL_RenderCopy(renderer, tex, NULL, &pos);
 	}
 };
@@ -856,13 +862,12 @@ public:
 	}
 
 	void draw() const {
-		// FIXME repeat background
 		animation.draw(x, y, w, h, 0);
 	}
 };
 
 class Button final : public Border {
-	Text text, text_focus;
+	Text text;
 public:
 	bool focus;
 	bool down;
@@ -871,7 +876,6 @@ public:
 	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
-		, text_focus(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button, col_focus)
 		, focus(false), down(false), play_sfx(play_sfx)
 	{
 	}
@@ -879,7 +883,6 @@ public:
 	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
-		, text_focus(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button, col_focus)
 		, focus(false), down(false), play_sfx(play_sfx)
 	{
 	}
@@ -914,10 +917,7 @@ public:
 
 	void draw() const {
 		Border::draw(down);
-		if (focus)
-			text_focus.draw();
-		else
-			text.draw();
+		text.draw(focus);
 	}
 };
 

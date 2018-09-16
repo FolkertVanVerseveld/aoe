@@ -20,6 +20,9 @@
 #include "../setup/def.h"
 #include "../setup/res.h"
 
+#define TILE_WIDTH 32
+#define TILE_HEIGHT 16
+
 Game game;
 
 unsigned StatsMilitary::max_army_count = 0;
@@ -95,8 +98,8 @@ void Player::init_dummy(Map &map) {
 		)
 	);
 
-	x = 32 + rand() % (640 - 2 * 32);
-	y = 32 + rand() % (480 - 2 * 32);
+	x = TILE_WIDTH + rand() % (800 - 2 * TILE_WIDTH);
+	y = TILE_WIDTH + rand() % (600 - 2 * TILE_WIDTH) - 600 / 2;
 	units.emplace_back(new Unit(0, x, y, 1, 1, DRS_VILLAGER_STAND));
 }
 
@@ -182,13 +185,24 @@ void Map::resize(unsigned w, unsigned h)
 			data[y * w + x] = rand() % 9;
 }
 
+void Map::reshape()
+{
+	// FIXME improve boundary computation
+	int d = 8;
+
+	left = -d * TILE_WIDTH;
+	right = (w * 2 - d) * TILE_WIDTH;
+	bottom = (h / 2 - d) * TILE_HEIGHT;
+	top = -(h * 2 - d) * TILE_HEIGHT;
+}
+
 #define KEY_LEFT 1
 #define KEY_RIGHT 2
 #define KEY_UP 4
 #define KEY_DOWN 8
 
 Game::Game()
-	: run(false), x(0), y(0), w(640), h(480)
+	: run(false), x(0), y(0), w(800), h(600)
 	, keys(0), paused(false)
 	, map(), cache(), players(), state()
 {
@@ -226,9 +240,8 @@ void Game::idle() {
 	// Always repaint the screen
 	canvas_dirty();
 
-	int dx, dy;
-
-	dx = dy = 0;
+	// Determine displacement vector
+	int dx = 0, dy = 0;
 
 	if (keys & KEY_DOWN)
 		dy += MOVE_SPEED;
@@ -240,6 +253,19 @@ void Game::idle() {
 		dx -= MOVE_SPEED;
 
 	state.move_view(dx, dy);
+
+	// limit viewport bounds
+	int vx = state.view_x, vy = state.view_y;
+	if (vx < map.left)
+		vx = map.left;
+	else if (vx > map.right)
+		vx = map.right;
+	if (vy < map.top)
+		vy = map.top;
+	else if (vy > map.bottom)
+		vy = map.bottom;
+
+	state.set_view(vx, vy);
 }
 
 void Game::start() {
@@ -258,16 +284,11 @@ void Game::stop() {
 
 void Game::draw() {
 	// draw terrain
-	int y, x, tile_w = 32, tile_h = 16;
-
+	int ty, tx, th, tw, y, x;
 	const AnimationTexture &bkg = cache->get(DRS_TERRAIN_DESERT);
-
-	canvas.push_state(state);
-
 	const uint8_t *data = map.map.get();
 
-	int ty, tx, th, tw;
-	x = y = 0;
+	canvas.push_state(state);
 
 	/*
 	y+ axis is going from left to top corner
@@ -276,7 +297,7 @@ void Game::draw() {
 
 	th = map.h; tw = map.w;
 
-	y = th * tile_h / 2;
+	y = th * TILE_HEIGHT / 2;
 	x = y = 0;
 
 	for (ty = 0; ty < th; ++ty) {
@@ -285,11 +306,11 @@ void Game::draw() {
 			bkg.draw(
 				x, y, data[ty * tw + tx]
 			);
-			x += tile_w;
-			y += tile_h;
+			x += TILE_WIDTH;
+			y += TILE_HEIGHT;
 		}
-		x = xp + tile_w;
-		y = yp - tile_h;
+		x = xp + TILE_WIDTH;
+		y = yp - TILE_HEIGHT;
 	}
 
 	for (auto p : players)
