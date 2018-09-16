@@ -56,7 +56,7 @@ Unit::Unit(
 	unsigned sprite_index
 )
 	: hp(hp)
-	, x(x), y(y), w(w), h(h)
+	, bounds(Point(x, y), Point(w, h))
 	, animation(game.cache->get(sprite_index))
 	, image_index(0)
 {
@@ -64,7 +64,7 @@ Unit::Unit(
 
 void Unit::draw(unsigned color) const
 {
-	animation.draw(x, y, image_index, color);
+	animation.draw(bounds.pos.x, bounds.pos.y, image_index, color);
 }
 
 Player::Player(const std::string &name, unsigned civ, unsigned color)
@@ -82,7 +82,7 @@ Building::Building(unsigned id, unsigned p_id, int x, int y)
 
 void Building::draw(unsigned color) const {
 	Unit::draw(color);
-	overlay.draw(x, y, overlay_index, color);
+	overlay.draw(bounds.pos.x, bounds.pos.y, overlay_index, color);
 }
 
 void Player::init_dummy(Map &map) {

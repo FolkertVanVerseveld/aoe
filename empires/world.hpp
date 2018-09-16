@@ -13,39 +13,6 @@
 
 #include <vector>
 
-/**
- * Elementary world unit. This includes gaia stuff (e.g. trees, gold, berry
- * bushes...)
- */
-class Unit {
-protected:
-	unsigned hp;
-
-	int x, y;
-	unsigned w, h;
-
-	const AnimationTexture &animation;
-	unsigned image_index;
-
-public:
-	Unit(
-		unsigned hp, int x, int y,
-		unsigned w, unsigned h,
-		unsigned sprite_index
-	);
-	virtual ~Unit() {}
-
-	virtual void draw(unsigned color) const;
-};
-
-class Building final : public Unit {
-	const AnimationTexture &overlay;
-	unsigned overlay_index;
-public:
-	Building(unsigned id, unsigned p_id, int x, int y);
-	void draw(unsigned color) const override;
-};
-
 // TODO implement quadtree
 
 struct Point final {
@@ -76,6 +43,48 @@ struct AABB final {
 		return (pos.x + hbounds.x >= other.pos.x - other.hbounds.x || pos.x - hbounds.x < other.pos.x + other.hbounds.x)
 			&& (pos.y + hbounds.y >= other.pos.y - other.hbounds.y || pos.y - hbounds.y < other.pos.y + other.hbounds.y);
 	}
+
+	friend bool operator==(const AABB &lhs, const AABB &rhs) {
+		return lhs.pos == rhs.pos && lhs.hbounds == rhs.hbounds;
+	}
+};
+
+/**
+ * Elementary world unit. This includes gaia stuff (e.g. trees, gold, berry
+ * bushes...)
+ */
+class Unit {
+protected:
+	unsigned hp;
+
+	AABB bounds;
+	// tile displacement
+	int dx, dy;
+
+	const AnimationTexture &animation;
+	unsigned image_index;
+
+public:
+	Unit(
+		unsigned hp, int x, int y,
+		unsigned w, unsigned h,
+		unsigned sprite_index
+	);
+	virtual ~Unit() {}
+
+	virtual void draw(unsigned color) const;
+
+	friend bool operator==(const Unit &lhs, const Unit &rhs) {
+		return lhs.bounds == rhs.bounds && lhs.dx == rhs.dx && lhs.dy == rhs.dy;
+	}
+};
+
+class Building final : public Unit {
+	const AnimationTexture &overlay;
+	unsigned overlay_index;
+public:
+	Building(unsigned id, unsigned p_id, int x, int y);
+	void draw(unsigned color) const override;
 };
 
 class Quadtree final {
@@ -88,9 +97,9 @@ public:
 		: children(), bounds(bounds), objects(), split(false) {}
 
 	bool put(std::shared_ptr<Unit> obj);
+	bool erase(Unit *obj);
 
-	// XXX use weakptr?
-	void query(std::vector<std::shared_ptr<Unit>> &lst);
+	void query(std::vector<Unit*> &lst);
 private:
 	void reshape(AABB bounds) { this->bounds = bounds; }
 };
