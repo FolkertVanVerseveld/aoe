@@ -24,6 +24,11 @@ struct Point final {
 	friend bool operator==(const Point &lhs, const Point &rhs) {
 		return lhs.x == rhs.x && lhs.y == rhs.y;
 	}
+
+	void to_screen(Point &dst) const;
+	void to_map(Point &dst) const;
+
+	void move(int dx, int dy) { x += dx; y += dy; }
 };
 
 struct AABB final {
@@ -32,7 +37,8 @@ struct AABB final {
 	AABB(Point pos = {}, Point hbounds = Point(1, 1))
 		: pos(pos), hbounds(hbounds) {}
 
-	AABB(int size) : AABB({0, 0}, {size, size}) {}
+	AABB(int size) : AABB(size, size) {}
+	AABB(int w, int h) : AABB({0, 0}, {w, h}) {}
 
 	bool contains(const Point &p) const {
 		return p.x < pos.x + hbounds.x && p.x >= pos.x - hbounds.x
@@ -49,6 +55,32 @@ struct AABB final {
 	}
 };
 
+enum MapSize {
+	MICRO, // for debug purposes...
+	TINY,
+	SMALL,
+	MEDIUM,
+	LARGE,
+	HUGE_, // HUGE is already being used somewhere...
+};
+
+class Map final {
+public:
+	std::unique_ptr<uint8_t[]> map, heightmap;
+	unsigned w, h;
+	int left, bottom, right, top;
+
+	Map() : map() {}
+	Map(unsigned w, unsigned h);
+
+	/** Update viewport limits. */
+	void reshape(int x, int y, int w, int h);
+	void resize(MapSize size);
+private:
+	void resize(unsigned w, unsigned h);
+	void resize(unsigned size) { resize(size, size); }
+};
+
 /**
  * Elementary world unit. This includes gaia stuff (e.g. trees, gold, berry
  * bushes...)
@@ -57,22 +89,26 @@ class Unit {
 protected:
 	unsigned hp;
 
+public:
 	AABB bounds;
 	// tile displacement
 	int dx, dy;
 
+protected:
 	const AnimationTexture &animation;
 	unsigned image_index;
+	unsigned color;
 
 public:
 	Unit(
 		unsigned hp, int x, int y,
 		unsigned w, unsigned h,
-		unsigned sprite_index
+		unsigned sprite_index,
+		unsigned color
 	);
 	virtual ~Unit() {}
 
-	virtual void draw(unsigned color) const;
+	virtual void draw(Map &map) const;
 
 	friend bool operator==(const Unit &lhs, const Unit &rhs) {
 		return lhs.bounds == rhs.bounds && lhs.dx == rhs.dx && lhs.dy == rhs.dy;
@@ -83,8 +119,8 @@ class Building final : public Unit {
 	const AnimationTexture &overlay;
 	unsigned overlay_index;
 public:
-	Building(unsigned id, unsigned p_id, int x, int y);
-	void draw(unsigned color) const override;
+	Building(unsigned id, unsigned p_id, int x, int y, unsigned color);
+	void draw(Map &map) const override;
 };
 
 class Quadtree final {
@@ -99,7 +135,7 @@ public:
 	bool put(std::shared_ptr<Unit> obj);
 	bool erase(Unit *obj);
 
-	void query(std::vector<Unit*> &lst);
+	void query(std::vector<std::weak_ptr<Unit>> &lst, AABB bounds);
 private:
 	void reshape(AABB bounds) { this->bounds = bounds; }
 };

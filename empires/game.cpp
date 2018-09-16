@@ -20,9 +20,6 @@
 #include "../setup/def.h"
 #include "../setup/res.h"
 
-#define TILE_WIDTH 32
-#define TILE_HEIGHT 16
-
 Game game;
 
 unsigned StatsMilitary::max_army_count = 0;
@@ -53,18 +50,24 @@ void stats_reset() {
 Unit::Unit(
 	unsigned hp,
 	int x, int y, unsigned w, unsigned h,
-	unsigned sprite_index
+	unsigned sprite_index,
+	unsigned color
 )
 	: hp(hp)
-	, bounds(Point(x, y), Point(w, h))
-	, animation(game.cache->get(sprite_index))
-	, image_index(0)
+	, bounds(Point(x, y), Point(w, h)), dx(0), dy(0)
+	, animation(game.cache->get(sprite_index)), image_index(0)
+	, color(color)
 {
 }
 
-void Unit::draw(unsigned color) const
+void Unit::draw(Map &map) const
 {
-	animation.draw(bounds.pos.x, bounds.pos.y, image_index, color);
+	Point scr;
+
+	bounds.pos.to_screen(scr);
+	scr.move(dx, dy);
+
+	animation.draw(scr.x, scr.y, image_index, color);
 }
 
 Player::Player(const std::string &name, unsigned civ, unsigned color)
@@ -73,44 +76,46 @@ Player::Player(const std::string &name, unsigned civ, unsigned color)
 {
 }
 
-Building::Building(unsigned id, unsigned p_id, int x, int y)
-	: Unit(0, x, y, 1, 1, id)
-	, overlay(game.cache->get(p_id))
-	, overlay_index(0)
+Building::Building(unsigned id, unsigned p_id, int x, int y, unsigned color)
+	: Unit(0, x, y, 1, 1, id, color)
+	, overlay(game.cache->get(p_id)) , overlay_index(0)
 {
 }
 
-void Building::draw(unsigned color) const {
-	Unit::draw(color);
-	overlay.draw(bounds.pos.x, bounds.pos.y, overlay_index, color);
+void Building::draw(Map &map) const {
+	Point scr;
+
+	Unit::draw(map);
+
+	bounds.pos.to_screen(scr);
+	scr.move(dx, dy);
+
+	overlay.draw(scr.x, scr.y, overlay_index, color);
 }
 
-void Player::init_dummy(Map &map) {
-	int x, y;
-	x = 200 + rand() % 300;
-	y = 100 + rand() % 200;
+void Player::init_dummy() {
+	Map &map = game.map;
 
-	units.emplace_back(
+	int x = rand() % map.w;
+	int y = rand() % map.h;
+
+	game.spawn(
 		new Building(
 			DRS_TOWN_CENTER_BASE,
 			DRS_TOWN_CENTER_PLAYER,
-			x, y
+			x, y, color
 		)
 	);
 
-	x = TILE_WIDTH + rand() % (800 - 2 * TILE_WIDTH);
-y = TILE_WIDTH + rand() % (600 - 2 * TILE_WIDTH) - 600 / 2;
-	units.emplace_back(new Unit(0, x, y, 1, 1, DRS_VILLAGER_STAND));
+	x = rand() % map.w;
+	y = rand() % map.h;
+
+	game.spawn(new Unit(0, x, y, 1, 1, DRS_VILLAGER_STAND, color));
 }
 
 void Player::idle() {
 	// TODO do logic
 	tick();
-}
-
-void Player::draw() const {
-	for (auto &x : units)
-		x->draw(color);
 }
 
 void PlayerHuman::tick() {
@@ -166,7 +171,7 @@ void Map::resize(MapSize size)
 	default:
 		dbgf("unknown map size: %d\n", size);
 	case TINY : resize(72); break;
-	case MICRO: resize(16); break;
+	case MICRO: resize(24); break;
 	}
 }
 
@@ -188,15 +193,24 @@ void Map::resize(unsigned w, unsigned h)
 		}
 }
 
-void Map::reshape()
+void Map::reshape(int view_x, int view_y, int view_w, int view_h)
 {
-	// FIXME improve boundary computation
-	int d = 8;
+	// TODO check how top and bottom boundary are determined in original
+	Point tile, scr;
+	int d = 12;
 
-	left = -d * TILE_WIDTH;
-	right = (w * 2 - d) * TILE_WIDTH;
-	bottom = (h / 2 - d) * TILE_HEIGHT;
-	top = -(h * 2 - d) * TILE_HEIGHT;
+	tile.x = tile.y = 0;
+	tile.to_screen(scr);
+	left = view_x + scr.x - d * TILE_WIDTH;
+	tile.x = w - 1;
+	tile.to_screen(scr);
+	bottom = view_y + scr.y - (view_h - d * TILE_HEIGHT);
+	tile.y = h - 1;
+	tile.to_screen(scr);
+	right = view_x + scr.x - (view_w - d * TILE_WIDTH);
+	tile.x = 0;
+	tile.to_screen(scr);
+	top = view_y + scr.y - d * TILE_HEIGHT;
 }
 
 #define KEY_LEFT 1
@@ -258,6 +272,7 @@ void Game::idle() {
 	state.move_view(dx, dy);
 
 	// limit viewport bounds
+	// TODO strafe viewport if hitting boundaries
 	int vx = state.view_x, vy = state.view_y;
 	if (vx < map.left)
 		vx = map.left;
@@ -273,7 +288,7 @@ void Game::idle() {
 
 void Game::start() {
 	for (auto p : players)
-		p->init_dummy(map);
+		p->init_dummy();
 
 	run = true;
 	in_game = 1;
@@ -316,8 +331,18 @@ void Game::draw() {
 		y = yp - TILE_HEIGHT;
 	}
 
-	for (auto p : players)
-		p->draw();
+	std::vector<std::weak_ptr<Unit>> objects;
+	// FIXME compute proper bounds
+	AABB bounds(tw, th);
+	units.query(objects, bounds);
+
+	// FIXME sort objects in proper drawing order
+	// just use: priority = -y
+
+	// draw all found objects
+	for (auto &o : objects)
+		if (auto unit = o.lock())
+			unit->draw(map);
 
 	canvas.pop_state();
 }
@@ -388,6 +413,13 @@ pause:
 // FIXME get real controlling player
 const Player *Game::get_controlling_player() const {
 	return players[0].get();
+}
+
+void Game::spawn(Unit *obj) {
+	std::shared_ptr<Unit> unit = std::shared_ptr<Unit>(obj);
+
+	if (!units.put(unit))
+		panic("Game: could not spawn unit");
 }
 
 /* Image cache stuff */

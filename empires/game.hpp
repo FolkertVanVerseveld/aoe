@@ -28,6 +28,9 @@
 #include "render.hpp"
 #include "world.hpp"
 
+#define TILE_WIDTH 32
+#define TILE_HEIGHT 16
+
 #define MOVE_SPEED 16
 
 #define MAX_PLAYER_COUNT 8
@@ -209,32 +212,6 @@ public:
 		, path_finding(0) {}
 };
 
-enum MapSize {
-	MICRO, // for debug purposes...
-	TINY,
-	SMALL,
-	MEDIUM,
-	LARGE,
-	HUGE_, // HUGE is already being used somewhere...
-};
-
-class Map final {
-public:
-	std::unique_ptr<uint8_t[]> map, heightmap;
-	unsigned w, h;
-	int left, bottom, right, top;
-
-	Map() : map() {}
-	Map(unsigned w, unsigned h);
-
-	/** Update viewport limits. */
-	void reshape();
-	void resize(MapSize size);
-private:
-	void resize(unsigned w, unsigned h);
-	void resize(unsigned size) { resize(size, size); }
-};
-
 class ImageCache {
 	Palette pal;
 public:
@@ -253,21 +230,18 @@ public:
 	Resources resources;
 	Summary summary;
 	unsigned color;
-	// FIXME port units to units2
-	std::vector<std::shared_ptr<Unit>> units;
-	Quadtree units2;
+	Quadtree units;
 
 	Player(const std::string &name, unsigned civ = 0, unsigned color = 0);
 
 	/**
 	 * Initialize default stuff
 	 */
-	void init_dummy(Map &map);
+	void init_dummy();
 
 	void idle();
 
 	virtual void tick() = 0;
-	void draw() const;
 };
 
 class PlayerHuman final : public Player {
@@ -318,10 +292,11 @@ public:
 	void reshape(int x, int y, int w, int h) {
 		this->x = x; this->y = y;
 		this->w = w; this->h = h;
-		map.reshape();
+		map.reshape(x, y, w, h);
 	}
 
 	void draw();
+	void spawn(Unit *obj);
 
 	const Player *get_controlling_player() const;
 };
