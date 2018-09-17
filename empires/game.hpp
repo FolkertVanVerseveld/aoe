@@ -267,6 +267,7 @@ public:
 	Map map;
 	std::unique_ptr<ImageCache> cache;
 	// XXX use set?
+	// just use vector: negleglible delay for using something more sophisticated for just 9 players
 	std::vector<std::shared_ptr<Player>> players;
 	// TODO create list with all units
 	Quadtree units;

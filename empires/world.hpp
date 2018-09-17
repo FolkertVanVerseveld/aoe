@@ -26,7 +26,8 @@ struct Point final {
 	}
 
 	void to_screen(Point &dst) const;
-	void to_map(Point &dst) const;
+	/** Try to convert to map coordinates. Returns false if out of bounds. */
+	bool to_map(Point &dst) const;
 
 	void move(int dx, int dy) { x += dx; y += dy; }
 };
@@ -104,7 +105,8 @@ public:
 		unsigned hp, int x, int y,
 		unsigned w, unsigned h,
 		unsigned sprite_index,
-		unsigned color
+		unsigned color,
+		int dx=0, int dy=0
 	);
 	virtual ~Unit() {}
 
@@ -119,7 +121,10 @@ class Building final : public Unit {
 	const AnimationTexture &overlay;
 	unsigned overlay_index;
 public:
-	Building(unsigned id, unsigned p_id, int x, int y, unsigned color);
+	Building(
+		unsigned id, unsigned p_id,
+		int x, int y, unsigned w, unsigned h, unsigned color
+	);
 	void draw(Map &map) const override;
 };
 

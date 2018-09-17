@@ -51,10 +51,11 @@ Unit::Unit(
 	unsigned hp,
 	int x, int y, unsigned w, unsigned h,
 	unsigned sprite_index,
-	unsigned color
+	unsigned color,
+	int dx, int dy
 )
 	: hp(hp)
-	, bounds(Point(x, y), Point(w, h)), dx(0), dy(0)
+	, bounds(Point(x, y), Point(w, h)), dx(dx), dy(dy)
 	, animation(game.cache->get(sprite_index)), image_index(0)
 	, color(color)
 {
@@ -76,8 +77,11 @@ Player::Player(const std::string &name, unsigned civ, unsigned color)
 {
 }
 
-Building::Building(unsigned id, unsigned p_id, int x, int y, unsigned color)
-	: Unit(0, x, y, 1, 1, id, color)
+Building::Building(
+	unsigned id, unsigned p_id,
+	int x, int y, unsigned w, unsigned h, unsigned color
+)
+	: Unit(0, x, y, w, h, id, color, TILE_WIDTH / 2, TILE_HEIGHT / 2)
 	, overlay(game.cache->get(p_id)) , overlay_index(0)
 {
 }
@@ -103,7 +107,7 @@ void Player::init_dummy() {
 		new Building(
 			DRS_TOWN_CENTER_BASE,
 			DRS_TOWN_CENTER_PLAYER,
-			x, y, color
+			x, y, 3, 3, color
 		)
 	);
 
