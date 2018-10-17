@@ -225,8 +225,13 @@ void Map::reshape(int view_x, int view_y, int view_w, int view_h)
 Game::Game()
 	: run(false), x(0), y(0), w(800), h(600)
 	, keys(0), paused(false)
-	, map(), cache(), players(), state()
+	, map(), cache(), players(), state(), cursor(nullptr)
 {
+}
+
+Game::~Game()
+{
+	dispose();
 }
 
 void Game::dispose(void) {
@@ -235,6 +240,12 @@ void Game::dispose(void) {
 
 	players.clear();
 	cache.reset();
+
+	if (cursor) {
+		SDL_SetCursor(SDL_GetDefaultCursor());
+		SDL_FreeCursor(cursor);
+		cursor = nullptr;
+	}
 }
 
 void Game::reset(unsigned players) {
@@ -306,10 +317,28 @@ void Game::start() {
 	in_game = 1;
 	music_index = 0;
 	mus_play(MUS_GAME1);
+
+	set_cursor(0);
+}
+
+void Game::set_cursor(unsigned index) {
+	const AnimationTexture &cursors = cache->get(DRS_CURSORS);
+	if (cursor)
+		SDL_FreeCursor(cursor);
+	cursor = SDL_CreateColorCursor(cursors.images[index].surface.get(), 0, 0);
+	if (!cursor)
+		panic("Bad cursor");
+	SDL_SetCursor(cursor);
 }
 
 void Game::stop() {
 	run = false;
+
+	if (cursor) {
+		SDL_SetCursor(SDL_GetDefaultCursor());
+		SDL_FreeCursor(cursor);
+		cursor = nullptr;
+	}
 }
 
 void Game::draw() {

@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mouse.h>
 
 #include "lang.h"
 
@@ -274,7 +275,10 @@ public:
 
 	RendererState state;
 
+	SDL_Cursor *cursor;
+
 	Game();
+	~Game();
 
 	void reset(unsigned players = 4);
 	void dispose(void);
@@ -286,6 +290,8 @@ public:
 
 	void start();
 	void stop();
+
+	void set_cursor(unsigned index);
 
 	bool keydown(SDL_KeyboardEvent *event);
 	bool keyup(SDL_KeyboardEvent *event);

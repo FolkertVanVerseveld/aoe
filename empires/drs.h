@@ -42,6 +42,8 @@ extern "C" {
 #define DRS_MENU_BAR_1024_768_2 50743
 #define DRS_MENU_BAR_1024_768_3 50744
 
+#define DRS_CURSORS 51000
+
 // Terrain tiles
 #define DRS_TERRAIN_DESERT 15000
 
