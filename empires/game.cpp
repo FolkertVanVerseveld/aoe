@@ -229,6 +229,14 @@ Game::Game()
 {
 }
 
+void Game::dispose(void) {
+	if (run)
+		panic("Bad game state");
+
+	players.clear();
+	cache.reset();
+}
+
 void Game::reset(unsigned players) {
 	if (run)
 		panic("Bad game state");

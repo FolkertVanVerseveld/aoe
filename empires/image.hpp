@@ -36,12 +36,11 @@ public:
  */
 class Image final {
 public:
-	SDL_Surface *surface;
-	SDL_Texture *texture;
+	std::shared_ptr<SDL_Surface> surface;
+	std::shared_ptr<SDL_Texture> texture;
 	int hotspot_x, hotspot_y;
 
 	Image();
-	~Image();
 
 	bool load(
 		Palette *pal, const void *data,

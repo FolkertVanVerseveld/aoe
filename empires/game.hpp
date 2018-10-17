@@ -277,6 +277,7 @@ public:
 	Game();
 
 	void reset(unsigned players = 4);
+	void dispose(void);
 
 	void resize(MapSize size);
 	size_t player_count() { return players.size(); }

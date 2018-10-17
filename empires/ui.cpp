@@ -445,9 +445,12 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 	dbgf("outline table offset: %X\n", frame->outline_table_offset);
 
 	// FIXME big endian support
-	surface = SDL_CreateRGBSurface(0, frame->width, frame->height, 8, 0, 0, 0, 0);
+	surface = std::shared_ptr<SDL_Surface >(
+		SDL_CreateRGBSurface(0, frame->width, frame->height, 8, 0, 0, 0, 0),
+		SDL_FreeSurface
+	);
 
-	if (!surface || SDL_SetSurfacePalette(surface, pal->pal))
+	if (!surface || SDL_SetSurfacePalette(surface.get(), pal->pal))
 		panicf("Cannot create image: %s\n", SDL_GetError());
 	if (surface->format->format != SDL_PIXELFORMAT_INDEX8)
 		panicf("Unexpected image format: %s\n", SDL_GetPixelFormatName(surface->format->format));
@@ -694,24 +697,17 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 	}
 	dbgs("");
 
-	if (SDL_SetColorKey(surface, SDL_TRUE, 0))
+	if (SDL_SetColorKey(surface.get(), SDL_TRUE, 0))
 		fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());
 
-	if (!(texture = SDL_CreateTextureFromSurface(renderer, surface)))
+	if (!(texture = std::shared_ptr<SDL_Texture>(SDL_CreateTextureFromSurface(renderer, surface.get()), SDL_DestroyTexture)))
 		panicf("Cannot create texture: %s\n", SDL_GetError());
 
 	return dynamic;
 }
 
-Image::~Image() {
-	if (texture)
-		SDL_DestroyTexture(texture);
-	if (surface)
-		SDL_FreeSurface(surface);
-}
-
 void Image::draw(int x, int y, unsigned w, unsigned h) const {
-	canvas.draw(texture, surface, x - hotspot_x, y - hotspot_y, w, h);
+	canvas.draw(texture.get(), surface.get(), x - hotspot_x, y - hotspot_y, w, h);
 }
 
 void AnimationTexture::open(Palette *pal, unsigned id) {
@@ -1690,6 +1686,7 @@ void ui_free(void)
 {
 	running = 0;
 	ui_state.dispose();
+	game.dispose();
 }
 
 /* Wrappers for ui_state */
