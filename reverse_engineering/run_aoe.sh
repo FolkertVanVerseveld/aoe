@@ -13,4 +13,4 @@ dir="$PWD"
 
 make aoe
 cd "$1"
-"$dir"/aoe
+wine "$dir"/aoe

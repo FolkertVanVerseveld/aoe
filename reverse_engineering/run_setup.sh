@@ -13,4 +13,4 @@ dir="$PWD"
 
 make setup
 cd "$1"
-"$dir"/setup
+wine "$dir"/setup
