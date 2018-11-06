@@ -231,7 +231,6 @@ Game::Game()
 
 Game::~Game()
 {
-	dispose();
 }
 
 void Game::dispose(void) {

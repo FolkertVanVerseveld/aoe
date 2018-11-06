@@ -1460,6 +1460,17 @@ public:
 			Menu::keyup(event);
 	}
 
+	void mousedown(SDL_MouseButtonEvent *event) {
+		/* Check if mouse is within viewport. */
+		int top = menu_bar.images[0].surface->h;
+		int bottom = HEIGHT - menu_bar.images[1].surface->h;
+
+		if (event->y < top || event->y >= bottom)
+			return;
+
+		dbgf("TODO: mousedown (%d,%d)\n", event->x, event->y);
+	}
+
 	void idle() override final {
 		game.idle();
 	}
