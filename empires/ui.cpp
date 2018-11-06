@@ -1245,9 +1245,6 @@ public:
 		objects.emplace_back(new Button(191, 162, 354 - 191, 187 - 162, STR_BTN_ECONOMY, LEFT));
 		objects.emplace_back(new Button(266, 137, 420 - 266, 162 - 137, STR_BTN_RELIGION, LEFT));
 		objects.emplace_back(new Button(351, 112, 549 - 351, 137 - 112, STR_BTN_TECHNOLOGY));
-		//objects.emplace_back(new Text(485, 137, 639 - 485, 162 - 137, STR_SURVIVAL, RIGHT, TOP, fnt_default));
-		//objects.emplace_back(new Text(552, 162, 713 - 552, 187 - 162, STR_WONDER, RIGHT, TOP, fnt_default));
-		//objects.emplace_back(new Text(617, 187, 781 - 617, 212 - 187, STR_TOTAL_SCORE, RIGHT, TOP, fnt_default));
 		objects.emplace_back(new Text(633, 140, STR_SURVIVAL, RIGHT, TOP, fnt_default));
 		objects.emplace_back(new Text(710, 165, STR_WONDER, RIGHT, TOP, fnt_default));
 		objects.emplace_back(new Text(778, 190, STR_TOTAL_SCORE, RIGHT, TOP, fnt_default));

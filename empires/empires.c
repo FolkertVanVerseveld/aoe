@@ -106,32 +106,36 @@ void main_event_loop(void)
 	}
 }
 
+#define hasopt(x,a,b) (!strcasecmp(x, a b) || !strcasecmp(x, a "_" b) || !strcasecmp(x, a " " b))
 
 void cfg_parse(struct config *cfg, int argc, char **argv)
 {
 	for (int i = 1; i < argc; ++i) {
-		if (!strcasecmp(argv[i], "nostartup"))
+		if (hasopt(argv[i], "no", "startup"))
 			cfg->options |= CFG_NO_VIDEO;
+		else if (hasopt(argv[i], "system", "memory"))
+			fputs("System memory not supported\n", stderr);
+		else if (hasopt(argv[i], "midi", "music"))
+			fputs("Midi support unavailable\n", stderr);
+		else if (!strcasecmp(argv[i], "msync"))
+			fputs("SoundBlaster AWE not supported\n", stderr);
+		else if (!strcasecmp(argv[i], "mfill"))
+			fputs("Matrox Video adapter not supported\n", stderr);
+		else if (hasopt(argv[i], "no", "sound"))
+			cfg->options |= CFG_NO_SOUND;
 		else if (!strcmp(argv[i], "640"))
 			cfg->screen_mode = CFG_MODE_640x480;
 		else if (!strcmp(argv[i], "800"))
 			cfg->screen_mode = CFG_MODE_800x600;
 		else if (!strcmp(argv[i], "1024"))
 			cfg->screen_mode = CFG_MODE_1024x768;
-		else if (!strcasecmp(argv[i], "normalmouse"))
-			cfg->options |= CFG_NORMAL_MOUSE;
-		else if (!strcasecmp(argv[i], "nosound"))
-			cfg->options |= CFG_NO_SOUND;
-		else if (!strcasecmp(argv[i], "noterrainsound"))
-			cfg->options |= CFG_NO_AMBIENT;
-		else if (!strcasecmp(argv[i], "nomusic"))
+		else if (hasopt(argv[i], "no", "music"))
 			cfg->options |= CFG_NO_MUSIC;
-		else if (!strcasecmp(argv[i], "mfill"))
-			fputs("Matrox Video adapter not supported\n", stderr);
-		else if (!strcasecmp(argv[i], "msync"))
-			fputs("SoundBlaster AWE not supported\n", stderr);
-		else if (!strcasecmp(argv[i], "midimusic"))
-			fputs("Midi support unavailable\n", stderr);
+		else if (hasopt(argv[i], "normal", "mouse"))
+			cfg->options |= CFG_NORMAL_MOUSE;
+		/* Rise of Rome options: */
+		else if (hasopt(argv[i], "no", "terrainsound"))
+			cfg->options |= CFG_NO_AMBIENT;
 		else if (i + 1 < argc &&
 			(!strcasecmp(argv[i], "limit") || !strcasecmp(argv[i], "limit=")))
 		{
@@ -171,6 +175,7 @@ int main(int argc, char **argv)
 		dbgs("wine detected");
 	dbgf("game installed: %s\n", game_installed ? "yes" : "no");
 
+	/* Setup graphical state */
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
 		panic("Could not initialize user interface");
 
@@ -184,7 +189,7 @@ int main(int argc, char **argv)
 
 	dbgf("Available render drivers: %d\n", SDL_GetNumVideoDrivers());
 
-	// Create default renderer and don't care if it is accelerated.
+	/* Create default renderer and don't care if it is accelerated. */
 	if (!(renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)))
 		panic("Could not create rendering context");
 
