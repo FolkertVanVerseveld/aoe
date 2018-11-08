@@ -517,6 +517,7 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 				pixels[y * p + x++] = *cmd;
 				continue;
 			// player color fill
+			case 0x96: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 9
 			case 0x86: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 8
 			case 0x76: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 7
 			case 0x66: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 6
