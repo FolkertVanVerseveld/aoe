@@ -37,16 +37,22 @@ User Interface  | True Type Fonts       | Porting to new launcher
 "    "          | Main menu             | See next task
 DRS Game assets | Asset parsing         | Completed for palettes, backgrounds and some slps, very time consuming
 Slp parsing     | Game gfx assets       | Working for backgrounds, but has glitches with most images
+Game logic      | Fix bad game state    | State gets corrupted sometimes
 
 ## Backlog
 
 These items will be picked up when other items are being completed:
 
-Subsystem      | Task / Purpose          | Notes
----------------|-------------------------|-----------------------------
-Shell          | Command line interface  | Migrate from old to new game
-Bugreport      | Debug info for crashes  | "", crash handler in case the engine or game crashes
-Video          | AVI video playback      | "", uses command-line interface for VLC
+Subsystem      | Task / Purpose                 | Notes
+---------------|--------------------------------|-----------------------------
+Shell          | Command line interface         | Migrate from old to new game
+Bugreport      | Debug info for crashes         | "", crash handler in case the engine or game crashes
+Video          | AVI video playback             | "", uses command-line interface for VLC
+Video          | Refactor graphics renderer     | Provide plain SDL renderer and OpenGL
+Tools          | Autostrip BMP and WAVE headers | Headers must be stripped to be recognized properly by the original game.
+User interface | Create chatfield for commands  | Spawn units, get resources etc.
+"              | Split code in more files       | Some stuff really doesn't belong here...
+Global         | Refactoring some parts to C    | I'm stupid and can't get everything work fast and properly in C++...
 
 ## On hold
 
