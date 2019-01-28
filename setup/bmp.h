@@ -1,9 +1,25 @@
-/* Copyright 2018 Folkert van Verseveld. All rights reserved */
+/* Copyright 2018-2019 Folkert van Verseveld. All rights reserved */
+
+/**
+ * Provides Bitmap image file headers.
+ *
+ * Licensed under Affero General Public License v3.0
+ * Copyright Folkert van Verseveld.
+ *
+ * BMP file format source: http://www.dragonwins.com/domains/GetTechEd/bmp/bmpfileformat.htm
+ */
 
 #ifndef BMP_H
 #define BMP_H
 
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE
+#endif
+#include <endian.h>
+
 #include <stdint.h>
+
+#define BMP_BF_TYPE be16toh(0x424D)
 
 struct bmp_header {
 	uint16_t bfType;

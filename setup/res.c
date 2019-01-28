@@ -496,34 +496,33 @@ uint32_t img_pixel_offset(const void *data, size_t n)
 	return hdr->biSize + 256 * sizeof(uint32_t);
 }
 
-// FIXME remove this when load_bitmap works
-static int is_bmp(const void *data, size_t n)
+// XXX copied from bmp.c
+
+/** Validate bitmap header. */
+int is_bmp(const void *data, size_t n)
 {
 	const struct bmp_header *hdr = data;
-	return n >= sizeof *hdr && hdr->bfType == 0x4D42;
+	return n >= sizeof *hdr && hdr->bfType == BMP_BF_TYPE;
 }
 
-static int is_img(const void *data, size_t n)
+/** Validate bitmap image header. */
+int is_img(const void *data, size_t n)
 {
 	const struct img_header *hdr = data;
 	return n >= 12 && hdr->biSize < n;
 }
 
-static uint8_t *dump_coltbl(const void *data, size_t size, unsigned bits)
+// END copied from bmp.c
+
+/** Fetch color table. */
+static uint8_t *get_coltbl(const void *data, size_t size, unsigned bits)
 {
 	size_t n = 1 << bits;
 	if (n * sizeof(uint32_t) > size) {
 		fputs("corrupt color table\n", stderr);
 		return NULL;
 	}
-#if 1
 	return (uint8_t*)((uint32_t*)data + n);
-#else
-	uint32_t *col = data;
-	for (size_t i = 0; i < n; ++i)
-		printf("%8X: %8X\n", i, col[i]);
-	return (uint8_t*)&col[n];
-#endif
 }
 
 static void dump_img(const void *data, size_t n, size_t offset)
@@ -541,7 +540,7 @@ static void dump_img(const void *data, size_t n, size_t offset)
 	dbgf("biXPelsPerMeter: %u\nbiYPelsPerMeter: %u\n", hdr->biXPelsPerMeter, hdr->biYPelsPerMeter);
 	dbgf("biClrUsed: %u\nbiClrImportant: %u\n", hdr->biClrUsed, hdr->biClrImportant);
 	if (hdr->biBitCount <= 8) {
-		uint8_t *end = dump_coltbl((const unsigned char*)data + hdr->biSize, n - hdr->biSize, hdr->biBitCount);
+		uint8_t *end = get_coltbl((const unsigned char*)data + hdr->biSize, n - hdr->biSize, hdr->biBitCount);
 		dbgf("pixel data start: 0x%zX\n", offset + hdr->biSize + 256 * sizeof(uint32_t));
 		if (end && end + hdr->biHeight * hdr->biWidth > (const unsigned char*)data + n)
 			fputs("truncated pixel data\n", stderr);

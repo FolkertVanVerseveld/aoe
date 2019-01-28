@@ -1,11 +1,11 @@
 
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Common used routines
  *
  * Licensed under Affero General Public License v3.0
- * Copyright by Folkert van Verseveld.
+ * Copyright Folkert van Verseveld
  */
 
 #include <errno.h>

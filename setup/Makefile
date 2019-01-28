@@ -1,3 +1,4 @@
+# Copyright 2017-2019 Folkert van Verseveld. All rights reserved
 .PHONY: default all clean
 
 CC=gcc
@@ -28,11 +29,11 @@ all: setup bmp
 setup: setup.o res.o def.o
 	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) setup.o res.o def.o -o setup $(LDFLAGS) $(LDLIBS) $(SDL_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl)
 res.o: res.h res.c
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) res.c -c -o res.o $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) res.c -c -o res.o $(LDFLAGS) $(LDLIBS)
 def.o: def.h def.c
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) def.c -c -o def.o $(LDFLAGS) $(LDLIBS)
-bmp: bmp.o
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) bmp.o -o bmp $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) def.c -c -o def.o $(LDFLAGS) $(LDLIBS)
+bmp: bmp.o bmp.h
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) bmp.o -o bmp $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm -f setup bmp *.o

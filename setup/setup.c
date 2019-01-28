@@ -1,12 +1,13 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Replicated installer and game launcher
  *
  * Licensed under Affero General Public License v3.0
- * Copyright by Folkert van Verseveld.
+ * Copyright Folkert van Verseveld
  *
- * Custom setup that looks like the original one
+ * Custom setup that looks like the original one.
+ * Most buttons are still stubs though...
  */
 
 #include <stdio.h>

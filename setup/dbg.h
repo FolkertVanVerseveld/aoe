@@ -1,4 +1,10 @@
-/* Copyright 2018 Folkert van Verseveld. All rights resseved */
+/* Copyright 2018-2019 Folkert van Verseveld. */
+
+/**
+ * Common debug routines.
+ *
+ * Licensed under MIT-License.
+ */
 
 #ifndef DBG_H
 #define DBG_H
