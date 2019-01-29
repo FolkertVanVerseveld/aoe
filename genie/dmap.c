@@ -126,7 +126,7 @@ int read_data_mapping(const char *filename, const char *directory, int nommap)
 		fd = -1;
 	}
 	// check for magic "1.00tribe"
-	ret = strncmp(((struct drsmap*)map->data)->version, "1.00tribe", strlen("1.00tribe"));
+	ret = strncmp(((struct drs*)map->data)->version, "1.00tribe", strlen("1.00tribe"));
 	if (ret) fprintf(stderr, "%s: hdr invalid\n", filename);
 	// insert map into drs list
 	++drs_count;
@@ -212,10 +212,10 @@ static int drs_map(unsigned type, int res_id, off_t *offset, char **dblk, size_t
 		goto fail;
 	for (unsigned drs_i = 0; drs_i < dmap_loaded; ++drs_i) {
 		struct dmap *map = &dmap_list[drs_i];
-		struct drsmap *drs = (struct drsmap*)map->data;
+		struct drs *drs = (struct drs*)map->data;
 		if (!drs->nlist)
 			continue;
-		struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drsmap));
+		struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drs));
 		for (unsigned i = 0; i < drs->nlist; ++i, ++list) {
 			if (list->type != type)
 				continue;

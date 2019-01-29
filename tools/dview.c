@@ -120,11 +120,11 @@ fail:
 	return 0;
 }
 
-static int drsmap_stat(char *data, size_t size)
+static int drs_stat(char *data, size_t size)
 {
-	if (size < sizeof(struct drsmap))
+	if (size < sizeof(struct drs))
 		goto bad_hdr;
-	struct drsmap *drs = (struct drsmap*)data;
+	struct drs *drs = (struct drs*)data;
 	if (strncmp("1.00tribe", drs->version, strlen("1.00tribe"))) {
 bad_hdr:
 		fputs("invalid drs file\n", stderr);
@@ -134,7 +134,7 @@ bad_hdr:
 		puts("empty drs");
 		return 0;
 	}
-	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drsmap));
+	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drs));
 	unsigned nwave, nshp, nslp, nbin, nblob;
 	nwave = nshp = nslp = nbin = 0;
 	for (unsigned i = 0; i < drs->nlist; ++i, ++list) {
@@ -161,13 +161,13 @@ bad_hdr:
 			break;
 		}
 	}
-	uint32_t end = sizeof(struct drsmap) + drs->nlist * sizeof(struct drs_list);
-	list = (struct drs_list*)((char*)drs + sizeof(struct drsmap));
+	uint32_t end = sizeof(struct drs) + drs->nlist * sizeof(struct drs_list);
+	list = (struct drs_list*)((char*)drs + sizeof(struct drs));
 	for (unsigned i = 0; i < drs->nlist; ++i, ++list)
 		end += list->size * sizeof(struct drs_item);
 	printf("listend: %u (0x%X)\n", drs->listend, drs->listend);
 	printf("computed: %u (0x%X)\n", end, end);
-	list = (struct drs_list*)((char*)drs + sizeof(struct drsmap));
+	list = (struct drs_list*)((char*)drs + sizeof(struct drs));
 	size_t off = (size_t)((char*)list - data);
 	size_t offp = off;
 	if (opts & OPT_UNPACK)
@@ -240,7 +240,7 @@ static int process(const char *name)
 		perror(name);
 		goto fail;
 	}
-	ret = drsmap_stat(map, mapsz);
+	ret = drs_stat(map, mapsz);
 fail:
 	if (map != MAP_FAILED)
 		munmap(map, mapsz);
@@ -329,7 +329,7 @@ static int pack(int argp, int argc, char **argv)
 {
 	FILE *f = NULL;
 	int ret = 1;
-	struct drsmap hdr = {
+	struct drs hdr = {
 #ifdef DRS_CUSTOM_HDR
 		"Copyleft libregenie 2016",
 #else
@@ -396,7 +396,7 @@ static int pack(int argp, int argc, char **argv)
 	printf("models: %u (%u, 0x%X)\n", nslp, slpsz, slpsz);
 	printf("audio: %u (%u, 0x%X)\n", nwave, wavesz, wavesz);
 	printf("lists: %u\n", nlist);
-	off_t pos = sizeof(struct drsmap);
+	off_t pos = sizeof(struct drs);
 	uint32_t listend = pos + nlist * sizeof(struct drs_list)
 		+ (nwave + nshp + nslp + nbin) * sizeof(struct drs_item);
 	hdr.nlist = nlist;

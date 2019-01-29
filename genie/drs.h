@@ -16,7 +16,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-struct drsmap {
+struct drs {
 	char copyright[40];
 	char version[16];
 	uint32_t nlist;

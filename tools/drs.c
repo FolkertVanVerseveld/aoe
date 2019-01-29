@@ -79,14 +79,14 @@ void drs_find_wave(char *data, size_t size)
 }
 
 /** Validate and dump DRS items. */
-void drsmap_stat(char *data, size_t size)
+void drs_stat(char *data, size_t size)
 {
-	if (size < sizeof(struct drsmap)) {
+	if (size < sizeof(struct drs)) {
 		fputs("invalid drs file\n", stderr);
 		return;
 	}
 
-	struct drsmap *drs = (struct drsmap*)data;
+	struct drs *drs = (struct drs*)data;
 
 	if (strncmp("1.00tribe", drs->version, strlen("1.00tribe"))) {
 		fputs("invalid drs file\n", stderr);
@@ -99,7 +99,7 @@ void drsmap_stat(char *data, size_t size)
 	if (!drs->nlist)
 		return;
 
-	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drsmap));
+	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drs));
 
 	for (unsigned i = 0; i < drs->nlist; ++i, ++list) {
 		dump_type(list->type);
@@ -148,7 +148,7 @@ static int process(char *name)
 		goto fail;
 	}
 
-	drsmap_stat(map, mapsz);
+	drs_stat(map, mapsz);
 
 	ret = 0;
 fail:
