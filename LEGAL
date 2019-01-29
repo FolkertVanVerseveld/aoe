@@ -1,23 +1,24 @@
 Any file in this project that doesn't state otherwise, and isn't listed as an
-exception below, is Copyright 2016-2018 The Age of Empires Free Software Remake
+exception below, is Copyright 2016-2019 The Age of Empires Free Software Remake
 authors, and licensed only under the terms of the GNU Affero General Public
-License Version 3, and no later version ("AGPL3")
+License Version 3 ("AGPL3"), and no later version.
 
-Remember that this product is a non-profit free-time project and that
-Microsoft and Ensemble Studios own all the rights of the original
-product.
+This means that all code as a whole is licensed under AGPL3, but some files may
+be licensed under e.g. MIT (see file header if available).
 
-For more information about the license, see LICENSE.
-For a summarised shortened version of the license, see LICENSE.simple.
+Remember that this product is a non-profit free-time project and that Microsoft
+and Ensemble Studios own all the rights of the original product.
 
-The simple version may or may not represent the real license and may be
-subject to interpretation errors. Always read LICENSE in case
-LICENSE.simple does not clarify legal issues.
+For more information about the license, see LICENSE. For a summarised shortened
+version of the license, see LICENSE.simple.
 
-Please note that this product is *not* suited for commercial use without
-paying royalties to their original respective copyright owners (i.e.
-Microsoft and Ensemble Studios). You have to contact these copyright
-owners for commercial purposes. We are in no way related to Microsoft
-nor Ensemble Studios.
+The simple version may or may not represent the real license and may be subject
+to interpretation errors. Always read LICENSE in case LICENSE.simple does not
+clarify legal issues.
+
+Please note that this product is *not* suited for commercial use without paying
+royalties to their original respective copyright owners (i.e.  Microsoft and
+Ensemble Studios). You have to contact these copyright owners for commercial
+purposes. We are in no way related to Microsoft nor Ensemble Studios.
 
 For an overview of the maintainers, see copying.md.

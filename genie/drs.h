@@ -1,16 +1,16 @@
-/* Copyright 2016-2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2016-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
+/*
+ * Data Resource Set file format
+ *
+ * Licensed under GNU Affero General Public License version 3
+ * Copyright 2019 Folkert van Verseveld
+ */
 
 #ifndef GENIE_DRS_H
 #define GENIE_DRS_H
 
-/*
-drs item types:
-
-'bina' everything else
-'wav ' audio files
-'slp ' model files
-'shp ' shape files
-*/
+#include "endian.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -23,11 +23,26 @@ struct drsmap {
 	uint32_t listend; // XXX go figure
 };
 
-// FIXME also support big-endian machines
-#define DT_BINARY 0x62696e61
-#define DT_SHP    0x73687020
-#define DT_SLP    0x736c7020
-#define DT_WAVE   0x77617620
+/*
+drs item types:
+
+'bina' everything else
+'wav ' audio files
+'slp ' model files
+'shp ' shape files
+*/
+
+#if GENIE_BYTE_ORDER_LITTLE
+  #define DT_BINARY 0x62696e61
+  #define DT_SHP    0x73687020
+  #define DT_SLP    0x736c7020
+  #define DT_WAVE   0x77617620
+#else
+  #define DT_BINARY 0x616e6962
+  #define DT_SHP    0x20706873
+  #define DT_SLP    0x20706c73
+  #define DT_WAVE   0x20766177
+#endif
 
 struct drs_list {
 	uint32_t type;
