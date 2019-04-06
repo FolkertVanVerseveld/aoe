@@ -1,4 +1,4 @@
-/* Copyright 2016-2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2016-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #ifndef DRS_H
 #define DRS_H
@@ -48,6 +48,8 @@ extern "C" {
 #define DRS_TERRAIN_DESERT 15000
 
 // Buildings
+#define DRS_BARRACKS_BASE 229
+#define DRS_BARRACKS_PLAYER 254
 #define DRS_TOWN_CENTER_BASE 280
 #define DRS_TOWN_CENTER_PLAYER 230
 

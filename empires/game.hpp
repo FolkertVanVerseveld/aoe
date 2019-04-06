@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Core game model
@@ -263,6 +263,7 @@ class Game final {
 	bool run;
 	int x, y, w, h;
 	unsigned keys;
+	unsigned player_index;
 public:
 	bool paused;
 	Map map;
@@ -273,6 +274,8 @@ public:
 	// TODO create list with all units
 	Quadtree units;
 
+	std::vector<std::shared_ptr<Unit>> selected;
+
 	RendererState state;
 
 	SDL_Cursor *cursor;
@@ -280,7 +283,7 @@ public:
 	Game();
 	~Game();
 
-	void reset(unsigned players = 4);
+	void reset(unsigned players = 2);
 	void dispose(void);
 
 	void resize(MapSize size);
@@ -306,7 +309,7 @@ public:
 	void draw();
 	void spawn(Unit *obj);
 
-	const Player *get_controlling_player() const;
+	const Player *controlling_player() const;
 };
 
 extern Game game;

@@ -1,4 +1,4 @@
-/* Copyright 2016-2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2016-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #pragma once
 
@@ -59,6 +59,7 @@ public:
 	}
 
 	void draw(SDL_Texture *tex, SDL_Surface *surf, int x, int y, unsigned w=0, unsigned h=0);
+	void draw_selection(int x, int y, unsigned size);
 
 	void save_screen();
 	void read_screen();

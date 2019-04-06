@@ -1,4 +1,4 @@
-/* Copyright 2016-2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2016-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /*
  * Anything image and animation related stuff goes here
@@ -60,11 +60,13 @@ public:
 	// FIXME make private and wrap in unique_ptr
 	std::unique_ptr<Image[]> images;
 	bool dynamic;
+	unsigned id; // FIXME debug stuff, remove when done
 
-	AnimationTexture() : images(), dynamic(false) {}
-	AnimationTexture(Palette *pal, unsigned id) : images(), dynamic(false) { open(pal, id); }
+	AnimationTexture() : images(), dynamic(false), id(0) {}
+	AnimationTexture(Palette *pal, unsigned id) : images(), dynamic(false), id(id) { open(pal, id); }
 
 	void open(Palette *pal, unsigned id);
 	void draw(int x, int y, unsigned index, unsigned player = 0) const;
 	void draw(int x, int y, unsigned w, unsigned h, unsigned index, unsigned player = 0) const;
+	void draw_selection(int x, int y, unsigned size) const;
 };

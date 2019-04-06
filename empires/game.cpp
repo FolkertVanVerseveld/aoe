@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Core game model
@@ -47,41 +47,51 @@ void stats_reset() {
 	StatsTechnology::max_technologies = 0;
 }
 
+unsigned Unit::count = 0;
+
 Unit::Unit(
 	unsigned hp,
-	int x, int y, unsigned w, unsigned h,
+	int x, int y, unsigned size,
 	unsigned sprite_index,
 	unsigned color,
 	int dx, int dy
 )
 	: hp(hp)
-	, bounds(Point(x, y), Point(w, h)), dx(dx), dy(dy)
+	, pos(x, y), dx(dx), dy(dy), size(size)
 	, animation(game.cache->get(sprite_index)), image_index(0)
 	, color(color)
 {
+	++count;
 }
 
 void Unit::draw(Map &map) const
 {
 	Point scr;
-
-	bounds.pos.to_screen(scr);
+	pos.to_screen(scr);
 	scr.move(dx, dy);
-
 	animation.draw(scr.x, scr.y, image_index, color);
+}
+
+void Unit::draw_selection(Map &map) const
+{
+	Point scr;
+	pos.to_screen(scr);
+	scr.move(dx, dy);
+	animation.draw_selection(scr.x, scr.y, size);
 }
 
 Player::Player(const std::string &name, unsigned civ, unsigned color)
 	: name(name), civ(civ), alive(true)
 	, resources(res_low_default), summary(), color(color), units()
 {
+	dbgf("init player %s: civ=%u, col=%u\n", name.c_str(), civ, color);
 }
 
 Building::Building(
 	unsigned id, unsigned p_id,
-	int x, int y, unsigned w, unsigned h, unsigned color
+	int x, int y, unsigned size, unsigned color
 )
-	: Unit(0, x, y, w, h, id, color, TILE_WIDTH / 2, TILE_HEIGHT / 2)
+	: Unit(0, x, y, size, id, color, 0, 0)
 	, overlay(game.cache->get(p_id)) , overlay_index(0)
 {
 }
@@ -91,7 +101,7 @@ void Building::draw(Map &map) const {
 
 	Unit::draw(map);
 
-	bounds.pos.to_screen(scr);
+	pos.to_screen(scr);
 	scr.move(dx, dy);
 
 	overlay.draw(scr.x, scr.y, overlay_index, color);
@@ -103,18 +113,38 @@ void Player::init_dummy() {
 	int x = rand() % map.w;
 	int y = rand() % map.h;
 
+	switch (color) {
+	case 0:
+		x = y = 0;
+		break;
+	case 1:
+		x = map.w - 3;
+		y = 0;
+		break;
+	}
+	x += 2;
+	++y;
+
 	game.spawn(
 		new Building(
 			DRS_TOWN_CENTER_BASE,
 			DRS_TOWN_CENTER_PLAYER,
-			x, y, 3, 3, color
+			x, y, 3 * TILE_WIDTH, color
+		)
+	);
+
+	game.spawn(
+		new Building(
+			DRS_BARRACKS_BASE,
+			DRS_BARRACKS_PLAYER,
+			x, y + 3, 3 * TILE_WIDTH, color
 		)
 	);
 
 	x = rand() % map.w;
 	y = rand() % map.h;
 
-	game.spawn(new Unit(0, x, y, 1, 1, DRS_VILLAGER_STAND, color));
+	game.spawn(new Unit(0, x, y, 14, DRS_VILLAGER_STAND, color));
 }
 
 void Player::idle() {
@@ -251,6 +281,10 @@ void Game::reset(unsigned players) {
 	if (run)
 		panic("Bad game state");
 
+	player_index = 0;
+	units.clear();
+	assert(Unit::count == 0);
+
 	cache.reset(new ImageCache());
 	resize(MICRO);
 
@@ -376,8 +410,17 @@ void Game::draw() {
 	AABB bounds(tw, th);
 	units.query(objects, bounds);
 
-	// FIXME sort objects in proper drawing order
-	// just use: priority = -y
+	// draw all selected objects
+	for (auto &o : objects)
+		if (auto unit = o.lock())
+			if (true) //if (unit.selected)
+				unit->draw_selection(map);
+
+	// determine drawing order: priority = -y
+	std::sort(objects.begin(), objects.end(), [](std::weak_ptr<Unit> &a, std::weak_ptr<Unit> &b) {
+		auto lhs = a.lock(), rhs = b.lock();
+		return lhs->pos.y > rhs->pos.y;
+	});
 
 	// draw all found objects
 	for (auto &o : objects)
@@ -451,8 +494,8 @@ pause:
 }
 
 // FIXME get real controlling player
-const Player *Game::get_controlling_player() const {
-	return players[0].get();
+const Player *Game::controlling_player() const {
+	return players[player_index].get();
 }
 
 void Game::spawn(Unit *obj) {

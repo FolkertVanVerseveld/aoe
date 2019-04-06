@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Virtual world logic model
@@ -42,6 +42,11 @@ bool Point::to_map(Point &dst) const {
 	return true;
 }
 
+void Quadtree::clear() {
+	assert(!split);
+	objects.clear();
+}
+
 bool Quadtree::put(std::shared_ptr<Unit> obj) {
 	// FIXME split and unsplit quadtree
 	objects.push_back(obj);
@@ -69,7 +74,7 @@ void Quadtree::query(std::vector<std::weak_ptr<Unit>> &lst, AABB bounds) {
 		return;
 
 	for (auto &o : objects)
-		if (bounds.contains(o->bounds.pos))
+		if (bounds.contains(o->pos))
 			// XXX verify this doesn't yield a temporary Unit
 			// (i.e. it isn't destroyed when this goes out of scope)
 			lst.emplace_back(o);

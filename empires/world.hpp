@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Virtual world logic model
@@ -12,8 +12,6 @@
 #include "image.hpp"
 
 #include <vector>
-
-// TODO implement quadtree
 
 struct Point final {
 	int x, y;
@@ -91,9 +89,11 @@ protected:
 	unsigned hp;
 
 public:
-	AABB bounds;
+	Point pos;
 	// tile displacement
 	int dx, dy;
+	unsigned size;
+	static unsigned count; // FIXME debug stuff, remove when done
 
 protected:
 	const AnimationTexture &animation;
@@ -103,17 +103,18 @@ protected:
 public:
 	Unit(
 		unsigned hp, int x, int y,
-		unsigned w, unsigned h,
+		unsigned size,
 		unsigned sprite_index,
 		unsigned color,
 		int dx=0, int dy=0
 	);
-	virtual ~Unit() {}
+	virtual ~Unit() { --count; }
 
 	virtual void draw(Map &map) const;
+	void draw_selection(Map &map) const;
 
 	friend bool operator==(const Unit &lhs, const Unit &rhs) {
-		return lhs.bounds == rhs.bounds && lhs.dx == rhs.dx && lhs.dy == rhs.dy;
+		return lhs.pos == rhs.pos && lhs.dx == rhs.dx && lhs.dy == rhs.dy;
 	}
 };
 
@@ -123,7 +124,7 @@ class Building final : public Unit {
 public:
 	Building(
 		unsigned id, unsigned p_id,
-		int x, int y, unsigned w, unsigned h, unsigned color
+		int x, int y, unsigned size, unsigned color
 	);
 	void draw(Map &map) const override;
 };
@@ -139,6 +140,7 @@ public:
 
 	bool put(std::shared_ptr<Unit> obj);
 	bool erase(Unit *obj);
+	void clear();
 
 	void query(std::vector<std::weak_ptr<Unit>> &lst, AABB bounds);
 private:

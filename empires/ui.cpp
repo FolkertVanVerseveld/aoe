@@ -1,4 +1,4 @@
-/* Copyright 2016-2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2016-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #include "ui.h"
 
@@ -126,13 +126,39 @@ void Renderer::draw(SDL_Texture *tex, SDL_Surface *surf, int x, int y, unsigned 
 	for (int top = y, bottom = y + h; top < bottom; top += surf->h) {
 		for (int left = x, right = x + w; left < right; left += surf->w) {
 		#define min(a, b) ((a) < (b) ? (a) : (b))
-			unsigned sw = min(surf->w, right - left), sh = min(surf->h, bottom - top);
+			int sw = min(surf->w, right - left), sh = min(surf->h, bottom - top);
 			SDL_Rect src = {0, 0, sw, sh};
 			SDL_Rect dst = {left - s.view_x, top - s.view_y, sw, sh};
 		#undef min
 			SDL_RenderCopy(renderer, tex, &src, &dst);
 		}
 	}
+}
+
+void Renderer::draw_selection(int x, int y, unsigned size)
+{
+	RendererState &s = get_state();
+	col(255);
+
+	int w = size, h = size * TILE_HEIGHT / TILE_WIDTH;
+
+	SDL_Point points[5];
+	points[0].x = x; points[0].y = y - h;
+	points[1].x = x + w; points[1].y = y;
+	points[2].x = x; points[2].y = y + h;
+	points[3].x = x - w; points[3].y = y;
+	points[4].x = x; points[4].y = y - h;
+
+	points[0].x -= s.view_x; points[0].y -= s.view_y;
+	points[1].x -= s.view_x; points[1].y -= s.view_y;
+	points[2].x -= s.view_x; points[2].y -= s.view_y;
+	points[3].x -= s.view_x; points[3].y -= s.view_y;
+	points[4].x -= s.view_x; points[4].y -= s.view_y;
+
+	SDL_Rect pos = {x - s.view_x, y - s.view_y, size};
+	SDL_RenderFillRect(renderer, &pos);
+
+	SDL_RenderDrawLines(renderer, points, 5);
 }
 
 void Renderer::save_screen() {
@@ -772,6 +798,10 @@ void AnimationTexture::draw(int x, int y, unsigned w, unsigned h, unsigned index
 	images[player * n + index % n].draw(x, y, w, h);
 }
 
+void AnimationTexture::draw_selection(int x, int y, unsigned size) const {
+	canvas.draw_selection(x, y, size);
+}
+
 class Background final : public UI {
 	unsigned id;
 	Palette palette;
@@ -1291,7 +1321,7 @@ public:
 class MenuGameSettings final : public Menu {
 public:
 	MenuGameSettings() : Menu(STR_TITLE_GAME_SETTINGS, 100, 105, 700 - 100, 495 - 105) {
-		const Player *you = game.get_controlling_player();
+		const Player *you = game.controlling_player();
 
 		objects.emplace_back(
 			new Background(
@@ -1349,7 +1379,7 @@ public:
 		group.add(220 - 200, 408 - 98, STR_BTN_GAME_ABOUT);
 		group.add(220 - 200, 458 - 98, STR_BTN_GAME_CANCEL);
 
-		const Player *you = game.get_controlling_player();
+		const Player *you = game.controlling_player();
 
 		objects.emplace_back(
 			new Background(
@@ -1393,7 +1423,7 @@ public:
 
 		objects.emplace_back(new Text(WIDTH / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
 
-		const Player *you = game.get_controlling_player();
+		const Player *you = game.controlling_player();
 
 		char buf[32];
 		int x = 32;
