@@ -271,7 +271,7 @@ public:
 	// XXX use set?
 	// just use vector: negleglible delay for using something more sophisticated for just 9 players
 	std::vector<std::shared_ptr<Player>> players;
-	// TODO create list with all units
+	// units is internal 2d grid, display_units is isometric 2d grid
 	Quadtree units;
 
 	std::vector<std::shared_ptr<Unit>> selected;
@@ -295,6 +295,8 @@ public:
 	void stop();
 
 	void set_cursor(unsigned index);
+
+	bool mousedown(SDL_MouseButtonEvent *event);
 
 	bool keydown(SDL_KeyboardEvent *event);
 	bool keyup(SDL_KeyboardEvent *event);

@@ -51,13 +51,13 @@ unsigned Unit::count = 0;
 
 Unit::Unit(
 	unsigned hp,
-	int x, int y, unsigned size,
+	int x, int y, unsigned size, int w, int h,
 	unsigned sprite_index,
 	unsigned color,
 	int dx, int dy
 )
 	: hp(hp)
-	, pos(x, y), dx(dx), dy(dy), size(size)
+	, pos(x, y), dx(dx), dy(dy), w(w), h(h), size(size)
 	, animation(game.cache->get(sprite_index)), image_index(0)
 	, color(color)
 {
@@ -89,9 +89,9 @@ Player::Player(const std::string &name, unsigned civ, unsigned color)
 
 Building::Building(
 	unsigned id, unsigned p_id,
-	int x, int y, unsigned size, unsigned color
+	int x, int y, unsigned size, int w, int h, unsigned color
 )
-	: Unit(0, x, y, size, id, color, 0, 0)
+	: Unit(0, x, y, size, w, h, id, color, 0, 0)
 	, overlay(game.cache->get(p_id)) , overlay_index(0)
 {
 }
@@ -144,7 +144,7 @@ void Player::init_dummy() {
 	x = rand() % map.w;
 	y = rand() % map.h;
 
-	game.spawn(new Unit(0, x, y, 14, DRS_VILLAGER_STAND, color));
+	game.spawn(new Unit(0, x, y, 3, 0, 14, DRS_VILLAGER_STAND, color));
 }
 
 void Player::idle() {
@@ -340,6 +340,9 @@ void Game::idle() {
 		vy = map.bottom;
 
 	state.set_view(vx, vy);
+
+	if (dx || dy)
+		dbgf("view: (%d,%d)\n", state.view_x, state.view_y);
 }
 
 void Game::start() {
@@ -381,6 +384,8 @@ void Game::draw() {
 	const uint8_t *data = map.map.get();
 
 	canvas.push_state(state);
+	RendererState &s = canvas.get_state();
+	s.move_view(-this->x, -this->y);
 
 	/*
 	y+ axis is going from left to top corner
@@ -395,9 +400,7 @@ void Game::draw() {
 	for (ty = 0; ty < th; ++ty) {
 		int xp = x, yp = y;
 		for (tx = 0; tx < tw; ++tx) {
-			bkg.draw(
-				x, y, data[ty * tw + tx]
-			);
+			bkg.draw(x, y, data[ty * tw + tx]);
 			x += TILE_WIDTH;
 			y += TILE_HEIGHT;
 		}
@@ -405,29 +408,36 @@ void Game::draw() {
 		y = yp - TILE_HEIGHT;
 	}
 
-	std::vector<std::weak_ptr<Unit>> objects;
+	std::vector<std::shared_ptr<Unit>> objects;
 	// FIXME compute proper bounds
 	AABB bounds(tw, th);
 	units.query(objects, bounds);
 
 	// draw all selected objects
-	for (auto &o : objects)
-		if (auto unit = o.lock())
-			if (true) //if (unit.selected)
-				unit->draw_selection(map);
+	for (auto unit : objects)
+		if (true) //if (unit.selected)
+			unit->draw_selection(map);
 
 	// determine drawing order: priority = -y
-	std::sort(objects.begin(), objects.end(), [](std::weak_ptr<Unit> &a, std::weak_ptr<Unit> &b) {
-		auto lhs = a.lock(), rhs = b.lock();
+	std::sort(objects.begin(), objects.end(), [](std::shared_ptr<Unit> &lhs, std::shared_ptr<Unit> &rhs) {
 		return lhs->pos.y > rhs->pos.y;
 	});
 
 	// draw all found objects
-	for (auto &o : objects)
-		if (auto unit = o.lock())
-			unit->draw(map);
+	for (auto unit : objects)
+		unit->draw(map);
 
 	canvas.pop_state();
+}
+
+bool Game::mousedown(SDL_MouseButtonEvent *event) {
+	// translate mouse coordinates to in game
+	int mx, my;
+
+	mx = event->x + state.view_x;
+	my = event->y + state.view_y;
+
+	dbgf("TODO: mousedown (%d,%d) -> (%d,%d)\n", event->x, event->y, mx, my);
 }
 
 bool Game::keydown(SDL_KeyboardEvent *event) {

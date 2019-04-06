@@ -23,25 +23,6 @@ void Point::to_screen(Point &dst) const {
 	dst.y = (-ty + tx - height[ty * game.map.w + tx]) * TILE_HEIGHT;
 }
 
-bool Point::to_map(Point &dst) const {
-	// TODO test if height computation is correct.
-
-	// FIXME how are we going to determine the tile y (accounting heightmap)?
-	Map &map = game.map;
-	uint8_t *height = map.heightmap.get();
-
-	// TODO use isometric projection
-	int tx = x / TILE_WIDTH, ty = y / TILE_HEIGHT;
-
-	if (tx < 0 || tx >= (int)map.w || ty < 0 || ty >= (int)map.h) {
-		dbgf("Point::to_map: out of bounds: %d,%d\n", tx, ty);
-		return false;
-	}
-
-	dst.x = tx; dst.y = ty;
-	return true;
-}
-
 void Quadtree::clear() {
 	assert(!split);
 	objects.clear();
@@ -69,7 +50,7 @@ bool Quadtree::erase(Unit *obj) {
 	return false;
 }
 
-void Quadtree::query(std::vector<std::weak_ptr<Unit>> &lst, AABB bounds) {
+void Quadtree::query(std::vector<std::shared_ptr<Unit>> &lst, AABB bounds) {
 	if (!this->bounds.intersects(bounds))
 		return;
 

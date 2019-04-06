@@ -149,14 +149,12 @@ void Renderer::draw_selection(int x, int y, unsigned size)
 	points[3].x = x - w; points[3].y = y;
 	points[4].x = x; points[4].y = y - h;
 
+	// apply viewport
 	points[0].x -= s.view_x; points[0].y -= s.view_y;
 	points[1].x -= s.view_x; points[1].y -= s.view_y;
 	points[2].x -= s.view_x; points[2].y -= s.view_y;
 	points[3].x -= s.view_x; points[3].y -= s.view_y;
 	points[4].x -= s.view_x; points[4].y -= s.view_y;
-
-	SDL_Rect pos = {x - s.view_x, y - s.view_y, size};
-	SDL_RenderFillRect(renderer, &pos);
 
 	SDL_RenderDrawLines(renderer, points, 5);
 }
@@ -1115,7 +1113,7 @@ public:
 		}
 	}
 
-	void mousedown(SDL_MouseButtonEvent *event) {
+	virtual void mousedown(SDL_MouseButtonEvent *event) {
 		group.mousedown(event);
 
 		for (auto x : objects) {
@@ -1478,25 +1476,29 @@ public:
 		}
 	}
 
-	virtual void keydown(SDL_KeyboardEvent *event) {
+	void keydown(SDL_KeyboardEvent *event) override {
 		if (!game.keydown(event))
 			Menu::keydown(event);
 	}
 
-	virtual void keyup(SDL_KeyboardEvent *event) {
+	void keyup(SDL_KeyboardEvent *event) override {
 		if (!game.keyup(event))
 			Menu::keyup(event);
 	}
 
-	void mousedown(SDL_MouseButtonEvent *event) {
+	void mousedown(SDL_MouseButtonEvent *event) override final {
 		/* Check if mouse is within viewport. */
 		int top = menu_bar.images[0].surface->h;
 		int bottom = HEIGHT - menu_bar.images[1].surface->h;
 
-		if (event->y < top || event->y >= bottom)
+		if (event->y < top || event->y >= bottom) {
+			Menu::mousedown(event);
 			return;
+		}
 
-		dbgf("TODO: mousedown (%d,%d)\n", event->x, event->y);
+		printf("top,bottom: %d,%d\n", top, bottom);
+		event->y -= top;
+		game.mousedown(event);
 	}
 
 	void idle() override final {

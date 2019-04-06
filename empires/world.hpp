@@ -24,8 +24,6 @@ struct Point final {
 	}
 
 	void to_screen(Point &dst) const;
-	/** Try to convert to map coordinates. Returns false if out of bounds. */
-	bool to_map(Point &dst) const;
 
 	void move(int dx, int dy) { x += dx; y += dy; }
 };
@@ -91,7 +89,7 @@ protected:
 public:
 	Point pos;
 	// tile displacement
-	int dx, dy;
+	int dx, dy, w, h;
 	unsigned size;
 	static unsigned count; // FIXME debug stuff, remove when done
 
@@ -103,7 +101,7 @@ protected:
 public:
 	Unit(
 		unsigned hp, int x, int y,
-		unsigned size,
+		unsigned size, int w, int h,
 		unsigned sprite_index,
 		unsigned color,
 		int dx=0, int dy=0
@@ -124,8 +122,12 @@ class Building final : public Unit {
 public:
 	Building(
 		unsigned id, unsigned p_id,
-		int x, int y, unsigned size, unsigned color
+		int x, int y, unsigned size, int w, int h, unsigned color
 	);
+	Building(
+		unsigned id, unsigned p_id,
+		int x, int y, unsigned size, unsigned color
+	) : Building(id, p_id, x, y, size, 0, 0, color) {}
 	void draw(Map &map) const override;
 };
 
@@ -142,7 +144,7 @@ public:
 	bool erase(Unit *obj);
 	void clear();
 
-	void query(std::vector<std::weak_ptr<Unit>> &lst, AABB bounds);
+	void query(std::vector<std::shared_ptr<Unit>> &lst, AABB bounds);
 private:
 	void reshape(AABB bounds) { this->bounds = bounds; }
 };
