@@ -379,6 +379,7 @@ void Game::stop() {
 
 void Game::draw() {
 	// draw terrain
+	int tleft, ttop, tright, tbottom;
 	int ty, tx, th, tw, y, x;
 	const AnimationTexture &bkg = cache->get(DRS_TERRAIN_DESERT);
 	const uint8_t *data = map.map.get();
@@ -392,20 +393,53 @@ void Game::draw() {
 	x+ axis is going from top to right corner
 	*/
 
+	// TODO compute frustum
 	th = map.h; tw = map.w;
 
-	y = th * TILE_HEIGHT / 2;
-	x = y = 0;
+	// FIXME properly compute offsets
+	int tlo = 2; // -1
+	int tbo = 2;
+	int tro = -4;
 
-	for (ty = 0; ty < th; ++ty) {
+	// TODO compute frustum
+	tleft = (state.view_x + tlo * TILE_WIDTH) / TILE_WIDTH;
+	tright = tleft + this->w / TILE_WIDTH + tro;
+	if (tleft < 0)
+		tleft = 0;
+	if (tright > tw)
+		tright = tw;
+
+	// TODO compute bottom and top frustum
+	// dit is lastiger omdat we per rij tekenen...
+	tbottom = 0;
+	ttop = (-state.view_y + tbo * TILE_HEIGHT) / TILE_HEIGHT;
+
+	if (ttop < 0)
+		ttop = 0;
+	if (ttop > th)
+		ttop = th;
+
+	int ttp = ttop - 1;
+
+	x = tleft * TILE_WIDTH;
+	y = tleft * TILE_HEIGHT;
+
+	for (ty = tbottom; ty < ttop; ++ty) {
 		int xp = x, yp = y;
-		for (tx = 0; tx < tw; ++tx) {
+		for (tx = tleft; tx < tright; ++tx) {
 			bkg.draw(x, y, data[ty * tw + tx]);
 			x += TILE_WIDTH;
 			y += TILE_HEIGHT;
 		}
 		x = xp + TILE_WIDTH;
 		y = yp - TILE_HEIGHT;
+		if (tleft > 0) {
+			--tleft;
+			x -= TILE_WIDTH;
+			y -= TILE_WIDTH / 2;
+		}
+		if (tleft <= tlo)
+			--tright;
 	}
 
 	std::vector<std::shared_ptr<Unit>> objects;
