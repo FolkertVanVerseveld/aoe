@@ -144,7 +144,7 @@ void Player::init_dummy() {
 	x = rand() % map.w;
 	y = rand() % map.h;
 
-	game.spawn(new Unit(0, x, y, 3, 0, 14, DRS_VILLAGER_STAND, color));
+	game.spawn(new Unit(0, x, y, 14, 0, 0, DRS_VILLAGER_STAND, color));
 }
 
 void Player::idle() {
@@ -398,16 +398,14 @@ void Game::draw() {
 
 	// FIXME properly compute offsets
 	int tlo = 2; // -1
-	int tto = 1;
-	int tro = -4;
+	int tto = 2;
+	int tro = -2;
 
 	// compute horizontal frustum
 	tleft = (state.view_x + tlo * TILE_WIDTH) / TILE_WIDTH;
-	tright = tleft + this->w / TILE_WIDTH + tro;
 	if (tleft < 0)
 		tleft = 0;
-	if (tright > tw)
-		tright = tw;
+	tright = tw;
 
 	// TODO compute vertical frustum
 	// TODO compute bottom and top frustum
@@ -415,26 +413,23 @@ void Game::draw() {
 	// TODO bepaal gewoon de maximale rij aan de rechterkant
 	// en zorg dat tleft zich aanpast wanneer de linkerkant boven het scherm uitgaat
 	tbottom = 0;
-	#if 0
-	ttop = (-state.view_y + tto * TILE_HEIGHT) / TILE_HEIGHT;
-
-	if (ttop < 0)
-		ttop = 0;
-	if (ttop > th)
-		ttop = th;
-	#else
 	ttop = th;
-	#endif
 
-	int tleft2 = tleft, tright2 = tright;
 	int ttp = ttop - 1;
 	int count = 0;
 
 	x = tleft * TILE_WIDTH;
 	y = tleft * TILE_HEIGHT;
 
+	dbgf("first tile: %d,%d -> %d,%d (%d,%d)\n", tleft, tbottom, x, y, x - state.view_x, state.view_y);
+	//dbgf("tright = %d\n", (this->w - (x - state.view_x)) / TILE_WIDTH + tro);
+
 	for (ty = tbottom; ty < ttop; ++ty) {
 		int xp = x, yp = y;
+		tright = tleft + ((int)this->w + tro * TILE_WIDTH - (x - state.view_x)) / (TILE_WIDTH);
+		if (tright > tw)
+			tright = tw;
+		//dbgf("tx: %d, %d, %d range: [%d, %d)\n", this->w, x, x - state.view_x, tleft, tright);
 		for (tx = tleft; tx < tright; ++tx) {
 			bkg.draw(x, y, data[ty * tw + tx]);
 			x += TILE_WIDTH;
@@ -442,27 +437,21 @@ void Game::draw() {
 		}
 		x = xp + TILE_WIDTH;
 		y = yp - TILE_HEIGHT;
-		if (y < state.view_y + 2 * TILE_HEIGHT) {
+		if (y < state.view_y + tto * TILE_HEIGHT) {
 			++count;
 			++tleft;
-			if (tright < tw)
-				++tright;
-			++tlo;
 			x += TILE_WIDTH;
+			if (x >= state.view_x + this->w + tro * TILE_WIDTH)
+				break;
 			y += TILE_HEIGHT;
-			continue;
 		} else if (tleft > 0) {
 			--tleft;
 			x -= TILE_WIDTH;
 			y -= TILE_HEIGHT;
 		}
-		//if (tleft <= tlo)
-			--tright;
 	}
 
-	dbgf("top_layers: %d\n", count);//tright2 - tleft - ttop);
-
-	//dbgf("horizontal frustum: %d,%d,%d\n", tleft, tleft2, tright2);
+	//dbgf("top_layers: %d, ty: %d\n", count, ty);//tright2 - tleft - ttop);
 
 	std::vector<std::shared_ptr<Unit>> objects;
 	// FIXME compute proper bounds
