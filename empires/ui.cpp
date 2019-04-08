@@ -1449,6 +1449,7 @@ public:
 		);
 
 		int top = menu_bar.images[0].surface->h;
+		int top2 = menu_bar.images[1].surface->h;
 
 		str_paused.move(
 			WIDTH / 2,
@@ -1456,7 +1457,7 @@ public:
 			CENTER, MIDDLE
 		);
 
-		game.reshape(0, top, WIDTH, HEIGHT - top);
+		game.reshape(0, top, WIDTH, HEIGHT - top - top2);
 		game.start();
 	}
 

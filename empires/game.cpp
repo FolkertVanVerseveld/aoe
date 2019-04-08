@@ -286,7 +286,7 @@ void Game::reset(unsigned players) {
 	assert(Unit::count == 0);
 
 	cache.reset(new ImageCache());
-	resize(MICRO);
+	resize(TINY);
 
 	this->players.clear();
 
@@ -400,6 +400,7 @@ void Game::draw() {
 	int tlo = 2; // -1
 	int tto = 2;
 	int tro = -2;
+	int tbo = -4;
 
 	// compute horizontal frustum
 	tleft = (state.view_x + tlo * TILE_WIDTH) / TILE_WIDTH;
@@ -412,25 +413,116 @@ void Game::draw() {
 	// dit is lastiger omdat we zowel de x als y positie van de view mee moeten nemen
 	// TODO bepaal gewoon de maximale rij aan de rechterkant
 	// en zorg dat tleft zich aanpast wanneer de linkerkant boven het scherm uitgaat
-	tbottom = 0;
 	ttop = th;
 
 	int ttp = ttop - 1;
 	int count = 0;
 
+	#if 0
+	tbottom = (y - state.view_y + tbo * TILE_HEIGHT - this->h) / TILE_HEIGHT;
+	if (tbottom < 0)
+		tbottom = 0;
+
+	x = tleft * TILE_WIDTH + tbottom * TILE_WIDTH;
+	y = tleft * TILE_HEIGHT - tbottom * TILE_HEIGHT;
+	#else
 	x = tleft * TILE_WIDTH;
 	y = tleft * TILE_HEIGHT;
+	#endif
 
-	dbgf("first tile: %d,%d -> %d,%d (%d,%d)\n", tleft, tbottom, x, y, x - state.view_x, state.view_y);
+	//dbgf("first tile: %d, %d,%d -> %d,%d (%d,%d), %d\n", this->h, tleft, tbottom, x, y, x - state.view_x, y - state.view_y, (y - state.view_y) - this->h);
 	//dbgf("tright = %d\n", (this->w - (x - state.view_x)) / TILE_WIDTH + tro);
+	tbottom = 1;
+	/*
+	left corner:
+
+	view: (-64,-272)
+	first tile: 0,0 at 0,0
+
+	top corner:
+
+	view: (368,-540)
+	first tile: 0,13 at 416,208
+
+
+	view: (-384,4)
+	first tile: XX,0 at 0,0 -> 384,-4
+
+
+	view: (-384,-208)
+	first tile: XX,0 at 0,0 -> 384,208
+
+	view: (352,-540)
+	first tile: XX,13 at 416,208 -> 64,748
+
+
+view: (-368,0)
+first tile: -28,0 at 0,0 -> 368,0
+
+view: (-384,-192)
+first tile: -16,0 at 0,0 -> 384,192
+
+view: (352,-540)
+first tile: 18,13 at 416,208 -> 64,748
+
+
+view: (112,-364)
+first tile: 0,5 at 160,80 -> 48,444
+
+
+view: (112,-380)
+first tile: 0,5 at 160,80 -> 48,460
+view: (112,-396)
+first tile: 0,5 at 160,80 -> 48,476
+view: (128,-412)
+first tile: 0,6 at 192,96 -> 64,508
+view: (144,-428)
+first tile: 0,6 at 192,96 -> 48,524
+view: (160,-444)
+first tile: 0,7 at 224,112 -> 64,556
+view: (176,-460)
+first tile: 0,7 at 224,112 -> 48,572
+view: (192,-476)
+first tile: 1,7 at 256,128 -> 64,604
+view: (208,-492)
+first tile: 2,6 at 256,128 -> 48,620
+view: (208,-508)
+first tile: 3,5 at 256,128 -> 48,636
+view: (208,-524)
+first tile: 4,4 at 256,128 -> 48,652
+view: (208,-540)
+first tile: 5,3 at 256,128 -> 48,668
+view: (208,-540)
+first tile: 5,3 at 256,128 -> 48,668
+view: (208,-540)
+first tile: 5,3 at 256,128 -> 48,668
+
+
+	*/
+
+	//tbottom = (this->h + tbo * TILE_HEIGHT - (y - state.view_y)) / TILE_HEIGHT;
+	// TODO adjust bottom based on left
+	tbottom = (y - state.view_y - tbo * TILE_HEIGHT - this->h) / TILE_HEIGHT - tleft;
+	if (tbottom < 0)
+		tbottom = 0;
+	else {
+		tleft -= tbottom;
+		if (tleft < 0)
+			tleft = 0;
+		y -= tbottom * TILE_WIDTH;
+	}
+	dbgf("first tile: %d,%d at %d,%d -> %d,%d\n", tbottom, tleft, x, y, x - state.view_x, y - state.view_y);
 
 	for (ty = tbottom; ty < ttop; ++ty) {
 		int xp = x, yp = y;
-		tright = tleft + ((int)this->w + tro * TILE_WIDTH - (x - state.view_x)) / (TILE_WIDTH);
+		tright = tleft + ((int)this->w + tro * TILE_WIDTH - (x - state.view_x)) / TILE_WIDTH;
 		if (tright > tw)
 			tright = tw;
 		//dbgf("tx: %d, %d, %d range: [%d, %d)\n", this->w, x, x - state.view_x, tleft, tright);
+		//dbgf("last row tile: %d, %d: %d,%d\n", ty, tright, x + (tright - tleft) * TILE_WIDTH, y + (tright - tleft) * TILE_HEIGHT);
 		for (tx = tleft; tx < tright; ++tx) {
+			if (y >= state.view_y + this->h + tbo * TILE_HEIGHT)
+				break;
 			bkg.draw(x, y, data[ty * tw + tx]);
 			x += TILE_WIDTH;
 			y += TILE_HEIGHT;
