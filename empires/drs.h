@@ -57,6 +57,9 @@ extern "C" {
 #define DRS_VILLAGER_CARRY 270
 #define DRS_VILLAGER_STAND 418
 
+// Gaia
+#define DRS_BERRY_BUSH 240
+
 // FIXME also support big-endian machines
 #define DT_BINARY 0x62696e61
 #define DT_SHP    0x73687020

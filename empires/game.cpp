@@ -48,6 +48,7 @@ void stats_reset() {
 }
 
 unsigned Unit::count = 0;
+unsigned Unit::id_counter = 0;
 
 Unit::Unit(
 	unsigned hp,
@@ -62,22 +63,78 @@ Unit::Unit(
 	, color(color)
 {
 	++count;
+	id = ++id_counter;
+}
+
+static void dump_aabb(const AABB &b)
+{
+	printf("[(%d,%d), (%d,%d)]\n", b.pos.x - b.hbounds.x, b.pos.y - b.hbounds.y,
+		b.pos.x + b.hbounds.x, b.pos.y + b.hbounds.y);
 }
 
 void Unit::draw(Map &map) const
 {
 	Point scr;
+	const uint8_t *hdata = map.heightmap.get();
 	pos.to_screen(scr);
-	scr.move(dx, dy);
+	scr.move(dx, dy - TILE_HEIGHT * hdata[pos.y * map.w + pos.x]);
 	animation.draw(scr.x, scr.y, image_index, color);
 }
 
 void Unit::draw_selection(Map &map) const
 {
 	Point scr;
+	const uint8_t *hdata = map.heightmap.get();
 	pos.to_screen(scr);
-	scr.move(dx, dy);
+	scr.move(dx, dy - TILE_HEIGHT * hdata[pos.y * map.w + pos.x]);
 	animation.draw_selection(scr.x, scr.y, size);
+}
+
+void Unit::to_screen(Map &map, AABB &bounds) const
+{
+	Point scr;
+	const uint8_t *hdata = map.heightmap.get();
+	Image &img = animation.images[image_index];
+	SDL_Surface *surf = img.surface.get();
+
+	pos.to_screen(scr);
+	scr.move(dx, dy - TILE_HEIGHT * hdata[pos.y * map.w + pos.x]);
+
+	//dbgf("%d,%d,%d\n", pos.x, img.hotspot_x, surf->w / 2);
+	//dbgf("%d,%d,%d\n", pos.y, img.hotspot_y, surf->h / 2);
+	bounds.pos.x = scr.x - img.hotspot_x + surf->w / 2;
+	bounds.pos.y = scr.y - img.hotspot_y + surf->h / 2;
+	bounds.hbounds.x = surf->w / 2;
+	bounds.hbounds.y = surf->h / 2;
+
+	canvas.draw_rect(bounds.pos.x - bounds.hbounds.x, bounds.pos.y - bounds.hbounds.y, bounds.pos.x + bounds.hbounds.x, bounds.pos.y + bounds.hbounds.y);
+}
+
+void Building::to_screen(Map &map, AABB &bounds) const
+{
+	Point scr;
+	const uint8_t *hdata = map.heightmap.get();
+	Image &img = animation.images[image_index];
+	SDL_Surface *surf = img.surface.get();
+
+	if (img.hotspot_x > surf->w || img.hotspot_y > surf->h ||
+		img.hotspot_x < -surf->w || img.hotspot_y < -surf->h) {
+		// probably bogus hotspot, use overlay
+		img = overlay.images[image_index];
+		surf = img.surface.get();
+	}
+
+	pos.to_screen(scr);
+	scr.move(dx, dy - TILE_HEIGHT * hdata[pos.y * map.w + pos.x]);
+
+	//dbgf("%d,%d,%d\n", pos.x, img.hotspot_x, surf->w / 2);
+	//dbgf("%d,%d,%d\n", pos.y, img.hotspot_y, surf->h / 2);
+	bounds.pos.x = scr.x - img.hotspot_x + surf->w / 2;
+	bounds.pos.y = scr.y - img.hotspot_y + surf->h / 2;
+	bounds.hbounds.x = surf->w / 2;
+	bounds.hbounds.y = surf->h / 2;
+
+	canvas.draw_rect(bounds.pos.x - bounds.hbounds.x, bounds.pos.y - bounds.hbounds.y, bounds.pos.x + bounds.hbounds.x, bounds.pos.y + bounds.hbounds.y);
 }
 
 Player::Player(const std::string &name, unsigned civ, unsigned color)
@@ -137,7 +194,14 @@ void Player::init_dummy() {
 		new Building(
 			DRS_BARRACKS_BASE,
 			DRS_BARRACKS_PLAYER,
-			x, y + 3, 3 * TILE_WIDTH, color
+			x, y + 6, 3 * TILE_WIDTH, color
+		)
+	);
+
+	game.spawn(
+		new StaticResource(
+			rand() % map.w, rand() % map.h,
+			24, 0, 0, DRS_BERRY_BUSH, SR_FOOD, 150
 		)
 	);
 
@@ -286,7 +350,7 @@ void Game::reset(unsigned players) {
 	assert(Unit::count == 0);
 
 	cache.reset(new ImageCache());
-	resize(TINY);
+	resize(MICRO);
 
 	this->players.clear();
 
@@ -341,8 +405,10 @@ void Game::idle() {
 
 	state.set_view(vx, vy);
 
+#if 0
 	if (dx || dy)
 		dbgf("view: (%d,%d)\n", state.view_x, state.view_y);
+#endif
 }
 
 void Game::start() {
@@ -382,7 +448,7 @@ void Game::draw() {
 	int tleft, ttop, tright, tbottom;
 	int ty, tx, th, tw, y, x;
 	const AnimationTexture &bkg = cache->get(DRS_TERRAIN_DESERT);
-	const uint8_t *data = map.map.get();
+	const uint8_t *data = map.map.get(), *hdata = map.heightmap.get();
 
 	canvas.push_state(state);
 	RendererState &s = canvas.get_state();
@@ -393,14 +459,14 @@ void Game::draw() {
 	x+ axis is going from top to right corner
 	*/
 
-	// TODO compute frustum
 	th = map.h; tw = map.w;
 
 	// FIXME properly compute offsets
-	int tlo = 2; // -1
-	int tto = 2;
-	int tro = -2;
-	int tbo = -4;
+	int tlo = -1; // -1
+	int tto = -2;
+	int tro = 1;
+	// TODO compensate with heightmap
+	int tbo = 0 + 0; // TODO /+ 0/max(height_map)/
 
 	// compute horizontal frustum
 	tleft = (state.view_x + tlo * TILE_WIDTH) / TILE_WIDTH;
@@ -418,112 +484,21 @@ void Game::draw() {
 	int ttp = ttop - 1;
 	int count = 0;
 
-	#if 0
-	tbottom = (y - state.view_y + tbo * TILE_HEIGHT - this->h) / TILE_HEIGHT;
-	if (tbottom < 0)
-		tbottom = 0;
-
-	x = tleft * TILE_WIDTH + tbottom * TILE_WIDTH;
-	y = tleft * TILE_HEIGHT - tbottom * TILE_HEIGHT;
-	#else
 	x = tleft * TILE_WIDTH;
 	y = tleft * TILE_HEIGHT;
-	#endif
 
-	//dbgf("first tile: %d, %d,%d -> %d,%d (%d,%d), %d\n", this->h, tleft, tbottom, x, y, x - state.view_x, y - state.view_y, (y - state.view_y) - this->h);
-	//dbgf("tright = %d\n", (this->w - (x - state.view_x)) / TILE_WIDTH + tro);
-	tbottom = 1;
-	/*
-	left corner:
-
-	view: (-64,-272)
-	first tile: 0,0 at 0,0
-
-	top corner:
-
-	view: (368,-540)
-	first tile: 0,13 at 416,208
-
-
-	view: (-384,4)
-	first tile: XX,0 at 0,0 -> 384,-4
-
-
-	view: (-384,-208)
-	first tile: XX,0 at 0,0 -> 384,208
-
-	view: (352,-540)
-	first tile: XX,13 at 416,208 -> 64,748
-
-
-view: (-368,0)
-first tile: -28,0 at 0,0 -> 368,0
-
-view: (-384,-192)
-first tile: -16,0 at 0,0 -> 384,192
-
-view: (352,-540)
-first tile: 18,13 at 416,208 -> 64,748
-
-
-view: (112,-364)
-first tile: 0,5 at 160,80 -> 48,444
-
-
-view: (112,-380)
-first tile: 0,5 at 160,80 -> 48,460
-view: (112,-396)
-first tile: 0,5 at 160,80 -> 48,476
-view: (128,-412)
-first tile: 0,6 at 192,96 -> 64,508
-view: (144,-428)
-first tile: 0,6 at 192,96 -> 48,524
-view: (160,-444)
-first tile: 0,7 at 224,112 -> 64,556
-view: (176,-460)
-first tile: 0,7 at 224,112 -> 48,572
-view: (192,-476)
-first tile: 1,7 at 256,128 -> 64,604
-view: (208,-492)
-first tile: 2,6 at 256,128 -> 48,620
-view: (208,-508)
-first tile: 3,5 at 256,128 -> 48,636
-view: (208,-524)
-first tile: 4,4 at 256,128 -> 48,652
-view: (208,-540)
-first tile: 5,3 at 256,128 -> 48,668
-view: (208,-540)
-first tile: 5,3 at 256,128 -> 48,668
-view: (208,-540)
-first tile: 5,3 at 256,128 -> 48,668
-
-
-	*/
-
-	//tbottom = (this->h + tbo * TILE_HEIGHT - (y - state.view_y)) / TILE_HEIGHT;
-	// TODO adjust bottom based on left
-	tbottom = (y - state.view_y - tbo * TILE_HEIGHT - this->h) / TILE_HEIGHT - tleft;
-	if (tbottom < 0)
-		tbottom = 0;
-	else {
-		tleft -= tbottom;
-		if (tleft < 0)
-			tleft = 0;
-		y -= tbottom * TILE_WIDTH;
-	}
-	dbgf("first tile: %d,%d at %d,%d -> %d,%d\n", tbottom, tleft, x, y, x - state.view_x, y - state.view_y);
+	// XXX analyse if and how we are going to optimize this
+	tbottom = 0;
 
 	for (ty = tbottom; ty < ttop; ++ty) {
 		int xp = x, yp = y;
 		tright = tleft + ((int)this->w + tro * TILE_WIDTH - (x - state.view_x)) / TILE_WIDTH;
 		if (tright > tw)
 			tright = tw;
-		//dbgf("tx: %d, %d, %d range: [%d, %d)\n", this->w, x, x - state.view_x, tleft, tright);
-		//dbgf("last row tile: %d, %d: %d,%d\n", ty, tright, x + (tright - tleft) * TILE_WIDTH, y + (tright - tleft) * TILE_HEIGHT);
 		for (tx = tleft; tx < tright; ++tx) {
 			if (y >= state.view_y + this->h + tbo * TILE_HEIGHT)
 				break;
-			bkg.draw(x, y, data[ty * tw + tx]);
+			bkg.draw(x, y - TILE_HEIGHT * hdata[ty * tw + tx], data[ty * tw + tx]);
 			x += TILE_WIDTH;
 			y += TILE_HEIGHT;
 		}
@@ -543,8 +518,6 @@ first tile: 5,3 at 256,128 -> 48,668
 		}
 	}
 
-	//dbgf("top_layers: %d, ty: %d\n", count, ty);//tright2 - tleft - ttop);
-
 	std::vector<std::shared_ptr<Unit>> objects;
 	// FIXME compute proper bounds
 	AABB bounds(tw, th);
@@ -561,8 +534,12 @@ first tile: 5,3 at 256,128 -> 48,668
 	});
 
 	// draw all found objects
-	for (auto unit : objects)
+	for (auto unit : objects) {
+		AABB bnds;
+		unit->to_screen(map, bnds);
 		unit->draw(map);
+		//dump_aabb(bnds);
+	}
 
 	canvas.pop_state();
 }
@@ -575,6 +552,7 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 	my = event->y + state.view_y;
 
 	dbgf("TODO: mousedown (%d,%d) -> (%d,%d)\n", event->x, event->y, mx, my);
+	return false;
 }
 
 bool Game::keydown(SDL_KeyboardEvent *event) {

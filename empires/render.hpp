@@ -61,6 +61,8 @@ public:
 	void draw(SDL_Texture *tex, SDL_Surface *surf, int x, int y, unsigned w=0, unsigned h=0);
 	void draw_selection(int x, int y, unsigned size);
 
+	void draw_rect(int x0, int y0, int x1, int y1);
+
 	void save_screen();
 	void read_screen();
 	void dump_screen();

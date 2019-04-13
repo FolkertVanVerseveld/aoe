@@ -159,6 +159,13 @@ void Renderer::draw_selection(int x, int y, unsigned size)
 	SDL_RenderDrawLines(renderer, points, 5);
 }
 
+void Renderer::draw_rect(int x0, int y0, int x1, int y1)
+{
+	RendererState &s = get_state();
+	SDL_Rect bounds = {x0 - s.view_x, y0 - s.view_y, x1 - x0, y1 - y0};
+	SDL_RenderDrawRect(renderer, &bounds);
+}
+
 void Renderer::save_screen() {
 	SDL_Surface *screen;
 	int err = 1;
@@ -464,7 +471,7 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 	hotspot_y = frame->hotspot_y;
 
 	dbgf("dimensions: %u x %u\n", frame->width, frame->height);
-	dbgf("hostpot: %u,%u\n", frame->hotspot_x, frame->hotspot_y);
+	dbgf("hotspot: %u,%u\n", frame->hotspot_x, frame->hotspot_y);
 	dbgf("command table offset: %X\n", frame->cmd_table_offset);
 	dbgf("outline table offset: %X\n", frame->outline_table_offset);
 
@@ -527,20 +534,31 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 				for (count = *++cmd; count; --count)
 					pixels[y * p + x++] = *++cmd;
 				continue;
-			case 0xA7: // dup 10
+			case 0xF7: pixels[y * p + x++] = cmd[1];
+			case 0xE7: pixels[y * p + x++] = cmd[1];
+			case 0xD7: pixels[y * p + x++] = cmd[1];
+			case 0xC7: pixels[y * p + x++] = cmd[1];
+			case 0xB7: pixels[y * p + x++] = cmd[1];
+			// dup 10
+			case 0xA7: pixels[y * p + x++] = cmd[1];
+			case 0x97: pixels[y * p + x++] = cmd[1];
+			case 0x87: pixels[y * p + x++] = cmd[1];
+			case 0x77: pixels[y * p + x++] = cmd[1];
+			case 0x67: pixels[y * p + x++] = cmd[1];
+			case 0x57: pixels[y * p + x++] = cmd[1];
+			case 0x47: pixels[y * p + x++] = cmd[1];
+			case 0x37: pixels[y * p + x++] = cmd[1];
+			case 0x27: pixels[y * p + x++] = cmd[1];
+			case 0x17: pixels[y * p + x++] = cmd[1];
 				++cmd;
-				pixels[y * p + x++] = *cmd;
-				pixels[y * p + x++] = *cmd;
-				pixels[y * p + x++] = *cmd;
-				pixels[y * p + x++] = *cmd;
-				pixels[y * p + x++] = *cmd;
-				pixels[y * p + x++] = *cmd;
-				pixels[y * p + x++] = *cmd;
-				pixels[y * p + x++] = *cmd;
-				pixels[y * p + x++] = *cmd;
-				pixels[y * p + x++] = *cmd;
 				continue;
 			// player color fill
+			case 0xF6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 15
+			case 0xE6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 14
+			case 0xD6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 13
+			case 0xC6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 12
+			case 0xB6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 11
+			case 0xA6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 10
 			case 0x96: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 9
 			case 0x86: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 8
 			case 0x76: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 7
@@ -684,6 +702,16 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 			}
 
 			switch (command) {
+			case 0x0f:
+				//dbgs("break");
+				i = w;
+				break;
+			case 0x0a:
+				count = cmd_or_next(&cmd, 4);
+				for (++cmd; count; --count) {
+					pixels[y * p + x++] = *cmd + 0x10 * (player + 1);
+				}
+				break;
 			case 0x07:
 				count = cmd_or_next(&cmd, 4);
 				//dbgf("fill: %u pixels\n", count);
@@ -692,10 +720,6 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 					pixels[y * p + x++] = *cmd;
 				}
 				//dbgs("");
-				break;
-			case 0x0f:
-				//dbgs("break");
-				i = w;
 				break;
 			default:
 				dbgf("unknown cmd at %X: %X, %X\n",

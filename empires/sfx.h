@@ -21,6 +21,8 @@ extern "C" {
 
 #define SFX_CHANNEL_COUNT 20
 
+#define SFX_TOWN_CENTER 5044
+
 #define SFX_BUTTON4 50300
 
 #define MUS_MAIN 0

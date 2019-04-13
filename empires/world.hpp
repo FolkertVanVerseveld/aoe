@@ -85,6 +85,9 @@ private:
 class Unit {
 protected:
 	unsigned hp;
+	unsigned id;
+
+	static unsigned id_counter;
 
 public:
 	Point pos;
@@ -110,10 +113,33 @@ public:
 
 	virtual void draw(Map &map) const;
 	void draw_selection(Map &map) const;
+	virtual void to_screen(Map &map, AABB &scr) const;
 
 	friend bool operator==(const Unit &lhs, const Unit &rhs) {
-		return lhs.pos == rhs.pos && lhs.dx == rhs.dx && lhs.dy == rhs.dy;
+		return lhs.id == rhs.id;
 	}
+};
+
+#define SR_FOOD 0
+#define SR_WOOD 1
+#define SR_GOLD 2
+#define SR_STONE 3
+
+// e.g. berry bush, tree, etc.
+class StaticResource final : public Unit {
+public:
+	unsigned type, amount;
+
+	StaticResource(
+		int x, int y, unsigned size, int w, int h, unsigned id,
+		unsigned type, unsigned amount
+	) : Unit(0, x, y, size, w, h, id, 0, 0, 0), type(type), amount(amount) {}
+};
+
+// deer, lion, elephant, aligator
+class DynamicResource final : public Unit {
+public:
+	unsigned decay, timer;
 };
 
 class Building final : public Unit {
@@ -129,6 +155,7 @@ public:
 		int x, int y, unsigned size, unsigned color
 	) : Building(id, p_id, x, y, size, 0, 0, color) {}
 	void draw(Map &map) const override;
+	void to_screen(Map &map, AABB &scr) const override;
 };
 
 class Quadtree final {
