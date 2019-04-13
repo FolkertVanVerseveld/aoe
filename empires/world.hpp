@@ -83,13 +83,12 @@ private:
  * bushes...)
  */
 class Unit {
-protected:
-	unsigned hp;
+public:
+	unsigned hp, hp_max;
 	unsigned id;
 
 	static unsigned id_counter;
 
-public:
 	Point pos;
 	// tile displacement
 	int dx, dy, w, h;
@@ -99,9 +98,10 @@ public:
 protected:
 	const AnimationTexture &animation;
 	unsigned image_index;
-	unsigned color;
 
 public:
+	unsigned color;
+
 	Unit(
 		unsigned hp, int x, int y,
 		unsigned size, int w, int h,
@@ -114,6 +114,10 @@ public:
 	virtual void draw(Map &map) const;
 	void draw_selection(Map &map) const;
 	virtual void to_screen(Map &map, AABB &scr) const;
+
+	unsigned drs_id() const {
+		return animation.id;
+	}
 
 	friend bool operator==(const Unit &lhs, const Unit &rhs) {
 		return lhs.id == rhs.id;
@@ -133,7 +137,7 @@ public:
 	StaticResource(
 		int x, int y, unsigned size, int w, int h, unsigned id,
 		unsigned type, unsigned amount
-	) : Unit(0, x, y, size, w, h, id, 0, 0, 0), type(type), amount(amount) {}
+	) : Unit(0, x, y, size, w, h, id, 8, 0, 0), type(type), amount(amount) {}
 };
 
 // deer, lion, elephant, aligator
@@ -147,13 +151,13 @@ class Building final : public Unit {
 	unsigned overlay_index;
 public:
 	Building(
-		unsigned id, unsigned p_id,
+		unsigned hp, unsigned id, unsigned p_id,
 		int x, int y, unsigned size, int w, int h, unsigned color
 	);
 	Building(
-		unsigned id, unsigned p_id,
+		unsigned hp, unsigned id, unsigned p_id,
 		int x, int y, unsigned size, unsigned color
-	) : Building(id, p_id, x, y, size, 0, 0, color) {}
+	) : Building(hp, id, p_id, x, y, size, 0, 0, color) {}
 	void draw(Map &map) const override;
 	void to_screen(Map &map, AABB &scr) const override;
 };
@@ -161,9 +165,9 @@ public:
 class Quadtree final {
 	std::unique_ptr<Quadtree[]> children;
 	AABB bounds;
+public:
 	std::vector<std::shared_ptr<Unit>> objects;
 	bool split;
-public:
 	Quadtree(AABB bounds = {})
 		: children(), bounds(bounds), objects(), split(false) {}
 

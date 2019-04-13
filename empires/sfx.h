@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Audio subsystem
@@ -21,7 +21,14 @@ extern "C" {
 
 #define SFX_CHANNEL_COUNT 20
 
+#define SFX_BARRACKS 5022
 #define SFX_TOWN_CENTER 5044
+
+#define SFX_VILLAGER1 5037
+#define SFX_VILLAGER2 5053
+#define SFX_VILLAGER3 5054
+#define SFX_VILLAGER4 5158
+#define SFX_VILLAGER5 5171
 
 #define SFX_BUTTON4 50300
 

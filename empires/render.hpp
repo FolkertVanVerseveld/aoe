@@ -6,6 +6,15 @@
 
 #include <stack>
 
+#include "gfx.h"
+
+/** Text horizontal/vertical alignment */
+enum TextAlign {
+	LEFT = 0, TOP = 0,
+	CENTER = 1, MIDDLE = 1,
+	RIGHT = 2, BOTTOM = 2
+};
+
 class RendererState final {
 public:
 	int view_x, view_y;
@@ -62,6 +71,18 @@ public:
 	void draw_selection(int x, int y, unsigned size);
 
 	void draw_rect(int x0, int y0, int x1, int y1);
+	void fill_rect(int x0, int y0, int x1, int y1);
+
+	// NOTE SLOW
+	void draw_text(int x, int y, const char *str
+		, TextAlign halign=LEFT
+		, TextAlign valign=TOP
+		, TTF_Font *fnt=fnt_default);
+
+	void draw_text(int x, int y, unsigned id
+		, TextAlign halign=LEFT
+		, TextAlign valign=TOP
+		, TTF_Font *fnt=fnt_default);
 
 	void save_screen();
 	void read_screen();

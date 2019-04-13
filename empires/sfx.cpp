@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #include "sfx.h"
 
@@ -13,6 +13,7 @@
 #include "fs.h"
 #include "../setup/dbg.h"
 #include "../setup/def.h"
+#include "drs.h"
 
 #define SFX_CHANNEL_COUNT 20
 
@@ -122,16 +123,30 @@ void sfx_load(unsigned id)
 	char fsbuf[FS_BUFSZ];
 	Mix_Chunk *data;
 
+	// try absolute paths first for special sound effects
 	switch (id) {
 	case SFX_BUTTON4:
 		fs_help_path(fsbuf, sizeof fsbuf, "button4.wav");
-		if (data = Mix_LoadWAV(fsbuf))
-			//sfx.emplace(std::make_pair(id, std::shared_ptr<Clip>(new ClipFile(id, nullptr))));
+		if (data = Mix_LoadWAV(fsbuf)) {
 			sfx.emplace(id, std::shared_ptr<Clip>(new ClipFile(id, data)));
-		else
-			fprintf(stderr, "sfx_load: error loading \"%s\": %s\n", fsbuf, Mix_GetError());
+			return;
+		}
 		break;
 	}
+
+	// not found, try the drs files
+	size_t n;
+	const void *drs = drs_get_item(DT_WAVE, id, &n);
+
+	if (!drs) {
+		fprintf(stderr, "sfx_load: error loading %u\n", id);
+		return;
+	}
+
+	if (!(data = Mix_LoadWAV_RW(SDL_RWFromMem((void*)drs, n), 1)))
+		fprintf(stderr, "sfx_load: error loading %u\n", id);
+	else
+		sfx.emplace(id, std::shared_ptr<Clip>(new ClipFile(id, data)));
 }
 
 extern "C" {

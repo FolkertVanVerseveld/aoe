@@ -166,6 +166,13 @@ void Renderer::draw_rect(int x0, int y0, int x1, int y1)
 	SDL_RenderDrawRect(renderer, &bounds);
 }
 
+void Renderer::fill_rect(int x0, int y0, int x1, int y1)
+{
+	RendererState &s = get_state();
+	SDL_Rect bounds = {x0 - s.view_x, y0 - s.view_y, x1 - x0, y1 - y0};
+	SDL_RenderFillRect(renderer, &bounds);
+}
+
 void Renderer::save_screen() {
 	SDL_Surface *screen;
 	int err = 1;
@@ -238,13 +245,6 @@ public:
 	}
 };
 
-/** Text horizontal/vertical alignment */
-enum TextAlign {
-	LEFT = 0, TOP = 0,
-	CENTER = 1, MIDDLE = 1,
-	RIGHT = 2, BOTTOM = 2
-};
-
 // FIXME grab these from the color palette
 const SDL_Color col_default = {255, 255, 255, SDL_ALPHA_OPAQUE};
 
@@ -287,6 +287,19 @@ public:
 		: UI(x, y), str(str)
 	{
 		surf = TTF_RenderText_Solid(fnt, str.c_str(), col);
+		tex = SDL_CreateTextureFromSurface(renderer, surf);
+
+		reshape(halign, valign);
+	}
+
+	Text(int x, int y, const char *str
+		, TextAlign halign=LEFT
+		, TextAlign valign=TOP
+		, TTF_Font *fnt=fnt_default
+		, SDL_Color col=col_default)
+		: UI(x, y), str(str)
+	{
+		surf = TTF_RenderText_Solid(fnt, str, col);
 		tex = SDL_CreateTextureFromSurface(renderer, surf);
 
 		reshape(halign, valign);
@@ -341,6 +354,20 @@ public:
 		SDL_RenderCopy(renderer, tex, NULL, &pos);
 	}
 };
+
+void Renderer::draw_text(int x, int y, const char *str
+	, TextAlign halign, TextAlign valign, TTF_Font *fnt)
+{
+	Text text(x, y, str, halign, valign, fnt);
+	text.draw();
+}
+
+void Renderer::draw_text(int x, int y, unsigned id
+	, TextAlign halign, TextAlign valign, TTF_Font *fnt)
+{
+	Text text(x, y, id, halign, valign, fnt);
+	text.draw();
+}
 
 SDL_Color border_cols[6] = {};
 
@@ -469,6 +496,8 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 
 	hotspot_x = frame->hotspot_x;
 	hotspot_y = frame->hotspot_y;
+
+	dbgf("player: %u\n", player);
 
 	dbgf("dimensions: %u x %u\n", frame->width, frame->height);
 	dbgf("hotspot: %u,%u\n", frame->hotspot_x, frame->hotspot_y);
@@ -711,6 +740,7 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 				for (++cmd; count; --count) {
 					pixels[y * p + x++] = *cmd + 0x10 * (player + 1);
 				}
+				dynamic = true;
 				break;
 			case 0x07:
 				count = cmd_or_next(&cmd, 4);
@@ -1516,12 +1546,12 @@ public:
 		int top = menu_bar.images[0].surface->h;
 		int bottom = HEIGHT - menu_bar.images[1].surface->h;
 
-		if (event->y < top || event->y >= bottom) {
+		if (game.paused || event->y < top || event->y >= bottom) {
 			Menu::mousedown(event);
 			return;
 		}
 
-		printf("top,bottom: %d,%d\n", top, bottom);
+		//dbgf("top,bottom: %d,%d\n", top, bottom);
 		event->y -= top;
 		game.mousedown(event);
 	}
@@ -1548,6 +1578,8 @@ public:
 		menu_bar.draw(0, bottom, 1);
 		// draw buttons
 		Menu::draw();
+
+		game.draw_hud(WIDTH, HEIGHT);
 
 		if (game.paused)
 			str_paused.draw();

@@ -15,12 +15,14 @@
 #include "drs.h"
 #include "sfx.h"
 #include "ui.h"
+#include "lang.h"
 
 #include "../setup/dbg.h"
 #include "../setup/def.h"
 #include "../setup/res.h"
 
 Game game;
+extern struct pe_lib lib_lang;
 
 unsigned StatsMilitary::max_army_count = 0;
 
@@ -57,7 +59,7 @@ Unit::Unit(
 	unsigned color,
 	int dx, int dy
 )
-	: hp(hp)
+	: hp(hp), hp_max(hp)
 	, pos(x, y), dx(dx), dy(dy), w(w), h(h), size(size)
 	, animation(game.cache->get(sprite_index)), image_index(0)
 	, color(color)
@@ -107,7 +109,7 @@ void Unit::to_screen(Map &map, AABB &bounds) const
 	bounds.hbounds.x = surf->w / 2;
 	bounds.hbounds.y = surf->h / 2;
 
-	canvas.draw_rect(bounds.pos.x - bounds.hbounds.x, bounds.pos.y - bounds.hbounds.y, bounds.pos.x + bounds.hbounds.x, bounds.pos.y + bounds.hbounds.y);
+	//canvas.draw_rect(bounds.pos.x - bounds.hbounds.x, bounds.pos.y - bounds.hbounds.y, bounds.pos.x + bounds.hbounds.x, bounds.pos.y + bounds.hbounds.y);
 }
 
 void Building::to_screen(Map &map, AABB &bounds) const
@@ -134,7 +136,7 @@ void Building::to_screen(Map &map, AABB &bounds) const
 	bounds.hbounds.x = surf->w / 2;
 	bounds.hbounds.y = surf->h / 2;
 
-	canvas.draw_rect(bounds.pos.x - bounds.hbounds.x, bounds.pos.y - bounds.hbounds.y, bounds.pos.x + bounds.hbounds.x, bounds.pos.y + bounds.hbounds.y);
+	//canvas.draw_rect(bounds.pos.x - bounds.hbounds.x, bounds.pos.y - bounds.hbounds.y, bounds.pos.x + bounds.hbounds.x, bounds.pos.y + bounds.hbounds.y);
 }
 
 Player::Player(const std::string &name, unsigned civ, unsigned color)
@@ -145,10 +147,10 @@ Player::Player(const std::string &name, unsigned civ, unsigned color)
 }
 
 Building::Building(
-	unsigned id, unsigned p_id,
+	unsigned hp, unsigned id, unsigned p_id,
 	int x, int y, unsigned size, int w, int h, unsigned color
 )
-	: Unit(0, x, y, size, w, h, id, color, 0, 0)
+	: Unit(hp, x, y, size, w, h, id, color, 0, 0)
 	, overlay(game.cache->get(p_id)) , overlay_index(0)
 {
 }
@@ -162,6 +164,44 @@ void Building::draw(Map &map) const {
 	scr.move(dx, dy);
 
 	overlay.draw(scr.x, scr.y, overlay_index, color);
+}
+
+static void spawn_town_center(int x, int y, unsigned color)
+{
+	game.spawn(
+		new Building(
+			600,
+			DRS_TOWN_CENTER_BASE,
+			DRS_TOWN_CENTER_PLAYER,
+			x, y, 3 * TILE_WIDTH, color
+		)
+	);
+}
+
+static void spawn_barracks(int x, int y, unsigned color)
+{
+	game.spawn(
+		new Building(
+			350,
+			DRS_BARRACKS_BASE,
+			DRS_BARRACKS_PLAYER,
+			x, y, 3 * TILE_WIDTH, color
+		)
+	);
+}
+
+static void spawn_villager(int x, int y, unsigned color)
+{
+	game.spawn(
+		new Unit(25, x, y, 14, 0, 0, DRS_VILLAGER_STAND, color)
+	);
+}
+
+static void spawn_berry_bush(int x, int y)
+{
+	game.spawn(new StaticResource(
+		x, y, 24, 0, 0, DRS_BERRY_BUSH, SR_FOOD, 150
+	));
 }
 
 void Player::init_dummy() {
@@ -182,33 +222,10 @@ void Player::init_dummy() {
 	x += 2;
 	++y;
 
-	game.spawn(
-		new Building(
-			DRS_TOWN_CENTER_BASE,
-			DRS_TOWN_CENTER_PLAYER,
-			x, y, 3 * TILE_WIDTH, color
-		)
-	);
-
-	game.spawn(
-		new Building(
-			DRS_BARRACKS_BASE,
-			DRS_BARRACKS_PLAYER,
-			x, y + 6, 3 * TILE_WIDTH, color
-		)
-	);
-
-	game.spawn(
-		new StaticResource(
-			rand() % map.w, rand() % map.h,
-			24, 0, 0, DRS_BERRY_BUSH, SR_FOOD, 150
-		)
-	);
-
-	x = rand() % map.w;
-	y = rand() % map.h;
-
-	game.spawn(new Unit(0, x, y, 14, 0, 0, DRS_VILLAGER_STAND, color));
+	spawn_town_center(x, y, color);
+	spawn_barracks(x, y + 6, color);
+	spawn_berry_bush(rand() % map.w, rand() % map.h);
+	spawn_villager(rand() % map.w, rand() % map.h, color);
 }
 
 void Player::idle() {
@@ -331,6 +348,7 @@ void Game::dispose(void) {
 	if (run)
 		panic("Bad game state");
 
+	selected.clear();
 	players.clear();
 	cache.reset();
 
@@ -346,6 +364,7 @@ void Game::reset(unsigned players) {
 		panic("Bad game state");
 
 	player_index = 0;
+	selected.clear();
 	units.clear();
 	assert(Unit::count == 0);
 
@@ -524,9 +543,8 @@ void Game::draw() {
 	units.query(objects, bounds);
 
 	// draw all selected objects
-	for (auto unit : objects)
-		if (true) //if (unit.selected)
-			unit->draw_selection(map);
+	for (auto unit : selected)
+		unit->draw_selection(map);
 
 	// determine drawing order: priority = -y
 	std::sort(objects.begin(), objects.end(), [](std::shared_ptr<Unit> &lhs, std::shared_ptr<Unit> &rhs) {
@@ -544,6 +562,117 @@ void Game::draw() {
 	canvas.pop_state();
 }
 
+static unsigned unit_name_id(unsigned id)
+{
+	switch (id) {
+	case DRS_VILLAGER_STAND  : return STR_UNIT_VILLAGER;
+	case DRS_BERRY_BUSH      : return STR_UNIT_BERRY_BUSH;
+	case DRS_TOWN_CENTER_BASE: return STR_BUILDING_TOWN_CENTER;
+	case DRS_BARRACKS_BASE   : return STR_BUILDING_BARRACKS;
+	default:
+		dbgf("%s: bad id: %u\n", __func__, id);
+		break;
+	}
+	return STR_UNIT_UNKNOWN;
+}
+
+void Game::draw_hud(unsigned w, unsigned h) {
+	if (selected.size() == 0)
+		return;
+
+	Unit *u = selected.begin()->get();
+	Building *b = dynamic_cast<Building*>(u);
+	unsigned drs = u->drs_id(), icon_id, icon_img;
+
+	canvas.col(0);
+	canvas.fill_rect(5, 481, 132, 595);
+
+	// draw icon
+	icon_id = DRS_BUILDINGS1;
+	icon_img = 0;
+
+	switch (drs) {
+	case DRS_BARRACKS_BASE: icon_img = ICON_BARRACKS1; break;
+	case DRS_TOWN_CENTER_BASE: icon_img = ICON_TOWN_CENTER1; break;
+	default:
+		icon_id = 0;
+		break;
+	}
+
+	// no matching building found, try units
+	if (!icon_id) {
+		icon_id = DRS_UNITS;
+
+		switch (drs) {
+		case DRS_VILLAGER_STAND: icon_img = ICON_VILLAGER  ; break;
+		case DRS_BERRY_BUSH    : icon_img = ICON_BERRY_BUSH; break;
+		default:
+			icon_id = 0;
+			dbgf("%s: bad hud id: %u\n", __func__, drs);
+			break;
+		}
+	}
+
+	if (icon_id) {
+		const AnimationTexture &icons = cache->get(icon_id);
+		icons.draw(8, 512, icon_img);
+
+		if (u->hp_max) {
+			const AnimationTexture &bar = cache->get(DRS_HEALTHBAR);
+			unsigned img = 25 - 25 * u->hp / u->hp_max;
+
+			if (img > 25)
+				img = 25;
+
+			bar.draw(8, 565, img);
+
+			char buf[32];
+			snprintf(buf, sizeof buf, "%u/%u", u->hp, u->hp_max);
+
+			canvas.draw_text(8, 577, buf);
+		}
+
+		if (u->color < 8) {
+			char civbuf[64];
+			load_string(&lib_lang, STR_CIV_EGYPTIAN + players[u->color]->civ, civbuf, sizeof civbuf);
+
+			canvas.draw_text(8, 482, civbuf);
+		}
+
+		canvas.draw_text(8, 497, unit_name_id(drs));
+	}
+
+	// draw unit/building specific stuff
+	if (b) {
+		// TODO draw building
+	} else {
+		// TODO draw unit
+	}
+}
+
+static void play_unit_select(unsigned id)
+{
+	switch (id) {
+	case 0:
+	case DRS_BERRY_BUSH:
+		break;
+	case DRS_BARRACKS_BASE   : sfx_play(SFX_BARRACKS   ); break;
+	case DRS_TOWN_CENTER_BASE: sfx_play(SFX_TOWN_CENTER); break;
+	case DRS_VILLAGER_STAND:
+		switch (rand() % 5) {
+		case 0: sfx_play(SFX_VILLAGER1); break;
+		case 1: sfx_play(SFX_VILLAGER2); break;
+		case 2: sfx_play(SFX_VILLAGER3); break;
+		case 3: sfx_play(SFX_VILLAGER4); break;
+		case 4: sfx_play(SFX_VILLAGER5); break;
+		}
+		break;
+	default:
+		dbgf("invalid id: %u\n", id);
+		break;
+	}
+}
+
 bool Game::mousedown(SDL_MouseButtonEvent *event) {
 	// translate mouse coordinates to in game
 	int mx, my;
@@ -551,7 +680,30 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 	mx = event->x + state.view_x;
 	my = event->y + state.view_y;
 
-	dbgf("TODO: mousedown (%d,%d) -> (%d,%d)\n", event->x, event->y, mx, my);
+	Point mpos(mx, my);
+
+	switch (event->button) {
+	case SDL_BUTTON_LEFT:
+		selected.clear();
+
+		// FIXME optimize this
+		for (auto unit : units.objects) {
+			AABB bnds;
+			unit->to_screen(map, bnds);
+
+			if (bnds.contains(mpos)) {
+				selected.insert(unit);
+				play_unit_select(unit->drs_id());
+			}
+		}
+
+		//dbgf("candidates: %d\n", selected.size());
+		return true;
+	default:
+		dbgf("TODO: mousedown (%d,%d) -> (%d,%d)\n", event->x, event->y, mx, my);
+		break;
+	}
+
 	return false;
 }
 

@@ -19,6 +19,7 @@
 
 #include <map>
 #include <vector>
+#include <set>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mouse.h>
@@ -274,7 +275,7 @@ public:
 	// units is internal 2d grid, display_units is isometric 2d grid
 	Quadtree units;
 
-	std::vector<std::shared_ptr<Unit>> selected;
+	std::set<std::shared_ptr<Unit>> selected;
 
 	RendererState state;
 
@@ -309,6 +310,7 @@ public:
 	}
 
 	void draw();
+	void draw_hud(unsigned w, unsigned h);
 	void spawn(Unit *obj);
 
 	const Player *controlling_player() const;
