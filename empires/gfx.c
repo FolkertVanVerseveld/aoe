@@ -7,6 +7,7 @@
 
 TTF_Font *fnt_default;
 TTF_Font *fnt_button;
+TTF_Font *fnt_large;
 
 #define BUFSZ 4096
 
@@ -26,10 +27,15 @@ void gfx_init(void)
 	snprintf(buf, BUFSZ, "%s/system/fonts/" FONT_NAME_BUTTON, path_cdrom);
 	if (!(fnt_button = TTF_OpenFont(buf, FONT_PT_BUTTON)))
 		panic("Could not setup button font");
+
+	snprintf(buf, BUFSZ, "%s/system/fonts/" FONT_NAME_LARGE, path_cdrom);
+	if (!(fnt_large = TTF_OpenFont(buf, FONT_PT_LARGE)))
+		panic("Could not setup large font");
 }
 
 void gfx_free(void)
 {
+	TTF_CloseFont(fnt_large);
 	TTF_CloseFont(fnt_button);
 	TTF_CloseFont(fnt_default);
 

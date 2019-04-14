@@ -210,6 +210,12 @@ extern "C" {
 
 // Gaia
 #define DRS_BERRY_BUSH 240
+#define DRS_DESERT_TREE1 463
+#define DRS_DESERT_TREE2 464
+#define DRS_DESERT_TREE3 465
+#define DRS_DESERT_TREE4 466
+#define DRS_GOLD 481
+#define DRS_STONE 622
 
 // FIXME also support big-endian machines
 #define DT_BINARY 0x62696e61

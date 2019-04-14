@@ -457,10 +457,10 @@ ID        type description
   459    model ??
   460    model ??
   461    model ??
-  463    model ??
-  464    model ??
-  465    model ??
-  466    model ??
+  463    model desert tree 1
+  464    model desert tree 2
+  465    model desert tree 3
+  466    model desert tree 4
   467    model ??
   468    model ??
   469    model ??
@@ -475,19 +475,19 @@ ID        type description
   479    model gazelle stand
   480    model gazelle run
   481    model gold
-  483    model ??
-  484    model ??
-  485    model ??
-  486    model ??
-  487    model ??
-  488    model ??
+  483    model grass trails 1
+  484    model grass trails 2
+  485    model grass trails 3
+  486    model grass trails 4
+  487    model grass trails 5
+  488    model grass trails 6
   489    model house construction
   490    model ??
   491    model ??
-  492    model ??
-  493    model ??
-  494    model ??
-  495    model ??
+  492    model forest tree 1
+  493    model forest tree 2
+  494    model forest tree 3
+  495    model forest tree 4
   496    model wing z explosion
   497    model lion stand
   498    model ??
@@ -504,11 +504,11 @@ ID        type description
   509    model ??
   510    model ??
   511    model ??
-  512    model ??
-  513    model ??
-  514    model ??
-  515    model ??
-  516    model ??
+  512    model desert tree 5
+  513    model desert tree 6
+  514    model desert tree 7
+  515    model desert tree 8
+  516    model desert tree 9
   518    model bird 2
   519    model bird shadow 2
   520    model bird glide shadow 2
@@ -611,7 +611,7 @@ ID        type description
   619    model ??
   620    model ??
   621    model ??
-  622    model ??
+  622    model stone
   623    model tree debris 1 (exhausted)
   624    model hunter attack
   625    model lumberjack attack 1 (chop tree)

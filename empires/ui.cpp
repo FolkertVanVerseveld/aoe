@@ -1125,21 +1125,21 @@ protected:
 public:
 	int stop = 0;
 
-	Menu(unsigned title_id, bool show_title=true)
+	Menu(unsigned title_id, bool show_title=true, TTF_Font *fnt=fnt_button)
 		: UI(0, 0, WIDTH, HEIGHT), objects(), group(), bkg(nullptr)
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
-				WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt_button
+				WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt
 			));
 	}
 
-	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h, bool show_title=true)
+	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h, bool show_title=true, TTF_Font *fnt=fnt_button)
 		: UI(0, 0, WIDTH, HEIGHT), objects(), group(x, y, w, h), bkg(nullptr)
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
-				WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt_button
+				WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt
 			));
 	}
 
@@ -1228,15 +1228,15 @@ public:
 
 	std::vector<std::shared_ptr<UI>> player_objects;
 
-	MenuTimeline(unsigned type) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551) {
+	MenuTimeline(unsigned type) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551, false) {
 		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 		objects.emplace_back(new Text(
-			WIDTH / 2, 12, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_button
+			WIDTH / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_large
 		));
 
-		objects.emplace_back(new Text(WIDTH / 2, 48, STR_BTN_TIMELINE, CENTER, TOP));
+		objects.emplace_back(new Text(WIDTH / 2, 44, STR_BTN_TIMELINE, CENTER, TOP, fnt_large));
 
 		// TODO compute elapsed time
 		objects.emplace_back(new Text(685, 15, "00:00:00"));
@@ -1311,12 +1311,15 @@ public:
 class MenuAchievements final : public Menu {
 	unsigned type;
 public:
-	MenuAchievements(unsigned type = 0) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, type ? 775 - 550 : 375 - 125, 588 - 551), type(type) {
+	MenuAchievements(unsigned type = 0) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, type ? 775 - 550 : 375 - 125, 588 - 551, false), type(type) {
 		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
+		objects.emplace_back(new Text(
+			WIDTH / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_large
+		));
 
-		objects.emplace_back(new Text(WIDTH / 2, 48, STR_TITLE_SUMMARY, CENTER, TOP));
+		objects.emplace_back(new Text(WIDTH / 2, 44, STR_TITLE_SUMMARY, CENTER, TOP, fnt_large));
 
 		// TODO compute elapsed time
 		objects.emplace_back(new Text(685, 15, "00:00:00"));
@@ -1474,7 +1477,7 @@ public:
 	MenuGame()
 		: Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false)
 		, palette(), menu_bar()
-		, str_paused(0, 0, STR_PAUSED, MIDDLE, CENTER, fnt_button)
+		, str_paused(0, 0, STR_PAUSED, MIDDLE, CENTER, fnt_large)
 	{
 		group.add(728, 0, STR_BTN_MENU, WIDTH - 728, 18, true);
 		group.add(620, 0, STR_BTN_DIPLOMACY, 728 - 620, 18, true);

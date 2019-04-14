@@ -20,6 +20,9 @@
 #define FONT_NAME_BUTTON "coprgtl.ttf"
 #define FONT_PT_BUTTON 18
 
+#define FONT_NAME_LARGE "coprgtl.ttf"
+#define FONT_PT_LARGE 28
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,6 +31,8 @@ extern "C" {
 extern TTF_Font *fnt_default;
 // Default user interface button font
 extern TTF_Font *fnt_button;
+// Default menu heading font
+extern TTF_Font *fnt_large;
 
 void gfx_init(void);
 void gfx_free(void);

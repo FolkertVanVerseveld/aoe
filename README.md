@@ -6,6 +6,7 @@ is an educational non-profit project we are writing in our free time.*
 ## Preview
 
 ![Main Menu](https://user-images.githubusercontent.com/5989565/45595158-bd376000-b9a7-11e8-8ad7-ab536e1ff497.png)
+![Demo map](https://user-images.githubusercontent.com/5989565/56092147-656ac400-5eb8-11e9-9869-841d8538cc8b.png)
 
 ## Overview
 

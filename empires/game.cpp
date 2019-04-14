@@ -216,6 +216,23 @@ static void spawn_berry_bush(int x, int y)
 	));
 }
 
+static void spawn_desert_tree(int x, int y)
+{
+	game.spawn(new StaticResource(
+		x, y, TILE_WIDTH, 0, 0, DRS_DESERT_TREE1 + rand() % 4, SR_WOOD, 40
+	));
+}
+
+static void spawn_gold(int x, int y)
+{
+	game.spawn(new StaticResource(x, y, 40, 0, 0, DRS_GOLD, SR_GOLD, 400));
+}
+
+static void spawn_stone(int x, int y)
+{
+	game.spawn(new StaticResource(x, y, 40, 0, 0, DRS_STONE, SR_STONE, 250));
+}
+
 void Player::init_dummy() {
 	Map &map = game.map;
 
@@ -228,7 +245,7 @@ void Player::init_dummy() {
 		break;
 	case 1:
 		x = map.w - 3;
-		y = 0;
+		y = map.h - 9;
 		break;
 	}
 	x += 2;
@@ -237,8 +254,24 @@ void Player::init_dummy() {
 	spawn_town_center(x, y, color);
 	spawn_academy(x, y + 3, color);
 	spawn_barracks(x, y + 6, color);
-	spawn_berry_bush(rand() % map.w, rand() % map.h);
-	spawn_villager(rand() % map.w, rand() % map.h, color);
+
+	// 3 villagers
+	for (int i = 0; i < 3; ++i)
+		spawn_villager(rand() % map.w, rand() % map.h, color);
+
+	// 8 bushes
+	for (int i = 0; i < 8; ++i)
+		spawn_berry_bush(rand() % map.w, rand() % map.h);
+
+	// 6 piles of stone and gold
+	for (int i = 0; i < 6; ++i) {
+		spawn_gold(rand() % map.w, rand() % map.h);
+		spawn_stone(rand() % map.w, rand() % map.h);
+	}
+
+	// 24 trees
+	for (int i = 0; i < 24; ++i)
+		spawn_desert_tree(rand() % map.w, rand() % map.h);
 }
 
 void Player::idle() {
@@ -579,10 +612,16 @@ static unsigned unit_name_id(unsigned id)
 {
 	switch (id) {
 	case DRS_VILLAGER_STAND  : return STR_UNIT_VILLAGER;
-	case DRS_BERRY_BUSH      : return STR_UNIT_BERRY_BUSH;
 	case DRS_TOWN_CENTER_BASE: return STR_BUILDING_TOWN_CENTER;
 	case DRS_BARRACKS_BASE   : return STR_BUILDING_BARRACKS;
 	case DRS_ACADEMY_BASE    : return STR_BUILDING_ACADEMY;
+	case DRS_BERRY_BUSH      : return STR_UNIT_BERRY_BUSH;
+	case DRS_DESERT_TREE1    : return STR_UNIT_DESERT_TREE1;
+	case DRS_DESERT_TREE2    : return STR_UNIT_DESERT_TREE2;
+	case DRS_DESERT_TREE3    : return STR_UNIT_DESERT_TREE3;
+	case DRS_DESERT_TREE4    : return STR_UNIT_DESERT_TREE4;
+	case DRS_GOLD            : return STR_UNIT_GOLD;
+	case DRS_STONE           : return STR_UNIT_STONE;
 	default:
 		dbgf("%s: bad id: %u\n", __func__, id);
 		break;
@@ -623,6 +662,12 @@ void Game::draw_hud(unsigned w, unsigned h) {
 		switch (drs) {
 		case DRS_VILLAGER_STAND: icon_img = ICON_VILLAGER  ; break;
 		case DRS_BERRY_BUSH    : icon_img = ICON_BERRY_BUSH; break;
+		case DRS_DESERT_TREE1  : icon_img = ICON_TREES     ; break;
+		case DRS_DESERT_TREE2  : icon_img = ICON_TREES     ; break;
+		case DRS_DESERT_TREE3  : icon_img = ICON_TREES     ; break;
+		case DRS_DESERT_TREE4  : icon_img = ICON_TREES     ; break;
+		case DRS_GOLD          : icon_img = ICON_GOLD      ; break;
+		case DRS_STONE         : icon_img = ICON_STONE     ; break;
 		default:
 			icon_id = 0;
 			dbgf("%s: bad hud id: %u\n", __func__, drs);
@@ -695,6 +740,12 @@ static void play_unit_select(unsigned id)
 	switch (id) {
 	case 0:
 	case DRS_BERRY_BUSH:
+	case DRS_DESERT_TREE1:
+	case DRS_DESERT_TREE2:
+	case DRS_DESERT_TREE3:
+	case DRS_DESERT_TREE4:
+	case DRS_GOLD:
+	case DRS_STONE:
 		break;
 	case DRS_BARRACKS_BASE   : sfx_play(SFX_BARRACKS   ); break;
 	case DRS_TOWN_CENTER_BASE: sfx_play(SFX_TOWN_CENTER); break;
