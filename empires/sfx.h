@@ -23,6 +23,7 @@ extern "C" {
 
 #define SFX_BARRACKS 5022
 #define SFX_TOWN_CENTER 5044
+#define SFX_ACADEMY 5002
 
 #define SFX_VILLAGER1 5037
 #define SFX_VILLAGER2 5053

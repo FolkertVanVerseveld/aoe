@@ -296,6 +296,9 @@ public:
 	void stop();
 
 	void set_cursor(unsigned index);
+	void button_activate(unsigned id);
+
+	unsigned hud_mask() const;
 
 	bool mousedown(SDL_MouseButtonEvent *event);
 

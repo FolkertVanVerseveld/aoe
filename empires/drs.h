@@ -50,6 +50,42 @@ extern "C" {
 
 #define DRS_HEALTHBAR 50745
 
+#define DRS_GROUPS 50403
+#define DRS_WAYPOINT 50404
+#define DRS_MOVE_TO 50405
+
+#define DRS_TASKS 50721
+#define DRS_STATS 50731
+
+// stat icons
+#define ICON_STAT_WOOD 0
+#define ICON_STAT_STONE 1
+#define ICON_STAT_FOOD 2
+#define ICON_STAT_GOLD 3
+#define ICON_STAT_POPULATION 4
+#define ICON_STAT_TRADE 5
+#define ICON_STAT_RANGE 6
+#define ICON_STAT_ATTACK 7
+#define ICON_STAT_ARMOR 8
+#define ICON_STAT_TIME 9
+#define ICON_STAT_PIERCE_ARMOR 10
+
+// task icons
+#define ICON_REPAIR 0
+#define ICON_MOVE 1
+#define ICON_BUILD 2
+#define ICON_STOP 3
+#define ICON_STAND_GUARD 4
+#define ICON_UNLOAD 5
+#define ICON_WAYPOINT 6
+#define ICON_GROUP 7
+#define ICON_UNGROUP 8
+#define ICON_UNSELECT 10
+#define ICON_NEXT 11
+#define ICON_ATTACK_GROUND 12
+#define ICON_HEAL 13
+#define ICON_CONVERT 14
+
 // building icons
 #define ICON_ACADEMY 0
 #define ICON_ARCHERY1 1
@@ -165,6 +201,8 @@ extern "C" {
 #define DRS_BARRACKS_PLAYER 254
 #define DRS_TOWN_CENTER_BASE 280
 #define DRS_TOWN_CENTER_PLAYER 230
+#define DRS_ACADEMY_BASE 16
+#define DRS_ACADEMY_PLAYER 34
 
 // Units
 #define DRS_VILLAGER_CARRY 270

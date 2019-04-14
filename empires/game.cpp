@@ -190,6 +190,18 @@ static void spawn_barracks(int x, int y, unsigned color)
 	);
 }
 
+static void spawn_academy(int x, int y, unsigned color)
+{
+	game.spawn(
+		new Building(
+			350,
+			DRS_ACADEMY_BASE,
+			DRS_ACADEMY_PLAYER,
+			x, y, 3 * TILE_WIDTH, color
+		)
+	);
+}
+
 static void spawn_villager(int x, int y, unsigned color)
 {
 	game.spawn(
@@ -223,6 +235,7 @@ void Player::init_dummy() {
 	++y;
 
 	spawn_town_center(x, y, color);
+	spawn_academy(x, y + 3, color);
 	spawn_barracks(x, y + 6, color);
 	spawn_berry_bush(rand() % map.w, rand() % map.h);
 	spawn_villager(rand() % map.w, rand() % map.h, color);
@@ -569,6 +582,7 @@ static unsigned unit_name_id(unsigned id)
 	case DRS_BERRY_BUSH      : return STR_UNIT_BERRY_BUSH;
 	case DRS_TOWN_CENTER_BASE: return STR_BUILDING_TOWN_CENTER;
 	case DRS_BARRACKS_BASE   : return STR_BUILDING_BARRACKS;
+	case DRS_ACADEMY_BASE    : return STR_BUILDING_ACADEMY;
 	default:
 		dbgf("%s: bad id: %u\n", __func__, id);
 		break;
@@ -582,6 +596,8 @@ void Game::draw_hud(unsigned w, unsigned h) {
 
 	Unit *u = selected.begin()->get();
 	Building *b = dynamic_cast<Building*>(u);
+	StaticResource *res = dynamic_cast<StaticResource*>(u);
+
 	unsigned drs = u->drs_id(), icon_id, icon_img;
 
 	canvas.col(0);
@@ -592,8 +608,9 @@ void Game::draw_hud(unsigned w, unsigned h) {
 	icon_img = 0;
 
 	switch (drs) {
-	case DRS_BARRACKS_BASE: icon_img = ICON_BARRACKS1; break;
+	case DRS_BARRACKS_BASE   : icon_img = ICON_BARRACKS1; break;
 	case DRS_TOWN_CENTER_BASE: icon_img = ICON_TOWN_CENTER1; break;
+	case DRS_ACADEMY_BASE    : icon_img = ICON_ACADEMY   ; break;
 	default:
 		icon_id = 0;
 		break;
@@ -615,7 +632,7 @@ void Game::draw_hud(unsigned w, unsigned h) {
 
 	if (icon_id) {
 		const AnimationTexture &icons = cache->get(icon_id);
-		icons.draw(8, 512, icon_img);
+		icons.draw(8, 512, icon_img, u->color);
 
 		if (u->hp_max) {
 			const AnimationTexture &bar = cache->get(DRS_HEALTHBAR);
@@ -642,12 +659,35 @@ void Game::draw_hud(unsigned w, unsigned h) {
 		canvas.draw_text(8, 497, unit_name_id(drs));
 	}
 
-	// draw unit/building specific stuff
-	if (b) {
+	// draw unit specific stuff
+	const AnimationTexture &stats = cache->get(DRS_STATS);
+	const AnimationTexture &tasks = cache->get(DRS_TASKS);
+
+	if (res) {
+		unsigned type;
+		char buf[16];
+
+		snprintf(buf, sizeof buf, "%u", res->amount);
+
+		switch (res->type) {
+		case SR_FOOD: type = ICON_STAT_FOOD; break;
+		case SR_WOOD: type = ICON_STAT_WOOD; break;
+		case SR_GOLD: type = ICON_STAT_GOLD; break;
+		default: type = ICON_STAT_STONE; break;
+		}
+
+		stats.draw(58, 512, type);
+		canvas.draw_text(94, 516, buf);
+	} else if (b) {
 		// TODO draw building
 	} else {
-		// TODO draw unit
+		// TODO determine unit type
+		// just assume it is a villager
+		tasks.draw(138, 484, ICON_BUILD);
+		tasks.draw(192, 484, ICON_REPAIR);
+		tasks.draw(246, 484, ICON_STOP);
 	}
+	tasks.draw(408, 542, ICON_UNSELECT);
 }
 
 static void play_unit_select(unsigned id)
@@ -658,6 +698,7 @@ static void play_unit_select(unsigned id)
 		break;
 	case DRS_BARRACKS_BASE   : sfx_play(SFX_BARRACKS   ); break;
 	case DRS_TOWN_CENTER_BASE: sfx_play(SFX_TOWN_CENTER); break;
+	case DRS_ACADEMY_BASE    : sfx_play(SFX_ACADEMY    ); break;
 	case DRS_VILLAGER_STAND:
 		switch (rand() % 5) {
 		case 0: sfx_play(SFX_VILLAGER1); break;
@@ -673,6 +714,88 @@ static void play_unit_select(unsigned id)
 	}
 }
 
+void Game::button_activate(unsigned id) {
+	switch (id) {
+	case 18:
+		selected.clear();
+		break;
+	default:
+		dbgf("invalid id: %u\n", id);
+		break;
+	}
+}
+
+/*
+hud mask rules
+
+army and villager selected
+
+build stop
+group ungroup
+
+army selected
+
+standground stop
+group       ungroup
+
+fishing ships
+
+stop
+group ungroup
+
+light transport (loaded)
+unload stop
+
+light transport (unloaded)
+stop
+
+when units start moving
+the stop icon is added
+e.g.: fishing boat does not have any icons
+until we let it move or have multiple units selected (i.e. only group/ungroup is shown)
+*/
+
+unsigned Game::hud_mask() const {
+	if (!selected.size())
+		return 0;
+
+	unsigned mask = 0x807;
+	Unit *u = (*selected.begin()).get();
+	StaticResource *res;
+
+	if (selected.size() > 1)
+		mask |= 0x0C0;
+	else if (res = dynamic_cast<StaticResource*>(u))
+		mask = 0x800;
+
+	return mask;
+}
+
+static bool point_in_diamond(Map &map, const Unit *u, int px, int py)
+{
+	Point scr;
+	const uint8_t *hdata = map.heightmap.get();
+	u->pos.to_screen(scr);
+	scr.move(u->dx, u->dy - TILE_HEIGHT * hdata[u->pos.y * map.w + u->pos.x]);
+
+	int dx, dy, dw, dh;
+
+	dx = px - scr.x;
+	dy = py - scr.y;
+
+	if (dx < 0)
+		dx = -dx;
+	if (dy < 0)
+		dy = -dy;
+
+	dw = u->size;
+	dh = dw * TILE_HEIGHT / TILE_WIDTH;
+
+	int ymax = (dw - dx) * dh / dw;
+	//dbgf("px,py: %d,%d\tdx,dy: %d,%d\tymax: %d\n", px, py, dx, dy, ymax);
+	return dy <= ymax;
+}
+
 bool Game::mousedown(SDL_MouseButtonEvent *event) {
 	// translate mouse coordinates to in game
 	int mx, my;
@@ -681,6 +804,7 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 	my = event->y + state.view_y;
 
 	Point mpos(mx, my);
+	std::vector<std::shared_ptr<Unit>> objects;
 
 	switch (event->button) {
 	case SDL_BUTTON_LEFT:
@@ -691,10 +815,26 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 			AABB bnds;
 			unit->to_screen(map, bnds);
 
-			if (bnds.contains(mpos)) {
-				selected.insert(unit);
-				play_unit_select(unit->drs_id());
+			if (bnds.contains(mpos))
+				objects.push_back(unit);
+		}
+
+		std::sort(objects.begin(), objects.end(), [](std::shared_ptr<Unit> &lhs, std::shared_ptr<Unit> &rhs) {
+			return lhs->pos.y < rhs->pos.y;
+		});
+
+		// TODO determine if we are selecting a group or a single unit
+		for (auto unit : objects) {
+			// special handle buildings
+			Building *b = dynamic_cast<Building*>(unit.get());
+			if (b && !point_in_diamond(map, unit.get(), mx, my)) {
+				dbgs("skip building");
+				continue;
 			}
+
+			selected.insert(unit);
+			play_unit_select(unit->drs_id());
+			break;
 		}
 
 		//dbgf("candidates: %d\n", selected.size());
@@ -770,7 +910,6 @@ pause:
 	return true;
 }
 
-// FIXME get real controlling player
 const Player *Game::controlling_player() const {
 	return players[player_index].get();
 }

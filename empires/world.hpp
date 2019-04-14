@@ -78,6 +78,23 @@ private:
 	void resize(unsigned size) { resize(size, size); }
 };
 
+#if 0
+/**
+ * World particle (e.g. tree chunks, debris)
+ */
+class Particle {
+public:
+	Point pos;
+	unsigned id;
+
+	static unsigned id_counter;
+
+protected:
+	const AnimationTexture &animation;
+	unsigned image_index;
+};
+#endif
+
 /**
  * Elementary world unit. This includes gaia stuff (e.g. trees, gold, berry
  * bushes...)
@@ -140,11 +157,13 @@ public:
 	) : Unit(0, x, y, size, w, h, id, 8, 0, 0), type(type), amount(amount) {}
 };
 
+#if 0
 // deer, lion, elephant, aligator
-class DynamicResource final : public Unit {
+class DynamicResource final : public StaticResource {
 public:
 	unsigned decay, timer;
 };
+#endif
 
 class Building final : public Unit {
 	const AnimationTexture &overlay;

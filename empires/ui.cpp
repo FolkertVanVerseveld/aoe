@@ -834,6 +834,8 @@ void AnimationTexture::open(Palette *pal, unsigned id) {
 void AnimationTexture::draw(int x, int y, unsigned index, unsigned player) const {
 	if (!dynamic)
 		player = 0;
+	if (player > 7)
+		player = 7;
 
 	size_t n = image.hdr->frame_count;
 
@@ -843,6 +845,8 @@ void AnimationTexture::draw(int x, int y, unsigned index, unsigned player) const
 void AnimationTexture::draw(int x, int y, unsigned w, unsigned h, unsigned index, unsigned player) const {
 	if (!dynamic)
 		player = 0;
+	if (player > 7)
+		player = 7;
 
 	size_t n = image.hdr->frame_count;
 
@@ -951,18 +955,19 @@ public:
 	bool focus;
 	bool down;
 	bool play_sfx;
+	bool visible;
 
 	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
-		, focus(false), down(false), play_sfx(play_sfx)
+		, focus(false), down(false), play_sfx(play_sfx), visible(true)
 	{
 	}
 
 	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
-		, focus(false), down(false), play_sfx(play_sfx)
+		, focus(false), down(false), play_sfx(play_sfx), visible(true)
 	{
 	}
 
@@ -970,7 +975,7 @@ public:
 	bool mousedown(SDL_MouseButtonEvent *event) {
 		bool old_down = down;
 
-		focus = down = contains(event->x, event->y);
+		focus = down = visible && contains(event->x, event->y);
 
 		if (old_down != down)
 			ui_state.dirty();
@@ -995,6 +1000,8 @@ public:
 	}
 
 	void draw() const {
+		if (!visible)
+			return;
 		Border::draw(down);
 		text.draw(focus);
 	}
@@ -1172,9 +1179,8 @@ public:
 
 		for (auto x : objects) {
 			Button *btn = dynamic_cast<Button*>(x.get());
-			if (btn)
-				if (btn->mousedown(event))
-					group.release_focus();
+			if (btn && btn->mousedown(event))
+				group.release_focus();
 		}
 	}
 
@@ -1491,8 +1497,15 @@ public:
 		snprintf(buf, sizeof buf, "%u", you->resources.stone);
 		objects.emplace_back(new Text(x, 3, buf));
 
+		// Lower HUD stuff
 		objects.emplace_back(new Button(765, 482, 795 - 765, 512 - 482, STR_BTN_SCORE, true));
 		objects.emplace_back(new Button(765, 564, 795 - 765, 594 - 564, "?", true));
+
+		for (unsigned j = 0, y = 482; j < 2; ++j, y += 58)
+			for (unsigned i = 0, x = 136; i < 6; ++i, x += 54) {
+				Button *b = new Button(x, y, 54, 535 - 482, " ", true);
+				objects.emplace_back(b);
+			}
 
 		canvas.clear();
 
@@ -1525,10 +1538,7 @@ public:
 	}
 
 	void button_activate(unsigned id) override final {
-		switch (id) {
-		case 0: break;
-		case 1: break;
-		}
+		game.button_activate(id);
 	}
 
 	void keydown(SDL_KeyboardEvent *event) override {
@@ -1576,6 +1586,14 @@ public:
 		// draw background layers
 		menu_bar.draw(0, 0, 0);
 		menu_bar.draw(0, bottom, 1);
+		// enable/disable hud buttons
+		unsigned state = game.hud_mask();
+
+		for (unsigned mask = 1, i = 0, j = 7; i < 6 * 2; ++i, mask <<= 1, ++j) {
+			Button *b = reinterpret_cast<Button*>(objects[j].get());
+			b->visible = state & mask;
+		}
+
 		// draw buttons
 		Menu::draw();
 
