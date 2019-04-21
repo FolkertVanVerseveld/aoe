@@ -956,18 +956,19 @@ public:
 	bool down;
 	bool play_sfx;
 	bool visible;
+	unsigned sfx;
 
-	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true)
+	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
-		, focus(false), down(false), play_sfx(play_sfx), visible(true)
+		, focus(false), down(false), play_sfx(play_sfx), visible(true), sfx(sfx)
 	{
 	}
 
-	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true)
+	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
-		, focus(false), down(false), play_sfx(play_sfx), visible(true)
+		, focus(false), down(false), play_sfx(play_sfx), visible(true), sfx(sfx)
 	{
 	}
 
@@ -991,7 +992,7 @@ public:
 
 			bool hit = contains(event->x, event->y);
 			if (hit && play_sfx)
-				sfx_play(SFX_BUTTON4);
+				sfx_play(sfx);
 			return hit;
 		}
 
@@ -1374,7 +1375,10 @@ public:
 
 	void button_activate(unsigned id) override final {
 		switch (id) {
-		case 3: running = 0; break;
+		case 2:
+			running = 0;
+			game.stop();
+			break;
 		}
 	}
 };
@@ -1455,6 +1459,7 @@ public:
 		switch (id) {
 		case 0:
 			in_game = 0;
+			game.stop();
 			ui_state.go_to(new MenuAchievements(1));
 			break;
 		case 1: ui_state.go_to(new MenuAchievements()); break;
@@ -1507,6 +1512,7 @@ public:
 		for (unsigned j = 0, y = 482; j < 2; ++j, y += 58)
 			for (unsigned i = 0, x = 136; i < 6; ++i, x += 54) {
 				Button *b = new Button(x, y, 54, 535 - 482, " ", true);
+				b->sfx = SFX_BUTTON_GAME;
 				objects.emplace_back(b);
 			}
 

@@ -25,6 +25,8 @@ extern "C" {
 #define SFX_TOWN_CENTER 5044
 #define SFX_ACADEMY 5002
 
+#define SFX_VILLAGER_MOVE 5006
+
 #define SFX_VILLAGER1 5037
 #define SFX_VILLAGER2 5053
 #define SFX_VILLAGER3 5054
@@ -32,6 +34,7 @@ extern "C" {
 #define SFX_VILLAGER5 5171
 
 #define SFX_BUTTON4 50300
+#define SFX_BUTTON_GAME 5036
 
 #define MUS_MAIN 0
 #define MUS_VICTORY 1

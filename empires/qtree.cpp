@@ -19,24 +19,50 @@ void Point::to_screen(Point &dst) const {
 	// convert tile to screen coordinates
 	int tx = x, ty = y;
 
-	dst.x = (tx + ty) * TILE_WIDTH;
-	dst.y = (-ty + tx - height[ty * game.map.w + tx]) * TILE_HEIGHT;
+	dst.x = (tx + ty) * TILE_WIDTH + TILE_WIDTH;
+	dst.y = (-ty + tx - height[ty * game.map.w + tx]) * TILE_HEIGHT + TILE_HEIGHT;
 }
 
 void Quadtree::clear() {
 	assert(!split);
+	dynamic_objects.clear();
 	objects.clear();
 }
 
-bool Quadtree::put(std::shared_ptr<Unit> obj) {
+bool Quadtree::put(Unit *obj) {
 	// FIXME split and unsplit quadtree
-	objects.push_back(obj);
+	std::shared_ptr<Unit> unit = std::shared_ptr<Unit>(obj);
+
+	DynamicUnit *dobj = dynamic_cast<DynamicUnit*>(obj);
+	if (dobj)
+		dynamic_objects.push_back(dobj);
+
+	objects.push_back(unit);
 	return true;
+}
+
+void Quadtree::update(Unit *obj) {
+	// FIXME stub
+	(void)obj;
 }
 
 bool Quadtree::erase(Unit *obj) {
 	// FIXME check bounds
 	// TODO traverse children amongst other things
+
+	DynamicUnit *dobj = dynamic_cast<DynamicUnit*>(obj);
+	if (dobj) {
+		for (auto it = dynamic_objects.begin(); it != dynamic_objects.end(); ++it) {
+			auto o = *it;
+
+			if (*obj == *o) {
+				dynamic_objects.erase(it);
+				break;
+			}
+		}
+
+		return false;
+	}
 
 	for (auto it = objects.begin(); it != objects.end(); ++it) {
 		auto o = *it;

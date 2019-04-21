@@ -107,6 +107,7 @@ public:
 	static unsigned id_counter;
 
 	Point pos;
+	AABB scr;
 	// tile displacement
 	int dx, dy, w, h;
 	unsigned size;
@@ -130,7 +131,7 @@ public:
 
 	virtual void draw(Map &map) const;
 	void draw_selection(Map &map) const;
-	virtual void to_screen(Map &map, AABB &scr) const;
+	virtual void to_screen(Map &map);
 
 	unsigned drs_id() const {
 		return animation.id;
@@ -139,6 +140,29 @@ public:
 	friend bool operator==(const Unit &lhs, const Unit &rhs) {
 		return lhs.id == rhs.id;
 	}
+};
+
+class DynamicUnit : public Unit {
+public:
+	float fx, fy;
+	DynamicUnit(
+		unsigned hp, int x, int y,
+		unsigned size, int w, int h,
+		unsigned sprite_index,
+		unsigned color,
+		int dx=0, int dy=0
+	) : Unit(hp, x, y, size, w, h, sprite_index, color, dx, dy), fx(0), fy(0) {}
+	virtual ~DynamicUnit() {}
+
+	virtual void tick() = 0;
+};
+
+class Villager : public DynamicUnit {
+public:
+	Villager(unsigned hp, int x, int y, unsigned color, int dx=0, int dy=0)
+		: DynamicUnit(hp, x, y, 14, 0, 0, DRS_VILLAGER_STAND, color) {}
+
+	void tick() override;
 };
 
 #define SR_FOOD 0
@@ -178,7 +202,7 @@ public:
 		int x, int y, unsigned size, unsigned color
 	) : Building(hp, id, p_id, x, y, size, 0, 0, color) {}
 	void draw(Map &map) const override;
-	void to_screen(Map &map, AABB &scr) const override;
+	void to_screen(Map &map) override;
 };
 
 class Quadtree final {
@@ -186,12 +210,14 @@ class Quadtree final {
 	AABB bounds;
 public:
 	std::vector<std::shared_ptr<Unit>> objects;
+	std::vector<DynamicUnit*> dynamic_objects;
 	bool split;
 	Quadtree(AABB bounds = {})
 		: children(), bounds(bounds), objects(), split(false) {}
 
-	bool put(std::shared_ptr<Unit> obj);
+	bool put(Unit *obj);
 	bool erase(Unit *obj);
+	void update(Unit *obj);
 	void clear();
 
 	void query(std::vector<std::shared_ptr<Unit>> &lst, AABB bounds);

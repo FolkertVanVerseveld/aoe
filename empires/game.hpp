@@ -275,6 +275,7 @@ public:
 	// units is internal 2d grid, display_units is isometric 2d grid
 	Quadtree units;
 
+	// XXX consider /shared_ptr/Unit*/
 	std::set<std::shared_ptr<Unit>> selected;
 
 	RendererState state;

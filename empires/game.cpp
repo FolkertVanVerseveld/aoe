@@ -92,29 +92,29 @@ void Unit::draw_selection(Map &map) const
 	animation.draw_selection(scr.x, scr.y, size);
 }
 
-void Unit::to_screen(Map &map, AABB &bounds) const
+void Unit::to_screen(Map &map)
 {
-	Point scr;
+	Point spos;
 	const uint8_t *hdata = map.heightmap.get();
 	Image &img = animation.images[image_index];
 	SDL_Surface *surf = img.surface.get();
 
-	pos.to_screen(scr);
-	scr.move(dx, dy - TILE_HEIGHT * hdata[pos.y * map.w + pos.x]);
+	pos.to_screen(spos);
+	spos.move(dx, dy - TILE_HEIGHT * hdata[pos.y * map.w + pos.x]);
 
 	//dbgf("%d,%d,%d\n", pos.x, img.hotspot_x, surf->w / 2);
 	//dbgf("%d,%d,%d\n", pos.y, img.hotspot_y, surf->h / 2);
-	bounds.pos.x = scr.x - img.hotspot_x + surf->w / 2;
-	bounds.pos.y = scr.y - img.hotspot_y + surf->h / 2;
-	bounds.hbounds.x = surf->w / 2;
-	bounds.hbounds.y = surf->h / 2;
+	scr.pos.x = spos.x - img.hotspot_x + surf->w / 2;
+	scr.pos.y = spos.y - img.hotspot_y + surf->h / 2;
+	scr.hbounds.x = surf->w / 2;
+	scr.hbounds.y = surf->h / 2;
 
 	//canvas.draw_rect(bounds.pos.x - bounds.hbounds.x, bounds.pos.y - bounds.hbounds.y, bounds.pos.x + bounds.hbounds.x, bounds.pos.y + bounds.hbounds.y);
 }
 
-void Building::to_screen(Map &map, AABB &bounds) const
+void Building::to_screen(Map &map)
 {
-	Point scr;
+	Point spos;
 	const uint8_t *hdata = map.heightmap.get();
 	Image &img = animation.images[image_index];
 	SDL_Surface *surf = img.surface.get();
@@ -126,15 +126,15 @@ void Building::to_screen(Map &map, AABB &bounds) const
 		surf = img.surface.get();
 	}
 
-	pos.to_screen(scr);
-	scr.move(dx, dy - TILE_HEIGHT * hdata[pos.y * map.w + pos.x]);
+	pos.to_screen(spos);
+	spos.move(dx, dy - TILE_HEIGHT * hdata[pos.y * map.w + pos.x]);
 
 	//dbgf("%d,%d,%d\n", pos.x, img.hotspot_x, surf->w / 2);
 	//dbgf("%d,%d,%d\n", pos.y, img.hotspot_y, surf->h / 2);
-	bounds.pos.x = scr.x - img.hotspot_x + surf->w / 2;
-	bounds.pos.y = scr.y - img.hotspot_y + surf->h / 2;
-	bounds.hbounds.x = surf->w / 2;
-	bounds.hbounds.y = surf->h / 2;
+	scr.pos.x = spos.x - img.hotspot_x + surf->w / 2;
+	scr.pos.y = spos.y - img.hotspot_y + surf->h / 2;
+	scr.hbounds.x = surf->w / 2;
+	scr.hbounds.y = surf->h / 2;
 
 	//canvas.draw_rect(bounds.pos.x - bounds.hbounds.x, bounds.pos.y - bounds.hbounds.y, bounds.pos.x + bounds.hbounds.x, bounds.pos.y + bounds.hbounds.y);
 }
@@ -204,9 +204,7 @@ static void spawn_academy(int x, int y, unsigned color)
 
 static void spawn_villager(int x, int y, unsigned color)
 {
-	game.spawn(
-		new Unit(25, x, y, 14, 0, 0, DRS_VILLAGER_STAND, color)
-	);
+	game.spawn(new Villager(25, x, y, color));
 }
 
 static void spawn_berry_bush(int x, int y)
@@ -233,6 +231,10 @@ static void spawn_stone(int x, int y)
 	game.spawn(new StaticResource(x, y, 40, 0, 0, DRS_STONE, SR_STONE, 250));
 }
 
+void Villager::tick()
+{
+}
+
 void Player::init_dummy() {
 	Map &map = game.map;
 
@@ -241,15 +243,13 @@ void Player::init_dummy() {
 
 	switch (color) {
 	case 0:
-		x = y = 0;
+		x = y = 1;
 		break;
 	case 1:
-		x = map.w - 3;
-		y = map.h - 9;
+		x = map.w - 2;
+		y = map.h - 8;
 		break;
 	}
-	x += 2;
-	++y;
 
 	spawn_town_center(x, y, color);
 	spawn_academy(x, y + 3, color);
@@ -272,6 +272,11 @@ void Player::init_dummy() {
 	// 24 trees
 	for (int i = 0; i < 24; ++i)
 		spawn_desert_tree(rand() % map.w, rand() % map.h);
+
+#if 0
+	for (int i = 0; i < map.w; ++i)
+		spawn_desert_tree(i, 0);
+#endif
 }
 
 void Player::idle() {
@@ -439,6 +444,10 @@ void Game::idle() {
 	if (paused)
 		return;
 
+	// Dynamic objects game tick
+	for (auto &unit : units.dynamic_objects)
+		unit->tick();
+
 	// Always repaint the screen
 	canvas_dirty();
 
@@ -592,18 +601,17 @@ void Game::draw() {
 	for (auto unit : selected)
 		unit->draw_selection(map);
 
+	for (auto unit : objects)
+		unit->to_screen(map);
+
 	// determine drawing order: priority = -y
 	std::sort(objects.begin(), objects.end(), [](std::shared_ptr<Unit> &lhs, std::shared_ptr<Unit> &rhs) {
-		return lhs->pos.y > rhs->pos.y;
+		return lhs->scr.pos.y < rhs->scr.pos.y;
 	});
 
 	// draw all found objects
-	for (auto unit : objects) {
-		AABB bnds;
-		unit->to_screen(map, bnds);
+	for (auto unit : objects)
 		unit->draw(map);
-		//dump_aabb(bnds);
-	}
 
 	canvas.pop_state();
 }
@@ -847,6 +855,63 @@ static bool point_in_diamond(Map &map, const Unit *u, int px, int py)
 	return dy <= ymax;
 }
 
+static bool point_to_tile(Map &map, int &tx, int &ty, int &dx, int &dy, int px, int py, bool clip=true)
+{
+	// determine horizontal screen position.
+	// this is easy because horizontal view does not get distorted.
+	ty = tx = px / (2 * TILE_WIDTH);
+	if (tx < 0 || tx >= (int)map.w || ty < 0 || ty >= (int)map.h) {
+		if (!clip)
+			return false;
+		if (tx < 0)
+			tx = 0;
+		if (tx >= (int)map.w)
+			tx = (int)map.w - 1;
+		if (ty < 0)
+			ty = 0;
+		if (ty >= (int)map.h)
+			ty = (int)map.h - 1;
+	}
+
+	int scr_x, scr_y, ex, ey;
+
+	scr_x = (tx + ty) * TILE_WIDTH;
+	scr_y = (-ty + tx) * TILE_HEIGHT;
+	ex = scr_x - px;
+	ey = scr_y - py;
+
+	// roughly estimate vertical screen position by converting the horizontal screen position and computing the euclidean distance.
+	// this is tricky because this is non-trivial and we need a heightmap.
+	//dbgf("tile: (%d,%d), error: (%d,%d)\n", tx, ty, ex, ey);
+
+	ty += ey / (2 * TILE_HEIGHT);
+	tx -= ey / (2 * TILE_HEIGHT);
+
+	if (tx < 0 || tx >= (int)map.w || ty < 0 || ty >= (int)map.h) {
+		if (!clip)
+			return false;
+		if (tx < 0)
+			tx = 0;
+		if (tx >= (int)map.w)
+			tx = (int)map.w - 1;
+		if (ty < 0)
+			ty = 0;
+		if (ty >= (int)map.h)
+			ty = (int)map.h - 1;
+	}
+
+	scr_x = (tx + ty) * TILE_WIDTH;
+	scr_y = (-ty + tx) * TILE_HEIGHT;
+	ex = scr_x - px;
+	ey = scr_y - py;
+
+	dbgf("tile: (%d,%d), error: (%d,%d)\n", tx, ty, ex, ey);
+
+	dx = -ex - TILE_WIDTH;
+	dy = -ey - TILE_HEIGHT;
+	return true;
+}
+
 bool Game::mousedown(SDL_MouseButtonEvent *event) {
 	// translate mouse coordinates to in game
 	int mx, my;
@@ -863,10 +928,9 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 
 		// FIXME optimize this
 		for (auto unit : units.objects) {
-			AABB bnds;
-			unit->to_screen(map, bnds);
+			unit->to_screen(map);
 
-			if (bnds.contains(mpos))
+			if (unit->scr.contains(mpos))
 				objects.push_back(unit);
 		}
 
@@ -879,6 +943,7 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 			// special handle buildings
 			Building *b = dynamic_cast<Building*>(unit.get());
 			if (b && !point_in_diamond(map, unit.get(), mx, my)) {
+				// TODO add pixel perfect collision detection
 				dbgs("skip building");
 				continue;
 			}
@@ -890,6 +955,33 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 
 		//dbgf("candidates: %d\n", selected.size());
 		return true;
+	case SDL_BUTTON_RIGHT:
+		// convert mouse to tile coordinates
+		int tx, ty, dx, dy;
+		bool has_villager;
+
+		has_villager = false;
+
+		if (!selected.size() || !point_to_tile(map, tx, ty, dx, dy, mx, my))
+			return false;
+
+		//dbgf("TODO: move (%d,%d) -> (%d,%d)\n", mx, my, tx, ty);
+		for (auto unit : selected) {
+			DynamicUnit *d = dynamic_cast<DynamicUnit*>(unit.get());
+			unit->pos.x = tx;
+			unit->pos.y = ty;
+			if (d) {
+				unit->dx = dx;
+				unit->dy = dy;
+			}
+			if (dynamic_cast<Villager*>(unit.get()))
+				has_villager = true;
+			units.update(unit.get());
+		}
+
+		if (has_villager)
+			sfx_play(SFX_VILLAGER_MOVE);
+		break;
 	default:
 		dbgf("TODO: mousedown (%d,%d) -> (%d,%d)\n", event->x, event->y, mx, my);
 		break;
@@ -966,9 +1058,7 @@ const Player *Game::controlling_player() const {
 }
 
 void Game::spawn(Unit *obj) {
-	std::shared_ptr<Unit> unit = std::shared_ptr<Unit>(obj);
-
-	if (!units.put(unit))
+	if (!units.put(obj))
 		panic("Game: could not spawn unit");
 }
 
