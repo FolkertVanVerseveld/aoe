@@ -231,7 +231,15 @@ static void spawn_stone(int x, int y)
 	game.spawn(new StaticResource(x, y, 40, 0, 0, DRS_STONE, SR_STONE, 250));
 }
 
-void Villager::tick()
+void DynamicUnit::move(int tx, int ty, int dx, int dy)
+{
+	target.x = tx;
+	target.y = ty;
+	tdx = dx;
+	tdy = dy;
+}
+
+void DynamicUnit::tick()
 {
 }
 
@@ -968,9 +976,11 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 		//dbgf("TODO: move (%d,%d) -> (%d,%d)\n", mx, my, tx, ty);
 		for (auto unit : selected) {
 			DynamicUnit *d = dynamic_cast<DynamicUnit*>(unit.get());
-			unit->pos.x = tx;
-			unit->pos.y = ty;
-			if (d) {
+			if (0) {
+				d->move(tx, ty, dx, dy);
+			} else {
+				unit->pos.x = tx;
+				unit->pos.y = ty;
 				unit->dx = dx;
 				unit->dy = dy;
 			}

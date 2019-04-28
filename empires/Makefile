@@ -2,7 +2,7 @@
 
 CC?=gcc
 CFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -Wno-implicit-fallthrough -std=gnu11
-LDLIBS=
+LDLIBS=-lm
 LDFLAGS?=
 DEBUG_LDLIBS?=
 DEBUG_LDFLAGS?=

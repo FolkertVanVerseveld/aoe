@@ -144,25 +144,29 @@ public:
 
 class DynamicUnit : public Unit {
 public:
-	float fx, fy;
+	Point target;
+	float tdx, tdy;
+	float movespeed;
+
 	DynamicUnit(
 		unsigned hp, int x, int y,
 		unsigned size, int w, int h,
 		unsigned sprite_index,
 		unsigned color,
+		float movespeed,
 		int dx=0, int dy=0
-	) : Unit(hp, x, y, size, w, h, sprite_index, color, dx, dy), fx(0), fy(0) {}
+	) : Unit(hp, x, y, size, w, h, sprite_index, color, dx, dy)
+	, target(x, y), tdx(0), tdy(0), movespeed(movespeed) {}
 	virtual ~DynamicUnit() {}
 
-	virtual void tick() = 0;
+	void tick();
+	void move(int tx, int ty, int dx, int dy);
 };
 
 class Villager : public DynamicUnit {
 public:
 	Villager(unsigned hp, int x, int y, unsigned color, int dx=0, int dy=0)
-		: DynamicUnit(hp, x, y, 14, 0, 0, DRS_VILLAGER_STAND, color) {}
-
-	void tick() override;
+		: DynamicUnit(hp, x, y, 14, 0, 0, DRS_VILLAGER_STAND, color, 2) {}
 };
 
 #define SR_FOOD 0

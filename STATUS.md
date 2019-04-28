@@ -16,7 +16,7 @@ Subsystem      | Task / Purpose           | Notes
 CD-ROM         | File I/O                 | Known issues regarding auto-mounting audio tracks
 File I/O       | Parse basic game assets  | Audio works, partial slp and bin parsing
 Tools          | (Un)packing game assets  | Pretty stable, but outdated and needs some cleanup
-Game assets    | PE parsing               | Integrated libpe in empires and aoesetup
+Game assets    | PE parsing               | Integrated libpe in empires and aoesetup. Completed for palettes, backgrounds and some slps
 User Interface | Background image parsing | Minor problems with dialogs
 
 Unfortunately, the audio tracks mounting issue is related to the particular
@@ -35,9 +35,8 @@ Empires folder  | Replicate and port    | Basic graphics and audio
 User Interface  | True Type Fonts       | Porting to new launcher
 "    "          | Menu navigation       | Basic buttons and group navigation
 "    "          | Main menu             | See next task
-DRS Game assets | Asset parsing         | Completed for palettes, backgrounds and some slps, very time consuming
-Slp parsing     | Game gfx assets       | Working for backgrounds, but has glitches with most images
-Game logic      | Fix bad game state    | State gets corrupted sometimes
+Slp parsing     | Game gfx assets       | Working for backgrounds, but has glitches with some images
+Game logic      | Dynamic Unit logic    | Movement stub
 
 ## Backlog
 
@@ -48,7 +47,7 @@ Subsystem      | Task / Purpose                 | Notes
 Shell          | Command line interface         | Migrate from old to new game
 Bugreport      | Debug info for crashes         | "", crash handler in case the engine or game crashes
 Video          | AVI video playback             | "", uses command-line interface for VLC
-Video          | Refactor graphics renderer     | Provide plain SDL renderer and OpenGL
+"              | Refactor graphics renderer     | Provide plain SDL renderer and OpenGL
 Tools          | Autostrip BMP and WAVE headers | Headers must be stripped to be recognized properly by the original game.
 User interface | Create chatfield for commands  | Spawn units, get resources etc.
 "              | Split code in more files       | Some stuff really doesn't belong here...

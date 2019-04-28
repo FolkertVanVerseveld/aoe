@@ -1,7 +1,6 @@
 .PHONY: default clean setup empires
 
-default: genie game
-default: setup empires
+default: empires
 setup:
 	cd setup && $(MAKE) && cd ..
 empires: setup
