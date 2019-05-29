@@ -1,5 +1,7 @@
 # Tools overview
 
+*NOTE this is currently being changed and it doesn't compile without some hacks*
+
 *This is primarly for intended for developers and (eventually) modders*
 
 To safe you a lot of time and pain to reverse engineer and understand the inner

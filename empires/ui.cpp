@@ -1021,6 +1021,10 @@ public:
 	ButtonGroup(int x=212, int y=222, unsigned w=375, unsigned h=50)
 		: UI(x, y, w, h), objects() {}
 
+	void add(int rel_x, int rel_y, unsigned id, bool def_fnt) {
+		add(rel_x, rel_y, id, 0, 0, def_fnt);
+	}
+
 	void add(int rel_x, int rel_y, unsigned id=STR_ERROR, unsigned w=0, unsigned h=0, bool def_fnt=false) {
 		if (!w) w = this->w;
 		if (!h) h = this->h;
@@ -1474,6 +1478,46 @@ public:
 	}
 };
 
+class MenuScenarioEditor final : public Menu {
+	Palette palette;
+	AnimationTexture menu_bar;
+public:
+	MenuScenarioEditor()
+		: Menu(STR_TITLE_MAIN, 0, 0, 110, 22, false)
+		, palette(), menu_bar()
+	{
+		group.add(739, 5, STR_BTN_SCENARIO_MENU, 797 - 739, 45 - 5, true);
+		group.add(765, 565, STR_BTN_HELP, 30, 30, true);
+
+		group.add(2, 2, STR_BTN_SCENARIO_MAP, true);
+		group.add(113, 2, STR_BTN_SCENARIO_TERRAIN, true);
+		group.add(224, 2, STR_BTN_SCENARIO_PLAYERS, true);
+		group.add(335, 2, STR_BTN_SCENARIO_UNITS, true);
+		group.add(446, 2, STR_BTN_SCENARIO_DIPLOMACY, true);
+		group.add(2, 26, STR_BTN_SCENARIO_TRIGGERS, true);
+		group.add(113, 26, STR_BTN_SCENARIO_TRIGGERS_ALL, true);
+		group.add(224, 26, STR_BTN_SCENARIO_OPTIONS, true);
+		group.add(335, 26, STR_BTN_SCENARIO_MESSAGES, true);
+		group.add(446, 26, STR_BTN_SCENARIO_VIDEO, true);
+	}
+
+	void button_group_activate(unsigned id) override final {
+		switch (id) {
+		case 0:
+			stop = 1;
+			break;
+		}
+	}
+
+	void draw() const override final {
+		canvas.clear();
+
+		//editor.draw();
+
+		Menu::draw();
+	}
+};
+
 class MenuGame final : public Menu {
 	Palette palette;
 	AnimationTexture menu_bar;
@@ -1741,6 +1785,9 @@ public:
 
 	void button_group_activate(unsigned id) override final {
 		switch (id) {
+		case 0:
+			ui_state.go_to(new MenuScenarioEditor());
+			break;
 		case 3:
 			stop = 1;
 			break;

@@ -95,23 +95,36 @@ protected:
 };
 #endif
 
+class Particle {
+public:
+	Point pos;
+
+	AABB scr;
+	// tile displacement
+	int dx, dy, w, h;
+	unsigned size;
+	unsigned id;
+	static unsigned count; // FIXME debug stuff, remove when done
+	static unsigned id_counter;
+
+	Particle(int x, int y, unsigned size, int w, int h, int dx=0, int dy=0)
+		: pos(x, y), size(size), w(w), h(h), dx(0), dy(0)
+	{
+		++count;
+		id = ++id_counter;
+	}
+};
+
 /**
  * Elementary world unit. This includes gaia stuff (e.g. trees, gold, berry
  * bushes...)
  */
-class Unit {
+class Unit : public Particle {
 public:
 	unsigned hp, hp_max;
 	unsigned id;
 
 	static unsigned id_counter;
-
-	Point pos;
-	AABB scr;
-	// tile displacement
-	int dx, dy, w, h;
-	unsigned size;
-	static unsigned count; // FIXME debug stuff, remove when done
 
 protected:
 	const AnimationTexture &animation;

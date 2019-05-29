@@ -49,8 +49,8 @@ void stats_reset() {
 	StatsTechnology::max_technologies = 0;
 }
 
-unsigned Unit::count = 0;
-unsigned Unit::id_counter = 0;
+unsigned Particle::count = 0;
+unsigned Particle::id_counter = 0;
 
 Unit::Unit(
 	unsigned hp,
@@ -59,13 +59,10 @@ Unit::Unit(
 	unsigned color,
 	int dx, int dy
 )
-	: hp(hp), hp_max(hp)
-	, pos(x, y), dx(dx), dy(dy), w(w), h(h), size(size)
+	: Particle(x, y, size, w, h, dx, dy), hp(hp), hp_max(hp)
 	, animation(game.cache->get(sprite_index)), image_index(0)
 	, color(color)
 {
-	++count;
-	id = ++id_counter;
 }
 
 static void dump_aabb(const AABB &b)
@@ -280,11 +277,6 @@ void Player::init_dummy() {
 	// 24 trees
 	for (int i = 0; i < 24; ++i)
 		spawn_desert_tree(rand() % map.w, rand() % map.h);
-
-#if 0
-	for (int i = 0; i < map.w; ++i)
-		spawn_desert_tree(i, 0);
-#endif
 }
 
 void Player::idle() {
