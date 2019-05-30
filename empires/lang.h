@@ -1,4 +1,4 @@
-/* Copyright 2016-2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2016-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #ifndef LANG_H
 #define LANG_H
@@ -112,6 +112,14 @@
 #define STR_BTN_SCENARIO_DIPLOMACY 10018
 #define STR_BTN_SCENARIO_TRIGGERS_ALL 10019
 #define STR_BTN_SCENARIO_MENU 10020
+
+/* Scenario Editor Menu */
+#define STR_BTN_SCENARIO_MENU_SAVE 9281
+#define STR_BTN_SCENARIO_MENU_SAVE_AS 9282
+#define STR_BTN_SCENARIO_MENU_QUIT 9283
+#define STR_BTN_SCENARIO_MENU_CANCEL 9284
+#define STR_BTN_SCENARIO_MENU_EDIT 9285
+#define STR_BTN_SCENARIO_MENU_TEST 9286
 
 /* Map type */
 #define STR_MAP_TYPE_ISLANDS 10602

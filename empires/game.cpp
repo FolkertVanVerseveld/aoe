@@ -52,32 +52,27 @@ void stats_reset() {
 unsigned Particle::count = 0;
 unsigned Particle::id_counter = 0;
 
-Unit::Unit(
-	unsigned hp,
-	int x, int y, unsigned size, int w, int h,
-	unsigned sprite_index,
-	unsigned color,
-	int dx, int dy
-)
-	: Particle(x, y, size, w, h, dx, dy), hp(hp), hp_max(hp)
+Particle::Particle(int x, int y, unsigned size, int w, int h, unsigned sprite_index, unsigned color, int dx, int dy)
+	: pos(x, y), dx(dx), dy(dy), w(w), h(h), size(size), color(color)
 	, animation(game.cache->get(sprite_index)), image_index(0)
-	, color(color)
 {
+	++count;
+	id = ++id_counter;
 }
 
-static void dump_aabb(const AABB &b)
-{
-	printf("[(%d,%d), (%d,%d)]\n", b.pos.x - b.hbounds.x, b.pos.y - b.hbounds.y,
-		b.pos.x + b.hbounds.x, b.pos.y + b.hbounds.y);
-}
-
-void Unit::draw(Map &map) const
+void Particle::draw(Map &map) const
 {
 	Point scr;
 	const uint8_t *hdata = map.heightmap.get();
 	pos.to_screen(scr);
 	scr.move(dx, dy - TILE_HEIGHT * hdata[pos.y * map.w + pos.x]);
 	animation.draw(scr.x, scr.y, image_index, color);
+}
+
+static void dump_aabb(const AABB &b)
+{
+	printf("[(%d,%d), (%d,%d)]\n", b.pos.x - b.hbounds.x, b.pos.y - b.hbounds.y,
+		b.pos.x + b.hbounds.x, b.pos.y + b.hbounds.y);
 }
 
 void Unit::draw_selection(Map &map) const
@@ -423,6 +418,7 @@ void Game::reset(unsigned players) {
 	resize(MICRO);
 
 	this->players.clear();
+	this->x = this->y = 0;
 
 	unsigned color = 0;
 

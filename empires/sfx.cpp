@@ -221,7 +221,7 @@ void mus_play(unsigned id)
 	case MUS_GAME7  : name = "Track 11.wav"; break;
 	case MUS_GAME8  : name = "Track 12.wav"; break;
 	case MUS_GAME9  : name = "Track 13.wav"; break;
-	case MUS_GAME10  : name = "Track 14.wav"; break;
+	case MUS_GAME10 : name = "Track 14.wav"; break;
 	default:
 		fprintf(stderr, "sfx: bad music ID %u\n", id);
 		return;

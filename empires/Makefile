@@ -29,15 +29,17 @@ endif
 UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx
 
 default: empires
-empires: empires.o ui.o game.o qtree.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o ui.o game.o qtree.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
+empires: empires.o ui.o editor.o game.o qtree.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o ui.o editor.o game.o qtree.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
 empires.o: empires.c cfg.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.c -c -o empires.o $(LDFLAGS) $(LDLIBS)
 game.o: game.hpp game.cpp ui.h image.hpp render.hpp world.hpp drs.h lang.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) game.cpp -c -o game.o $(LDFLAGS) $(LDLIBS)
-ui.o: ui.h ui.cpp game.hpp drs.h image.hpp render.hpp gfx.h
+ui.o: ui.h ui.cpp gfx.h game.o editor.o
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ui.cpp -c -o ui.o $(LDFLAGS) $(LDLIBS)
+editor.o: editor.cpp editor.hpp game.hpp world.hpp
 qtree.o: world.hpp qtree.cpp
+	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) editor.cpp -c -o editor.o $(LDFLAGS) $(LDLIBS)
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) qtree.cpp -c -o qtree.o $(LDFLAGS) $(LDLIBS)
 gfx.o: gfx.h gfx.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) gfx.c -c -o gfx.o $(LDFLAGS) $(LDLIBS)

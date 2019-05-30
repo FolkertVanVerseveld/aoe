@@ -78,23 +78,9 @@ private:
 	void resize(unsigned size) { resize(size, size); }
 };
 
-#if 0
 /**
  * World particle (e.g. tree chunks, debris)
  */
-class Particle {
-public:
-	Point pos;
-	unsigned id;
-
-	static unsigned id_counter;
-
-protected:
-	const AnimationTexture &animation;
-	unsigned image_index;
-};
-#endif
-
 class Particle {
 public:
 	Point pos;
@@ -107,11 +93,23 @@ public:
 	static unsigned count; // FIXME debug stuff, remove when done
 	static unsigned id_counter;
 
-	Particle(int x, int y, unsigned size, int w, int h, int dx=0, int dy=0)
-		: pos(x, y), size(size), w(w), h(h), dx(0), dy(0)
-	{
-		++count;
-		id = ++id_counter;
+	unsigned color;
+
+protected:
+	const AnimationTexture &animation;
+	unsigned image_index;
+
+public:
+	Particle(int x, int y, unsigned size, int w, int h, unsigned sprite_index, unsigned color, int dx=0, int dy=0);
+
+	virtual void draw(Map &map) const;
+
+	unsigned drs_id() const {
+		return animation.id;
+	}
+
+	friend bool operator==(const Particle &lhs, const Particle &rhs) {
+		return lhs.id == rhs.id;
 	}
 };
 
@@ -122,16 +120,6 @@ public:
 class Unit : public Particle {
 public:
 	unsigned hp, hp_max;
-	unsigned id;
-
-	static unsigned id_counter;
-
-protected:
-	const AnimationTexture &animation;
-	unsigned image_index;
-
-public:
-	unsigned color;
 
 	Unit(
 		unsigned hp, int x, int y,
@@ -139,20 +127,11 @@ public:
 		unsigned sprite_index,
 		unsigned color,
 		int dx=0, int dy=0
-	);
+	) : Particle(x, y, size, w, h, sprite_index, color, dx, dy), hp(hp), hp_max(hp) {}
 	virtual ~Unit() { --count; }
 
-	virtual void draw(Map &map) const;
 	void draw_selection(Map &map) const;
 	virtual void to_screen(Map &map);
-
-	unsigned drs_id() const {
-		return animation.id;
-	}
-
-	friend bool operator==(const Unit &lhs, const Unit &rhs) {
-		return lhs.id == rhs.id;
-	}
 };
 
 class DynamicUnit : public Unit {

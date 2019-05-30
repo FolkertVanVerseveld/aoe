@@ -28,6 +28,7 @@
 
 #include "image.hpp"
 #include "game.hpp"
+#include "editor.hpp"
 
 extern struct pe_lib lib_lang;
 
@@ -557,12 +558,6 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 				for (count = *++cmd; count; --count)
 					pixels[y * p + x++] = 0;
 				continue;
-			// TODO what does this do?
-			// probably fills as much as the next byte says
-			case 0x02:
-				for (count = *++cmd; count; --count)
-					pixels[y * p + x++] = *++cmd;
-				continue;
 			case 0xF7: pixels[y * p + x++] = cmd[1];
 			case 0xE7: pixels[y * p + x++] = cmd[1];
 			case 0xD7: pixels[y * p + x++] = cmd[1];
@@ -751,6 +746,11 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 				}
 				//dbgs("");
 				break;
+			case 0x02:
+				count = ((*cmd & 0xf0) << 4) + cmd[1];
+				for (++cmd; count; --count)
+					pixels[y * p + x++] = *++cmd;
+				break;
 			default:
 				dbgf("unknown cmd at %X: %X, %X\n",
 					 (unsigned)(cmd - (const unsigned char*)data),
@@ -793,6 +793,7 @@ void AnimationTexture::open(Palette *pal, unsigned id) {
 	size_t n;
 	const void *data = drs_get_item(DT_SLP, id, &n);
 
+	this->id = id;
 	slp_read(&image, data);
 
 	if (memcmp(image.hdr->version, "2.0N", 4))
@@ -1433,7 +1434,39 @@ public:
 	}
 };
 
-// TODO make overlayed menu
+class MenuScenarioEditorMenu final : public Menu {
+public:
+	MenuScenarioEditorMenu() : Menu(STR_TITLE_MAIN, 200, 120, 600 - 200, 160 - 120, false) {
+		objects.emplace_back(
+			new Background(
+				DRS_BACKGROUND_SCENARIO_EDITOR,
+				170, 100, 630 - 170, 500 - 100
+			)
+		);
+		objects.emplace_back(new Border(170, 100, 630 - 170, 500 - 100, false));
+
+		group.add(0, 0, STR_BTN_SCENARIO_MENU_QUIT);
+		group.add(0, 170 - 120, STR_BTN_SCENARIO_MENU_SAVE);
+		group.add(0, 220 - 120, STR_BTN_SCENARIO_MENU_SAVE_AS);
+		group.add(0, 270 - 120, STR_BTN_SCENARIO_MENU_EDIT);
+		group.add(0, 320 - 120, STR_BTN_SCENARIO_CREATE);
+		group.add(0, 370 - 120, STR_BTN_SCENARIO_MENU_TEST);
+		group.add(0, 440 - 120, STR_BTN_SCENARIO_MENU_CANCEL);
+	}
+
+	void button_group_activate(unsigned id) override final {
+		switch (id) {
+		case 0:
+			editor.stop();
+			stop = 3;
+			break;
+		case 6:
+			stop = 1;
+			break;
+		}
+	};
+};
+
 class MenuGameMenu final : public Menu {
 public:
 	MenuGameMenu() : Menu(STR_TITLE_MAIN, 200, 98, 580 - 220, 143 - 113, false) {
@@ -1486,6 +1519,9 @@ public:
 		: Menu(STR_TITLE_MAIN, 0, 0, 110, 22, false)
 		, palette(), menu_bar()
 	{
+		objects.emplace_back(new Border(0, 0, WIDTH, 51, false));
+		objects.emplace_back(new Border(0, 457, WIDTH, HEIGHT - 457, false));
+
 		group.add(739, 5, STR_BTN_SCENARIO_MENU, 797 - 739, 45 - 5, true);
 		group.add(765, 565, STR_BTN_HELP, 30, 30, true);
 
@@ -1499,20 +1535,60 @@ public:
 		group.add(224, 26, STR_BTN_SCENARIO_OPTIONS, true);
 		group.add(335, 26, STR_BTN_SCENARIO_MESSAGES, true);
 		group.add(446, 26, STR_BTN_SCENARIO_VIDEO, true);
+
+		palette.open(DRS_MAIN_PALETTE);
+		// load background preferences
+		Background b(DRS_BACKGROUND_SCENARIO_EDITOR, 0, 0);
+		menu_bar.open(&palette, DRS_MENU_BAR_SCENARIO_800_600);
+
+		editor.reshape(0, 50, WIDTH, HEIGHT - (HEIGHT - 457) - 50);
+		editor.start();
 	}
 
 	void button_group_activate(unsigned id) override final {
 		switch (id) {
 		case 0:
-			stop = 1;
+			ui_state.go_to(new MenuScenarioEditorMenu());
 			break;
 		}
+	}
+
+	void keydown(SDL_KeyboardEvent *event) override {
+		if (!game.keydown(event))
+			Menu::keydown(event);
+	}
+
+	void keyup(SDL_KeyboardEvent *event) override {
+		if (!game.keyup(event))
+			Menu::keyup(event);
+	}
+
+	void mousedown(SDL_MouseButtonEvent *event) override final {
+		/* Check if mouse is within viewport. */
+		int top = 50;
+		int bottom = HEIGHT - 457 - 50;
+
+		if (game.paused || event->y < top || event->y >= bottom) {
+			Menu::mousedown(event);
+			return;
+		}
+
+		//dbgf("top,bottom: %d,%d\n", top, bottom);
+		event->y -= top;
+		game.mousedown(event);
+	}
+
+	void idle() override final {
+		editor.idle();
 	}
 
 	void draw() const override final {
 		canvas.clear();
 
-		//editor.draw();
+		editor.draw();
+
+		menu_bar.draw(0, 0, WIDTH, 50, 0);
+		menu_bar.draw(0, 457, WIDTH, HEIGHT - 457, 0);
 
 		Menu::draw();
 	}
@@ -1563,6 +1639,8 @@ public:
 		canvas.clear();
 
 		palette.open(DRS_MAIN_PALETTE);
+		// load background preferences
+		Background b(DRS_BACKGROUND_GAME_0 + menu_bar_tbl[you->civ], 0, 0);
 		menu_bar.open(
 			&palette,
 			DRS_MENU_BAR_800_600_0 + menu_bar_tbl[you->civ]
