@@ -35,7 +35,7 @@ empires.o: empires.c cfg.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.c -c -o empires.o $(LDFLAGS) $(LDLIBS)
 game.o: game.hpp game.cpp ui.h image.hpp render.hpp world.hpp drs.h lang.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) game.cpp -c -o game.o $(LDFLAGS) $(LDLIBS)
-ui.o: ui.h ui.cpp gfx.h game.o editor.o
+ui.o: ui.h ui.cpp gfx.o game.o editor.o cfg.h sfx.o
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ui.cpp -c -o ui.o $(LDFLAGS) $(LDLIBS)
 editor.o: editor.cpp editor.hpp game.hpp world.hpp
 qtree.o: world.hpp qtree.cpp

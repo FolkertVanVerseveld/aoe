@@ -20,6 +20,7 @@
 #include "../setup/def.h"
 #include "../setup/res.h"
 
+#include "cfg.h"
 #include "drs.h"
 #include "gfx.h"
 #include "lang.h"
@@ -244,6 +245,22 @@ public:
 	bool contains(int px, int py) {
 		return point_in_rect(x, y, w, h, px, py);
 	}
+};
+
+class UI_Clickable {
+protected:
+	UI_Clickable() {}
+public:
+	virtual bool mousedown(SDL_MouseButtonEvent *event) = 0;
+	virtual bool mouseup(SDL_MouseButtonEvent *event) = 0;
+};
+
+class UI_Container : public UI {
+public:
+	UI_Container(int x, int y, unsigned w, unsigned h)
+		: UI(x, y, w, h) {}
+
+	virtual ~UI_Container() {}
 };
 
 // FIXME grab these from the color palette
@@ -950,31 +967,31 @@ public:
 	}
 };
 
-class Button final : public Border {
+class Button final : public Border, public UI_Clickable {
 	Text text;
 public:
 	bool focus;
-	bool down;
+	bool down, hold;
 	bool play_sfx;
 	bool visible;
 	unsigned sfx;
 
-	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4)
+	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
-		, focus(false), down(false), play_sfx(play_sfx), visible(true), sfx(sfx)
+		, focus(false), down(false), hold(hold), play_sfx(play_sfx), visible(true), sfx(sfx)
 	{
 	}
 
-	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4)
+	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
-		, focus(false), down(false), play_sfx(play_sfx), visible(true), sfx(sfx)
+		, focus(false), down(false), hold(hold), play_sfx(play_sfx), visible(true), sfx(sfx)
 	{
 	}
 
 	/* Process mouse event if it has been clicked. */
-	bool mousedown(SDL_MouseButtonEvent *event) {
+	bool mousedown(SDL_MouseButtonEvent *event) override {
 		bool old_down = down;
 
 		focus = down = visible && contains(event->x, event->y);
@@ -986,7 +1003,7 @@ public:
 	}
 
 	/* Process mouse event if it has been clicked. */
-	bool mouseup(SDL_MouseButtonEvent *event) {
+	bool mouseup(SDL_MouseButtonEvent *event) override {
 		if (down) {
 			down = false;
 			ui_state.dirty();
@@ -1004,8 +1021,8 @@ public:
 	void draw() const {
 		if (!visible)
 			return;
-		Border::draw(down);
-		text.draw(focus);
+		Border::draw(hold || down);
+		text.draw(hold || focus);
 	}
 };
 
@@ -1123,6 +1140,101 @@ public:
 	}
 };
 
+/* Provides a group of buttons where exactly one is selected at any time */
+class ButtonRadioGroup final : public UI_Container, public UI_Clickable {
+	std::vector<std::shared_ptr<Button>> objects;
+	std::vector<std::shared_ptr<Text>> labels;
+	unsigned old_focus = 0;
+	bool down_ = false;
+	bool no_focus = false;
+	bool custom_text;
+
+public:
+	unsigned focus = 0;
+
+	ButtonRadioGroup(bool custom_text, int x=5, int y=5, unsigned w=30, unsigned h=30)
+		: UI_Container(x, y, w, h), objects(), custom_text(custom_text) {}
+
+	void add(int rel_x, int rel_y, unsigned id, bool def_fnt) {
+		add(rel_x, rel_y, id, 0, 0, def_fnt);
+	}
+
+	void add(int rel_x, int rel_y, unsigned id, unsigned w, unsigned h, bool def_fnt=false) {
+		if (!w) w = this->w;
+		if (!h) h = this->h;
+
+		if (custom_text) {
+			objects.emplace_back(new Button(x + rel_x, y + rel_y, w, h, STR_EXIT, def_fnt, true, SFX_BUTTON4, objects.size() == 0));
+			labels.emplace_back(new Text(x + rel_x + w + 10, y + rel_y + h / 2, id, LEFT, MIDDLE));
+		} else {
+			objects.emplace_back(new Button(x + rel_x, y + rel_y, w, h, id, def_fnt, true, SFX_BUTTON4, objects.size() == 0));
+		}
+	}
+
+	void select(unsigned id) {
+		objects[old_focus = focus].get()->hold = false;
+		objects[focus = id].get()->hold = true;
+	}
+
+	bool mousedown(SDL_MouseButtonEvent *event) override {
+		bool pressed = false;
+		unsigned id = 0;
+		old_focus = focus;
+
+		for (auto x : objects) {
+			auto btn = x.get();
+
+			if (btn->mousedown(event)) {
+				use_focus();
+				focus = id;
+				pressed = true;
+			} else
+				btn->focus = false;
+
+			++id;
+		}
+
+		return pressed;
+	}
+
+	bool mouseup(SDL_MouseButtonEvent *event) override {
+		unsigned id = 0;
+		bool pressed = objects[focus].get()->mouseup(event);
+
+		if (!pressed)
+			return false;
+
+		for (auto x : objects) {
+			auto btn = x.get();
+			btn->hold = id == focus;
+			++id;
+		}
+
+		return true;
+	}
+
+	void draw() const {
+		for (auto x : objects)
+			x.get()->draw();
+		for (auto l : labels)
+			l.get()->draw();
+	}
+
+	void release_focus() {
+		auto btn = objects[focus].get();
+		btn->down = btn->focus = false;
+		no_focus = true;
+		ui_state.dirty();
+	}
+
+	void use_focus() {
+		if (no_focus) {
+			no_focus = false;
+			ui_state.dirty();
+		}
+	}
+};
+
 class Menu : public UI {
 protected:
 	std::vector<std::shared_ptr<UI>> objects;
@@ -1145,7 +1257,7 @@ public:
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
-				WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt
+				WIDTH / 2, y + 12, title_id, MIDDLE, TOP, fnt
 			));
 	}
 
@@ -1184,7 +1296,7 @@ public:
 		group.mousedown(event);
 
 		for (auto x : objects) {
-			Button *btn = dynamic_cast<Button*>(x.get());
+			UI_Clickable *btn = dynamic_cast<UI_Clickable*>(x.get());
 			if (btn && btn->mousedown(event))
 				group.release_focus();
 		}
@@ -1198,7 +1310,7 @@ public:
 
 		unsigned id = 0;
 		for (auto x : objects) {
-			Button *btn = dynamic_cast<Button*>(x.get());
+			UI_Clickable *btn = dynamic_cast<UI_Clickable*>(x.get());
 			if (btn && btn->mouseup(event))
 				button_activate(id);
 			++id;
@@ -1389,8 +1501,10 @@ public:
 };
 
 class MenuGameSettings final : public Menu {
+	ButtonRadioGroup *gs;
+	ButtonRadioGroup *ss;
 public:
-	MenuGameSettings() : Menu(STR_TITLE_GAME_SETTINGS, 100, 105, 700 - 100, 495 - 105) {
+	MenuGameSettings() : Menu(STR_TITLE_GAME_SETTINGS, 100, 105, 700 - 100, 495 - 105, false) {
 		const Player *you = game.controlling_player();
 
 		objects.emplace_back(
@@ -1402,30 +1516,56 @@ public:
 
 		objects.emplace_back(new Border(100, 105, 700 - 100, 495 - 105, false));
 
+		// add title manually because we want it to be drawn on top of the background
+		objects.emplace_back(new Text(WIDTH / 2, 105 + 12, STR_TITLE_GAME_SETTINGS, MIDDLE, TOP, fnt_large));
+
 		group.add(220 - 100, 450 - 105, STR_BTN_OK, 390 - 220, 480 - 450);
 		group.add(410 - 100, 450 - 105, STR_BTN_CANCEL, 580 - 410, 480 - 450);
 
 		objects.emplace_back(new Text(125, 163, STR_TITLE_SPEED));
+		gs = new ButtonRadioGroup(true, 120, 190);
+		gs->add(0, 0, STR_BTN_SPEED_NORMAL, true);
+		gs->add(0, 225 - 190, STR_BTN_SPEED_FAST, true);
+		gs->add(0, 260 - 190, STR_BTN_SPEED_HYPER, true);
+		gs->select(game.speed);
+		objects.emplace_back(gs);
+
 		objects.emplace_back(new Text(270, 154, STR_TITLE_MUSIC));
 		objects.emplace_back(new Text(410, 154, STR_TITLE_SOUND));
 		objects.emplace_back(new Text(550, 154, STR_TITLE_SCROLL));
 
-		// TODO create and replace with checkbox
-		objects.emplace_back(new Button(120, 190, 150 - 120, 220 - 190, STR_EXIT));
-		objects.emplace_back(new Button(120, 225, 150 - 120, 255 - 225, STR_EXIT));
-		objects.emplace_back(new Button(120, 260, 150 - 120, 290 - 260, STR_EXIT));
-
 		objects.emplace_back(new Text(125, 303, STR_TITLE_SCREEN));
+		ss = new ButtonRadioGroup(true, 120, 330);
+		ss->add(0, 0, STR_BTN_SCREEN_SMALL, true);
+		ss->add(0, 365 - 330, STR_BTN_SCREEN_NORMAL, true);
+		ss->add(0, 400 - 330, STR_BTN_SCREEN_LARGE, true);
+		ss->select(cfg.screen_mode);
+		objects.emplace_back(ss);
+
 		objects.emplace_back(new Text(275, 303, STR_TITLE_MOUSE));
 		objects.emplace_back(new Text(435, 303, STR_TITLE_HELP));
 		objects.emplace_back(new Text(565, 303, STR_TITLE_PATH));
 	}
 
-	void button_group_activate(unsigned) override final {
+	void button_group_activate(unsigned id) override final {
 		stop = 1;
+
+		// if OK
+		if (id == 0) {
+			game.speed = gs->focus;
+			cfg.screen_mode = ss->focus;
+		}
 	}
 
-	void button_activate(unsigned) override final {
+	void button_activate(unsigned id) override final {
+		switch (id) {
+		case 4:
+		case 9:
+			break;
+		default:
+			dbgf("game settings: id=%u\n", id);
+			break;
+		}
 	}
 
 	void draw() const override {
@@ -1525,16 +1665,18 @@ public:
 		group.add(739, 5, STR_BTN_SCENARIO_MENU, 797 - 739, 45 - 5, true);
 		group.add(765, 565, STR_BTN_HELP, 30, 30, true);
 
-		group.add(2, 2, STR_BTN_SCENARIO_MAP, true);
-		group.add(113, 2, STR_BTN_SCENARIO_TERRAIN, true);
-		group.add(224, 2, STR_BTN_SCENARIO_PLAYERS, true);
-		group.add(335, 2, STR_BTN_SCENARIO_UNITS, true);
-		group.add(446, 2, STR_BTN_SCENARIO_DIPLOMACY, true);
-		group.add(2, 26, STR_BTN_SCENARIO_TRIGGERS, true);
-		group.add(113, 26, STR_BTN_SCENARIO_TRIGGERS_ALL, true);
-		group.add(224, 26, STR_BTN_SCENARIO_OPTIONS, true);
-		group.add(335, 26, STR_BTN_SCENARIO_MESSAGES, true);
-		group.add(446, 26, STR_BTN_SCENARIO_VIDEO, true);
+		ButtonRadioGroup *rgroup = new ButtonRadioGroup(false, 0, 0, 110, 22);
+		rgroup->add(2, 2, STR_BTN_SCENARIO_MAP, true);
+		rgroup->add(113, 2, STR_BTN_SCENARIO_TERRAIN, true);
+		rgroup->add(224, 2, STR_BTN_SCENARIO_PLAYERS, true);
+		rgroup->add(335, 2, STR_BTN_SCENARIO_UNITS, true);
+		rgroup->add(446, 2, STR_BTN_SCENARIO_DIPLOMACY, true);
+		rgroup->add(2, 26, STR_BTN_SCENARIO_TRIGGERS, true);
+		rgroup->add(113, 26, STR_BTN_SCENARIO_TRIGGERS_ALL, true);
+		rgroup->add(224, 26, STR_BTN_SCENARIO_OPTIONS, true);
+		rgroup->add(335, 26, STR_BTN_SCENARIO_MESSAGES, true);
+		rgroup->add(446, 26, STR_BTN_SCENARIO_VIDEO, true);
+		objects.emplace_back(rgroup);
 
 		palette.open(DRS_MAIN_PALETTE);
 		// load background preferences

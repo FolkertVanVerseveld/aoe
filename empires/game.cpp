@@ -381,7 +381,7 @@ void Map::reshape(int view_x, int view_y, int view_w, int view_h)
 
 Game::Game()
 	: run(false), x(0), y(0), w(800), h(600)
-	, keys(0), paused(false)
+	, keys(0), player_index(0), speed(0), paused(false)
 	, map(), cache(), players(), state(), cursor(nullptr)
 {
 }

@@ -266,6 +266,7 @@ class Game final {
 	unsigned keys;
 	unsigned player_index;
 public:
+	unsigned speed;
 	bool paused;
 	Map map;
 	std::unique_ptr<ImageCache> cache;
