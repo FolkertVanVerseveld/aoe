@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * Replicated Age of Empires shell
@@ -43,7 +43,7 @@ struct pe_lib lib_lang;
 
 int running = 0;
 
-struct config cfg = {0, CFG_MODE_800x600, 50};
+struct config cfg = {CFG_NORMAL_MOUSE, CFG_MODE_800x600, 50, 0.7, 1, 0.3};
 
 unsigned const music_list[] = {
 	MUS_GAME1, MUS_GAME2, MUS_GAME3, MUS_GAME4, MUS_GAME5,

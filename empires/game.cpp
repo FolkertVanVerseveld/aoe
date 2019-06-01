@@ -303,6 +303,7 @@ std::string random_name() {
 	sscanf(buf, "%u", &name_count);
 	decltype(civdist) namedist(0, name_count - 1);
 
+	memset(buf, 0, sizeof buf);
 	load_string(&lib_lang, STR_BTN_CIVTBL + 10 * random_civ + namedist(gen) + 1, buf, sizeof buf);
 	//dbgf("random name: %s\n", buf);
 	return std::string(buf);

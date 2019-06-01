@@ -6,6 +6,7 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
 
+#include <cassert>
 #include <cstdio>
 #include <cstddef>
 #include <cstdlib>
@@ -24,6 +25,7 @@
 #include "drs.h"
 #include "gfx.h"
 #include "lang.h"
+#include "math.h"
 #include "sfx.h"
 #include "fs.h"
 
@@ -231,8 +233,9 @@ static bool point_in_rect(int x, int y, int w, int h, int px, int py)
  * (e.g. text, buttons)
  */
 class UI {
-protected:
+public:
 	int x, y;
+protected:
 	unsigned w, h;
 
 public:
@@ -1026,6 +1029,63 @@ public:
 	}
 };
 
+class VerticalSlider : public UI_Container, public UI_Clickable {
+	Border b;
+	Button up, down, middle;
+	// TODO add border
+public:
+	float value;
+	float step;
+
+	static constexpr unsigned margin = 2;
+
+	VerticalSlider(int x, int y, unsigned w, unsigned h, float value, float step=0.1)
+		: UI_Container(x, y, w, h)
+		, b(x, y, w, h)
+		, up(x + margin, y + margin, w - 2 * margin, w - 2 * margin, "^")
+		, down(x + margin, y + h - w + margin, w - 2 * margin, w - 2 * margin, "v")
+		, middle(x + margin, y + w - margin + (int)((1.0f - value) * (h - 2 * (w - margin) - (w - 2 * margin))), w - 2 * margin, w - 2 * margin, " ")
+		, value(value), step(step)
+	{
+	}
+
+	bool mousedown(SDL_MouseButtonEvent *event) override {
+		if (!contains(event->x, event->y))
+			return false;
+
+		return up.mousedown(event) || down.mousedown(event) || middle.mousedown(event);
+	}
+
+	bool mouseup(SDL_MouseButtonEvent *event) override {
+		if (!contains(event->x, event->y))
+			return false;
+
+		if (up.mouseup(event)) {
+			set(value + step);
+			return true;
+		}
+
+		if (down.mouseup(event)) {
+			set(value - step);
+			return true;
+		}
+
+		return middle.mouseup(event);
+	}
+
+	void draw() const override {
+		b.draw();
+		up.draw();
+		down.draw();
+		middle.draw();
+	}
+
+	void set(float value) {
+		this->value = saturate(0.0f, value, 1.0f);
+		middle.y = y + w - margin + (int)((1.0f - this->value) * (h - 2 * (w - margin) - (w - 2 * margin)));
+	}
+};
+
 /* Provides a group of buttons the user also can navigate through with arrow keys */
 class ButtonGroup final : public UI {
 	std::vector<std::shared_ptr<Button>> objects;
@@ -1172,6 +1232,7 @@ public:
 	}
 
 	void select(unsigned id) {
+		assert(id < objects.size());
 		objects[old_focus = focus].get()->hold = false;
 		objects[focus = id].get()->hold = true;
 	}
@@ -1501,8 +1562,8 @@ public:
 };
 
 class MenuGameSettings final : public Menu {
-	ButtonRadioGroup *gs;
-	ButtonRadioGroup *ss;
+	ButtonRadioGroup *gs, *ss, *mi, *tt, *pf;
+	VerticalSlider *mv, *sv, *scroll;
 public:
 	MenuGameSettings() : Menu(STR_TITLE_GAME_SETTINGS, 100, 105, 700 - 100, 495 - 105, false) {
 		const Player *you = game.controlling_player();
@@ -1531,8 +1592,12 @@ public:
 		objects.emplace_back(gs);
 
 		objects.emplace_back(new Text(270, 154, STR_TITLE_MUSIC));
+		objects.emplace_back(mv = new VerticalSlider(270, 190, 20, 100, cfg.music_volume));
+
 		objects.emplace_back(new Text(410, 154, STR_TITLE_SOUND));
+		objects.emplace_back(sv = new VerticalSlider(410, 190, 20, 100, cfg.sound_volume));
 		objects.emplace_back(new Text(550, 154, STR_TITLE_SCROLL));
+		objects.emplace_back(scroll = new VerticalSlider(550, 190, 20, 100, cfg.scroll_speed));
 
 		objects.emplace_back(new Text(125, 303, STR_TITLE_SCREEN));
 		ss = new ButtonRadioGroup(true, 120, 330);
@@ -1543,7 +1608,19 @@ public:
 		objects.emplace_back(ss);
 
 		objects.emplace_back(new Text(275, 303, STR_TITLE_MOUSE));
+		mi = new ButtonRadioGroup(true, 270, 330);
+		mi->add(0, 0, STR_BTN_MOUSE_NORMAL, true);
+		mi->add(0, 365 - 330, STR_BTN_MOUSE_ONE, true);
+		mi->select(!(cfg.options & CFG_NORMAL_MOUSE));
+		objects.emplace_back(mi);
+
 		objects.emplace_back(new Text(435, 303, STR_TITLE_HELP));
+		tt = new ButtonRadioGroup(true, 430, 330);
+		tt->add(0, 0, STR_BTN_HELP_ON, true);
+		tt->add(0, 365 - 330, STR_BTN_HELP_OFF, true);
+		tt->select(!(cfg.options & CFG_GAME_HELP));
+		objects.emplace_back(tt);
+
 		objects.emplace_back(new Text(565, 303, STR_TITLE_PATH));
 	}
 
@@ -1554,13 +1631,29 @@ public:
 		if (id == 0) {
 			game.speed = gs->focus;
 			cfg.screen_mode = ss->focus;
+			if (mi->focus)
+				cfg.options |= CFG_NORMAL_MOUSE;
+			else
+				cfg.options &= ~CFG_NORMAL_MOUSE;
+			if (tt->focus)
+				cfg.options &= ~CFG_GAME_HELP;
+			else
+				cfg.options |= CFG_GAME_HELP;
+			cfg.music_volume = mv->value;
+			cfg.sound_volume = sv->value;
+			cfg.scroll_speed = scroll->value;
 		}
 	}
 
 	void button_activate(unsigned id) override final {
 		switch (id) {
 		case 4:
-		case 9:
+		case 6:
+		case 8:
+		case 10:
+		case 12:
+		case 14:
+		case 16:
 			break;
 		default:
 			dbgf("game settings: id=%u\n", id);
