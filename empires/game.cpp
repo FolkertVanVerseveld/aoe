@@ -551,8 +551,6 @@ void Game::draw() {
 	// TODO bepaal gewoon de maximale rij aan de rechterkant
 	// en zorg dat tleft zich aanpast wanneer de linkerkant boven het scherm uitgaat
 	ttop = th;
-
-	int ttp = ttop - 1;
 	int count = 0;
 
 	x = tleft * TILE_WIDTH;

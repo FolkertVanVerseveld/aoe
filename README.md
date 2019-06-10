@@ -37,8 +37,8 @@ of simple low-level stuff in the game engine is implemented. See
 
 ## Support
 
-This project has been built primarly for Xubuntu 18.04.1 and 14.04.5, but it
-should build on any POSIX-compatible machine.
+This project has been built primarly for Xubuntu 18.04.1, but it should
+build on any POSIX-compatible machine.
 
 For more information, see [INSTALL](INSTALL).
 

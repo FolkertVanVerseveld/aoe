@@ -158,7 +158,7 @@ public:
 class Villager : public DynamicUnit {
 public:
 	Villager(unsigned hp, int x, int y, unsigned color, int dx=0, int dy=0)
-		: DynamicUnit(hp, x, y, 14, 0, 0, DRS_VILLAGER_STAND, color, 2) {}
+		: DynamicUnit(hp, x, y, 14, 0, 0, DRS_VILLAGER_STAND, color, 2, dx, dy) {}
 };
 
 #define SR_FOOD 0

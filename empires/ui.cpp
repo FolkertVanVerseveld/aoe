@@ -970,6 +970,16 @@ public:
 	}
 };
 
+static constexpr int text_halign(TextAlign align, int w, int margin=4)
+{
+	return align == LEFT ? margin : align == CENTER ? w / 2 : w - margin;
+}
+
+static constexpr int text_valign(TextAlign align, int h, int margin=4)
+{
+	return align == TOP ? margin : align == MIDDLE ? h / 2 : h - margin;
+}
+
 class Button final : public Border, public UI_Clickable {
 	Text text;
 public:
@@ -979,16 +989,16 @@ public:
 	bool visible;
 	unsigned sfx;
 
-	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false)
+	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false, TextAlign halign=CENTER, TextAlign valign=MIDDLE)
 		: Border(x, y, w, h)
-		, text(x + w / 2, y + h / 2, id, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
+		, text(x + text_halign(halign, w), y + text_valign(valign, h), id, halign, valign, def_fnt ? fnt_default : fnt_button)
 		, focus(false), down(false), hold(hold), play_sfx(play_sfx), visible(true), sfx(sfx)
 	{
 	}
 
-	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false)
+	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false, TextAlign halign=CENTER, TextAlign valign=MIDDLE)
 		: Border(x, y, w, h)
-		, text(x + w / 2, y + h / 2, str, CENTER, MIDDLE, def_fnt ? fnt_default : fnt_button)
+		, text(x + w / 2, y + h / 2, str, halign, valign, def_fnt ? fnt_default : fnt_button)
 		, focus(false), down(false), hold(hold), play_sfx(play_sfx), visible(true), sfx(sfx)
 	{
 	}
@@ -1219,15 +1229,15 @@ public:
 		add(rel_x, rel_y, id, 0, 0, def_fnt);
 	}
 
-	void add(int rel_x, int rel_y, unsigned id, unsigned w, unsigned h, bool def_fnt=false) {
+	void add(int rel_x, int rel_y, unsigned id, unsigned w, unsigned h, bool def_fnt=false, TextAlign halign=CENTER, TextAlign valign=MIDDLE, bool play_sfx=true) {
 		if (!w) w = this->w;
 		if (!h) h = this->h;
 
 		if (custom_text) {
-			objects.emplace_back(new Button(x + rel_x, y + rel_y, w, h, STR_EXIT, def_fnt, true, SFX_BUTTON4, objects.size() == 0));
+			objects.emplace_back(new Button(x + rel_x, y + rel_y, w, h, STR_EXIT, def_fnt, play_sfx, SFX_BUTTON4, objects.size() == 0, halign, valign));
 			labels.emplace_back(new Text(x + rel_x + w + 10, y + rel_y + h / 2, id, LEFT, MIDDLE));
 		} else {
-			objects.emplace_back(new Button(x + rel_x, y + rel_y, w, h, id, def_fnt, true, SFX_BUTTON4, objects.size() == 0));
+			objects.emplace_back(new Button(x + rel_x, y + rel_y, w, h, id, def_fnt, play_sfx, SFX_BUTTON4, objects.size() == 0, halign, valign));
 		}
 	}
 
@@ -1304,7 +1314,7 @@ protected:
 public:
 	int stop = 0;
 
-	Menu(unsigned title_id, bool show_title=true, TTF_Font *fnt=fnt_button)
+	Menu(unsigned title_id, bool show_title=true, TTF_Font *fnt=fnt_large)
 		: UI(0, 0, WIDTH, HEIGHT), objects(), group(), bkg(nullptr)
 	{
 		if (show_title)
@@ -1313,7 +1323,7 @@ public:
 			));
 	}
 
-	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h, bool show_title=true, TTF_Font *fnt=fnt_button)
+	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h, bool show_title=true, TTF_Font *fnt=fnt_large)
 		: UI(0, 0, WIDTH, HEIGHT), objects(), group(x, y, w, h), bkg(nullptr)
 	{
 		if (show_title)
@@ -1489,6 +1499,7 @@ public:
 
 class MenuAchievements final : public Menu {
 	unsigned type;
+	ButtonRadioGroup *cat;
 public:
 	MenuAchievements(unsigned type = 0) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, type ? 775 - 550 : 375 - 125, 588 - 551, false), type(type) {
 		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
@@ -1512,10 +1523,14 @@ public:
 			group.add(125, 551, STR_BTN_TIMELINE);
 		}
 
-		objects.emplace_back(new Button(124, 187, 289 - 124, 212 - 187, STR_BTN_MILITARY, LEFT));
-		objects.emplace_back(new Button(191, 162, 354 - 191, 187 - 162, STR_BTN_ECONOMY, LEFT));
-		objects.emplace_back(new Button(266, 137, 420 - 266, 162 - 137, STR_BTN_RELIGION, LEFT));
-		objects.emplace_back(new Button(351, 112, 549 - 351, 137 - 112, STR_BTN_TECHNOLOGY));
+		// TODO use radiobuttongroup
+		cat = new ButtonRadioGroup(false, 0, 0, 289 - 124, 212 - 187);
+		cat->add(124, 187, STR_BTN_MILITARY, 289 - 124, 212 - 187, true, LEFT, TOP, false);
+		cat->add(191, 162, STR_BTN_ECONOMY, 354 - 191, 187 - 162, true, LEFT, TOP, false);
+		cat->add(266, 137, STR_BTN_RELIGION, 420 - 266, 162 - 138, true, LEFT, TOP, false);
+		cat->add(351, 112, STR_BTN_TECHNOLOGY, 549 - 351, 137 - 112, true, MIDDLE, TOP, false);
+		objects.emplace_back(cat);
+
 		objects.emplace_back(new Text(633, 140, STR_SURVIVAL, RIGHT, TOP, fnt_default));
 		objects.emplace_back(new Text(710, 165, STR_WONDER, RIGHT, TOP, fnt_default));
 		objects.emplace_back(new Text(778, 190, STR_TOTAL_SCORE, RIGHT, TOP, fnt_default));
