@@ -1039,6 +1039,12 @@ public:
 	}
 };
 
+class SelectorArea : public Border {
+public:
+	SelectorArea(int x, int y, unsigned w, unsigned h, unsigned id, int shade=-1)
+		: Border(x, y, w, h, shade) {}
+};
+
 class VerticalSlider : public UI_Container, public UI_Clickable {
 	Border b;
 	Button up, down, middle;
@@ -2030,6 +2036,87 @@ public:
 	}
 };
 
+void walk_campaign_item(char *name)
+{
+	// TODO add to selector
+	dbgs(name);
+}
+
+class MenuCampaignSelectScenario final : public Menu {
+	SelectorArea *sel_cpn, *sel_scn;
+public:
+	MenuCampaignSelectScenario() : Menu(STR_TITLE_CAMPAIGN_SELECT_SCENARIO, 88, 550, 300, 36, false) {
+		char buf[4096];
+
+		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+
+		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
+
+		objects.emplace_back(new Text(
+			WIDTH / 2, 8, STR_BTN_CAMPAIGN, MIDDLE, TOP, fnt_large
+		));
+		objects.emplace_back(sel_cpn = new SelectorArea(25, 87, 750, 249 - 87, STR_SELECT_CAMPAIGN));
+		objects.emplace_back(sel_scn = new SelectorArea(25, 287, 750, 449 - 287, STR_SELECT_SCENARIO));
+
+		fs_walk_campaign(walk_campaign_item, buf, sizeof buf);
+
+		group.add(0, 0, STR_BTN_OK);
+		group.add(413 - 88, 0, STR_BTN_CANCEL);
+	}
+
+	void button_group_activate(unsigned id) override final {
+		dbgf("%s: id=%u\n", __func__, id);
+		switch (id) {
+		case 0:
+		case 1: stop = 1; break;
+		}
+	}
+
+	void button_activate(unsigned id) override final {
+		switch (id) {
+		case 2: running = 0; break;
+		}
+	}
+};
+
+class MenuCampaignPlayerSelection final : public Menu {
+public:
+	MenuCampaignPlayerSelection() : Menu(STR_TITLE_CAMPAIGN_SELECT_PLAYER, 0, 0, 300, 586 - 550, false) {
+		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(75, 125, 487 - 75, 500 - 125));
+
+		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
+
+		objects.emplace_back(new Text(
+			WIDTH / 2, 8, STR_TITLE_CAMPAIGN_SELECT_PLAYER, MIDDLE, TOP, fnt_large
+		));
+
+		objects.emplace_back(new Text(80, 100, STR_CAMPAIGN_PLAYER_NAME, LEFT, TOP, fnt_button));
+
+		group.add(88, 550, STR_BTN_OK);
+		group.add(413, 550, STR_BTN_CANCEL);
+		group.add(500, 125, STR_BTN_CAMPAIGN_NEW_PLAYER, 725 - 500, 163 - 125);
+		group.add(500, 175, STR_BTN_CAMPAIGN_REMOVE_PLAYER, 725 - 500, 163 - 125);
+	}
+
+	void button_group_activate(unsigned id) override final {
+		switch (id) {
+		case 0:
+			ui_state.go_to(new MenuCampaignSelectScenario());
+			break;
+		case 1: stop = 1; break;
+		}
+	}
+
+	void button_activate(unsigned id) override final {
+		switch (id) {
+		case 3: running = 0; break;
+		}
+	}
+};
+
 // FIXME color scheme
 class MenuSinglePlayer final : public Menu {
 public:
@@ -2053,6 +2140,9 @@ public:
 		switch (id) {
 		case 0:
 			ui_state.go_to(new MenuSinglePlayerSettings());
+			break;
+		case 1:
+			ui_state.go_to(new MenuCampaignPlayerSelection());
 			break;
 		case 5:
 			stop = 1;

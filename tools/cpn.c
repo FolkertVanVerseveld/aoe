@@ -69,7 +69,6 @@ int main(int argc, char **argv)
 {
 	FILE *f = NULL;
 	void *data = NULL;
-	size_t size = 0;
 	struct stat st;
 	struct cpn c;
 

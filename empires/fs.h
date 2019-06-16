@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #ifndef FS_H
 #define FS_H
@@ -24,6 +24,8 @@ void fs_cdrom_path(char *buf, size_t bufsz, const char *file);
  * in the ass to mount audio tracks properly on linux.
  */
 int fs_cdrom_audio_path(char *buf, size_t bufsz, const char *file);
+
+void fs_walk_campaign(void (*item)(char *name), char *buf, size_t bufsz);
 
 #ifdef __cplusplus
 }

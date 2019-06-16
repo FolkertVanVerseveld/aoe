@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #include "fs.h"
 
@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <dirent.h>
 #include <libgen.h>
 
 #include "../setup/dbg.h"
@@ -41,6 +42,35 @@ void fs_data_path(char *buf, size_t bufsz, const char *file)
 		snprintf(buf, bufsz, "%s/game/data/%s", path_cdrom, file);
 		strtolower(buf + strlen(path_cdrom) + 1);
 	}
+}
+
+void fs_walk_campaign(void (*item)(char *name), char *buf, size_t bufsz)
+{
+	DIR *d = NULL;
+	struct dirent *entry;
+
+	fs_game_path(buf, bufsz, "campaign/");
+
+	if (!(d = opendir(buf))) {
+		perror("cannot read campaigns");
+		fprintf(stderr, "path: %s\n", buf);
+		return;
+	}
+
+	while ((entry = readdir(d))) {
+		char *ext;
+
+		if ((ext = strrchr(entry->d_name, '.')) && !strcmp(ext + 1, "cpn")) {
+			if (game_installed)
+				snprintf(buf, bufsz, WINE_PATH_FORMAT "/campaign/%s", username(), entry->d_name);
+			else
+				snprintf(buf, bufsz, "%s/campaign/%s", path_cdrom, entry->d_name);
+			item(buf);
+		}
+	}
+
+	if (d)
+		closedir(d);
 }
 
 void fs_help_path(char *buf, size_t bufsz, const char *file)
