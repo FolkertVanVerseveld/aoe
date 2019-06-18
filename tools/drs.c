@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "../genie/drs.h"
+#include "../empires/drs.h"
 
 static inline void dump_type(unsigned type)
 {
@@ -81,12 +81,12 @@ void drs_find_wave(char *data, size_t size)
 /** Validate and dump DRS items. */
 void drs_stat(char *data, size_t size)
 {
-	if (size < sizeof(struct drs)) {
+	if (size < sizeof(struct drs_hdr)) {
 		fputs("invalid drs file\n", stderr);
 		return;
 	}
 
-	struct drs *drs = (struct drs*)data;
+	struct drs_hdr *drs = (struct drs_hdr*)data;
 
 	if (strncmp("1.00tribe", drs->version, strlen("1.00tribe"))) {
 		fputs("invalid drs file\n", stderr);
@@ -99,7 +99,7 @@ void drs_stat(char *data, size_t size)
 	if (!drs->nlist)
 		return;
 
-	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drs));
+	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drs_hdr));
 
 	for (unsigned i = 0; i < drs->nlist; ++i, ++list) {
 		dump_type(list->type);

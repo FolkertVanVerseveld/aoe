@@ -266,6 +266,13 @@ struct slp {
 	struct slp_frame_info *info;
 };
 
+struct drs_hdr {
+	char copyright[40];
+	char version[16];
+	uint32_t nlist;
+	uint32_t listend; // XXX go figure
+};
+
 // FIXME error handling
 void slp_read(struct slp *dst, const void *data);
 

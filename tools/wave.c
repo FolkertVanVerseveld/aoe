@@ -15,9 +15,9 @@
 #include <sys/stat.h>
 #include <AL/al.h>
 #include <AL/alc.h>
-#include "../genie/drs.h"
+#include "../empires/drs.h"
 
-#if GENIE_BYTE_ORDER_LITTLE
+#if __BYTE_ORDER == __LITTLE_ENDIAN
   #define RIFF_MAGIC   0x46464952
   #define WAVE_MAGIC   0x45564157
   #define FORMAT_MAGIC 0x20746d66
@@ -119,12 +119,12 @@ fail:
 
 int drs_stat(char *data, size_t size)
 {
-	if (size < sizeof(struct drs)) {
+	if (size < sizeof(struct drs_hdr)) {
 		fputs("invalid drs file\n", stderr);
 		return 1;
 	}
 
-	struct drs *drs = (struct drs*)data;
+	struct drs_hdr *drs = (struct drs_hdr*)data;
 
 	if (strncmp("1.00tribe", drs->version, strlen("1.00tribe"))) {
 		fputs("invalid drs file\n", stderr);
@@ -134,7 +134,7 @@ int drs_stat(char *data, size_t size)
 	if (!drs->nlist)
 		return 0;
 
-	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drs));
+	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drs_hdr));
 
 	for (unsigned i = 0; i < drs->nlist; ++i, ++list) {
 		if (list->type != DT_WAVE)

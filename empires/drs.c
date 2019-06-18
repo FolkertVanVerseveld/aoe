@@ -19,13 +19,6 @@
 
 #define DRS_MAX 16
 
-struct drs_hdr {
-	char copyright[40];
-	char version[16];
-	uint32_t nlist;
-	uint32_t listend; // XXX go figure
-};
-
 struct drs_map {
 	int fd;
 	void *data;
