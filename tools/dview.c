@@ -1,4 +1,4 @@
-/* Copyright 2016-2017 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2016-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #include <ctype.h>
 #include <stdio.h>
@@ -10,8 +10,21 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <alloca.h>
-#include <genie/dbg.h>
-#include <genie/drs.h>
+#include "../empires/drs.h"
+
+void hexdump(const void *buf, size_t n) {
+	uint16_t i, j, p = 0;
+	const unsigned char *data = buf;
+	while (n) {
+		printf("%04hX", p & ~0xf);
+		for (j = p, i = 0; n && i < 0x10; ++i, --n)
+			printf(" %02hhX", data[p++]);
+		putchar(' ');
+		for (i = j; i < p; ++i)
+			putchar(isprint(data[i]) ? data[i] : '.');
+		putchar('\n');
+	}
+}
 
 #define OPT_LIST 1
 #define OPT_DUMP 2
@@ -74,8 +87,9 @@ static int walk(char *data, size_t size, size_t offset)
 				return 1;
 			}
 			hexdump(data + item->offset, item->size > 16 ? 16 : item->size);
-		} else
+		} else {
 			printf("%5u %8X %8X %8s\n", item->id, item->offset, item->size, type);
+		}
 	}
 	return 0;
 }
@@ -122,9 +136,9 @@ fail:
 
 static int drs_stat(char *data, size_t size)
 {
-	if (size < sizeof(struct drs))
+	if (size < sizeof(struct drs_hdr))
 		goto bad_hdr;
-	struct drs *drs = (struct drs*)data;
+	struct drs_hdr *drs = (struct drs_hdr*)data;
 	if (strncmp("1.00tribe", drs->version, strlen("1.00tribe"))) {
 bad_hdr:
 		fputs("invalid drs file\n", stderr);
@@ -134,7 +148,7 @@ bad_hdr:
 		puts("empty drs");
 		return 0;
 	}
-	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drs));
+	struct drs_list *list = (struct drs_list*)((char*)drs + sizeof(struct drs_hdr));
 	unsigned nwave, nshp, nslp, nbin, nblob;
 	nwave = nshp = nslp = nbin = 0;
 	for (unsigned i = 0; i < drs->nlist; ++i, ++list) {
@@ -161,13 +175,13 @@ bad_hdr:
 			break;
 		}
 	}
-	uint32_t end = sizeof(struct drs) + drs->nlist * sizeof(struct drs_list);
-	list = (struct drs_list*)((char*)drs + sizeof(struct drs));
+	uint32_t end = sizeof(struct drs_hdr) + drs->nlist * sizeof(struct drs_list);
+	list = (struct drs_list*)((char*)drs + sizeof(struct drs_hdr));
 	for (unsigned i = 0; i < drs->nlist; ++i, ++list)
 		end += list->size * sizeof(struct drs_item);
 	printf("listend: %u (0x%X)\n", drs->listend, drs->listend);
 	printf("computed: %u (0x%X)\n", end, end);
-	list = (struct drs_list*)((char*)drs + sizeof(struct drs));
+	list = (struct drs_list*)((char*)drs + sizeof(struct drs_hdr));
 	size_t off = (size_t)((char*)list - data);
 	size_t offp = off;
 	if (opts & OPT_UNPACK)
@@ -329,7 +343,7 @@ static int pack(int argp, int argc, char **argv)
 {
 	FILE *f = NULL;
 	int ret = 1;
-	struct drs hdr = {
+	struct drs_hdr hdr = {
 #ifdef DRS_CUSTOM_HDR
 		"Copyleft libregenie 2016",
 #else
@@ -396,7 +410,7 @@ static int pack(int argp, int argc, char **argv)
 	printf("models: %u (%u, 0x%X)\n", nslp, slpsz, slpsz);
 	printf("audio: %u (%u, 0x%X)\n", nwave, wavesz, wavesz);
 	printf("lists: %u\n", nlist);
-	off_t pos = sizeof(struct drs);
+	off_t pos = sizeof(struct drs_hdr);
 	uint32_t listend = pos + nlist * sizeof(struct drs_list)
 		+ (nwave + nshp + nslp + nbin) * sizeof(struct drs_item);
 	hdr.nlist = nlist;
