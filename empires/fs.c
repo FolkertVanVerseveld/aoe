@@ -3,17 +3,87 @@
 #include "fs.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <pwd.h>
 #include <dirent.h>
 #include <libgen.h>
 
 #include "../setup/dbg.h"
 #include "../setup/def.h"
+
+void fs_blob_init(struct fs_blob *b)
+{
+	b->fd = -1;
+	b->data = MAP_FAILED;
+	b->size = 0;
+}
+
+void fs_blob_free(struct fs_blob *b)
+{
+	if (b->fd != -1)
+		fs_blob_close(b);
+	#if DEBUG
+	fs_blob_init(b);
+	#endif
+}
+
+int fs_blob_open(struct fs_blob *b, const char *path, unsigned mode)
+{
+	int fd;
+	struct stat st;
+
+	if ((fd = open(path, mode & FS_MODE_READ ? O_RDONLY : O_RDWR)) == -1
+		|| fstat(fd, &st))
+	{
+		if (errno == ENOENT)
+			return FS_ERR_NOENT;
+		return FS_ERR_UNKNOWN;
+	}
+
+	if (mode & FS_MODE_MAP) {
+		unsigned flags = mode & FS_MODE_READ ? PROT_READ : PROT_READ | PROT_WRITE;
+		unsigned mflags = MAP_FILE | (mode & FS_MODE_READ ? MAP_SHARED : MAP_PRIVATE);
+
+		if ((b->data = mmap(NULL, st.st_size, flags, mflags, fd, 0)) == MAP_FILE) {
+			close(fd);
+			return FS_ERR_MAP;
+		}
+	} else {
+		if (!(b->data = malloc(st.st_size))) {
+			close(fd);
+			return FS_ERR_NOMEM;
+		}
+		if (read(fd, b->data, st.st_size) != st.st_size) {
+			close(fd);
+			return FS_ERR_MAP;
+		}
+	}
+
+	b->fd = fd;
+	b->size = st.st_size;
+	b->mode = mode;
+	return FS_ERR_OK;
+}
+
+void fs_blob_close(struct fs_blob *b)
+{
+	if (b->mode & FS_MODE_MAP) {
+		if (b->size)
+			munmap(b->data, b->size);
+	} else {
+		free(b->data);
+	}
+	if (b->fd != -1)
+		close(b->fd);
+}
 
 static void strtolower(char *str)
 {
@@ -44,7 +114,7 @@ void fs_data_path(char *buf, size_t bufsz, const char *file)
 	}
 }
 
-void fs_walk_campaign(void (*item)(char *name), char *buf, size_t bufsz)
+void fs_walk_campaign(void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz)
 {
 	DIR *d = NULL;
 	struct dirent *entry;
@@ -62,10 +132,10 @@ void fs_walk_campaign(void (*item)(char *name), char *buf, size_t bufsz)
 
 		if ((ext = strrchr(entry->d_name, '.')) && !strcmp(ext + 1, "cpn")) {
 			if (game_installed)
-				snprintf(buf, bufsz, WINE_PATH_FORMAT "/campaign/%s", username(), entry->d_name);
+				snprintf(buf, bufsz, WINE_PATH_FORMAT "/game/campaign/%s", username(), entry->d_name);
 			else
-				snprintf(buf, bufsz, "%s/campaign/%s", path_cdrom, entry->d_name);
-			item(buf);
+				snprintf(buf, bufsz, "%s/game/campaign/%s", path_cdrom, entry->d_name);
+			item(arg, buf);
 		}
 	}
 

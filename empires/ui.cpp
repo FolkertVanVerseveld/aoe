@@ -27,11 +27,13 @@
 #include "lang.h"
 #include "math.h"
 #include "sfx.h"
-#include "fs.h"
+#include "cpn.h"
 
+#include "fs.hpp"
 #include "image.hpp"
 #include "game.hpp"
 #include "editor.hpp"
+#include "scenario.hpp"
 
 extern struct pe_lib lib_lang;
 
@@ -235,10 +237,8 @@ static bool point_in_rect(int x, int y, int w, int h, int px, int py)
 class UI {
 public:
 	int x, y;
-protected:
 	unsigned w, h;
 
-public:
 	UI(int x, int y, unsigned w=1, unsigned h=1)
 		: x(x), y(y), w(w), h(h) {}
 	virtual ~UI() {}
@@ -282,7 +282,9 @@ const SDL_Color col_players[MAX_PLAYER_COUNT] = {
 };
 
 class Text final : public UI {
-	std::string str;
+public:
+	const std::string str;
+private:
 	SDL_Surface *surf;
 	SDL_Texture *tex;
 
@@ -362,6 +364,10 @@ public:
 	}
 
 	void draw(bool focus) const {
+		draw(x, y, focus);
+	}
+
+	void draw(int x, int y, bool focus=false) const {
 		SDL_Rect pos = {x - 1, y + 1, (int)w, (int)h};
 		// draw shadow
 		SDL_SetTextureColorMod(tex, 0, 0, 0);
@@ -393,17 +399,17 @@ void Renderer::draw_text(int x, int y, unsigned id
 SDL_Color border_cols[6] = {};
 
 class Border : public UI {
-	bool fill;
+	bool fill, invert;
 	int shade;
 public:
-	Border(int x, int y, unsigned w=1, unsigned h=1, bool fill=true)
-		: UI(x, y, w, h), fill(fill), shade(-1) {}
+	Border(int x, int y, unsigned w=1, unsigned h=1, bool fill=true, bool invert=false)
+		: UI(x, y, w, h), fill(fill), invert(invert), shade(-1) {}
 
 	Border(int x, int y, unsigned w, unsigned h, int shade)
-		: UI(x, y, w, h), fill(true), shade(shade) {}
+		: UI(x, y, w, h), fill(true), invert(false), shade(shade) {}
 
 	void draw() const {
-		draw(false);
+		draw(invert);
 	}
 
 	void draw(bool invert) const {
@@ -747,7 +753,6 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 
 			switch (command) {
 			case 0x0f:
-				//dbgs("break");
 				i = w;
 				break;
 			case 0x0a:
@@ -764,7 +769,6 @@ bool Image::load(Palette *pal, const void *data, const struct slp_frame_info *fr
 					//dbgf(" %x", (unsigned)(*cmd) & 0xff);
 					pixels[y * p + x++] = *cmd;
 				}
-				//dbgs("");
 				break;
 			case 0x02:
 				count = ((*cmd & 0xf0) << 4) + cmd[1];
@@ -996,9 +1000,9 @@ public:
 	{
 	}
 
-	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false, TextAlign halign=CENTER, TextAlign valign=MIDDLE)
+	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false, TextAlign halign=CENTER, TextAlign valign=MIDDLE, SDL_Color col=col_default)
 		: Border(x, y, w, h)
-		, text(x + w / 2, y + h / 2, str, halign, valign, def_fnt ? fnt_default : fnt_button)
+		, text(x + w / 2, y + h / 2, str, halign, valign, def_fnt ? fnt_default : fnt_button, col)
 		, focus(false), down(false), hold(hold), play_sfx(play_sfx), visible(true), sfx(sfx)
 	{
 	}
@@ -1039,16 +1043,9 @@ public:
 	}
 };
 
-class SelectorArea : public Border {
-public:
-	SelectorArea(int x, int y, unsigned w, unsigned h, unsigned id, int shade=-1)
-		: Border(x, y, w, h, shade) {}
-};
-
 class VerticalSlider : public UI_Container, public UI_Clickable {
 	Border b;
 	Button up, down, middle;
-	// TODO add border
 public:
 	float value;
 	float step;
@@ -1086,7 +1083,11 @@ public:
 			return true;
 		}
 
-		return middle.mouseup(event);
+		if (middle.mouseup(event))
+			return true;
+
+		set(1.0f - (event->y - (y + w - margin - (w - 2 * margin) / 2)) / (float)(h - w + margin - (w - 2 * margin)));
+		return true;
 	}
 
 	void draw() const override {
@@ -1099,6 +1100,168 @@ public:
 	void set(float value) {
 		this->value = saturate(0.0f, value, 1.0f);
 		middle.y = y + w - margin + (int)((1.0f - this->value) * (h - 2 * (w - margin) - (w - 2 * margin)));
+	}
+};
+
+// TODO create popup selector for folded non-list
+class SelectorArea : public Border, public UI_Clickable {
+	Text hdr;
+	std::vector<std::unique_ptr<Text>> items;
+	unsigned selected, start;
+	Border box_sel;
+	unsigned orig_w, max;
+	bool fold, list; // list indicates whether scroll is visible
+	// visible when area is too tight (i.e. folded)
+	Button btn_open;
+	VerticalSlider scroll;
+	static constexpr unsigned margin = 2;
+	static constexpr unsigned vspace = 21;
+	static constexpr unsigned btn_open_width = 22;
+public:
+	SelectorArea(int x, int y, unsigned w, unsigned h, unsigned id, int offx=5, int offy=-20, int shade=-1)
+		: Border(x, y, w, h, shade)
+		, hdr(x + offx, y + offy, id, LEFT, TOP, fnt_button)
+		, items(), selected(0), start(0)
+		, box_sel(x + margin, y + margin, w - 2 * margin, 19 + 2 * margin)
+		, orig_w(w), max(0), fold(false), list(false)
+		, btn_open(x + w - btn_open_width, y, btn_open_width, h, "v")
+		, scroll(x + w - btn_open_width, y, btn_open_width, h, 1)
+	{
+		assert(h >= 2 * margin);
+		btn_open.visible = false;
+	}
+
+	bool mousedown(SDL_MouseButtonEvent *event) override {
+		unsigned w = fold ? orig_w - btn_open_width : orig_w;
+		if (point_in_rect(x + margin, y, w - 2 * margin, h, event->x, event->y)) {
+			int rel_y = (event->y - (y + 2 * margin)) / vspace;
+			if (rel_y >= 0 && rel_y < items.size()) {
+				select(rel_y);
+				return true;
+			}
+			return false;
+		}
+
+		if (!fold)
+			return false;
+
+		return list ? scroll.mousedown(event) : btn_open.mousedown(event);
+	}
+
+	bool mouseup(SDL_MouseButtonEvent *event) override {
+		if (!fold)
+			return false;
+		if (!list) {
+			if (btn_open.mouseup(event)) {
+				selected = (selected + 1) % items.size();
+				update();
+				return true;
+			}
+			return false;
+		}
+		if (scroll.mouseup(event)) {
+			update();
+			return true;
+		}
+		return false;
+	}
+
+private:
+	void update_scroll() {
+		if (!fold || !list) {
+			box_sel.y = y + margin + selected * vspace;
+			return;
+		}
+		int end = (vspace * items.size() - h - 1) / vspace + 1;
+		start = (unsigned)(end * (1.0f - scroll.value));
+		box_sel.y = y + margin + (selected - start) * vspace;
+	}
+
+	void update() {
+		fold = y + items.size() * vspace >= y + h - vspace - margin;
+		if (fold) {
+			list = h > 2 * vspace + 2 * margin;
+			btn_open.visible = !list;
+			if (list) {
+				// compute maximum elements that fit in area
+				max = (h - 2 * margin) / vspace;
+			}
+			box_sel.w = orig_w - 2 * margin - btn_open_width;
+			this->w = orig_w - btn_open_width;
+		} else {
+			list = false;
+			btn_open.visible = false;
+			box_sel.w = orig_w - 2 * margin;
+			this->w = orig_w;
+		}
+		update_scroll();
+	}
+
+public:
+	void add(int id) {
+		int y = this->y + items.size() * vspace;
+		items.emplace_back(new Text(x + 2 * margin + 1, y + 2 * margin + 2, id));
+		update();
+	}
+
+	void add(std::string text) {
+		int y = this->y + items.size() * vspace;
+		items.emplace_back(new Text(x + 2 * margin + 1, y + 2 * margin + 2, text));
+		update();
+	}
+
+	void clear() {
+		items.clear();
+		selected = 0;
+		scroll.set(1);
+		update();
+	}
+
+	void select(unsigned index) {
+		selected = start + index;
+		update();
+	}
+
+	unsigned focus() const {
+		return selected;
+	}
+
+	const std::string &focus_text() const {
+		return items[selected]->str;
+	}
+
+	void draw() const {
+		Border::draw(true);
+		if (!fold)
+			box_sel.draw();
+		else if (list) {
+			if (box_sel.y >= y + margin && box_sel.y <= y + h - vspace - margin)
+				box_sel.draw();
+			scroll.draw();
+		}
+		btn_open.draw();
+		hdr.draw();
+
+		if (fold) {
+			if (list) {
+				unsigned index = start, max = items.size();
+				for (int y = this->y + 2 * margin + 2, bottom = this->y + h - vspace - 2 * margin; index < max && y < bottom; y += vspace, ++index) {
+					Text *txt = items[index].get();
+					txt->x = x + 2 * margin + 1;
+					txt->y = y;
+					txt->draw(index == selected);
+				}
+			} else {
+				Text *txt = items[selected].get();
+				txt->x = x + 2 * margin + 1;
+				txt->y = y + 2 * margin + 2;
+				txt->draw();
+			}
+		} else {
+			unsigned i = 0;
+			for (auto &x : items)
+				x->draw(i++ == selected);
+		}
 	}
 };
 
@@ -1265,8 +1428,9 @@ public:
 				use_focus();
 				focus = id;
 				pressed = true;
-			} else
+			} else {
 				btn->focus = false;
+			}
 
 			++id;
 		}
@@ -1369,14 +1533,19 @@ public:
 		}
 	}
 
-	virtual void mousedown(SDL_MouseButtonEvent *event) {
+	virtual bool mousedown(SDL_MouseButtonEvent *event) {
+		bool b = false;
 		group.mousedown(event);
 
 		for (auto x : objects) {
 			UI_Clickable *btn = dynamic_cast<UI_Clickable*>(x.get());
-			if (btn && btn->mousedown(event))
+			if (btn && btn->mousedown(event)) {
 				group.release_focus();
+				b = true;
+			}
 		}
+
+		return b;
 	}
 
 	void mouseup(SDL_MouseButtonEvent *event) {
@@ -1819,19 +1988,17 @@ public:
 			Menu::keyup(event);
 	}
 
-	void mousedown(SDL_MouseButtonEvent *event) override final {
+	bool mousedown(SDL_MouseButtonEvent *event) override final {
 		/* Check if mouse is within viewport. */
 		int top = 50;
 		int bottom = HEIGHT - 457 - 50;
 
-		if (game.paused || event->y < top || event->y >= bottom) {
-			Menu::mousedown(event);
-			return;
-		}
+		if (game.paused || event->y < top || event->y >= bottom)
+			return Menu::mousedown(event);
 
 		//dbgf("top,bottom: %d,%d\n", top, bottom);
 		event->y -= top;
-		game.mousedown(event);
+		return game.mousedown(event);
 	}
 
 	void idle() override final {
@@ -1938,19 +2105,17 @@ public:
 			Menu::keyup(event);
 	}
 
-	void mousedown(SDL_MouseButtonEvent *event) override final {
+	bool mousedown(SDL_MouseButtonEvent *event) override final {
 		/* Check if mouse is within viewport. */
 		int top = menu_bar.images[0].surface->h;
 		int bottom = HEIGHT - menu_bar.images[1].surface->h;
 
-		if (game.paused || event->y < top || event->y >= bottom) {
-			Menu::mousedown(event);
-			return;
-		}
+		if (game.paused || event->y < top || event->y >= bottom)
+			return Menu::mousedown(event);
 
 		//dbgf("top,bottom: %d,%d\n", top, bottom);
 		event->y -= top;
-		game.mousedown(event);
+		return game.mousedown(event);
 	}
 
 	void idle() override final {
@@ -1991,7 +2156,31 @@ public:
 	}
 };
 
+class MenuSinglePlayerSettingsScenario final : public Menu {
+public:
+	MenuSinglePlayerSettingsScenario() : Menu(STR_TITLE_SINGLEPLAYER_SCENARIO, 0, 0, 386 - 87, 586 - 550, false) {
+		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Text(
+			WIDTH / 2, 12, STR_TITLE_SINGLEPLAYER_SCENARIO, MIDDLE, TOP, fnt_button
+		));
+
+		objects.emplace_back(new Border(25, 75, 750, 104 - 75, true, true));
+		objects.emplace_back(new Text(29, 53, STR_BTN_SCENARIO, LEFT, TOP, fnt_button));
+		objects.emplace_back(new Text(702, 53, STR_PLAYERS, LEFT, TOP, fnt_button));
+
+		group.add(87, 550, STR_BTN_OK);
+		group.add(412, 550, STR_BTN_CANCEL);
+	}
+
+	void button_group_activate(unsigned id) override final {
+		stop = 1;
+	}
+};
+
 class MenuSinglePlayerSettings final : public Menu {
+	SelectorArea *sel_players;
+	Text *txt_computer;
 public:
 	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
@@ -2010,12 +2199,23 @@ public:
 		// setup players
 		game.reset();
 
-		char str_count[2] = "0";
-		str_count[0] += game.player_count();
+		objects.emplace_back(new Text(37, 72, STR_PLAYER_NAME, LEFT, TOP, fnt_button));
+		objects.emplace_back(new Text(240, 72, STR_PLAYER_CIVILIZATION, LEFT, TOP, fnt_button));
+		objects.emplace_back(new Text(363, 72, STR_PLAYER_ID, LEFT, TOP, fnt_button));
+		objects.emplace_back(new Text(467, 72, STR_PLAYER_TEAM, LEFT, TOP, fnt_button));
+		objects.emplace_back(new Text(39, 110, STR_PLAYER_YOU));
+		objects.emplace_back(txt_computer = new Text(39, -140, STR_PLAYER_COMPUTER));
 
-		// FIXME hardcoded 2 player mode
-		objects.emplace_back(new Text(38, 374, STR_PLAYER_COUNT, LEFT, TOP, fnt_button));
-		objects.emplace_back(new Text(44, 410, str_count));
+		objects.emplace_back(sel_players = new SelectorArea(38, 402, 125 - 38, 30, STR_PLAYER_COUNT, -2, -30));
+		char buf[2] = "0";
+		for (unsigned i = 1; i <= MAX_PLAYER_COUNT; ++i) {
+			buf[0] = '0' + i;
+			sel_players->add(buf);
+		}
+		sel_players->select(1);
+
+		objects.emplace_back(new Button(387, 106, 424 - 387, 25, "1", true, true, SFX_BUTTON4, false, CENTER, MIDDLE, col_players[0]));
+		objects.emplace_back(new Button(475, 106, 424 - 387, 25, "-"));
 	}
 
 	void button_group_activate(unsigned id) override final {
@@ -2026,6 +2226,9 @@ public:
 		case 1:
 			stop = 1;
 			break;
+		case 2:
+			ui_state.go_to(new MenuSinglePlayerSettingsScenario());
+			break;
 		}
 	}
 
@@ -2034,19 +2237,22 @@ public:
 		case 3: running = 0; break;
 		}
 	}
+
+	void draw() const override final {
+		Menu::draw();
+		for (unsigned i = 0, n = sel_players->focus(); i < n; ++i)
+			txt_computer->draw(txt_computer->x, 140 + 30 * i);
+	}
 };
 
-void walk_campaign_item(char *name)
-{
-	// TODO add to selector
-	dbgs(name);
-}
+void walk_campaign_item(void *arg, char *name);
 
 class MenuCampaignSelectScenario final : public Menu {
-	SelectorArea *sel_cpn, *sel_scn;
+	SelectorArea *sel_cpn, *sel_scn, *sel_lvl;
+	std::vector<std::unique_ptr<Campaign>> campaigns;
 public:
 	MenuCampaignSelectScenario() : Menu(STR_TITLE_CAMPAIGN_SELECT_SCENARIO, 88, 550, 300, 36, false) {
-		char buf[4096];
+		char buf[FS_BUFSZ];
 
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
@@ -2056,20 +2262,47 @@ public:
 		objects.emplace_back(new Text(
 			WIDTH / 2, 8, STR_BTN_CAMPAIGN, MIDDLE, TOP, fnt_large
 		));
-		objects.emplace_back(sel_cpn = new SelectorArea(25, 87, 750, 249 - 87, STR_SELECT_CAMPAIGN));
-		objects.emplace_back(sel_scn = new SelectorArea(25, 287, 750, 449 - 287, STR_SELECT_SCENARIO));
+		objects.emplace_back(sel_cpn = new SelectorArea(25, 87, 750, 249 - 87, STR_SELECT_CAMPAIGN, -4, -24));
+		objects.emplace_back(sel_scn = new SelectorArea(25, 287, 750, 449 - 287, STR_SELECT_SCENARIO, -4, -24));
+		objects.emplace_back(sel_lvl = new SelectorArea(25, 487, 187 - 25, 30, STR_SCENARIO_LEVEL, -4, -24));
+		sel_lvl->add(STR_SCENARIO_LEVEL_EASIEST);
+		sel_lvl->add(STR_SCENARIO_LEVEL_EASY);
+		sel_lvl->add(STR_SCENARIO_LEVEL_MODERATE);
+		sel_lvl->add(STR_SCENARIO_LEVEL_HARD);
+		sel_lvl->add(STR_SCENARIO_LEVEL_HARDEST);
+		sel_lvl->select(2);
 
-		fs_walk_campaign(walk_campaign_item, buf, sizeof buf);
+		fs_walk_campaign(walk_campaign_item, this, buf, sizeof buf);
 
 		group.add(0, 0, STR_BTN_OK);
 		group.add(413 - 88, 0, STR_BTN_CANCEL);
+
+		if (!campaigns.size())
+			// TODO show error
+			stop = 1;
+		else
+			select_campaign(0);
+	}
+
+	void add_campaign(char *name) {
+		dbgf("add campaign: %s\n", name);
+		try {
+			Campaign *c = new Campaign(name);
+			campaigns.emplace_back(c);
+			sel_cpn->add(c->name);
+		} catch (int i) {
+			panicf("bad campaign. code: %d\n", i);
+		}
 	}
 
 	void button_group_activate(unsigned id) override final {
 		dbgf("%s: id=%u\n", __func__, id);
 		switch (id) {
 		case 0:
-		case 1: stop = 1; break;
+		case 1:
+			dbgf("todo: start campaign \"%s\", scenario \"%s\", level %s\n", campaigns[sel_cpn->focus()]->name, sel_scn->focus_text().c_str(), sel_lvl->focus_text().c_str());
+			stop = 1;
+			break;
 		}
 	}
 
@@ -2078,7 +2311,38 @@ public:
 		case 2: running = 0; break;
 		}
 	}
+
+	bool mousedown(SDL_MouseButtonEvent *event) override final {
+		unsigned campaign_index = sel_cpn->focus();
+		bool b = Menu::mousedown(event);
+		if (!b)
+			return false;
+		unsigned index = sel_cpn->focus();
+		if (index != campaign_index)
+			select_campaign(index);
+
+		return b;
+	}
+
+private:
+	void select_campaign(unsigned index) {
+		sel_scn->clear();
+		size_t count;
+		const struct cpn_scn *scn = campaigns[index]->scenarios(count);
+		dbgf("count: %zu\n", count);
+		for (; count; --count, ++scn) {
+			char buf[CPN_SCN_DESCRIPTION_MAX + 1];
+			memcpy(buf, scn->description, CPN_SCN_DESCRIPTION_MAX);
+			buf[CPN_SCN_DESCRIPTION_MAX] = '\0';
+			sel_scn->add(buf);
+		}
+	}
 };
+
+void walk_campaign_item(void *arg, char *name)
+{
+	((MenuCampaignSelectScenario*)arg)->add_campaign(name);
+}
 
 class MenuCampaignPlayerSelection final : public Menu {
 public:

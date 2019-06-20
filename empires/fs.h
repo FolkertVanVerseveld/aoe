@@ -11,6 +11,29 @@ extern "C" {
 
 #define FS_BUFSZ 4096
 
+struct fs_blob {
+	int fd;
+	void *data;
+	size_t size;
+	unsigned mode;
+};
+
+void fs_blob_init(struct fs_blob *b);
+void fs_blob_free(struct fs_blob *b);
+
+#define FS_MODE_READ 0x01
+#define FS_MODE_WRITE 0x02
+#define FS_MODE_MAP 0x04
+
+#define FS_ERR_OK 0
+#define FS_ERR_NOENT 1
+#define FS_ERR_NOMEM 2
+#define FS_ERR_MAP 3
+#define FS_ERR_UNKNOWN 4
+
+int fs_blob_open(struct fs_blob *b, const char *path, unsigned mode);
+void fs_blob_close(struct fs_blob *b);
+
 /**
  * Get path to game file. This is necessary to differentiate between
  * installation through wine or running directly from a CD-ROM/ISO.
@@ -25,7 +48,7 @@ void fs_cdrom_path(char *buf, size_t bufsz, const char *file);
  */
 int fs_cdrom_audio_path(char *buf, size_t bufsz, const char *file);
 
-void fs_walk_campaign(void (*item)(char *name), char *buf, size_t bufsz);
+void fs_walk_campaign(void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz);
 
 #ifdef __cplusplus
 }
