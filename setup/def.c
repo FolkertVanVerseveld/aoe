@@ -23,6 +23,7 @@
 #include <dirent.h>
 
 #include "def.h"
+#include "../empires/errno.h"
 
 #define PANIC_BUFSZ 1024
 
@@ -51,13 +52,39 @@ void *frealloc(void *ptr, size_t size)
 void show_error(const char *str)
 {
 	char buf[PANIC_BUFSZ];
-	fprintf(stderr, "panic: %s\n", str);
+	fprintf(stderr, "%s\n", str);
 	snprintf(buf, PANIC_BUFSZ, "zenity --error --text=\"%s\"", str);
 	system(buf);
 }
 
+void show_error_code(int code)
+{
+	const char *str;
+
+	switch (code) {
+	case 0:
+		str = "Well, this is interesting";
+		break;
+	case GENIE_ERR_NEED_WINE:
+		str = "You need to have Wine installed for this to work";
+		break;
+	case GENIE_ERR_NO_GAME:
+		str = "The original game is not installed or could not be found";
+		break;
+	default:
+		if (code < GENIE_ERR_NEED_WINE)
+			str = strerror(errno);
+		else
+			str = "Unknown error occurred";
+		break;
+	}
+
+	show_error(str);
+}
+
 void panic(const char *str)
 {
+	fputs("fatal error occurred:\n", stderr);
 	show_error(str);
 	exit(1);
 }
@@ -70,6 +97,7 @@ void panicf(const char *format, ...)
 	va_start(args, format);
 
 	vsnprintf(buf, sizeof buf, format, args);
+	fputs("fatal error occurred:\n", stderr);
 	show_error(buf);
 
 	va_end(args);

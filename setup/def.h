@@ -35,6 +35,7 @@ extern int has_wine;
 extern int game_installed;
 
 void show_error(const char *str);
+void show_error_code(int code);
 void panic(const char *str) __attribute__((noreturn));
 void panicf(const char *format, ...) __attribute__((noreturn));
 

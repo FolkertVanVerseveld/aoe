@@ -49,6 +49,7 @@ void fs_cdrom_path(char *buf, size_t bufsz, const char *file);
 int fs_cdrom_audio_path(char *buf, size_t bufsz, const char *file);
 
 void fs_walk_campaign(void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz);
+int fs_walk_ext(const char *dir, const char *ext, void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz);
 
 #ifdef __cplusplus
 }

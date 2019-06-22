@@ -7,6 +7,7 @@
 #define STR_EXIT 1002
 
 #define STR_BTN_OK 9858
+#define STR_BTN_DELETE 9417
 
 // Generic error or unknown button text
 #define STR_ERROR 2001

@@ -18,6 +18,7 @@
 
 #include "../setup/dbg.h"
 #include "../setup/def.h"
+#include "errno.h"
 
 void fs_blob_init(struct fs_blob *b)
 {
@@ -141,6 +142,37 @@ void fs_walk_campaign(void (*item)(void *arg, char *name), void *arg, char *buf,
 
 	if (d)
 		closedir(d);
+}
+
+int fs_walk_ext(const char *dir, const char *accept, void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz)
+{
+	DIR *d = NULL;
+	struct dirent *entry;
+
+	if (!game_installed)
+		return GENIE_ERR_NO_GAME;
+
+	fs_game_path(buf, bufsz, dir);
+
+	if (!(d = opendir(buf))) {
+		fprintf(stderr, "cannot read %s: %s\n", dir, strerror(errno));
+		fprintf(stderr, "path: %s\n", buf);
+		return errno;
+	}
+
+	while ((entry = readdir(d))) {
+		char *ext;
+
+		if ((ext = strrchr(entry->d_name, '.')) && (!accept || !strcmp(ext + 1, accept))) {
+			snprintf(buf, bufsz, WINE_PATH_FORMAT "/game/%s/%s", username(), dir, entry->d_name);
+			item(arg, buf);
+		}
+	}
+
+	if (d)
+		closedir(d);
+
+	return 0;
 }
 
 void fs_help_path(char *buf, size_t bufsz, const char *file)

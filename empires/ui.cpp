@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <strings.h>
 
 #include <memory>
 #include <string>
@@ -21,6 +22,7 @@
 #include "../setup/def.h"
 #include "../setup/res.h"
 
+#include "errno.h"
 #include "cfg.h"
 #include "drs.h"
 #include "gfx.h"
@@ -1857,6 +1859,78 @@ public:
 	}
 };
 
+void walk_file_item(void *arg, char *name);
+
+class MenuFileSelection final : public Menu {
+	SelectorArea *sel_file;
+	std::vector<std::string> files;
+	bool strip;
+public:
+	MenuFileSelection(unsigned id, unsigned bkg_id, const char *dir, const char *ext, bool strip=true) : Menu(id, 0, 0, WIDTH, HEIGHT), strip(strip) {
+		char buf[FS_BUFSZ];
+		int err;
+
+		objects.emplace_back(bkg = new Background(bkg_id, 0, 0));
+		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Text(
+			WIDTH / 2, 12, id, MIDDLE, TOP, fnt_button
+		));
+		objects.emplace_back(sel_file = new SelectorArea(25, 81, 775 - 21, 521 - 81, STR_TITLE_PATH));
+
+		group.add(37, 550, STR_BTN_OK, 262 - 37, 587 - 550);
+		group.add(287, 550, STR_BTN_DELETE, 512 - 287, 587 - 550);
+		group.add(537, 550, STR_BTN_CANCEL, 762 - 537, 587 - 550);
+
+		if ((err = fs_walk_ext(dir, ext, walk_file_item, this, buf, sizeof buf))) {
+			show_error_code(err);
+			stop = 1;
+			return;
+		}
+
+		std::sort(files.begin(), files.end(), [](const std::string &a, const std::string &b) {
+			return strcasecmp(a.c_str(), b.c_str()) < 0;
+		});
+
+		for (auto &file : files) {
+			char buf[256];
+			strncpy(buf, file.c_str(), sizeof buf);
+			buf[(sizeof buf) - 1] = '\0';
+
+			char *name = buf, *start = strrchr(name, '/');
+			if (start)
+				name = start + 1;
+
+			if (strip) {
+				char *ext = strrchr(name, '.');
+				if (ext)
+					*ext = '\0';
+			}
+
+			sel_file->add(name);
+		}
+	}
+
+	void add_item(char *name) {
+		files.emplace_back(name);
+	}
+
+	void button_activate(unsigned) override final {}
+
+	void button_group_activate(unsigned id) override final {
+		switch (id) {
+		case 0:
+		case 2:
+			stop = 1;
+			break;
+		}
+	}
+};
+
+void walk_file_item(void *arg, char *name)
+{
+	((MenuFileSelection*)arg)->add_item(name);
+}
+
 class MenuScenarioEditorMenu final : public Menu {
 public:
 	MenuScenarioEditorMenu() : Menu(STR_TITLE_MAIN, 200, 120, 600 - 200, 160 - 120, false) {
@@ -2329,7 +2403,6 @@ private:
 		sel_scn->clear();
 		size_t count;
 		const struct cpn_scn *scn = campaigns[index]->scenarios(count);
-		dbgf("count: %zu\n", count);
 		for (; count; --count, ++scn) {
 			char buf[CPN_SCN_DESCRIPTION_MAX + 1];
 			memcpy(buf, scn->description, CPN_SCN_DESCRIPTION_MAX);
@@ -2469,6 +2542,9 @@ public:
 		switch (id) {
 		case 0:
 			ui_state.go_to(new MenuScenarioEditor());
+			break;
+		case 1:
+			ui_state.go_to(new MenuFileSelection(STR_SELECT_SCENARIO, DRS_BACKGROUND_SCENARIO, "scenario/", "scn"));
 			break;
 		case 3:
 			stop = 1;
