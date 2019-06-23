@@ -34,10 +34,15 @@ void fs_blob_free(struct fs_blob *b);
 int fs_blob_open(struct fs_blob *b, const char *path, unsigned mode);
 void fs_blob_close(struct fs_blob *b);
 
+#define FS_OPT_NEED_GAME 1
+#define FS_OPT_NEED_CDROM 2
+
 /**
  * Get path to game file. This is necessary to differentiate between
  * installation through wine or running directly from a CD-ROM/ISO.
  */
+int fs_get_path(char *buf, size_t bufsz, const char *dir, const char *file, unsigned options);
+
 void fs_game_path(char *buf, size_t bufsz, const char *file);
 void fs_data_path(char *buf, size_t bufsz, const char *file);
 void fs_help_path(char *buf, size_t bufsz, const char *file);
@@ -49,7 +54,7 @@ void fs_cdrom_path(char *buf, size_t bufsz, const char *file);
 int fs_cdrom_audio_path(char *buf, size_t bufsz, const char *file);
 
 void fs_walk_campaign(void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz);
-int fs_walk_ext(const char *dir, const char *ext, void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz);
+int fs_walk_ext(const char *dir, const char *ext, void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz, unsigned options);
 
 #ifdef __cplusplus
 }

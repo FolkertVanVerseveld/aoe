@@ -332,8 +332,12 @@ void Map::resize(MapSize size)
 	switch (size) {
 	default:
 		dbgf("unknown map size: %d\n", size);
-	case TINY : resize(72); break;
-	case MICRO: resize(24); break;
+	case HUGE_ : resize(168); break;
+	case LARGE : resize(144); break;
+	case MEDIUM: resize(120); break;
+	case SMALL : resize(96); break;
+	case TINY  : resize(72); break;
+	case MICRO : resize(24); break;
 	}
 }
 

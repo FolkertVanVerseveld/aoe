@@ -77,7 +77,9 @@ class UI_State {
 
 	std::stack<std::shared_ptr<Menu>> navigation;
 public:
-	UI_State() : state(DIRTY), navigation() {}
+	std::string file_selected;
+
+	UI_State() : state(DIRTY), navigation(), file_selected() {}
 
 	void mousedown(SDL_MouseButtonEvent *event);
 	void mouseup(SDL_MouseButtonEvent *event);
@@ -1137,7 +1139,7 @@ public:
 		unsigned w = fold ? orig_w - btn_open_width : orig_w;
 		if (point_in_rect(x + margin, y, w - 2 * margin, h, event->x, event->y)) {
 			int rel_y = (event->y - (y + 2 * margin)) / vspace;
-			if (rel_y >= 0 && rel_y < items.size()) {
+			if (rel_y >= 0 && rel_y < (int)items.size()) {
 				select(rel_y);
 				return true;
 			}
@@ -1237,7 +1239,7 @@ public:
 		if (!fold)
 			box_sel.draw();
 		else if (list) {
-			if (box_sel.y >= y + margin && box_sel.y <= y + h - vspace - margin)
+			if (box_sel.y >= y + margin && box_sel.y <= (int)(y + h - vspace - margin))
 				box_sel.draw();
 			scroll.draw();
 		}
@@ -1866,7 +1868,7 @@ class MenuFileSelection final : public Menu {
 	std::vector<std::string> files;
 	bool strip;
 public:
-	MenuFileSelection(unsigned id, unsigned bkg_id, const char *dir, const char *ext, bool strip=true) : Menu(id, 0, 0, WIDTH, HEIGHT), strip(strip) {
+	MenuFileSelection(unsigned id, unsigned bkg_id, const char *dir, const char *ext, unsigned options, bool strip=true) : Menu(id, 0, 0, WIDTH, HEIGHT), strip(strip) {
 		char buf[FS_BUFSZ];
 		int err;
 
@@ -1881,7 +1883,7 @@ public:
 		group.add(287, 550, STR_BTN_DELETE, 512 - 287, 587 - 550);
 		group.add(537, 550, STR_BTN_CANCEL, 762 - 537, 587 - 550);
 
-		if ((err = fs_walk_ext(dir, ext, walk_file_item, this, buf, sizeof buf))) {
+		if ((err = fs_walk_ext(dir, ext, walk_file_item, this, buf, sizeof buf, options))) {
 			show_error_code(err);
 			stop = 1;
 			return;
@@ -1919,10 +1921,15 @@ public:
 	void button_group_activate(unsigned id) override final {
 		switch (id) {
 		case 0:
+			ui_state.file_selected = files[sel_file->focus()];
+			stop = 1;
+			break;
 		case 2:
+			ui_state.file_selected = "";
 			stop = 1;
 			break;
 		}
+		dbgf("selected: %s\n", ui_state.file_selected.c_str());
 	}
 };
 
@@ -2012,7 +2019,7 @@ class MenuScenarioEditor final : public Menu {
 	Palette palette;
 	AnimationTexture menu_bar;
 public:
-	MenuScenarioEditor()
+	MenuScenarioEditor(const char *path)
 		: Menu(STR_TITLE_MAIN, 0, 0, 110, 22, false)
 		, palette(), menu_bar()
 	{
@@ -2041,7 +2048,7 @@ public:
 		menu_bar.open(&palette, DRS_MENU_BAR_SCENARIO_800_600);
 
 		editor.reshape(0, 50, WIDTH, HEIGHT - (HEIGHT - 457) - 50);
-		editor.start();
+		editor.start(path);
 	}
 
 	void button_group_activate(unsigned id) override final {
@@ -2247,7 +2254,7 @@ public:
 		group.add(412, 550, STR_BTN_CANCEL);
 	}
 
-	void button_group_activate(unsigned id) override final {
+	void button_group_activate(unsigned) override final {
 		stop = 1;
 	}
 };
@@ -2541,10 +2548,10 @@ public:
 	void button_group_activate(unsigned id) override final {
 		switch (id) {
 		case 0:
-			ui_state.go_to(new MenuScenarioEditor());
+			ui_state.go_to(new MenuScenarioEditor(NULL));
 			break;
 		case 1:
-			ui_state.go_to(new MenuFileSelection(STR_SELECT_SCENARIO, DRS_BACKGROUND_SCENARIO, "scenario/", "scn"));
+			ui_state.go_to(new MenuFileSelection(STR_SELECT_SCENARIO, DRS_BACKGROUND_SCENARIO, "scenario/", "scn", FS_OPT_NEED_GAME));
 			break;
 		case 3:
 			stop = 1;
@@ -2554,6 +2561,12 @@ public:
 
 	void button_activate(unsigned) override final {
 		running = 0;
+	}
+
+	void restore() override final {
+		Menu::restore();
+		if (ui_state.file_selected.size())
+			ui_state.go_to(new MenuScenarioEditor(ui_state.file_selected.c_str()));
 	}
 };
 

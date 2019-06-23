@@ -45,9 +45,9 @@ void scn_dump(const struct scn *s)
 	printf("version: %s\n", buf);
 	if (s->hdr->instructions_length)
 		printf("scenario instructions: %s\n", s->hdr->instructions);
-	//printf("saved at: %" PRIX32 "\n", s->hdr->time);
 	time_t now = s->hdr->time;
 	printf("saved at: %s", asctime(gmtime(&now)));
+	printf("compressed data at: %zX\n", (size_t)sizeof(struct scn_hdr) + s->hdr->instructions_length + 8);
 }
 
 int main(int argc, char **argv)

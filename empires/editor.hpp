@@ -23,7 +23,7 @@ public:
 
 	void idle();
 
-	void start();
+	void start(const char *path);
 	void stop();
 	void draw();
 };

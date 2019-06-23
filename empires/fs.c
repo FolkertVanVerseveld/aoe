@@ -97,6 +97,17 @@ static const char *username()
 	return getpwuid(getuid())->pw_name;
 }
 
+int fs_get_path(char *buf, size_t bufsz, const char *dir, const char *file, unsigned options)
+{
+	if (options & FS_OPT_NEED_CDROM)
+		return snprintf(buf, bufsz, "%s/%s%s", path_cdrom, dir, file);
+
+	if (game_installed || (options & FS_OPT_NEED_GAME))
+		return snprintf(buf, bufsz, WINE_PATH_FORMAT "/%s%s", username(), dir, file);
+
+	return snprintf(buf, bufsz, game_installed ? "%s/%s%s" : "%s/game/%s%s", path_cdrom, dir, file);
+}
+
 void fs_game_path(char *buf, size_t bufsz, const char *file)
 {
 	if (game_installed)
@@ -115,6 +126,7 @@ void fs_data_path(char *buf, size_t bufsz, const char *file)
 	}
 }
 
+// TODO merge with fs_walk_ext
 void fs_walk_campaign(void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz)
 {
 	DIR *d = NULL;
@@ -133,7 +145,7 @@ void fs_walk_campaign(void (*item)(void *arg, char *name), void *arg, char *buf,
 
 		if ((ext = strrchr(entry->d_name, '.')) && !strcmp(ext + 1, "cpn")) {
 			if (game_installed)
-				snprintf(buf, bufsz, WINE_PATH_FORMAT "/game/campaign/%s", username(), entry->d_name);
+				snprintf(buf, bufsz, WINE_PATH_FORMAT "/campaign/%s", username(), entry->d_name);
 			else
 				snprintf(buf, bufsz, "%s/game/campaign/%s", path_cdrom, entry->d_name);
 			item(arg, buf);
@@ -144,15 +156,15 @@ void fs_walk_campaign(void (*item)(void *arg, char *name), void *arg, char *buf,
 		closedir(d);
 }
 
-int fs_walk_ext(const char *dir, const char *accept, void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz)
+int fs_walk_ext(const char *dir, const char *accept, void (*item)(void *arg, char *name), void *arg, char *buf, size_t bufsz, unsigned options)
 {
 	DIR *d = NULL;
 	struct dirent *entry;
 
-	if (!game_installed)
+	if (!game_installed && (options & FS_OPT_NEED_GAME))
 		return GENIE_ERR_NO_GAME;
 
-	fs_game_path(buf, bufsz, dir);
+	fs_get_path(buf, bufsz, dir, "", options);
 
 	if (!(d = opendir(buf))) {
 		fprintf(stderr, "cannot read %s: %s\n", dir, strerror(errno));
@@ -163,8 +175,8 @@ int fs_walk_ext(const char *dir, const char *accept, void (*item)(void *arg, cha
 	while ((entry = readdir(d))) {
 		char *ext;
 
-		if ((ext = strrchr(entry->d_name, '.')) && (!accept || !strcmp(ext + 1, accept))) {
-			snprintf(buf, bufsz, WINE_PATH_FORMAT "/game/%s/%s", username(), dir, entry->d_name);
+		if ((ext = strrchr(entry->d_name, '.')) && !strcasecmp(ext + 1, accept)) {
+			snprintf(buf, bufsz, WINE_PATH_FORMAT "/%s/%s", username(), dir, entry->d_name);
 			item(arg, buf);
 		}
 	}
