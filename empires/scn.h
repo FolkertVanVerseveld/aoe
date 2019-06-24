@@ -25,6 +25,7 @@ struct scn_hdr {
 struct scn {
 	struct scn_hdr *hdr;
 	void *data;
+	size_t size;
 };
 
 void scn_init(struct scn *s);

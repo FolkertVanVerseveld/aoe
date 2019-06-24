@@ -1,0 +1,8 @@
+The scenario file format has a flat header followed by deflated data. See this
+thread for details:
+http://aok.heavengames.com/cgi-bin/aokcgi/display.cgi?action=ct&f=4,40134,0,30
+
+scn header
+  range name    description
+  00-03 version 1.10 in all scenarios we have tested so far
+  04-07 modtime modification timestamp

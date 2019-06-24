@@ -7,7 +7,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <zlib.h>
 
+#include "serialization.h"
 #include "../empires/scn.h"
 
 void scn_init(struct scn *s)
@@ -28,9 +30,11 @@ int scn_read(struct scn *dst, const void *map, size_t size)
 	if (size < sizeof(struct scn_hdr))
 		return SCN_ERR_BAD_HDR;
 
-	dst->hdr = map;
+	dst->hdr = (void*)map;
 	// TODO add more bounds checking
-	dst->data = &dst->hdr[1];
+	ptrdiff_t offdata = sizeof(struct scn_hdr) + dst->hdr->instructions_length + 8;
+	dst->data = (unsigned char*)map + offdata;
+	dst->size = size;
 
 	return 0;
 }
@@ -47,14 +51,31 @@ void scn_dump(const struct scn *s)
 		printf("scenario instructions: %s\n", s->hdr->instructions);
 	time_t now = s->hdr->time;
 	printf("saved at: %s", asctime(gmtime(&now)));
-	printf("compressed data at: %zX\n", (size_t)sizeof(struct scn_hdr) + s->hdr->instructions_length + 8);
+	ptrdiff_t offdata = (const unsigned char*)s->data - (const unsigned char*)s->hdr;
+	printf("compressed data at: %zX\n", (size_t)offdata);
+
+	void *data;
+	size_t data_size;
+	if (raw_inflate(&data, &data_size, s->data, s->size - offdata) == 0) {
+		FILE *f;
+
+		if (!(f = fopen("scn.out", "wb"))) {
+			perror("scn.out");
+			return;
+		}
+		puts("dump");
+		fwrite(data, data_size, 1, f);
+		free(data);
+		fclose(f);
+	} else {
+		fputs("bad compressed data\n", stderr);
+	}
 }
 
 int main(int argc, char **argv)
 {
 	FILE *f = NULL;
 	void *data = NULL;
-	size_t size = 0;
 	struct stat st;
 	struct scn s;
 
