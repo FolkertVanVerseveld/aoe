@@ -2353,19 +2353,26 @@ public:
 		sel_lvl->add(STR_SCENARIO_LEVEL_HARDEST);
 		sel_lvl->select(2);
 
-		fs_walk_campaign(walk_campaign_item, this, buf, sizeof buf);
+		std::vector<std::string> files;
+		fs_walk_campaign(walk_campaign_item, &files, buf, sizeof buf);
 
 		group.add(0, 0, STR_BTN_OK);
 		group.add(413 - 88, 0, STR_BTN_CANCEL);
 
-		if (!campaigns.size())
+		if (!files.size())
 			// TODO show error
 			stop = 1;
-		else
+		else {
+			std::sort(files.begin(), files.end(), [](const std::string &a, const std::string &b) {
+				return strcasecmp(a.c_str(), b.c_str()) < 0;
+			});
+			for (auto &x : files)
+				add_campaign(x.c_str());
 			select_campaign(0);
+		}
 	}
 
-	void add_campaign(char *name) {
+	void add_campaign(const char *name) {
 		dbgf("add campaign: %s\n", name);
 		try {
 			Campaign *c = new Campaign(name);
@@ -2421,7 +2428,7 @@ private:
 
 void walk_campaign_item(void *arg, char *name)
 {
-	((MenuCampaignSelectScenario*)arg)->add_campaign(name);
+	((std::vector<std::string>*)arg)->emplace_back(name);
 }
 
 class MenuCampaignPlayerSelection final : public Menu {
@@ -2565,8 +2572,10 @@ public:
 
 	void restore() override final {
 		Menu::restore();
-		if (ui_state.file_selected.size())
+		if (ui_state.file_selected.size()) {
 			ui_state.go_to(new MenuScenarioEditor(ui_state.file_selected.c_str()));
+			ui_state.file_selected.clear();
+		}
 	}
 };
 

@@ -22,6 +22,20 @@ public:
 	const struct cpn_scn *scenarios(size_t &count) const;
 };
 
+class Scenario final {
+public:
+	const std::string path;
+private:
+	struct scn scn;
+	void *data;
+	size_t size;
+public:
+	Scenario(const char *path);
+	~Scenario();
+
+	void dump() const;
+};
+
 struct ScenarioSettings final {
 	bool pos_fixed, reveal, full_tech;
 

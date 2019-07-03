@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <zlib.h>
 
-#include "serialization.h"
+#include "../empires/serialization.h"
 #include "../empires/scn.h"
 
 void scn_init(struct scn *s)

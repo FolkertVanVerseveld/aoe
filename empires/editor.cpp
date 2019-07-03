@@ -10,6 +10,7 @@
 #include "editor.hpp"
 #include "game.hpp"
 
+#include "scenario.hpp"
 #include "../setup/dbg.h"
 
 Editor editor;
@@ -23,8 +24,10 @@ void Editor::idle() {
 
 void Editor::start(const char *path) {
 	run = true;
-	if (path)
-		dbgf("TODO load %s\n", path);
+	if (path) {
+		Scenario scn(path);
+		scn.dump();
+	}
 	game.reset();
 	game.reshape(x, y, w, h);
 }

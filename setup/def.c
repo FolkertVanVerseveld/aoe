@@ -1,4 +1,3 @@
-
 /* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**

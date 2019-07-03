@@ -3,6 +3,30 @@ thread for details:
 http://aok.heavengames.com/cgi-bin/aokcgi/display.cgi?action=ct&f=4,40134,0,30
 
 scn header
-  range name    description
-  00-03 version 1.10 in all scenarios we have tested so far
-  04-07 modtime modification timestamp
+  range type   name    description
+  00-03        version 1.10 or 1.11 in all scenarios we have tested so far
+  04-07        dword4
+  08-0B        dword8
+  0C-0F        modtime modification timestamp
+  10-13 astr16 inst_sz instructions length
+  14-XX        inst    instructions
+  XX-XX
+  14-17        dword14
+  18-1B        players player count
+  1C-XX        data    compressed scenario data
+
+compressed scenario data (scn header 3)
+  range     type      name               description
+  0000-1110 byte0
+  1111-1112 astr16    filename_length    original scenario name length
+  1113-XXXX           filename           original scenario name
+  XXXX-XXXX
+  1113-1115 astr16    description_length scenario brief instructions length
+  1115-XXXX           description        scenario brief instructions
+  XXXX-XXXX
+  1116-XXXX g_vic[]   global_victories   global victory conditions (one per player)
+  XXXX-XXXX
+  1116-XXXX astr16    cinematic_pregame
+  1118-XXXX astr16    cinematic_victory
+  111A-XXXX astr16    cinematic_loss
+  111C-XXXX astr16    cinematic_map
