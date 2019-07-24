@@ -854,6 +854,79 @@ static bool point_in_diamond(Map &map, const Unit *u, int px, int py)
 	return dy <= ymax;
 }
 
+/* do not call this directly! use the Particle overloaded function */
+static bool pixel_perfect_collide(Map &map, const Point scr, const SDL_Surface *surf, int mx, int my)
+{
+	/*
+	 * strategy:
+	 * - check if point (mx,my) in surface bounds
+	 * - grab transparent color (defaults to black)
+	 * - compare hovered pixel in surface to transparent color
+	 */
+	//dbgf("img bounds: (%d,%d),(%d,%d)\n", scr.x, scr.y, scr.x + surf->w, scr.y + surf->h);
+	//dbgf("mouse: (%d,%d)\n", mx, my);
+
+	// check if point in rectangle
+	int x0 = scr.x, y0 = scr.y, x1 = scr.x + surf->w, y1 = scr.y + surf->h;
+
+	if (!(mx >= x0 && mx < x1 && my >= y0 && my < y1))
+		return false;
+
+	Uint32 transcol;
+
+	if (SDL_GetColorKey((SDL_Surface*)surf, &transcol)) {
+		fprintf(stderr, "pixel_perfect collision detection failed: %s\n", SDL_GetError());
+		transcol = 0; // fall back to black
+	}
+
+	// find which line the mouse cursor is at
+	int row = my - y0;
+	//dbgf("row: %d, transcol: %X\n", row, transcol);
+
+	assert(SDL_BITSPERPIXEL(surf->format->format) == 8);
+
+	SDL_LockSurface((SDL_Surface*)surf);
+
+	const unsigned char *pixels = (const unsigned char*)surf->pixels;
+	bool collide = pixels[row * surf->pitch + mx - x0] != transcol;
+
+	SDL_UnlockSurface((SDL_Surface*)surf);
+
+	return collide;
+}
+
+static bool pixel_perfect_collide(Map &map, const Particle *p, int mx, int my)
+{
+	Point scr;
+	const uint8_t *hdata = map.heightmap.get();
+	p->pos.to_screen(scr);
+	scr.move(p->dx, p->dy - TILE_HEIGHT * hdata[p->pos.y * map.w + p->pos.x]);
+
+	const Image &img = p->animation.images[p->image_index];
+	const SDL_Surface *surf = img.surface.get();
+
+	const Building *b = dynamic_cast<const Building*>(p);
+
+	// buildings have overlays, so we need to check these as well
+	if (b) {
+		const Image &img = b->overlay.images[b->overlay_index];
+		const SDL_Surface *surf = img.surface.get();
+
+		// relocate center
+		scr.move(-img.hotspot_x, -img.hotspot_y);
+
+		if (pixel_perfect_collide(map, scr, surf, mx, my))
+			return true;
+
+		// restore center for underlay collision checking
+		scr.move(img.hotspot_x, img.hotspot_y);
+	}
+
+	scr.move(-img.hotspot_x, -img.hotspot_y);
+
+	return pixel_perfect_collide(map, scr, surf, mx, my);
+}
+
 static bool point_to_tile(Map &map, int &tx, int &ty, int &dx, int &dy, int px, int py, bool clip=true)
 {
 	// determine horizontal screen position.
@@ -941,18 +1014,14 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 		for (auto unit : objects) {
 			// special handle buildings
 			Building *b = dynamic_cast<Building*>(unit.get());
-			if (b && !point_in_diamond(map, unit.get(), mx, my)) {
-				// TODO add pixel perfect collision detection
-				dbgs("skip building");
+			if (b && !point_in_diamond(map, unit.get(), mx, my) && !pixel_perfect_collide(map, unit.get(), mx, my))
 				continue;
-			}
 
 			selected.insert(unit);
 			play_unit_select(unit->drs_id());
 			break;
 		}
 
-		//dbgf("candidates: %d\n", selected.size());
 		return true;
 	case SDL_BUTTON_RIGHT:
 		// convert mouse to tile coordinates

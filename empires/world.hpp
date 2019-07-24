@@ -95,11 +95,9 @@ public:
 
 	unsigned color;
 
-protected:
 	const AnimationTexture &animation;
 	unsigned image_index;
 
-public:
 	Particle(int x, int y, unsigned size, int w, int h, unsigned sprite_index, unsigned color, int dx=0, int dy=0);
 
 	virtual void draw(Map &map) const;
@@ -186,9 +184,10 @@ public:
 #endif
 
 class Building final : public Unit {
+public:
 	const AnimationTexture &overlay;
 	unsigned overlay_index;
-public:
+
 	Building(
 		unsigned hp, unsigned id, unsigned p_id,
 		int x, int y, unsigned size, int w, int h, unsigned color
