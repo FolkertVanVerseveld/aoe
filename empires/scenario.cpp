@@ -7,7 +7,7 @@
 #include "str.h"
 
 #include <string.h>
-#include <inttypes.h>
+#include <cinttypes>
 
 Campaign::Campaign(const char *path) : path(path) {
 	cpn_init(&cpn);

@@ -4,15 +4,23 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
+#ifndef _WIN32
+	#include <sys/mman.h>
+#else
+	#include <windows.h>
+	#include <io.h>
+#endif
 #include <unistd.h>
 #include <fcntl.h>
-#include <pwd.h>
+#ifndef _WIN32
+	#include <pwd.h>
+#endif
 #include <dirent.h>
 #include <libgen.h>
 
@@ -20,10 +28,16 @@
 #include "../setup/def.h"
 #include "errno.h"
 
+#ifdef _WIN32
+	#define INVALID_MAPPING NULL
+#else
+	#define INVALID_MAPPING MAP_FAILED
+#endif
+
 void fs_blob_init(struct fs_blob *b)
 {
 	b->fd = -1;
-	b->data = MAP_FAILED;
+	b->data = INVALID_MAPPING;
 	b->size = 0;
 }
 
@@ -31,9 +45,9 @@ void fs_blob_free(struct fs_blob *b)
 {
 	if (b->fd != -1)
 		fs_blob_close(b);
-	#if DEBUG
+#if DEBUG
 	fs_blob_init(b);
-	#endif
+#endif
 }
 
 int fs_blob_open(struct fs_blob *b, const char *path, unsigned mode)
@@ -50,6 +64,7 @@ int fs_blob_open(struct fs_blob *b, const char *path, unsigned mode)
 	}
 
 	if (mode & FS_MODE_MAP) {
+#ifndef _WIN32
 		unsigned flags = mode & FS_MODE_READ ? PROT_READ : PROT_READ | PROT_WRITE;
 		unsigned mflags = MAP_FILE | (mode & FS_MODE_READ ? MAP_SHARED : MAP_PRIVATE);
 
@@ -57,6 +72,40 @@ int fs_blob_open(struct fs_blob *b, const char *path, unsigned mode)
 			close(fd);
 			return FS_ERR_MAP;
 		}
+#else
+		HANDLE fm, h;
+		DWORD protect, desiredAccess;
+		DWORD dwMaxSizeLow, dwMaxSizeHigh;
+
+		dwMaxSizeLow = sizeof(off_t) <= sizeof(DWORD) ? (DWORD)st.st_size : (DWORD)(st.st_size & 0xFFFFFFFFL);
+		dwMaxSizeHigh = sizeof(off_t) <= sizeof(DWORD) ? (DWORD)0 : (DWORD)((st.st_size >> 32) & 0xFFFFFFFFL);
+
+		if (mode & FS_MODE_WRITE) {
+			protect = PAGE_READWRITE;
+			desiredAccess = FILE_MAP_READ | FILE_MAP_WRITE;
+		} else {
+			protect = PAGE_READONLY;
+			desiredAccess = FILE_MAP_READ;
+		}
+
+		if ((h = (HANDLE)_get_osfhandle(fd)) == INVALID_HANDLE_VALUE || !(fm = CreateFileMapping(h, NULL, protect, dwMaxSizeHigh, dwMaxSizeLow, NULL))) {
+			if (h != INVALID_HANDLE_VALUE)
+				CloseHandle(h);
+			close(fd);
+			return FS_ERR_MAP;
+		}
+
+		if (!(b->data = MapViewOfFile(fm, desiredAccess, 0, 0, st.st_size))) {
+			CloseHandle(fm);
+			CloseHandle(h);
+			close(fd);
+			return FS_ERR_UNKNOWN;
+		}
+
+		// store the handles somewhere
+		//CloseHandle(fm);
+		//CloseHandle(h);
+#endif
 	} else {
 		if (!(b->data = malloc(st.st_size))) {
 			close(fd);
@@ -77,8 +126,13 @@ int fs_blob_open(struct fs_blob *b, const char *path, unsigned mode)
 void fs_blob_close(struct fs_blob *b)
 {
 	if (b->mode & FS_MODE_MAP) {
+#ifndef _WIN32
 		if (b->size)
 			munmap(b->data, b->size);
+#else
+		if (!UnmapViewOfFile(b->data))
+			fprintf(stderr, "Cannot unmap address %p\n", b->data);
+#endif
 	} else {
 		free(b->data);
 	}
@@ -92,10 +146,21 @@ static void strtolower(char *str)
 		*ptr = tolower(*ptr);
 }
 
+#ifndef _WIN32
 static const char *username()
 {
 	return getpwuid(getuid())->pw_name;
 }
+#else
+static char fs_username[256];
+
+static const char *username()
+{
+	DWORD count = sizeof fs_username;
+	GetUserNameA(fs_username, &count);
+	return fs_username;
+}
+#endif
 
 int fs_get_path(char *buf, size_t bufsz, const char *dir, const char *file, unsigned options)
 {
@@ -118,9 +183,9 @@ void fs_game_path(char *buf, size_t bufsz, const char *file)
 
 void fs_data_path(char *buf, size_t bufsz, const char *file)
 {
-	if (game_installed)
+	if (game_installed) {
 		snprintf(buf, bufsz, WINE_PATH_FORMAT "/data/%s", username(), file);
-	else {
+	} else {
 		snprintf(buf, bufsz, "%s/game/data/%s", path_cdrom, file);
 		strtolower(buf + strlen(path_cdrom) + 1);
 	}

@@ -4,6 +4,7 @@
 #include "serialization.h"
 
 #include <assert.h>
+#include <stdlib.h>
 
 void scn_init(struct scn *s)
 {
@@ -31,7 +32,7 @@ int scn_read(struct scn *dst, const void *map, size_t size)
 	dst->hdr = (void*)map;
 	// TODO add more bounds checking
 	ptrdiff_t offdata = sizeof(struct scn_hdr) + dst->hdr->instructions_length;
-	dst->hdr2 = (unsigned char*)map + offdata;
+	dst->hdr2 = (struct scn_hdr2*)((unsigned char*)map + offdata);
 	dst->data = &dst->hdr2[1];
 	dst->size = size;
 

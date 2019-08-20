@@ -4,7 +4,12 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include <SDL2/SDL2_gfxPrimitives.h>
+
+#ifdef _WIN32
+	#warning gfx primitives not supported yet
+#else
+	#include <SDL2/SDL2_gfxPrimitives.h>
+#endif
 
 #include <cassert>
 #include <cstdio>
@@ -1648,6 +1653,7 @@ public:
 	virtual void draw() const override {
 		Menu::draw();
 
+#ifndef _WIN32
 		unsigned i, n = game.player_count(), step = (tl_height + 1) / n;
 		for (i = 0; i < n; ++i) {
 			const SDL_Color *col = &col_players[i];
@@ -1664,6 +1670,7 @@ public:
 				xx, yy, 4, col->r, col->g, col->b, SDL_ALPHA_OPAQUE
 			);
 		}
+#endif
 
 		canvas.col(255);
 		SDL_RenderDrawLine(renderer, tl_left, tl_top, tl_right, tl_top);

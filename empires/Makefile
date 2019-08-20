@@ -28,9 +28,25 @@ endif
 
 UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx
 
+OBJECTS=empires.o \
+	ui.o \
+	editor.o \
+	game.o \
+	qtree.o \
+	fs.o \
+	drs.o \
+	gfx.o \
+	sfx.o \
+	../setup/res.o \
+	../setup/def.o \
+	cpn.o \
+	scn.o \
+	inflate.o \
+	str.o
+
 default: empires
-empires: empires.o ui.o editor.o game.o qtree.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o cpn.o scenario.o scn.o inflate.o str.o
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.o ui.o editor.o game.o qtree.o fs.o drs.o gfx.o sfx.o ../setup/res.o ../setup/def.o cpn.o scenario.o scn.o inflate.o str.o -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
+empires: $(OBJECTS)
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) $(OBJECTS) -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl) -lstdc++
 empires.o: empires.c cfg.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.c -c -o empires.o $(LDFLAGS) $(LDLIBS)
 game.o: game.hpp game.cpp ui.h image.hpp render.hpp world.hpp drs.h lang.h

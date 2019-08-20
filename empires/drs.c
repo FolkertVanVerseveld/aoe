@@ -13,9 +13,20 @@
 #include <stdlib.h>
 
 #include <sys/stat.h>
-#include <sys/mman.h>
+#ifndef _WIN32
+	#include <sys/mman.h>
+#else
+	#include <windows.h>
+	#include <io.h>
+#endif
 #include <fcntl.h>
 #include <unistd.h>
+
+#ifdef _WIN32
+	#define INVALID_MAPPING NULL
+#else
+	#define INVALID_MAPPING MAP_FAILED
+#endif
 
 #define DRS_MAX 16
 
@@ -77,14 +88,31 @@ void drs_map_init(struct drs_map *drs, const char *name)
 
 void drs_map_open(struct drs_map *drs)
 {
-	if ((drs->fd = open(drs->name, O_RDONLY)) == -1
-		|| fstat(drs->fd, &drs->st) == -1)
-		goto fail;
-
-	drs->data = mmap(NULL, drs->st.st_size, PROT_READ, MAP_SHARED | MAP_FILE, drs->fd, 0);
-	if (drs->data == MAP_FAILED)
-fail:
+	if ((drs->fd = open(drs->name, O_RDONLY)) == -1 || fstat(drs->fd, &drs->st) == -1)
 		panicf("%s: %s\n", drs->name, strerror(errno));
+
+#ifndef _WIN32
+	drs->data = mmap(NULL, drs->st.st_size, PROT_READ, MAP_SHARED | MAP_FILE, drs->fd, 0);
+	if (drs->data == INVALID_MAPPING)
+		panicf("%s: cannot map: %s\n", drs->name, strerror(errno));
+#else
+	HANDLE fm, h;
+	DWORD protect = PAGE_READONLY, desiredAccess = FILE_MAP_READ;
+	DWORD dwMaxSizeLow, dwMaxSizeHigh;
+
+	dwMaxSizeLow = sizeof(off_t) <= sizeof(DWORD) ? (DWORD)drs->st.st_size : (DWORD)(drs->st.st_size & 0xFFFFFFFFL);
+	dwMaxSizeHigh = sizeof(off_t) <= sizeof(DWORD) ? (DWORD)0 : (DWORD)((drs->st.st_size >> 32) & 0xFFFFFFFFL);
+
+	if ((h = (HANDLE)_get_osfhandle(drs->fd)) == INVALID_MAPPING || !(fm = CreateFileMapping(h, NULL, protect, dwMaxSizeHigh, dwMaxSizeLow, NULL)))
+		panicf("%s: cannot map file\n", drs->name);
+
+	if (!(drs->data = MapViewOfFile(fm, desiredAccess, 0, 0, drs->st.st_size)))
+		panicf("%s: cannot map: unknown error\n", drs->name);
+
+	// store the handles somewhere
+	//CloseHandle(fm);
+	//CloseHandle(h);
+#endif
 
 	// verify data
 	const struct drs_hdr *hdr = drs->data;
@@ -97,8 +125,13 @@ void drs_map_free(struct drs_map *drs)
 {
 	free(drs->name);
 
-	if (drs->data != MAP_FAILED)
+	if (drs->data != INVALID_MAPPING)
+#ifndef _WIN32
 		munmap(drs->data, drs->st.st_size);
+#else
+		if (!UnmapViewOfFile(drs->data))
+			fprintf(stderr, "Cannot unmap address %p\n", drs->data);
+#endif
 
 	if (drs->fd != -1)
 		close(drs->fd);

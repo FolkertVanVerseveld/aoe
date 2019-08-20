@@ -161,6 +161,11 @@ void cfg_parse(struct config *cfg, int argc, char **argv)
 		fputs("Unsupported screen resolution\n", stderr);
 }
 
+// hack for windows...
+#ifdef main
+	#undef main
+#endif
+
 int main(int argc, char **argv)
 {
 	cfg_parse(&cfg, argc, argv);

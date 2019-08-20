@@ -31,8 +31,12 @@ void fs_blob_free(struct fs_blob *b);
 #define FS_ERR_MAP 3
 #define FS_ERR_UNKNOWN 4
 
+// TODO provide cross-platform mmap and munmap
+
 int fs_blob_open(struct fs_blob *b, const char *path, unsigned mode);
 void fs_blob_close(struct fs_blob *b);
+
+// FIXME ignore wine when running on windows
 
 #define FS_OPT_NEED_GAME 1
 #define FS_OPT_NEED_CDROM 2

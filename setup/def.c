@@ -18,7 +18,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <pwd.h>
+#ifndef _WIN32
+	#include <pwd.h>
+#endif
 #include <dirent.h>
 
 #include "def.h"
@@ -116,6 +118,7 @@ int find_wine_installation(void)
 	 * If found, check if the game has already been installed.
 	 */
 
+#ifndef _WIN32
 	pwd = getpwuid(getuid());
 	user = pwd->pw_name;
 
@@ -132,6 +135,15 @@ int find_wine_installation(void)
 	snprintf(path_wine, PATH_MAX, WINE_PATH_FORMAT, user);
 
 	return 1;
+#else
+	const char *root = "C:/Program Files (x86)/Microsoft Games/Age of Empires";
+	snprintf(path, PATH_MAX, "%s/Empires.exe", root);
+
+	if ((fd = open(path, O_RDONLY)) == -1)
+		return 0;
+	close(fd);
+	return 1;
+#endif
 }
 
 int find_lib_lang(char *path)
@@ -156,6 +168,7 @@ int find_setup_files(void)
 	struct passwd *pwd;
 	int found = 0;
 
+#ifndef _WIN32
 	/*
 	 * Try following paths in specified order:
 	 * /media/cdrom
@@ -191,5 +204,7 @@ int find_setup_files(void)
 	}
 
 	closedir(dir);
+#endif
 	return found;
+
 }

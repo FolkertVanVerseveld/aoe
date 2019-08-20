@@ -27,6 +27,13 @@ See also [this document](CODINGSTYLE.md) for more details.
 
 ## Libraries and dependencies
 
+### Windows
+
+Just download the official development and binary releases from libsdl.org
+This project is compiled with MinGW. MSVC++ may work, but is not supported...
+
+### Ubuntu and variants
+
 These packages are required for development on Xubuntu:
 
 Name              | Description
