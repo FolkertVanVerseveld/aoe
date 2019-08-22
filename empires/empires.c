@@ -61,6 +61,71 @@ int load_lib_lang(void)
 	return pe_lib_open(&lib_lang, buf);
 }
 
+static void toggle_fullscreen(void)
+{
+	unsigned flags = SDL_GetWindowFlags(window);
+
+	if (flags & SDL_WINDOW_FULLSCREEN) {
+		SDL_SetWindowFullscreen(window, 0);
+		gfx_update();
+		return;
+	}
+
+	int desired_width, desired_height;
+
+	switch (cfg.screen_mode) {
+	case CFG_MODE_640x480: desired_width = 640; desired_height = 480; break;
+	case CFG_MODE_1024x768: desired_width = 1024; desired_height = 768; break;
+	default: desired_width = 800; desired_height = 600; break;
+	}
+
+	// only check the display the main window is located
+	int display, modes;
+
+	if ((display = SDL_GetWindowDisplayIndex(window)) < 0 || (modes = SDL_GetNumDisplayModes(display)) < 0) {
+		show_error_format("Can't go to fullscreen mode: can't query display info: %s", SDL_GetError());
+		return;
+	}
+
+	// check if the fullscreen mode is supported
+	SDL_DisplayMode best = {.w = 0, .h = 0, .refresh_rate = 1};
+
+	for (int i = 0; i < modes; ++i) {
+		SDL_DisplayMode mode;
+		// skip any modes we can't query
+		if (SDL_GetDisplayMode(display, i, &mode))
+			continue;
+
+		dbgf("mode: %dx%d %dHz\n", mode.w, mode.h, mode.refresh_rate);
+
+		if (mode.w == desired_width && mode.h == desired_height && mode.refresh_rate > best.refresh_rate)
+			best = mode;
+	}
+
+	if (!best.w || !best.h) {
+		show_error_format("Can't go to fullscreen mode: display does not support %dx%d", desired_width, desired_height);
+		return;
+	}
+
+	// FIXME fucked up fullscreen mode
+	/*
+	 * For some reason, whenever i have two displays and go fullscreen from
+	 * windowed mode 800x600 in the second display (the first one apparantly
+	 * does not support anything else than 1920x1080), the fullscreen
+	 * display goes in a really fucked up state where the display looks like
+	 * to have proper dimensions (only aspect ratio has changed, but that's
+	 * okay because we didn't ask to keep it the same) until i move the
+	 * mouse to the far right edge of the screen where it continues to
+	 * scroll as if the fullscreen display is really like 1920x600...
+	 *
+	 * So in conclusion, the display state gets fucked up and I have no idea
+	 * why...
+	 */
+	SDL_SetWindowDisplayMode(window, &best);
+	SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+	gfx_update();
+}
+
 void handle_event(SDL_Event *ev)
 {
 	switch (ev->type) {
@@ -68,7 +133,12 @@ void handle_event(SDL_Event *ev)
 		running = 0;
 		return;
 	case SDL_KEYDOWN: keydown(&ev->key); break;
-	case SDL_KEYUP: keyup(&ev->key); break;
+	case SDL_KEYUP:
+		if (ev->key.keysym.sym == SDLK_F4 || ev->key.keysym.sym == SDLK_F11)
+			toggle_fullscreen();
+		else
+			keyup(&ev->key);
+		break;
 	case SDL_MOUSEBUTTONDOWN: mousedown(&ev->button); break;
 	case SDL_MOUSEBUTTONUP: mouseup(&ev->button); break;
 	case SDL_WINDOWEVENT:

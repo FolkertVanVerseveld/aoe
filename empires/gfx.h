@@ -32,7 +32,6 @@ extern struct gfx_cfg {
 	int display;
 	int scr_x, scr_y;
 	// viewport in main window
-	int x, y;
 	unsigned width, height;
 } gfx_cfg;
 

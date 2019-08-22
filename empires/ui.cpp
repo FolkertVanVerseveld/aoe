@@ -193,7 +193,7 @@ void Renderer::save_screen() {
 	SDL_Surface *screen = NULL;
 	int err = 1;
 	size_t needed = gfx_cfg.width * gfx_cfg.height * 3;
-	SDL_Rect bnds = {gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height};
+	SDL_Rect bnds = {0, 0, gfx_cfg.width, gfx_cfg.height};
 
 	/*
 	 * We could just panic if we can't allocate more pixels,
@@ -234,14 +234,15 @@ void Renderer::read_screen() {
 	if (!(capture = SDL_CreateRGBSurface(0, gfx_cfg.width, gfx_cfg.height, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
 		panic("read_screen");
 
-	SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, capture->pixels, capture->pitch);
+	SDL_Rect bnds = {0, 0, gfx_cfg.width, gfx_cfg.height};
+	SDL_RenderReadPixels(renderer, &bnds, SDL_PIXELFORMAT_ARGB8888, capture->pixels, capture->pitch);
 
 	if (!(tex = SDL_CreateTextureFromSurface(renderer, capture)))
 		panic("read_screen");
 }
 
 void Renderer::dump_screen() {
-	SDL_Rect pos = {gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height};
+	SDL_Rect pos = {0, 0, gfx_cfg.width, gfx_cfg.height};
 	SDL_RenderCopy(renderer, tex, NULL, &pos);
 }
 
@@ -1528,7 +1529,7 @@ public:
 	int stop = 0;
 
 	Menu(unsigned title_id, bool show_title=true, TTF_Font *fnt=fnt_large)
-		: UI(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height), objects(), group(), bkg(nullptr)
+		: UI(0, 0, gfx_cfg.width, gfx_cfg.height), objects(), group(), bkg(nullptr)
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
@@ -1537,7 +1538,7 @@ public:
 	}
 
 	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h, bool show_title=true, TTF_Font *fnt=fnt_large)
-		: UI(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height), objects(), group(x, y, w, h), bkg(nullptr)
+		: UI(0, 0, gfx_cfg.width, gfx_cfg.height), objects(), group(x, y, w, h), bkg(nullptr)
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
@@ -1637,7 +1638,7 @@ public:
 
 	MenuTimeline(unsigned type) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551, false) {
 		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 		objects.emplace_back(new Text(
 			gfx_cfg.width / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_large
@@ -1723,7 +1724,7 @@ class MenuAchievements final : public Menu {
 public:
 	MenuAchievements(unsigned type = 0) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, type ? 775 - 550 : 375 - 125, 588 - 551, false), type(type) {
 		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 		objects.emplace_back(new Text(
 			gfx_cfg.width / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_large
@@ -1909,12 +1910,12 @@ class MenuFileSelection final : public Menu {
 	std::vector<std::string> files;
 	bool strip;
 public:
-	MenuFileSelection(unsigned id, unsigned bkg_id, const char *dir, const char *ext, unsigned options, bool strip=true) : Menu(id, gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height), strip(strip) {
+	MenuFileSelection(unsigned id, unsigned bkg_id, const char *dir, const char *ext, unsigned options, bool strip=true) : Menu(id, 0, 0, gfx_cfg.width, gfx_cfg.height), strip(strip) {
 		char buf[FS_BUFSZ];
 		int err;
 
 		objects.emplace_back(bkg = new Background(bkg_id, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
 			gfx_cfg.width / 2, 12, id, MIDDLE, TOP, fnt_button
 		));
@@ -2254,7 +2255,7 @@ public:
 
 		canvas.col(0);
 
-		SDL_Rect pos = {gfx_cfg.x, gfx_cfg.y + bottom, gfx_cfg.width, gfx_cfg.height};
+		SDL_Rect pos = {0, 0 + bottom, gfx_cfg.width, gfx_cfg.height};
 		SDL_RenderFillRect(renderer, &pos);
 
 		// draw background layers
@@ -2282,7 +2283,7 @@ class MenuSinglePlayerSettingsScenario final : public Menu {
 public:
 	MenuSinglePlayerSettingsScenario() : Menu(STR_TITLE_SINGLEPLAYER_SCENARIO, 0, 0, 386 - 87, 586 - 550, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
 			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER_SCENARIO, MIDDLE, TOP, fnt_button
 		));
@@ -2306,7 +2307,7 @@ class MenuSinglePlayerSettings final : public Menu {
 public:
 	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
 			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER, MIDDLE, TOP, fnt_button
 		));
@@ -2377,7 +2378,7 @@ public:
 		char buf[FS_BUFSZ];
 
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -2476,7 +2477,7 @@ class MenuCampaignPlayerSelection final : public Menu {
 public:
 	MenuCampaignPlayerSelection() : Menu(STR_TITLE_CAMPAIGN_SELECT_PLAYER, 0, 0, 300, 586 - 550, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Border(75, 125, 487 - 75, 500 - 125));
 
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
@@ -2514,7 +2515,7 @@ class MenuSinglePlayer final : public Menu {
 public:
 	MenuSinglePlayer() : Menu(STR_TITLE_SINGLEPLAYER_MENU, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
 			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER_MENU, MIDDLE, TOP, fnt_button
 		));
@@ -2551,7 +2552,7 @@ class MenuMultiplayer final : public Menu {
 public:
 	MenuMultiplayer() : Menu(STR_TITLE_MULTIPLAYER, 87, 550, 387 - 87, 587 - 550) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_MULTIPLAYER, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
 			gfx_cfg.width / 2, 12, STR_TITLE_MULTIPLAYER, MIDDLE, TOP, fnt_button
 		));
@@ -2581,7 +2582,7 @@ class MenuScenarioBuilder final : public Menu {
 public:
 	MenuScenarioBuilder() : Menu(STR_TITLE_SCENARIO_EDITOR) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SCENARIO, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
 			gfx_cfg.width / 2, 12, STR_TITLE_SCENARIO_EDITOR, MIDDLE, TOP, fnt_button
 		));
@@ -2624,7 +2625,7 @@ class MenuMain final : public Menu {
 public:
 	MenuMain() : Menu(STR_TITLE_MAIN, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_MAIN, 0, 0));
-		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 
 		group.add(0, 0, STR_BTN_SINGLEPLAYER);
 		group.add(0, 285 - 222, STR_BTN_MULTIPLAYER);

@@ -54,8 +54,21 @@ void show_error(const char *str)
 {
 	char buf[PANIC_BUFSZ];
 	fprintf(stderr, "%s\n", str);
+	// TODO escape str
 	snprintf(buf, PANIC_BUFSZ, "zenity --error --text=\"%s\"", str);
 	system(buf);
+}
+
+void show_error_format(const char *format, ...)
+{
+	char buf[PANIC_BUFSZ];
+	va_list args;
+
+	va_start(args, format);
+	vsnprintf(buf, sizeof buf, format, args);
+	va_end(args);
+
+	show_error(buf);
 }
 
 void show_error_code(int code)
