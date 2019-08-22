@@ -35,6 +35,7 @@
 #include "math.h"
 #include "sfx.h"
 #include "cpn.h"
+#include "genie.h"
 
 #include "fs.hpp"
 #include "image.hpp"
@@ -114,7 +115,7 @@ Renderer::Renderer()
 	: capture(NULL), tex(NULL)
 	, state(), renderer(NULL), shade(100)
 {
-	if (!(pixels = malloc(WIDTH * HEIGHT * 3)))
+	if (!(pixels = malloc(pixels_count = MAX_BKG_WIDTH * MAX_BKG_HEIGHT * 3)))
 		panic("Out of memory");
 
 	state.emplace();
@@ -189,13 +190,31 @@ void Renderer::fill_rect(int x0, int y0, int x1, int y1)
 }
 
 void Renderer::save_screen() {
-	SDL_Surface *screen;
+	SDL_Surface *screen = NULL;
 	int err = 1;
+	size_t needed = gfx_cfg.width * gfx_cfg.height * 3;
+	SDL_Rect bnds = {gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height};
+
+	/*
+	 * We could just panic if we can't allocate more pixels,
+	 * but that's stupid because the game should not crash in a match
+	 * if you just want to take a screenshot.
+	 */
+	if (needed > pixels_count) {
+		void *new_pixels;
+
+		if (!(new_pixels = realloc(pixels, needed)))
+			goto fail;
+
+		pixels = new_pixels;
+		pixels_count = needed;
+	}
 
 	// FIXME support big endian byte order
-	if (!(screen = SDL_CreateRGBSurface(0, WIDTH, HEIGHT, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
+	if (!(screen = SDL_CreateRGBSurface(0, gfx_cfg.width, gfx_cfg.height, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
 		goto fail;
-	if (SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, screen->pixels, screen->pitch))
+
+	if (SDL_RenderReadPixels(renderer, &bnds, SDL_PIXELFORMAT_ARGB8888, screen->pixels, screen->pitch))
 		goto fail;
 	if (SDL_SaveBMP(screen, "empires.bmp"))
 		goto fail;
@@ -212,7 +231,7 @@ void Renderer::read_screen() {
 	if (capture)
 		SDL_FreeSurface(capture);
 	// FIXME support big endian byte order
-	if (!(capture = SDL_CreateRGBSurface(0, WIDTH, HEIGHT, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
+	if (!(capture = SDL_CreateRGBSurface(0, gfx_cfg.width, gfx_cfg.height, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)))
 		panic("read_screen");
 
 	SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, capture->pixels, capture->pitch);
@@ -222,7 +241,7 @@ void Renderer::read_screen() {
 }
 
 void Renderer::dump_screen() {
-	SDL_Rect pos = {0, 0, WIDTH, HEIGHT};
+	SDL_Rect pos = {gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height};
 	SDL_RenderCopy(renderer, tex, NULL, &pos);
 }
 
@@ -256,6 +275,10 @@ public:
 
 	bool contains(int px, int py) {
 		return point_in_rect(x, y, w, h, px, py);
+	}
+
+	virtual void reshape(int x, int y, unsigned w, unsigned h) {
+		this->x = x; this->y = y; this->w = w; this->h = h;
 	}
 };
 
@@ -963,10 +986,21 @@ public:
 		// Apply palette to border colors
 		restore();
 
+		// dialogs may have -1 as background index to indicate to always use the first one
 		if (bkg_id[1] < 0)
 			bkg_id[1] = bkg_id[0];
+		if (bkg_id[2] < 0)
+			bkg_id[2] = bkg_id[0];
 
-		animation.open(&palette, (unsigned)bkg_id[1]);
+		unsigned which;
+
+		switch (cfg.screen_mode) {
+		case CFG_MODE_640x480: which = 0; break;
+		case CFG_MODE_1024x768: which = 2; break;
+		default: which = 1; break;
+		}
+
+		animation.open(&palette, (unsigned)bkg_id[which]);
 	}
 
 	void restore() {
@@ -1494,20 +1528,20 @@ public:
 	int stop = 0;
 
 	Menu(unsigned title_id, bool show_title=true, TTF_Font *fnt=fnt_large)
-		: UI(0, 0, WIDTH, HEIGHT), objects(), group(), bkg(nullptr)
+		: UI(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height), objects(), group(), bkg(nullptr)
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
-				WIDTH / 2, 12, title_id, MIDDLE, TOP, fnt
+				gfx_cfg.width / 2, 12, title_id, MIDDLE, TOP, fnt
 			));
 	}
 
 	Menu(unsigned title_id, int x, int y, unsigned w, unsigned h, bool show_title=true, TTF_Font *fnt=fnt_large)
-		: UI(0, 0, WIDTH, HEIGHT), objects(), group(x, y, w, h), bkg(nullptr)
+		: UI(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height), objects(), group(x, y, w, h), bkg(nullptr)
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
-				WIDTH / 2, y + 12, title_id, MIDDLE, TOP, fnt
+				gfx_cfg.width / 2, y + 12, title_id, MIDDLE, TOP, fnt
 			));
 	}
 
@@ -1603,13 +1637,13 @@ public:
 
 	MenuTimeline(unsigned type) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, 550 - 250, 588 - 551, false) {
 		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 		objects.emplace_back(new Text(
-			WIDTH / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_large
+			gfx_cfg.width / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_large
 		));
 
-		objects.emplace_back(new Text(WIDTH / 2, 44, STR_BTN_TIMELINE, CENTER, TOP, fnt_large));
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 44, STR_BTN_TIMELINE, CENTER, TOP, fnt_large));
 
 		// TODO compute elapsed time
 		objects.emplace_back(new Text(685, 15, "00:00:00"));
@@ -1689,13 +1723,13 @@ class MenuAchievements final : public Menu {
 public:
 	MenuAchievements(unsigned type = 0) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, type ? 775 - 550 : 375 - 125, 588 - 551, false), type(type) {
 		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 		objects.emplace_back(new Text(
-			WIDTH / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_large
+			gfx_cfg.width / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_large
 		));
 
-		objects.emplace_back(new Text(WIDTH / 2, 44, STR_TITLE_SUMMARY, CENTER, TOP, fnt_large));
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 44, STR_TITLE_SUMMARY, CENTER, TOP, fnt_large));
 
 		// TODO compute elapsed time
 		objects.emplace_back(new Text(685, 15, "00:00:00"));
@@ -1779,7 +1813,7 @@ public:
 		objects.emplace_back(new Border(100, 105, 700 - 100, 495 - 105, false));
 
 		// add title manually because we want it to be drawn on top of the background
-		objects.emplace_back(new Text(WIDTH / 2, 105 + 12, STR_TITLE_GAME_SETTINGS, MIDDLE, TOP, fnt_large));
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 105 + 12, STR_TITLE_GAME_SETTINGS, MIDDLE, TOP, fnt_large));
 
 		group.add(220 - 100, 450 - 105, STR_BTN_OK, 390 - 220, 480 - 450);
 		group.add(410 - 100, 450 - 105, STR_BTN_CANCEL, 580 - 410, 480 - 450);
@@ -1875,14 +1909,14 @@ class MenuFileSelection final : public Menu {
 	std::vector<std::string> files;
 	bool strip;
 public:
-	MenuFileSelection(unsigned id, unsigned bkg_id, const char *dir, const char *ext, unsigned options, bool strip=true) : Menu(id, 0, 0, WIDTH, HEIGHT), strip(strip) {
+	MenuFileSelection(unsigned id, unsigned bkg_id, const char *dir, const char *ext, unsigned options, bool strip=true) : Menu(id, gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height), strip(strip) {
 		char buf[FS_BUFSZ];
 		int err;
 
 		objects.emplace_back(bkg = new Background(bkg_id, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			WIDTH / 2, 12, id, MIDDLE, TOP, fnt_button
+			gfx_cfg.width / 2, 12, id, MIDDLE, TOP, fnt_button
 		));
 		objects.emplace_back(sel_file = new SelectorArea(25, 81, 775 - 21, 521 - 81, STR_TITLE_PATH));
 
@@ -2030,8 +2064,8 @@ public:
 		: Menu(STR_TITLE_MAIN, 0, 0, 110, 22, false)
 		, palette(), menu_bar()
 	{
-		objects.emplace_back(new Border(0, 0, WIDTH, 51, false));
-		objects.emplace_back(new Border(0, 457, WIDTH, HEIGHT - 457, false));
+		objects.emplace_back(new Border(0, 0, gfx_cfg.width, 51, false));
+		objects.emplace_back(new Border(0, 457, gfx_cfg.width, gfx_cfg.height - 457, false));
 
 		group.add(739, 5, STR_BTN_SCENARIO_MENU, 797 - 739, 45 - 5, true);
 		group.add(765, 565, STR_BTN_HELP, 30, 30, true);
@@ -2054,7 +2088,7 @@ public:
 		Background b(DRS_BACKGROUND_SCENARIO_EDITOR, 0, 0);
 		menu_bar.open(&palette, DRS_MENU_BAR_SCENARIO_800_600);
 
-		editor.reshape(0, 50, WIDTH, HEIGHT - (HEIGHT - 457) - 50);
+		editor.reshape(0, 50, gfx_cfg.width, gfx_cfg.height - (gfx_cfg.height - 457) - 50);
 		editor.start(path);
 	}
 
@@ -2079,7 +2113,7 @@ public:
 	bool mousedown(SDL_MouseButtonEvent *event) override final {
 		/* Check if mouse is within viewport. */
 		int top = 50;
-		int bottom = HEIGHT - 457 - 50;
+		int bottom = gfx_cfg.height - 457 - 50;
 
 		if (game.paused || event->y < top || event->y >= bottom)
 			return Menu::mousedown(event);
@@ -2098,8 +2132,8 @@ public:
 
 		editor.draw();
 
-		menu_bar.draw(0, 0, WIDTH, 50, 0);
-		menu_bar.draw(0, 457, WIDTH, HEIGHT - 457, 0);
+		menu_bar.draw(0, 0, gfx_cfg.width, 50, 0);
+		menu_bar.draw(0, 457, gfx_cfg.width, gfx_cfg.height - 457, 0);
 
 		Menu::draw();
 	}
@@ -2115,10 +2149,10 @@ public:
 		, palette(), menu_bar()
 		, str_paused(0, 0, STR_PAUSED, MIDDLE, CENTER, fnt_large)
 	{
-		group.add(728, 0, STR_BTN_MENU, WIDTH - 728, 18, true);
+		group.add(728, 0, STR_BTN_MENU, gfx_cfg.width - 728, 18, true);
 		group.add(620, 0, STR_BTN_DIPLOMACY, 728 - 620, 18, true);
 
-		objects.emplace_back(new Text(WIDTH / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
 
 		const Player *you = game.controlling_player();
 
@@ -2161,12 +2195,12 @@ public:
 		int top2 = menu_bar.images[1].surface->h;
 
 		str_paused.move(
-			WIDTH / 2,
-			top + (HEIGHT - 126 - top) / 2,
+			gfx_cfg.width / 2,
+			top + (gfx_cfg.height - 126 - top) / 2,
 			CENTER, MIDDLE
 		);
 
-		game.reshape(0, top, WIDTH, HEIGHT - top - top2);
+		game.reshape(0, top, gfx_cfg.width, gfx_cfg.height - top - top2);
 		game.start();
 	}
 
@@ -2196,7 +2230,7 @@ public:
 	bool mousedown(SDL_MouseButtonEvent *event) override final {
 		/* Check if mouse is within viewport. */
 		int top = menu_bar.images[0].surface->h;
-		int bottom = HEIGHT - menu_bar.images[1].surface->h;
+		int bottom = gfx_cfg.height - menu_bar.images[1].surface->h;
 
 		if (game.paused || event->y < top || event->y >= bottom)
 			return Menu::mousedown(event);
@@ -2216,11 +2250,11 @@ public:
 		game.draw();
 
 		/* Draw HUD */
-		int bottom = HEIGHT - menu_bar.images[1].surface->h;
+		int bottom = gfx_cfg.height - menu_bar.images[1].surface->h;
 
 		canvas.col(0);
 
-		SDL_Rect pos = {0, bottom, WIDTH, HEIGHT};
+		SDL_Rect pos = {gfx_cfg.x, gfx_cfg.y + bottom, gfx_cfg.width, gfx_cfg.height};
 		SDL_RenderFillRect(renderer, &pos);
 
 		// draw background layers
@@ -2237,7 +2271,7 @@ public:
 		// draw buttons
 		Menu::draw();
 
-		game.draw_hud(WIDTH, HEIGHT);
+		game.draw_hud(gfx_cfg.width, gfx_cfg.height);
 
 		if (game.paused)
 			str_paused.draw();
@@ -2248,9 +2282,9 @@ class MenuSinglePlayerSettingsScenario final : public Menu {
 public:
 	MenuSinglePlayerSettingsScenario() : Menu(STR_TITLE_SINGLEPLAYER_SCENARIO, 0, 0, 386 - 87, 586 - 550, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			WIDTH / 2, 12, STR_TITLE_SINGLEPLAYER_SCENARIO, MIDDLE, TOP, fnt_button
+			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER_SCENARIO, MIDDLE, TOP, fnt_button
 		));
 
 		objects.emplace_back(new Border(25, 75, 750, 104 - 75, true, true));
@@ -2272,9 +2306,9 @@ class MenuSinglePlayerSettings final : public Menu {
 public:
 	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			WIDTH / 2, 12, STR_TITLE_SINGLEPLAYER, MIDDLE, TOP, fnt_button
+			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER, MIDDLE, TOP, fnt_button
 		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -2343,12 +2377,12 @@ public:
 		char buf[FS_BUFSZ];
 
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		objects.emplace_back(new Text(
-			WIDTH / 2, 8, STR_BTN_CAMPAIGN, MIDDLE, TOP, fnt_large
+			gfx_cfg.width / 2, 8, STR_BTN_CAMPAIGN, MIDDLE, TOP, fnt_large
 		));
 		objects.emplace_back(sel_cpn = new SelectorArea(25, 87, 750, 249 - 87, STR_SELECT_CAMPAIGN, -4, -24));
 		objects.emplace_back(sel_scn = new SelectorArea(25, 287, 750, 449 - 287, STR_SELECT_SCENARIO, -4, -24));
@@ -2442,13 +2476,13 @@ class MenuCampaignPlayerSelection final : public Menu {
 public:
 	MenuCampaignPlayerSelection() : Menu(STR_TITLE_CAMPAIGN_SELECT_PLAYER, 0, 0, 300, 586 - 550, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Border(75, 125, 487 - 75, 500 - 125));
 
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		objects.emplace_back(new Text(
-			WIDTH / 2, 8, STR_TITLE_CAMPAIGN_SELECT_PLAYER, MIDDLE, TOP, fnt_large
+			gfx_cfg.width / 2, 8, STR_TITLE_CAMPAIGN_SELECT_PLAYER, MIDDLE, TOP, fnt_large
 		));
 
 		objects.emplace_back(new Text(80, 100, STR_CAMPAIGN_PLAYER_NAME, LEFT, TOP, fnt_button));
@@ -2480,9 +2514,9 @@ class MenuSinglePlayer final : public Menu {
 public:
 	MenuSinglePlayer() : Menu(STR_TITLE_SINGLEPLAYER_MENU, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			WIDTH / 2, 12, STR_TITLE_SINGLEPLAYER_MENU, MIDDLE, TOP, fnt_button
+			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER_MENU, MIDDLE, TOP, fnt_button
 		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -2517,9 +2551,9 @@ class MenuMultiplayer final : public Menu {
 public:
 	MenuMultiplayer() : Menu(STR_TITLE_MULTIPLAYER, 87, 550, 387 - 87, 587 - 550) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_MULTIPLAYER, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			WIDTH / 2, 12, STR_TITLE_MULTIPLAYER, MIDDLE, TOP, fnt_button
+			gfx_cfg.width / 2, 12, STR_TITLE_MULTIPLAYER, MIDDLE, TOP, fnt_button
 		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -2547,9 +2581,9 @@ class MenuScenarioBuilder final : public Menu {
 public:
 	MenuScenarioBuilder() : Menu(STR_TITLE_SCENARIO_EDITOR) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SCENARIO, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			WIDTH / 2, 12, STR_TITLE_SCENARIO_EDITOR, MIDDLE, TOP, fnt_button
+			gfx_cfg.width / 2, 12, STR_TITLE_SCENARIO_EDITOR, MIDDLE, TOP, fnt_button
 		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -2590,7 +2624,7 @@ class MenuMain final : public Menu {
 public:
 	MenuMain() : Menu(STR_TITLE_MAIN, false) {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_MAIN, 0, 0));
-		objects.emplace_back(new Border(0, 0, WIDTH, HEIGHT, false));
+		objects.emplace_back(new Border(gfx_cfg.x, gfx_cfg.y, gfx_cfg.width, gfx_cfg.height, false));
 
 		group.add(0, 0, STR_BTN_SINGLEPLAYER);
 		group.add(0, 285 - 222, STR_BTN_MULTIPLAYER);
@@ -2598,11 +2632,12 @@ public:
 		group.add(0, 410 - 222, STR_BTN_EDIT);
 		group.add(0, 472 - 222, STR_BTN_EXIT);
 
-		// FIXME (tm) gets truncated by resource handling in res.h (ascii, unicode stuff)
-		objects.emplace_back(new Text(WIDTH / 2, 542, STR_MAIN_COPY1, CENTER));
+		// FIXME (tm) probably gets truncated by resource handling in res.h (ascii, unicode stuff)
+		// XXX or it may even use a separate slp or gfx object to draw this...
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 542, STR_MAIN_COPY1, CENTER));
 		// FIXME (copy) and (p) before this line
-		objects.emplace_back(new Text(WIDTH / 2, 561, STR_MAIN_COPY2, CENTER));
-		objects.emplace_back(new Text(WIDTH / 2, 578, STR_MAIN_COPY3, CENTER));
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 561, STR_MAIN_COPY2, CENTER));
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 578, STR_MAIN_COPY3, CENTER));
 
 		mus_play(MUS_MAIN);
 	}
@@ -2615,13 +2650,9 @@ public:
 		case 1:
 			ui_state.go_to(new MenuMultiplayer());
 			break;
-		case 2: {
-			char path[FS_BUFSZ], buf[FS_BUFSZ];
-			fs_cdrom_path(path, sizeof path, "readme.doc");
-			snprintf(buf, sizeof buf, "xdg-open \"%s\"", path);
-			system(buf);
+		case 2:
+			open_readme();
 			break;
-		}
 		case 3:
 			ui_state.go_to(new MenuScenarioBuilder());
 			break;

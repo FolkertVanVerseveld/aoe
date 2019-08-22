@@ -6,9 +6,6 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_events.h>
 
-#define WIDTH 800
-#define HEIGHT 600
-
 #ifdef __cplusplus
 
 #include "render.hpp"

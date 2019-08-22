@@ -47,6 +47,7 @@ class Renderer final {
 	SDL_Surface *capture;
 	SDL_Texture *tex;
 	void *pixels;
+	size_t pixels_count;
 	std::stack<RendererState> state;
 public:
 	SDL_Renderer *renderer;

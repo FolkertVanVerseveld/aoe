@@ -27,6 +27,7 @@
 #include "../setup/dbg.h"
 #include "../setup/def.h"
 #include "errno.h"
+#include "genie.h"
 
 #ifdef _WIN32
 	#define INVALID_MAPPING NULL
@@ -307,4 +308,12 @@ int fs_cdrom_audio_path(char *buf, size_t bufsz, const char *file)
 end:
 	pclose(f);
 	return err;
+}
+
+void open_readme(void)
+{
+	char path[FS_BUFSZ], buf[FS_BUFSZ];
+	fs_cdrom_path(path, sizeof path, "readme.doc");
+	snprintf(buf, sizeof buf, "xdg-open \"%s\"", path);
+	system(buf);
 }

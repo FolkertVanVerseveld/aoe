@@ -27,6 +27,15 @@
 extern "C" {
 #endif
 
+extern struct gfx_cfg {
+	// main window state
+	int display;
+	int scr_x, scr_y;
+	// viewport in main window
+	int x, y;
+	unsigned width, height;
+} gfx_cfg;
+
 // Default small text font
 extern TTF_Font *fnt_default;
 // Default user interface button font
@@ -36,6 +45,7 @@ extern TTF_Font *fnt_large;
 
 void gfx_init(void);
 void gfx_free(void);
+void gfx_update(void);
 
 #ifdef __cplusplus
 }

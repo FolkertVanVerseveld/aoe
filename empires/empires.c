@@ -158,7 +158,31 @@ void cfg_parse(struct config *cfg, int argc, char **argv)
 
 	// TODO support different screen resolutions
 	if (cfg->screen_mode != CFG_MODE_800x600)
-		fputs("Unsupported screen resolution\n", stderr);
+		show_error("Unsupported screen resolution");
+
+	switch (cfg->screen_mode) {
+	case CFG_MODE_640x480: gfx_cfg.width = 640; gfx_cfg.height = 480; break;
+	case CFG_MODE_800x600: gfx_cfg.width = 800; gfx_cfg.height = 600; break;
+	case CFG_MODE_1024x768: gfx_cfg.width = 1024; gfx_cfg.height = 768; break;
+	}
+}
+
+void gfx_update(void)
+{
+	int display;
+	SDL_Rect bnds;
+
+	if ((display = SDL_GetWindowDisplayIndex(window)) < 0)
+		return;
+
+	gfx_cfg.display = display;
+	if (SDL_GetDisplayBounds(window, &bnds))
+		return;
+
+	gfx_cfg.scr_x = bnds.x;
+	gfx_cfg.scr_y = bnds.y;
+	gfx_cfg.width = bnds.w;
+	gfx_cfg.height = bnds.h;
 }
 
 // hack for windows...
@@ -186,7 +210,7 @@ int main(int argc, char **argv)
 
 	if (!(window = SDL_CreateWindow(
 		TITLE, SDL_WINDOWPOS_CENTERED,
-		SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT,
+		SDL_WINDOWPOS_CENTERED, gfx_cfg.width, gfx_cfg.height,
 		SDL_WINDOW_SHOWN)))
 	{
 		panic("Could not create user interface");
@@ -209,6 +233,7 @@ int main(int argc, char **argv)
 	drs_init();
 	ui_init();
 
+	gfx_update();
 	main_event_loop();
 
 	ui_free();
