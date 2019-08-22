@@ -42,7 +42,8 @@ OBJECTS=empires.o \
 	cpn.o \
 	scn.o \
 	inflate.o \
-	str.o
+	str.o \
+	scenario.o
 
 default: empires
 empires: $(OBJECTS)
