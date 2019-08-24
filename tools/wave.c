@@ -18,15 +18,19 @@
 #include "../empires/drs.h"
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-  #define RIFF_MAGIC   0x46464952
-  #define WAVE_MAGIC   0x45564157
-  #define FORMAT_MAGIC 0x20746d66
-  #define DATA_MAGIC   0x61746164
+	#define RIFF_MAGIC   0x46464952
+	#define WAVE_MAGIC   0x45564157
+	#define FORMAT_MAGIC 0x20746d66
+	#define DATA_MAGIC   0x61746164
 #else
-  #define RIFF_MAGIC   0x52494646
-  #define WAVE_MAGIC   0x57415645
-  #define FORMAT_MAGIC 0x666d7420
-  #define DATA_MAGIC   0x64617461
+	/*
+	 * although the riff, wave, format and data magic numbers can just be
+	 * byte swapped the wave data itself also needs to be swapped... and i
+	 * don't know how it is done exactly and since i don't have big endian
+	 * byte order machines this game is going to run on i won't bother for
+	 * now...
+	 */
+	#error big endian byte order not supported
 #endif
 
 struct ckfmt {
@@ -81,6 +85,7 @@ static int sfx_play(char *data, struct ckfmt *fmt, size_t cksz)
 			fprintf(stderr, "bad sample size: %u\n", fmt->sample);
 			goto fail;
 		}
+		break;
 	case 2:
 		switch (fmt->sample) {
 		case  8: format = AL_FORMAT_STEREO8;  break;
@@ -89,9 +94,10 @@ static int sfx_play(char *data, struct ckfmt *fmt, size_t cksz)
 			fprintf(stderr, "bad sample size: %u\n", fmt->sample);
 			goto fail;
 		}
+		break;
 	}
 
-	alBufferData(buf, format, data, cksz, fmt->freq / 2);
+	alBufferData(buf, format, data, cksz, fmt->freq);
 	alGetBufferi(buf, AL_SIZE, &wave_size);
 
 	if (alchk())
