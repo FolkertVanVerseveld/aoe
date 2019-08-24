@@ -40,3 +40,15 @@ sudo apt-get install pev libssl-dev
 
 Note that the linking order on Xubuntu 14 for openssl and pev is broken! You
 have to swap the crypto and ssl libs during linking.
+
+Windows:
+
+Currently, empires.exe and some tools are known to compile and run successfully.
+Both can be compiled either with a native MinGW toolchain or within cygwin with
+its MinGW cross-compiler.
+
+Note: Since the original text data is stored in a 32 bit dll, it is currently
+impossible to compile empires.exe for 64 bit targets.
+
+All dependencies can be downloaded from libsdl.org. You don't have to compile
+these as long as you are using MinGW or Microsoft's Visual C++ Compiler

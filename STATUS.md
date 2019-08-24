@@ -1,9 +1,12 @@
 # Project status
 
 *The current state of the project is documented here. At the moment, it can
-start a dummy 4 player singleplayer game without any real game mechanics.*
+start a dummy 2 player singleplayer game without any real game mechanics.*
 
 All items are in random order unless stated otherwise.
+Binaries are not provided at this moment, because there is no game to be played.
+Once the first prototype becomes stable, windows binaries and some common linux
+distro binaries (e.g. Ubuntu) will be provided.
 
 ## Working
 
@@ -18,6 +21,8 @@ File I/O       | Parse basic game assets  | Audio works, partial slp and bin par
 Tools          | (Un)packing game assets  | Pretty stable, but outdated and needs some cleanup
 Game assets    | PE parsing               | Integrated libpe in empires and aoesetup. Completed for palettes, backgrounds and some slps
 User Interface | Background image parsing | Minor problems with dialogs
+Slp parsing    | Game gfx assets          |
+Cross-platform | Windows and Linux        |
 
 Unfortunately, the audio tracks mounting issue is related to the particular
 Linux distribution the game is running on and we do not know if this is possible
@@ -35,7 +40,6 @@ Empires folder  | Replicate and port    | Basic graphics and audio
 User Interface  | True Type Fonts       | Porting to new launcher
 "    "          | Menu navigation       | Basic buttons and group navigation
 "    "          | Main menu             | See next task
-Slp parsing     | Game gfx assets       | Working for backgrounds, but has glitches with some images
 Game logic      | Dynamic Unit logic    | Movement stub
 
 ## Backlog
