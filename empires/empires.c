@@ -47,7 +47,10 @@ struct config cfg = {CFG_NORMAL_MOUSE, CFG_MODE_800x600, 50, 0.7, 1, 0.3};
 
 unsigned const music_list[] = {
 	MUS_GAME1, MUS_GAME2, MUS_GAME3, MUS_GAME4, MUS_GAME5,
-	MUS_GAME6, MUS_GAME7, MUS_GAME8, MUS_GAME9, MUS_GAME10,
+	MUS_GAME6, MUS_GAME7, MUS_GAME8, MUS_GAME9,
+#ifndef _WIN32
+	MUS_GAME10,
+#endif
 };
 
 unsigned music_index = 0;

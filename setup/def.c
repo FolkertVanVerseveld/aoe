@@ -20,6 +20,9 @@
 
 #ifndef _WIN32
 	#include <pwd.h>
+#else
+	#include <windows.h>
+	#include <winuser.h>
 #endif
 #include <dirent.h>
 
@@ -52,11 +55,15 @@ void *frealloc(void *ptr, size_t size)
 
 void show_error(const char *str)
 {
-	char buf[PANIC_BUFSZ];
 	fprintf(stderr, "%s\n", str);
+#ifndef _WIN32
+	char buf[PANIC_BUFSZ];
 	// TODO escape str
 	snprintf(buf, PANIC_BUFSZ, "zenity --error --text=\"%s\"", str);
 	system(buf);
+#else
+	MessageBoxA(NULL, str, "Error", MB_OK | MB_ICONERROR);
+#endif
 }
 
 void show_error_format(const char *format, ...)
@@ -217,6 +224,17 @@ int find_setup_files(void)
 	}
 
 	closedir(dir);
+#else
+	for (char drv = 'A'; drv <= 'Z'; ++drv) {
+		path[0] = drv;
+		path[1] = ':';
+		path[2] = '\0';
+
+		if (find_lib_lang(path)) {
+			found = 1;
+			break;
+		}
+	}
 #endif
 	return found;
 

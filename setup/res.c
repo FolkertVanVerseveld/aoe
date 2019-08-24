@@ -623,7 +623,12 @@ int load_bitmap(struct pe_lib *lib, unsigned id, void **data, size_t *size)
 
 int pe_lib_open(struct pe_lib *lib, const char *name)
 {
-	return (lib->module = LoadLibrary(name)) == NULL;
+	lib->module = LoadLibrary(name);
+	if (!lib->module) {
+		fprintf(stderr, "pe_lib_open: failed for %s\n", name);
+		return 1;
+	}
+	return 0;
 }
 
 int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size)

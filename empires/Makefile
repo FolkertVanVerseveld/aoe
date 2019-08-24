@@ -26,17 +26,17 @@ else
 	CFLAGS += -O3
 endif
 
-UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx -lpe
+UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx -lpe $(shell pkg-config --cflags --libs openssl)
 
 ifdef CROSS_COMPILE
-CC=x86_64-w64-mingw32-gcc
-CFLAGS += -I"/usr/local/x86_64-w64-mingw32/include/"
+CC=i686-w64-mingw32-gcc
+CFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
 
-CXX=x86_64-w64-mingw32-g++
-CXXFLAGS += -I"/usr/local/x86_64-w64-mingw32/include/"
+CXX=i686-w64-mingw32-g++
+CXXFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
 
-LDFLAGS += -L"/usr/local/lib" -L"/usr/local/x86_64-w64-mingw32/lib/"
-UI_LDLIBS = -lmingw32 -lSDL2 -lSDL2main -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mwin32 -lglew32 -lopengl32 -lopenal32 -lglu32 -lstdc++ -lz
+LDFLAGS += -L"/usr/local/lib" -L"/usr/local/i686-w64-mingw32/lib/"
+UI_LDLIBS = -lmingw32 -lSDL2 -lSDL2main -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mwin32 -lopengl32 -lstdc++ -lz
 endif
 
 OBJECTS=empires.o \
@@ -58,7 +58,7 @@ OBJECTS=empires.o \
 
 default: empires
 empires: $(OBJECTS)
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) $(OBJECTS) -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) $(shell pkg-config --cflags --libs openssl) -lstdc++
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) $(OBJECTS) -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lstdc++
 empires.o: empires.c cfg.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.c -c -o empires.o $(LDFLAGS) $(LDLIBS)
 game.o: game.hpp game.cpp ui.h image.hpp render.hpp world.hpp drs.h lang.h
@@ -78,7 +78,7 @@ gfx.o: gfx.h gfx.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) gfx.c -c -o gfx.o $(LDFLAGS) $(LDLIBS)
 sfx.o: sfx.h sfx.cpp cfg.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) sfx.cpp -c -o sfx.o $(LDFLAGS) $(LDLIBS)
-fs.o: fs.h fs.c
+fs.o: fs.h fs.c ../setup/def.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) fs.c -c -o fs.o $(LDFLAGS) $(LDLIBS)
 cpn.o: cpn.h cpn.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) cpn.c -c -o cpn.o $(LDFLAGS) $(LDLIBS)

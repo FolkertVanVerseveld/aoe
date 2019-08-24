@@ -11,8 +11,10 @@
 #ifndef SFX_H
 #define SFX_H
 
-#include <AL/al.h>
-#include <AL/alc.h>
+#ifndef _WIN32
+	#include <AL/al.h>
+	#include <AL/alc.h>
+#endif
 #include <SDL2/SDL_mixer.h>
 
 #ifdef __cplusplus

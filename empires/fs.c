@@ -169,7 +169,11 @@ int fs_get_path(char *buf, size_t bufsz, const char *dir, const char *file, unsi
 		return snprintf(buf, bufsz, "%s/%s%s", path_cdrom, dir, file);
 
 	if (game_installed || (options & FS_OPT_NEED_GAME))
+#ifndef _WIN32
 		return snprintf(buf, bufsz, WINE_PATH_FORMAT "/%s%s", username(), dir, file);
+#else
+		return snprintf(buf, bufsz, WINE_PATH_FORMAT "/%s%s", dir, file);
+#endif
 
 	return snprintf(buf, bufsz, game_installed ? "%s/%s%s" : "%s/game/%s%s", path_cdrom, dir, file);
 }
@@ -180,16 +184,15 @@ void fs_game_path(char *buf, size_t bufsz, const char *file)
 		snprintf(buf, bufsz, WINE_PATH_FORMAT "/%s", username(), file);
 	else
 		snprintf(buf, bufsz, "%s/game/%s", path_cdrom, file);
+
+	printf("game path: %s\n", buf);
 }
 
 void fs_data_path(char *buf, size_t bufsz, const char *file)
 {
-	if (game_installed) {
-		snprintf(buf, bufsz, WINE_PATH_FORMAT "/data/%s", username(), file);
-	} else {
-		snprintf(buf, bufsz, "%s/game/data/%s", path_cdrom, file);
+	fs_get_path(buf, bufsz, "data/", file, 0);
+	if (!game_installed)
 		strtolower(buf + strlen(path_cdrom) + 1);
-	}
 }
 
 // TODO merge with fs_walk_ext
@@ -267,6 +270,7 @@ void fs_cdrom_path(char *buf, size_t bufsz, const char *file)
 
 int fs_cdrom_audio_path(char *buf, size_t bufsz, const char *file)
 {
+#ifndef _WIN32
 	/*
 	 * Main strategy:
 	 * * Find all mounted iso9660 devices using blkid
@@ -308,12 +312,21 @@ int fs_cdrom_audio_path(char *buf, size_t bufsz, const char *file)
 end:
 	pclose(f);
 	return err;
+#else
+	fs_get_path(buf, bufsz, "sound/", file, 0);
+	return access(buf, F_OK | R_OK);
+#endif
 }
 
 void open_readme(void)
 {
-	char path[FS_BUFSZ], buf[FS_BUFSZ];
+	char path[FS_BUFSZ];
 	fs_cdrom_path(path, sizeof path, "readme.doc");
+#ifndef _WIN32
+	char buf[FS_BUFSZ];
 	snprintf(buf, sizeof buf, "xdg-open \"%s\"", path);
 	system(buf);
+#else
+	ShellExecute(GetDesktopWindow(), "open", path, NULL, NULL, SW_SHOWNORMAL);
+#endif
 }

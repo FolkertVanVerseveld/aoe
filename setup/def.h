@@ -29,7 +29,11 @@ void *frealloc(void *ptr, size_t size);
 extern char path_cdrom[PATH_MAX];
 extern char path_wine[PATH_MAX];
 
-#define WINE_PATH_FORMAT "/home/%s/.wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires"
+#ifndef _WIN32
+	#define WINE_PATH_FORMAT "/home/%s/.wine/drive_c/Program Files (x86)/Microsoft Games/Age of Empires"
+#else
+	#define WINE_PATH_FORMAT "C:/Program Files (x86)/Microsoft Games/Age of Empires"
+#endif
 
 extern int has_wine;
 extern int game_installed;

@@ -20,9 +20,11 @@
 
 Mix_Chunk *music_chunk = NULL;
 
+#ifndef _WIN32
 ALCdevice *alc_dev = NULL;
 ALCcontext *alc_ctx = NULL;
 ALuint al_src[SFX_CHANNEL_COUNT];
+#endif
 
 class Clip {
 protected:
@@ -83,6 +85,7 @@ std::shared_ptr<ClipMusicFile> music;
 
 void sfx_init_al(void)
 {
+#ifndef _WIN32
 	const char *dname = NULL;
 	char buf[256];
 	const char *msg = "unknown";
@@ -110,13 +113,16 @@ void sfx_init_al(void)
 fail:
 	snprintf(buf, sizeof buf, "OpenAL sound failed: %s\n", msg);
 	panic(buf);
+#endif
 }
 
 void sfx_free_al(void)
 {
+#ifndef _WIN32
 	alDeleteSources(SFX_CHANNEL_COUNT, al_src);
 	alcDestroyContext(alc_ctx);
 	alcCloseDevice(alc_dev);
+#endif
 }
 
 void sfx_load(unsigned id)
@@ -209,6 +215,7 @@ void mus_play(unsigned id)
 
 	const char *name = "";
 
+#ifndef _WIN32
 	switch (id) {
 	case MUS_MAIN   : name = "Track 2.wav"; break;
 	case MUS_VICTORY: name = "Track 3.wav"; break;
@@ -227,6 +234,25 @@ void mus_play(unsigned id)
 		fprintf(stderr, "sfx: bad music ID %u\n", id);
 		return;
 	}
+#else
+	switch (id) {
+	case MUS_MAIN   : name = "OPEN.MID"; break;
+	case MUS_VICTORY: name = "WON.MID"; break;
+	case MUS_DEFEAT : name = "LOST.MID"; break;
+	case MUS_GAME1  : name = "MUSIC1.MID"; break;
+	case MUS_GAME2  : name = "MUSIC2.MID"; break;
+	case MUS_GAME3  : name = "MUSIC3.MID"; break;
+	case MUS_GAME4  : name = "MUSIC4.MID"; break;
+	case MUS_GAME5  : name = "MUSIC5.MID"; break;
+	case MUS_GAME6  : name = "MUSIC6.MID"; break;
+	case MUS_GAME7  : name = "MUSIC7.MID"; break;
+	case MUS_GAME8  : name = "MUSIC8.MID"; break;
+	case MUS_GAME9  : name = "MUSIC9.MID"; break;
+	default:
+		fprintf(stderr, "sfx: bad music ID %u\n", id);
+		return;
+	}
+#endif
 
 	if (fs_cdrom_audio_path(buf, sizeof buf, name)) {
 		fprintf(stderr, "sfx: could not load music ID %u\n", id);
