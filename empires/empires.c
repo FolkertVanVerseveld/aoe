@@ -182,7 +182,7 @@ void cfg_parse(struct config *cfg, int argc, char **argv)
 {
 	for (int i = 1; i < argc; ++i) {
 		if (hasopt(argv[i], "no", "startup"))
-			cfg->options |= CFG_NO_VIDEO;
+			cfg->options |= CFG_NO_INTRO;
 		else if (hasopt(argv[i], "system", "memory"))
 			fputs("System memory not supported\n", stderr);
 		else if (hasopt(argv[i], "midi", "music"))
@@ -255,6 +255,46 @@ void gfx_update(void)
 	gfx_cfg.height = bnds.h;
 }
 
+void video_play(const char *name)
+{
+#ifdef _WIN32
+	fprintf(stderr, "%s: no video playback on windows yet!\n", name);
+#else
+	char path[4096], buf[4096];
+
+	if (cfg.options & CFG_NO_INTRO)
+		return;
+
+	fs_get_path(path, sizeof path, "avi/", name, 0);
+	if (access(path, F_OK | R_OK)) {
+		// retry and force to read from CD-ROM
+		fs_get_path(path, sizeof path, "game/avi/", name, FS_OPT_NEED_CDROM);
+
+		if (access(path, F_OK | R_OK)) {
+			fprintf(stderr, "%s: file not found or readable\n", path);
+			return;
+		}
+	}
+
+	/*
+	 * we have no real way to check if ffplay is installed, so we just try
+	 * it and see if it fails. an unknown command error yields code 0x7f00
+	 * on my machine...
+	 *
+	 * if ffplay fails for whatever reason, try cvlc and don't bother
+	 * checking if that worked because there are no real distro independent
+	 * alternatives to try after that point...
+	 */
+	snprintf(buf, sizeof buf, "ffplay -fs -loop 1 -autoexit \"%s\"", path);
+	int code = system(buf);
+	if (code < 0 || code == 0x7f00) {
+		// probably command not found... try cvlc
+		snprintf(buf, sizeof buf, "cvlc --play-and-exit -f \"%s\"", path);
+		system(buf);
+	}
+#endif
+}
+
 // hack for windows...
 #ifdef main
 	#undef main
@@ -273,6 +313,10 @@ int main(int argc, char **argv)
 	if (has_wine)
 		dbgs("wine detected");
 	dbgf("game installed: %s\n", game_installed ? "yes" : "no");
+
+	video_play("logo1.avi");
+	video_play("logo2.avi");
+	video_play("intro.avi");
 
 	/* Setup graphical state */
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
@@ -304,6 +348,7 @@ int main(int argc, char **argv)
 	ui_init();
 
 	gfx_update();
+
 	main_event_loop();
 
 	ui_free();

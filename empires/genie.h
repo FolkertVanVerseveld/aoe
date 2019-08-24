@@ -12,6 +12,7 @@ extern "C" {
 #define MAX_BKG_HEIGHT 768
 
 void open_readme(void);
+void video_play(const char *name);
 
 #ifdef __cplusplus
 }

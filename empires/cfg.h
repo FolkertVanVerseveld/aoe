@@ -6,7 +6,7 @@
 #define POP_MIN 25
 #define POP_MAX 200
 
-#define CFG_NO_VIDEO 0x01
+#define CFG_NO_INTRO 0x01
 #define CFG_NO_SOUND 0x02
 #define CFG_NO_MUSIC 0x04
 #define CFG_NO_AMBIENT 0x08
