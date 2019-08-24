@@ -246,7 +246,7 @@ void gfx_update(void)
 		return;
 
 	gfx_cfg.display = display;
-	if (SDL_GetDisplayBounds(window, &bnds))
+	if (SDL_GetDisplayBounds(display, &bnds))
 		return;
 
 	gfx_cfg.scr_x = bnds.x;

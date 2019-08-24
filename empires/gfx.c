@@ -12,7 +12,7 @@ TTF_Font *fnt_large;
 
 #define BUFSZ 4096
 
-struct gfx_cfg gfx_cfg = {0, 0, 0, 0, 0, 800, 600};
+struct gfx_cfg gfx_cfg = {0, 0, 0, 800, 600};
 
 void gfx_init(void)
 {
