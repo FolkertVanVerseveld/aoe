@@ -289,24 +289,19 @@ std::random_device rd;
 unsigned random_civ;
 
 std::string random_name() {
-	char buf[256];
-
 	std::mt19937 gen(rd());
 	std::uniform_int_distribution<unsigned> civdist(0, MAX_CIVILIZATION_COUNT - 1);
 	random_civ = civdist(gen);
 
-	load_string(&lib_lang, STR_CIV_EGYPTIAN + random_civ, buf, sizeof buf);
-	//dbgf("random civ: %s\n", buf);
-
-	load_string(&lib_lang, STR_BTN_CIVTBL + 10 * random_civ, buf, sizeof buf);
+	//buf = load_string(STR_CIV_EGYPTIAN + random_civ);
+	//dbgf("random civ: %s\n", buf.c_str());
+	std::string buf = load_string(STR_BTN_CIVTBL + 10 * random_civ);
+	//dbgf("name count: %s\n", buf.c_str());
 	unsigned name_count;
-	sscanf(buf, "%u", &name_count);
+	sscanf(buf.c_str(), "%u", &name_count);
 	decltype(civdist) namedist(0, name_count - 1);
 
-	memset(buf, 0, sizeof buf);
-	load_string(&lib_lang, STR_BTN_CIVTBL + 10 * random_civ + namedist(gen) + 1, buf, sizeof buf);
-	//dbgf("random name: %s\n", buf);
-	return std::string(buf);
+	return load_string(STR_BTN_CIVTBL + 10 * random_civ + namedist(gen) + 1);
 }
 
 PlayerHuman::PlayerHuman(const std::string &name, unsigned color) : Player(name, 0, color) {
@@ -702,10 +697,8 @@ void Game::draw_hud(unsigned w, unsigned h) {
 		}
 
 		if (u->color < 8) {
-			char civbuf[64];
-			load_string(&lib_lang, STR_CIV_EGYPTIAN + players[u->color]->civ, civbuf, sizeof civbuf);
-
-			canvas.draw_text(8, 482, civbuf);
+			std::string civbuf = load_string(STR_CIV_EGYPTIAN + players[u->color]->civ);
+			canvas.draw_text(8, 482, civbuf.c_str());
 		}
 
 		canvas.draw_text(8, 497, unit_name_id(drs));
@@ -1036,8 +1029,10 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 		//dbgf("TODO: move (%d,%d) -> (%d,%d)\n", mx, my, tx, ty);
 		for (auto unit : selected) {
 			DynamicUnit *d = dynamic_cast<DynamicUnit*>(unit.get());
-			if (0) {
-				d->move(tx, ty, dx, dy);
+			Building *b = dynamic_cast<Building*>(unit.get());
+			if (b) {
+				b->pos.x = tx;
+				b->pos.y = ty;
 			} else {
 				unit->pos.x = tx;
 				unit->pos.y = ty;

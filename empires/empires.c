@@ -167,8 +167,6 @@ static void toggle_fullscreen(void)
 			continue;
 
 		if (!(err = best_fullscreen_mode(&best, i, desired_width, desired_height))) {
-			// TODO use other display
-			dbgf("todo: move to display %d\n", i);
 			SDL_Rect bnds;
 
 			if (SDL_GetDisplayBounds(i, &bnds)) {
@@ -199,7 +197,11 @@ void handle_event(SDL_Event *ev)
 		return;
 	case SDL_KEYDOWN: keydown(&ev->key); break;
 	case SDL_KEYUP:
-		if (ev->key.keysym.sym == SDLK_F4 || ev->key.keysym.sym == SDLK_F11)
+		/*
+		 * Third party bug: whenever a zenity prompt is closed,
+		 * SDL receives a spurious SDL_KEYUP event for SDLK_F4
+		 */
+		if (ev->key.keysym.sym == SDLK_F11)
 			toggle_fullscreen();
 		else
 			keyup(&ev->key);

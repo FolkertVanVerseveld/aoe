@@ -82,7 +82,7 @@ fs.o: fs.h fs.c ../setup/def.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) fs.c -c -o fs.o $(LDFLAGS) $(LDLIBS)
 cpn.o: cpn.h cpn.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) cpn.c -c -o cpn.o $(LDFLAGS) $(LDLIBS)
-drs.o: drs.h drs.c
+drs.o: drs.c drs.h res.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) drs.c -c -o drs.o $(LDFLAGS) $(LDLIBS)
 ../setup/res.o: ../setup/res.h ../setup/res.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ../setup/res.c -c -o ../setup/res.o $(LDFLAGS) $(LDLIBS)

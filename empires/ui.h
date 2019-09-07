@@ -33,6 +33,11 @@ void mouseup(SDL_MouseButtonEvent *event);
 
 #ifdef __cplusplus
 }
+
+#include <string>
+
+std::string load_string(unsigned id);
+
 #endif
 
 #endif
