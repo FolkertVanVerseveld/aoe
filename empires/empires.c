@@ -64,6 +64,47 @@ int load_lib_lang(void)
 	return pe_lib_open(&lib_lang, buf);
 }
 
+#define FSE_QUERY 1
+#define FSE_NO_SUPPORT 2
+
+static void fse_show_error(int code, int desired_width, int desired_height)
+{
+	switch (code) {
+	case FSE_QUERY: show_error_format("Can't go to fullscreen mode: can't query display info: %s", SDL_GetError()); break;
+	case FSE_NO_SUPPORT: show_error_format("Can't go to fullscreen mode: display does not support %dx%d", desired_width, desired_height); break;
+	default: show_error("Well, this is interesting"); break;
+	}
+}
+
+static int best_fullscreen_mode(SDL_DisplayMode *bnds, int display, int desired_width, int desired_height)
+{
+	int modes;
+
+	if ((modes = SDL_GetNumDisplayModes(display)) < 0)
+		return FSE_QUERY;
+
+	// check if the fullscreen mode is supported
+	SDL_DisplayMode best = {.w = 0, .h = 0, .refresh_rate = 1};
+
+	for (int i = 0; i < modes; ++i) {
+		SDL_DisplayMode mode;
+		// skip any modes we can't query
+		if (SDL_GetDisplayMode(display, i, &mode))
+			continue;
+
+		dbgf("mode: %dx%d %dHz\n", mode.w, mode.h, mode.refresh_rate);
+
+		if (mode.w == desired_width && mode.h == desired_height && mode.refresh_rate > best.refresh_rate)
+			best = mode;
+	}
+
+	if (!best.w || !best.h)
+		return FSE_NO_SUPPORT;
+
+	*bnds = best;
+	return 0;
+}
+
 static void toggle_fullscreen(void)
 {
 	unsigned flags = SDL_GetWindowFlags(window);
@@ -82,35 +123,7 @@ static void toggle_fullscreen(void)
 	default: desired_width = 800; desired_height = 600; break;
 	}
 
-	// only check the display the main window is located
-	int display, modes;
-
-	if ((display = SDL_GetWindowDisplayIndex(window)) < 0 || (modes = SDL_GetNumDisplayModes(display)) < 0) {
-		show_error_format("Can't go to fullscreen mode: can't query display info: %s", SDL_GetError());
-		return;
-	}
-
-	// check if the fullscreen mode is supported
-	SDL_DisplayMode best = {.w = 0, .h = 0, .refresh_rate = 1};
-
-	for (int i = 0; i < modes; ++i) {
-		SDL_DisplayMode mode;
-		// skip any modes we can't query
-		if (SDL_GetDisplayMode(display, i, &mode))
-			continue;
-
-		dbgf("mode: %dx%d %dHz\n", mode.w, mode.h, mode.refresh_rate);
-
-		if (mode.w == desired_width && mode.h == desired_height && mode.refresh_rate > best.refresh_rate)
-			best = mode;
-	}
-
-	if (!best.w || !best.h) {
-		show_error_format("Can't go to fullscreen mode: display does not support %dx%d", desired_width, desired_height);
-		return;
-	}
-
-	// FIXME fucked up fullscreen mode
+	// FIXME fucked up fullscreen mode on linux
 	/*
 	 * For some reason, whenever i have two displays and go fullscreen from
 	 * windowed mode 800x600 in the second display (the first one apparantly
@@ -122,11 +135,60 @@ static void toggle_fullscreen(void)
 	 * scroll as if the fullscreen display is really like 1920x600...
 	 *
 	 * So in conclusion, the display state gets fucked up and I have no idea
-	 * why...
+	 * why... we could change the UI subsystem to only allow fullscreen mode
+	 * if it is either on the primary display or OpenGL is rendering the
+	 * window rather than the SDL renderer.
 	 */
-	SDL_SetWindowDisplayMode(window, &best);
-	SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-	gfx_update();
+
+	// only check the display the main window is located
+	int err, count, display, modes;
+
+	if ((count = SDL_GetNumVideoDisplays()) < 1 || (display = SDL_GetWindowDisplayIndex(window)) < 0) {
+		fse_show_error(FSE_QUERY, desired_width, desired_height);
+		return;
+	}
+
+	// try display window is located at
+	SDL_DisplayMode best;
+
+	if (!(err = best_fullscreen_mode(&best, display, desired_width, desired_height))) {
+		dbgf("using mode: %dx%d %dHz format: %u\n", best.w, best.h, best.refresh_rate, best.format);
+
+		SDL_SetWindowDisplayMode(window, &best);
+		SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+		gfx_update();
+
+		return;
+	}
+
+	// try all other displays skipping the one we've just tried
+	for (int i = 0; i < count; ++i) {
+		if (i == display)
+			continue;
+
+		if (!(err = best_fullscreen_mode(&best, i, desired_width, desired_height))) {
+			// TODO use other display
+			dbgf("todo: move to display %d\n", i);
+			SDL_Rect bnds;
+
+			if (SDL_GetDisplayBounds(i, &bnds)) {
+				err = FSE_QUERY;
+				continue;
+			}
+
+			dbgf("using mode: %dx%d %dHz format: %u\n", best.w, best.h, best.refresh_rate, best.format);
+			dbgf("move to: (%d,%d)\n", bnds.x, bnds.y);
+
+			SDL_SetWindowPosition(window, bnds.x, bnds.y);
+			SDL_SetWindowDisplayMode(window, &best);
+			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+			gfx_update();
+
+			return;
+		}
+	}
+
+	fse_show_error(err ? err : FSE_NO_SUPPORT, desired_width, desired_height);
 }
 
 void handle_event(SDL_Event *ev)
@@ -252,10 +314,11 @@ void gfx_update(void)
 	if (SDL_GetDisplayBounds(display, &bnds))
 		return;
 
+	dbgf("gfx_cfg resize to (%d,%d) %dx%d\n", bnds.x, bnds.y, bnds.w, bnds.h);
 	gfx_cfg.scr_x = bnds.x;
 	gfx_cfg.scr_y = bnds.y;
-	gfx_cfg.width = bnds.w;
-	gfx_cfg.height = bnds.h;
+	//gfx_cfg.width = bnds.w;
+	//gfx_cfg.height = bnds.h;
 }
 
 void video_play(const char *name)
