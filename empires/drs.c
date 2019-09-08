@@ -3,8 +3,8 @@
 #include "drs.h"
 #include "fs.h"
 
-#include "../setup/dbg.h"
-#include "../setup/def.h"
+#include <genie/dbg.h>
+#include <genie/def.h>
 
 #include <errno.h>
 #include <string.h>

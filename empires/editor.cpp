@@ -11,7 +11,7 @@
 #include "game.hpp"
 
 #include "scenario.hpp"
-#include "../setup/dbg.h"
+#include <genie/dbg.h>
 
 Editor editor;
 

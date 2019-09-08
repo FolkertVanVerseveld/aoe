@@ -13,6 +13,9 @@
 #define BMP_H
 
 #ifndef _WIN32
+	#ifndef _DEFAULT_SOURCE
+		#define _DEFAULT_SOURCE
+	#endif
 	#ifndef _BSD_SOURCE
 		#define _BSD_SOURCE
 	#endif
@@ -55,7 +58,11 @@
 
 #include <stdint.h>
 
-#define BMP_BF_TYPE be16toh(0x424D)
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	#define BMP_BF_TYPE 0x424D
+#else
+	#define BMP_BF_TYPE 0x4D42
+#endif
 
 struct bmp_header {
 	uint16_t bfType;

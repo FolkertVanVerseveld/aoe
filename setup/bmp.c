@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 
-#include "bmp.h"
+#include <genie/bmp.h>
 
 /** Validate bitmap header. */
 int is_bmp(const void *data, size_t n)

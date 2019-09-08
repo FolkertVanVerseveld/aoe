@@ -7,6 +7,8 @@
  * Copyright Folkert van Verseveld
  */
 
+#include <genie/def.h>
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -26,8 +28,7 @@
 #endif
 #include <dirent.h>
 
-#include "def.h"
-#include "../empires/errno.h"
+#include <genie/error.h>
 
 #define PANIC_BUFSZ 1024
 
@@ -105,7 +106,7 @@ void show_error_code(int code)
 
 void panic(const char *str)
 {
-	fputs("fatal error occurred:\n", stderr);
+	fputs("Fatal error occurred:\n", stderr);
 	show_error(str);
 	exit(1);
 }
@@ -118,7 +119,7 @@ void panicf(const char *format, ...)
 	va_start(args, format);
 
 	vsnprintf(buf, sizeof buf, format, args);
-	fputs("fatal error occurred:\n", stderr);
+	fputs("Fatal error occurred:\n", stderr);
 	show_error(buf);
 
 	va_end(args);
@@ -225,7 +226,7 @@ int find_setup_files(void)
 
 	closedir(dir);
 #else
-	for (char drv = 'A'; drv <= 'Z'; ++drv) {
+	for (char drv = 'D'; drv <= 'Z'; ++drv) {
 		path[0] = drv;
 		path[1] = ':';
 		path[2] = '\0';

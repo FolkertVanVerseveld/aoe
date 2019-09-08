@@ -6,11 +6,11 @@
  * peres.c portions are licensed under General Public License v3.0
  */
 
-#include "res.h"
+#include <genie/res.h>
 
-#include "bmp.h"
-#include "dbg.h"
-#include "def.h"
+#include <genie/bmp.h>
+#include <genie/dbg.h>
+#include <genie/def.h>
 
 #include <assert.h>
 #include <stdio.h>

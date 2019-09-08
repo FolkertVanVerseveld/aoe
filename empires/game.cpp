@@ -17,9 +17,9 @@
 #include "ui.h"
 #include "lang.h"
 
-#include "../setup/dbg.h"
-#include "../setup/def.h"
-#include "../setup/res.h"
+#include <genie/dbg.h>
+#include <genie/def.h>
+#include <genie/res.h>
 
 Game game;
 extern struct pe_lib lib_lang;

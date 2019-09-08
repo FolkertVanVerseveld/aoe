@@ -1,14 +1,16 @@
 .PHONY: default clean
 
+FLAGS=-Wall -Wextra -pedantic -Wno-parentheses -Wno-implicit-fallthrough -I../include/
+
 CC?=gcc
-CFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -Wno-implicit-fallthrough -std=gnu11
+CFLAGS=$(FLAGS) -std=gnu11
 LDLIBS=-lm -lz
 LDFLAGS?=
 DEBUG_LDLIBS?=
 DEBUG_LDFLAGS?=
 
 CXX?=g++
-CXXFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -Wno-implicit-fallthrough -std=c++11
+CXXFLAGS=$(FLAGS) -std=c++11
 
 ifdef STRICT
 	CFLAGS += -Werror
@@ -29,14 +31,14 @@ endif
 UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx -lpe $(shell pkg-config --cflags --libs openssl)
 
 ifdef CROSS_COMPILE
-CC=i686-w64-mingw32-gcc
-CFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
+	CC=i686-w64-mingw32-gcc
+	CFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
 
-CXX=i686-w64-mingw32-g++
-CXXFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
+	CXX=i686-w64-mingw32-g++
+	CXXFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
 
-LDFLAGS += -L"/usr/local/lib" -L"/usr/local/i686-w64-mingw32/lib/"
-UI_LDLIBS = -lmingw32 -lSDL2 -lSDL2main -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mwin32 -lopengl32 -lstdc++ -lz
+	LDFLAGS += -L"/usr/local/lib" -L"/usr/local/i686-w64-mingw32/lib/"
+	UI_LDLIBS = -lmingw32 -lSDL2 -lSDL2main -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mwin32 -lopengl32 -lstdc++ -lz
 endif
 
 OBJECTS=empires.o \
@@ -48,13 +50,12 @@ OBJECTS=empires.o \
 	drs.o \
 	gfx.o \
 	sfx.o \
-	../setup/res.o \
-	../setup/def.o \
 	cpn.o \
 	scn.o \
 	inflate.o \
 	str.o \
-	scenario.o
+	scenario.o \
+	../lib/libgenie.a
 
 default: empires
 empires: $(OBJECTS)
@@ -64,7 +65,7 @@ empires.o: empires.c cfg.h
 game.o: game.hpp game.cpp ui.h image.hpp render.hpp world.hpp drs.h lang.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) game.cpp -c -o game.o $(LDFLAGS) $(LDLIBS)
 
-ui.o: ui.h ui.cpp gfx.o game.o editor.o scenario.o cfg.h sfx.o math.h errno.h fs.o
+ui.o: ui.h ui.cpp gfx.o game.o editor.o scenario.o cfg.h sfx.o math.h fs.o
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ui.cpp -c -o ui.o $(LDFLAGS) $(LDLIBS)
 editor.o: editor.cpp editor.hpp game.hpp world.hpp
 scenario.o: scenario.cpp scenario.hpp cpn.h scn.h
@@ -78,14 +79,16 @@ gfx.o: gfx.h gfx.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) gfx.c -c -o gfx.o $(LDFLAGS) $(LDLIBS)
 sfx.o: sfx.h sfx.cpp cfg.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) sfx.cpp -c -o sfx.o $(LDFLAGS) $(LDLIBS)
-fs.o: fs.h fs.c ../setup/def.h
+fs.o: fs.h fs.c ../include/genie/def.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) fs.c -c -o fs.o $(LDFLAGS) $(LDLIBS)
 cpn.o: cpn.h cpn.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) cpn.c -c -o cpn.o $(LDFLAGS) $(LDLIBS)
 drs.o: drs.c drs.h res.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) drs.c -c -o drs.o $(LDFLAGS) $(LDLIBS)
-../setup/res.o: ../setup/res.h ../setup/res.c
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ../setup/res.c -c -o ../setup/res.o $(LDFLAGS) $(LDLIBS)
+
+../lib/libgenie.a:
+	$(MAKE) -C ../genie/
+
 ../setup/def.o: ../setup/def.h ../setup/def.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ../setup/def.c -c -o ../setup/def.o $(LDFLAGS) $(LDLIBS)
 

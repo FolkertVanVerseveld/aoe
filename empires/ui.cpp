@@ -23,9 +23,9 @@
 #include <stack>
 #include <vector>
 
-#include "../setup/dbg.h"
-#include "../setup/def.h"
-#include "../setup/res.h"
+#include <genie/dbg.h>
+#include <genie/def.h>
+#include <genie/res.h>
 
 #include "errno.h"
 #include "cfg.h"

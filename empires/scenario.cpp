@@ -3,7 +3,7 @@
 #include "scenario.hpp"
 #include "fs.hpp"
 
-#include "../setup/def.h"
+#include <genie/def.h>
 #include "str.h"
 
 #include <string.h>

@@ -16,9 +16,9 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
-#include "../setup/dbg.h"
-#include "../setup/def.h"
-#include "../setup/res.h"
+#include <genie/dbg.h>
+#include <genie/def.h>
+#include <genie/res.h>
 
 #include "cfg.h"
 #include "drs.h"

@@ -7,7 +7,7 @@
  * Copyright by Folkert van Verseveld.
  */
 
-#include "../setup/dbg.h"
+#include <genie/dbg.h>
 
 #include "world.hpp"
 #include "game.hpp"

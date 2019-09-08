@@ -1,7 +1,8 @@
 /* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #include "gfx.h"
-#include "../setup/def.h"
+
+#include <genie/def.h>
 
 #include <stdio.h>
 #include <SDL2/SDL_image.h>

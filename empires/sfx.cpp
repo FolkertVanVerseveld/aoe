@@ -12,8 +12,8 @@
 
 #include "cfg.h"
 #include "fs.h"
-#include "../setup/dbg.h"
-#include "../setup/def.h"
+#include <genie/dbg.h>
+#include <genie/def.h>
 #include "drs.h"
 
 #define SFX_CHANNEL_COUNT 20

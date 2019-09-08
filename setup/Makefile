@@ -2,7 +2,7 @@
 .PHONY: default all clean
 
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -std=gnu11
+CFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -std=gnu11 -I../include/
 LDLIBS=
 LDFLAGS?=
 DEBUG_LDLIBS?=
@@ -26,14 +26,10 @@ SDL_LDLIBS = $(shell pkg-config --cflags --libs sdl2) -lSDL2_image -lSDL2_mixer 
 
 default: setup
 all: setup bmp
-setup: setup.o res.o def.o
-	$(CC) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) setup.o res.o def.o -o setup $(LDFLAGS) $(LDLIBS) $(SDL_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl)
-res.o: res.h res.c
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) res.c -c -o res.o $(LDFLAGS) $(LDLIBS)
-def.o: def.h def.c
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) def.c -c -o def.o $(LDFLAGS) $(LDLIBS)
-bmp: bmp.o bmp.h
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) bmp.o -o bmp $(LDFLAGS) $(LDLIBS)
+setup: setup.o
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) setup.o ../lib/libgenie.a -o setup $(LDFLAGS) $(LDLIBS) $(SDL_LDLIBS) -lpe $(shell pkg-config --cflags --libs openssl)
+bmp: bmp.o
+	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) bmp.o ../lib/libgenie.a -o bmp $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm -f setup bmp *.o

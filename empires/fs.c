@@ -24,9 +24,10 @@
 #include <dirent.h>
 #include <libgen.h>
 
-#include "../setup/dbg.h"
-#include "../setup/def.h"
-#include "errno.h"
+#include <genie/dbg.h>
+#include <genie/def.h>
+#include <genie/error.h>
+
 #include "genie.h"
 
 #ifdef _WIN32

@@ -32,10 +32,10 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_surface.h>
 
-#include "bmp.h"
-#include "dbg.h"
-#include "def.h"
-#include "res.h"
+#include <genie/bmp.h>
+#include <genie/dbg.h>
+#include <genie/def.h>
+#include <genie/res.h>
 
 #define TITLE "Age of Empires"
 
