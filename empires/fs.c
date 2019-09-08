@@ -181,7 +181,11 @@ int fs_get_path(char *buf, size_t bufsz, const char *dir, const char *file, unsi
 void fs_game_path(char *buf, size_t bufsz, const char *file)
 {
 	if (game_installed)
+#ifndef _WIN32
 		snprintf(buf, bufsz, WINE_PATH_FORMAT "/%s", username(), file);
+#else
+		snprintf(buf, bufsz, WINE_PATH_FORMAT "/%s", file);
+#endif
 	else
 		snprintf(buf, bufsz, "%s/game/%s", path_cdrom, file);
 
@@ -214,7 +218,11 @@ void fs_walk_campaign(void (*item)(void *arg, char *name), void *arg, char *buf,
 
 		if ((ext = strrchr(entry->d_name, '.')) && !strcmp(ext + 1, "cpn")) {
 			if (game_installed)
+#ifndef _WIN32
 				snprintf(buf, bufsz, WINE_PATH_FORMAT "/campaign/%s", username(), entry->d_name);
+#else
+				snprintf(buf, bufsz, WINE_PATH_FORMAT "/campaign/%s", entry->d_name);
+#endif
 			else
 				snprintf(buf, bufsz, "%s/game/campaign/%s", path_cdrom, entry->d_name);
 			item(arg, buf);
@@ -245,7 +253,11 @@ int fs_walk_ext(const char *dir, const char *accept, void (*item)(void *arg, cha
 		char *ext;
 
 		if ((ext = strrchr(entry->d_name, '.')) && !strcasecmp(ext + 1, accept)) {
+#ifndef _WIN32
 			snprintf(buf, bufsz, WINE_PATH_FORMAT "/%s/%s", username(), dir, entry->d_name);
+#else
+			snprintf(buf, bufsz, WINE_PATH_FORMAT "/%s/%s", dir, entry->d_name);
+#endif
 			item(arg, buf);
 		}
 	}
