@@ -25,9 +25,6 @@
 static void *scratch;
 static size_t scratch_size;
 
-#define RT_BITMAP 1
-#define RT_STRING 5
-
 #define PE_DATA_ENTRY_NAMESZ 64
 
 struct pe_data_entry {
@@ -585,23 +582,31 @@ int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size)
 	struct pe_data_entry entry;
 	uint16_t *data;
 	//dbgf("load_string %04X\n", id);
-	if (!pe_load_data_entry(&lib->ctx, lib->res, &entry, RT_STRING, id)) {
-		data = entry.data;
-		for (unsigned i = 0, n = id % 16; i < n; ++i)
-			data += *data + 1;
+	if (pe_load_data_entry(&lib->ctx, lib->res, &entry, RT_STRING, id))
+		return 1;
+
+	data = entry.data;
+	for (unsigned i = 0, n = id % 16; i < n; ++i)
+		data += *data + 1;
+	str[size - 1] = '\0';
+	// FIXME quick and dirty UTF16 to ASCII conversion
+	size_t i, n;
+	for (i = 0, n = *data; i < size && i < n; ++i)
+		str[i] = data[i + 1];
+	if (i < size)
+		str[i] = '\0';
+	else
 		str[size - 1] = '\0';
-		// FIXME quick and dirty UTF16 to ASCII conversion
-		size_t i, n;
-		for (i = 0, n = *data; i < size && i < n; ++i)
-			str[i] = data[i + 1];
-		if (i < size)
-			str[i] = '\0';
-		else
-			str[size - 1] = '\0';
-		//dbgf("str: %s\n", str);
-		return 0;
-	}
-	return 1;
+	//dbgf("str: %s\n", str);
+
+	// now try our own version and compare
+	char cmp[4096];
+	pe_load_string(id, cmp, sizeof cmp);
+
+	if (strcmp(str, cmp))
+		fprintf(stderr, "diff:\n%s\n%s", str, cmp);
+
+	return 0;
 }
 
 // FIXME also support big endian machines
@@ -619,7 +624,7 @@ int load_bitmap(struct pe_lib *lib, unsigned id, void **data, size_t *size)
 	if (!offset)
 		return 1;
 	hdr = scratch;
-	hdr->bfType = 0x4D42;
+	hdr->bfType = BMP_BF_TYPE;
 	hdr->bfSize = entry.size + sizeof *hdr;
 	hdr->bfReserved1 = hdr->bfReserved2 = 0;
 	hdr->bfOffBits = offset + sizeof *hdr;

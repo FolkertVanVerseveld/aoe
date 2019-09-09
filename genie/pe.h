@@ -226,6 +226,8 @@ void pe_init(struct pe *pe);
 int pe_open(struct pe *pe, const char *path);
 void pe_close(struct pe *pe);
 
+int pe_load_string(unsigned id, char *str, size_t size);
+
 #ifdef __cplusplus
 }
 #endif
