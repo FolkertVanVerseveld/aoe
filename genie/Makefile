@@ -23,7 +23,8 @@ OBJECTS=\
 	def.o \
 	res.o \
 	fs.o \
-	memory.o
+	memory.o \
+	pe.o
 
 default: ../lib/libgenie.a
 

@@ -1,4 +1,4 @@
-/* Copyright 2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+/* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
  * PE resource wrapper API
@@ -11,11 +11,14 @@
 #include <genie/bmp.h>
 #include <genie/dbg.h>
 #include <genie/def.h>
+#include <genie/memory.h>
 
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "pe.h"
 
 #ifndef _WIN32
 
@@ -483,12 +486,20 @@ int pe_lib_open(struct pe_lib *lib, const char *name)
 		return 1;
 	if (pe_parse(&lib->ctx) != LIBPE_E_OK)
 		return 1;
-	return (lib->res = pe_map_res(&lib->ctx)) == 0;
+	if (!(lib->res = pe_map_res(&lib->ctx)))
+		return 1;
+
+	// now side-load our own implementation
+	lib->pe = mem_alloc(sizeof(struct pe));
+	pe_init(lib->pe);
+	return pe_open(lib->pe, name);
 }
 
 void pe_lib_close(struct pe_lib *lib)
 {
 	pe_unload(&lib->ctx);
+	pe_close(lib->pe);
+	mem_free(lib->pe);
 }
 
 // NOTE strictly assumes file is at least 40 bytes

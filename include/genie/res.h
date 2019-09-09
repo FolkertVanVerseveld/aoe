@@ -31,9 +31,12 @@ struct pe_lib {
 
 	#include <libpe/pe.h>
 
+struct pe;
+
 struct pe_lib {
 	pe_ctx_t ctx;
 	NODE_PERES *res;
+	struct pe *pe;
 };
 
 #endif
