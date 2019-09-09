@@ -5,7 +5,7 @@ genie:
 	$(MAKE) -C genie
 setup: genie
 	$(MAKE) -C setup
-empires: genie setup
+empires: genie
 	$(MAKE) -C empires
 clean:
 	$(MAKE) -C genie clean

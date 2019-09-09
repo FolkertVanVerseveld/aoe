@@ -18,28 +18,11 @@ extern "C" {
 
 #include <stddef.h>
 
-#ifdef _WIN32
-// since windows already provides dll resource extraction, don't bother using libpe
-
-	#include <windows.h>
-
-struct pe_lib {
-	HMODULE module;
-};
-
-#else
-
-	#include <libpe/pe.h>
-
 struct pe;
 
 struct pe_lib {
-	pe_ctx_t ctx;
-	NODE_PERES *res;
 	struct pe *pe;
 };
-
-#endif
 
 /** Open and parse dll */
 int pe_lib_open(struct pe_lib *lib, const char *name);

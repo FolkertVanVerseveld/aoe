@@ -28,7 +28,7 @@ else
 	CFLAGS += -O3
 endif
 
-UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx -lpe $(shell pkg-config --cflags --libs openssl)
+UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx $(shell pkg-config --cflags --libs openssl)
 
 ifdef CROSS_COMPILE
 	CC=i686-w64-mingw32-gcc
