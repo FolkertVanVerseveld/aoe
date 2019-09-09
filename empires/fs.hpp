@@ -1,7 +1,7 @@
 /* Copyright 2019-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 #pragma once
 
-#include "fs.h"
+#include <genie/fs.h>
 
 // simple wrapper for fs_blob
 struct FileBlob {

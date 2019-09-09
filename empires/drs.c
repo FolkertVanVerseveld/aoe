@@ -1,10 +1,11 @@
 /* Copyright 2016-2018 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 #include "drs.h"
-#include "fs.h"
 
 #include <genie/dbg.h>
 #include <genie/def.h>
+#include <genie/fs.h>
+#include <genie/memory.h>
 
 #include <errno.h>
 #include <string.h>
@@ -48,7 +49,7 @@ void drs_map_free(struct drs_map *drs);
 
 void drs_files_init(struct drs_files *lst, size_t cap)
 {
-	lst->data = fmalloc(cap * sizeof(struct drs_map));
+	lst->data = mem_alloc(cap * sizeof(struct drs_map));
 	lst->cap = cap;
 	lst->count = 0;
 }
@@ -57,7 +58,7 @@ void drs_files_free(struct drs_files *lst)
 {
 	for (size_t i = 0, n = lst->count; i < n; ++i)
 		drs_map_free(&lst->data[i]);
-	free(lst->data);
+	mem_free(lst->data);
 }
 
 void drs_files_add(struct drs_files *lst, const char *name)
@@ -67,7 +68,7 @@ void drs_files_add(struct drs_files *lst, const char *name)
 		if (!n)
 			n = 8;
 
-		lst->data = frealloc(lst->data, n * sizeof(struct drs_map));
+		lst->data = mem_realloc(lst->data, n * sizeof(struct drs_map));
 		lst->cap = n;
 	}
 	drs_map_init(&lst->data[lst->count++], name);

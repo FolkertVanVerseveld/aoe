@@ -10,10 +10,11 @@
 #include <map>
 #include <memory>
 
-#include "cfg.h"
-#include "fs.h"
 #include <genie/dbg.h>
 #include <genie/def.h>
+#include <genie/fs.h>
+
+#include "cfg.h"
 #include "drs.h"
 
 #define SFX_CHANNEL_COUNT 20

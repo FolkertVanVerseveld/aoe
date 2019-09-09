@@ -26,6 +26,7 @@
 #include <genie/dbg.h>
 #include <genie/def.h>
 #include <genie/res.h>
+#include <genie/genie.h>
 
 #include "errno.h"
 #include "cfg.h"
@@ -35,7 +36,6 @@
 #include "math.h"
 #include "sfx.h"
 #include "cpn.h"
-#include "genie.h"
 
 #include "fs.hpp"
 #include "image.hpp"

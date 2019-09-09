@@ -38,22 +38,6 @@ char path_wine[PATH_MAX];
 int has_wine = 0;
 int game_installed;
 
-void *fmalloc(size_t size)
-{
-	void *ptr;
-	if (!(ptr = malloc(size)))
-		panic("Out of memory");
-	return ptr;
-}
-
-void *frealloc(void *ptr, size_t size)
-{
-	void *blk;
-	if (!(blk = realloc(ptr, size)))
-		panic("Out of memory");
-	return blk;
-}
-
 void show_error(const char *str)
 {
 	fprintf(stderr, "%s\n", str);

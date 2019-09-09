@@ -486,6 +486,11 @@ int pe_lib_open(struct pe_lib *lib, const char *name)
 	return (lib->res = pe_map_res(&lib->ctx)) == 0;
 }
 
+void pe_lib_close(struct pe_lib *lib)
+{
+	pe_unload(&lib->ctx);
+}
+
 // NOTE strictly assumes file is at least 40 bytes
 uint32_t img_pixel_offset(const void *data, size_t n)
 {
@@ -629,6 +634,11 @@ int pe_lib_open(struct pe_lib *lib, const char *name)
 		return 1;
 	}
 	return 0;
+}
+
+void pe_lib_close(struct pe_lib *lib)
+{
+	CloseHandle(lib->module);
 }
 
 int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size)

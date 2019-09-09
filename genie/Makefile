@@ -21,7 +21,9 @@ endif
 
 OBJECTS=\
 	def.o \
-	res.o
+	res.o \
+	fs.o \
+	memory.o
 
 default: ../lib/libgenie.a
 

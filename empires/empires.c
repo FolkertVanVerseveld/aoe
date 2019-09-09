@@ -19,10 +19,10 @@
 #include <genie/dbg.h>
 #include <genie/def.h>
 #include <genie/res.h>
+#include <genie/fs.h>
 
 #include "cfg.h"
 #include "drs.h"
-#include "fs.h"
 
 #include "gfx.h"
 #include "sfx.h"
@@ -427,5 +427,7 @@ int main(int argc, char **argv)
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+
+	pe_lib_close(&lib_lang);
 	return 0;
 }

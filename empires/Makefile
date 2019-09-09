@@ -46,7 +46,6 @@ OBJECTS=empires.o \
 	editor.o \
 	game.o \
 	qtree.o \
-	fs.o \
 	drs.o \
 	gfx.o \
 	sfx.o \
@@ -65,7 +64,7 @@ empires.o: empires.c cfg.h
 game.o: game.hpp game.cpp ui.h image.hpp render.hpp world.hpp drs.h lang.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) game.cpp -c -o game.o $(LDFLAGS) $(LDLIBS)
 
-ui.o: ui.h ui.cpp gfx.o game.o editor.o scenario.o cfg.h sfx.o math.h fs.o
+ui.o: ui.h ui.cpp gfx.o game.o editor.o scenario.o cfg.h sfx.o math.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ui.cpp -c -o ui.o $(LDFLAGS) $(LDLIBS)
 editor.o: editor.cpp editor.hpp game.hpp world.hpp
 scenario.o: scenario.cpp scenario.hpp cpn.h scn.h
@@ -79,8 +78,6 @@ gfx.o: gfx.h gfx.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) gfx.c -c -o gfx.o $(LDFLAGS) $(LDLIBS)
 sfx.o: sfx.h sfx.cpp cfg.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) sfx.cpp -c -o sfx.o $(LDFLAGS) $(LDLIBS)
-fs.o: fs.h fs.c ../include/genie/def.h
-	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) fs.c -c -o fs.o $(LDFLAGS) $(LDLIBS)
 cpn.o: cpn.h cpn.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) cpn.c -c -o cpn.o $(LDFLAGS) $(LDLIBS)
 drs.o: drs.c drs.h res.h

@@ -1,10 +1,13 @@
-.PHONY: default clean setup empires
+.PHONY: default clean genie setup empires
 
 default: empires
-setup:
-	cd setup && $(MAKE) && cd ..
-empires: setup
-	cd empires && $(MAKE) && cd ..
+genie:
+	$(MAKE) -C genie
+setup: genie
+	$(MAKE) -C setup
+empires: genie setup
+	$(MAKE) -C empires
 clean:
-	cd setup && $(MAKE) clean && cd ..
-	cd empires && $(MAKE) clean && cd ..
+	$(MAKE) -C genie clean
+	$(MAKE) -C setup clean
+	$(MAKE) -C empires clean

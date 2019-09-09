@@ -1,6 +1,10 @@
 /* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
-#include "fs.h"
+#ifndef _POSIX_C_SOURCE
+	#define _POSIX_C_SOURCE 200809L
+#endif
+
+#include <genie/fs.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -8,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifndef _WIN32
@@ -27,13 +32,17 @@
 #include <genie/dbg.h>
 #include <genie/def.h>
 #include <genie/error.h>
-
-#include "genie.h"
+#include <genie/genie.h>
 
 #ifdef _WIN32
 	#define INVALID_MAPPING NULL
 #else
 	#define INVALID_MAPPING MAP_FAILED
+#endif
+
+// MAP_FILE may be undefined because it is legacy
+#ifndef MAP_FILE
+	#define MAP_FILE 0
 #endif
 
 void fs_blob_init(struct fs_blob *b)

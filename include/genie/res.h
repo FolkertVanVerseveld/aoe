@@ -41,6 +41,8 @@ struct pe_lib {
 /** Open and parse dll */
 int pe_lib_open(struct pe_lib *lib, const char *name);
 
+void pe_lib_close(struct pe_lib *lib);
+
 /** Fetch text from resource table */
 int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size);
 
