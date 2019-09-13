@@ -4,4 +4,7 @@ drs
 dview
 scn
 wave
+pedump
+pestat
+rsrc
 *.o
