@@ -19,6 +19,14 @@ else
 	CFLAGS += -O3
 endif
 
+ifdef CROSS_COMPILE
+	CC=i686-w64-mingw32-gcc
+	CFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
+
+	CXX=i686-w64-mingw32-g++
+	CXXFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
+endif
+
 OBJECTS=\
 	def.o \
 	res.o \

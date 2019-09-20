@@ -20,8 +20,6 @@
 
 #include "pe.h"
 
-#ifndef _WIN32
-
 static void *scratch;
 static size_t scratch_size;
 
@@ -193,28 +191,3 @@ int load_bitmap(struct pe_lib *lib, unsigned id, void **data, size_t *size)
 	return 1;
 #endif
 }
-
-#else
-// win32 implementation here...
-	#include <windows.h>
-
-int pe_lib_open(struct pe_lib *lib, const char *name)
-{
-	lib->module = LoadLibrary(name);
-	if (!lib->module) {
-		fprintf(stderr, "pe_lib_open: failed for %s\n", name);
-		return 1;
-	}
-	return 0;
-}
-
-void pe_lib_close(struct pe_lib *lib)
-{
-	CloseHandle(lib->module);
-}
-
-int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size)
-{
-	return LoadString(lib->module, id, str, size) == 0;
-}
-#endif

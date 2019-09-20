@@ -20,6 +20,11 @@ extern "C" {
 
 /* Paths to CDROM and wine installed directory */
 
+// This is necessary as it also defines PATH_MAX
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 // XXX http://insanecoding.blogspot.com/2007/11/pathmax-simply-isnt.html
 #ifndef PATH_MAX
 #define PATH_MAX 4096
