@@ -13,6 +13,7 @@ LDLIBS=-lstdc++ -lmingw32 -lgdi32 -lole32 -lcomdlg32 -lntdll -lwinmm
 
 MAIN= \
 	aoe \
+	font \
 	menu \
 	regedit \
 	rp \

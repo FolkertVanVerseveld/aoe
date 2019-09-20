@@ -6,6 +6,7 @@
 *.bin
 # binaries
 aoe
+font
 menu
 resinfo
 regedit
