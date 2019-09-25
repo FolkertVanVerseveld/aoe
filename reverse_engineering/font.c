@@ -13,7 +13,6 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	PAINTSTRUCT ps;
 	HDC hdc;
-	RECT rect;
 
 	switch (msg) {
 	case WM_DESTROY:
@@ -24,7 +23,6 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		{
 		HFONT hfont;
 		RECT rect;
-		SIZE dim;
 		TEXTMETRIC fm; // https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-textmetrica
 		const char *fname = "Arial";
 		int pt = 12;
@@ -73,7 +71,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 			SelectObject(hdc, hfont);
 			{
-				int glyph_start = fm.tmFirstChar, glyph_end = fm.tmLastChar;
+				int glyph_start = fm.tmFirstChar;
 
 				SetBkMode(hdc, OPAQUE);
 				SetBkColor(hdc, RGB(0xff, 0xff, 0xff));
@@ -128,7 +126,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						DrawText(hdc, text, -1, &rect, DT_NOCLIP); // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-drawtext
 						GetTextExtentPoint32A(hdc, text, 1, &dim);
 
-						printf("%02X: %d,%d\n", glyph, dim.cx, dim.cy);
+						printf("%02X: %ld,%ld\n", glyph, dim.cx, dim.cy);
 					}
 				}
 			}
@@ -147,6 +145,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
 	MSG msg;
 	WNDCLASSEX window;
+
+	(void)hPrevInstance;
+	(void)lpCmdLine;
+	(void)nShowCmd;
 
 	ZeroMemory(&window, sizeof window);
 

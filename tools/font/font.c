@@ -27,18 +27,19 @@ struct fnt_tm {
 	int tm_ohang;
 	int tm_dasx;
 	int tm_dasy;
-	char tm_chrfst;
-	char tm_chrend;
-	char tm_chrdef;
-	char tm_chrbrk;
-	char tm_italic;
-	char tm_uline;
-	char tm_struck;
-	char tm_paf;
-	char tm_cs;
+	unsigned char tm_chrfst;
+	unsigned char tm_chrend;
+	unsigned char tm_chrdef;
+	unsigned char tm_chrbrk;
+	unsigned char tm_italic;
+	unsigned char tm_uline;
+	unsigned char tm_struck;
+	unsigned char tm_paf;
+	unsigned char tm_cs;
 } fnt_tm;
 
 struct fnt_cs {
+	int max_w, max_h;
 	int data[2 * 256];
 } fnt_cs;
 
@@ -91,15 +92,16 @@ int tm_read(FILE *f, struct fnt_tm *tm)
 		&args[8]) != 20)
 		return 0;
 
-	tm->tm_chrfst = args[0];
-	tm->tm_chrend = args[1];
-	tm->tm_chrdef = args[2];
-	tm->tm_chrbrk = args[3];
-	tm->tm_italic = args[4];
-	tm->tm_uline = args[5];
-	tm->tm_struck = args[6];
-	tm->tm_paf = args[7];
-	tm->tm_cs = args[8];
+	tm->tm_chrfst = args[0] & 0xff;
+	tm->tm_chrend = args[1] & 0xff;
+	tm->tm_chrdef = args[2] & 0xff;
+	tm->tm_chrbrk = args[3] & 0xff;
+	tm->tm_italic = args[4] & 0xff;
+	tm->tm_uline = args[5] & 0xff;
+	tm->tm_struck = args[6] & 0xff;
+	tm->tm_paf = args[7] & 0xff;
+	tm->tm_cs = args[8] & 0xff;
+
 	return 1;
 }
 
@@ -107,9 +109,23 @@ int cs_read(FILE *f, struct fnt_cs *cs, unsigned count)
 {
 	unsigned dummy;
 
-	for (unsigned i = 0; i < count; ++count)
-		if (fscanf(f, "%2X: %d,%d\n", &dummy, &cs->data[2 * i + 0], &cs->data[2 * i + 1]) != 3)
+	cs->max_w = 0;
+	cs->max_h = 0;
+
+	for (unsigned i = 0; i < count; ++i) {
+		int w, h;
+
+		if (fscanf(f, "%2X: %d,%d\n", &dummy, &w, &h) != 3)
 			return 0;
+
+		if (w > cs->max_w)
+			cs->max_w = w;
+		if (h > cs->max_h)
+			cs->max_h = h;
+
+		cs->data[2 * (i + fnt_tm.tm_chrfst) + 0] = w;
+		cs->data[2 * (i + fnt_tm.tm_chrfst) + 1] = h;
+	}
 
 	return 1;
 }
@@ -120,7 +136,8 @@ void draw_textlen(int x, int y, const char *text, unsigned count)
 	int tx = x, ty = y;
 
 	for (const unsigned char *ptr = (const unsigned char*)text; count; ++ptr, --count) {
-		int ch = *ptr;
+		int gpos, gx, gy, gw, gh;
+		unsigned ch = *ptr;
 
 		// treat invalid characters as break
 		if (ch < fnt_tm.tm_chrfst || ch > fnt_tm.tm_chrend)
@@ -134,8 +151,25 @@ void draw_textlen(int x, int y, const char *text, unsigned count)
 			ty += fnt_tm.tm_height;
 		}
 
+		gw = fnt_cs.data[2 * ch + 0];
+		gh = fnt_cs.data[2 * ch + 1];
+		gpos = ch - fnt_tm.tm_chrfst;
+		gy = gpos / 16;
+		gx = gpos % 16;
+
 		ren_pos.x = tx;
 		ren_pos.y = ty;
+		ren_pos.w = gw;
+		ren_pos.h = gh;
+
+		tex_pos.x = gx * fnt_cs.max_w;
+		tex_pos.y = gy * fnt_cs.max_h;
+		tex_pos.w = gw;
+		tex_pos.h = gh;
+
+		SDL_RenderCopy(renderer, tex_font, &tex_pos, &ren_pos);
+
+		tx += gw;
 	}
 }
 
@@ -146,11 +180,10 @@ void draw_text(int x, int y, const char *str)
 
 void display(void)
 {
-	SDL_SetRenderDrawColor(renderer, 0xf0, 0xf0, 0xf0, 0);
+	SDL_SetRenderDrawColor(renderer, 0xf0, 0, 0, 0);
 	SDL_RenderClear(renderer);
 
-	/* TODO render image */
-	SDL_RenderCopy(renderer, tex_font, NULL, NULL);
+	draw_text(0, 0, "Microsoft\xa9 Age of Empires\x99");
 
 	SDL_RenderPresent(renderer);
 }
