@@ -3,8 +3,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 SDL_Window *window;
 SDL_Renderer *renderer;
@@ -263,6 +265,17 @@ int main(int argc, char **argv)
 		fprintf(stderr, "IMG_Load: %s: %s\n", argv[1], IMG_GetError());
 		goto fail_img;
 	}
+
+	#if 1
+	// change color to blue and see if that works
+	if (SDL_LockSurface(surf_font))
+		abort();
+
+	if (SDL_SetSurfaceColorMod(surf_font, 0, 0, 0xff))
+		fprintf(stderr, "SDL_SetSurfaceMod: %s\n", SDL_GetError());
+
+	SDL_UnlockSurface(surf_font);
+	#endif
 
 	if (!(tex_font = SDL_CreateTextureFromSurface(renderer, surf_font))) {
 		fprintf(stderr, "SDL_CreateTextureFromSurface: %s\n", SDL_GetError());
