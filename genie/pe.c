@@ -9,6 +9,8 @@
 
 #include <genie/dbg.h>
 
+#include <xt/string.h>
+
 void pe_init(struct pe *pe)
 {
 	fs_blob_init(&pe->blob);
@@ -99,15 +101,15 @@ static int rsrc_strtbl(struct pe *x, unsigned level, off_t diff, size_t off)
 	struct rsrcitem *i = (struct rsrcitem*)(map + off);
 
 	if (off + sizeof(struct rsrcitem) > mapsz) {
-		fprintf(stderr, "bad leaf at %zX: file too small\n", off);
+		xtfprintf(stderr, "bad leaf at %zX: file too small\n", off);
 		return 1;
 	}
 	if (diff < 0 && diff + (ssize_t)i->d_rva < 0) {
-		fprintf(stderr, "bad leaf rva -%zX\n", (size_t)-diff);
+		xtfprintf(stderr, "bad leaf rva -%zX\n", (size_t)-diff);
 		return 1;
 	}
 #if DEBUG
-	printf("%8zX ", off);
+	xtprintf("%8zX ", off);
 	for (unsigned l = 0; l < level; ++l)
 		fputs("  ", stdout);
 #endif
@@ -126,14 +128,14 @@ static int rsrc_strtbl(struct pe *x, unsigned level, off_t diff, size_t off)
 		w = *hw;
 
 #if DEBUG
-		printf("%8zX ", p);
+		xtprintf("%8zX ", p);
 		for (unsigned l = 0; l < level; ++l)
 			fputs("  ", stdout);
 #endif
 
 		if (w) {
 			if (p + 2 * w > mapsz) {
-				fprintf(stderr, "bad leaf at %zX: file too small\n", off);
+				xtfprintf(stderr, "bad leaf at %zX: file too small\n", off);
 				return 1;
 			}
 			dbgf("#%2u ", k);
@@ -164,7 +166,7 @@ static int rsrc_leaf(struct pe *x, unsigned level, size_t soff, off_t diff, size
 	size_t mapsz = x->blob.size;
 
 	if (*off + sizeof(struct rsrcditem) > mapsz) {
-		fprintf(stderr, "bad leaf at %zX: file too small\n", *off);
+		xtfprintf(stderr, "bad leaf at %zX: file too small\n", *off);
 		return 1;
 	}
 
@@ -172,7 +174,7 @@ static int rsrc_leaf(struct pe *x, unsigned level, size_t soff, off_t diff, size
 	size_t loff = soff + ri->r_rva;
 
 	if (rsrc_strtbl(x, level, diff, loff)) {
-		fprintf(stderr, "corrupt strtbl at %zX\n", loff);
+		xtfprintf(stderr, "corrupt strtbl at %zX\n", loff);
 		return 1;
 	}
 
@@ -186,7 +188,7 @@ static int rsrc_walk(struct pe *x, unsigned level, size_t soff, off_t diff, size
 	char *map = x->blob.data;
 	size_t size = x->blob.size;
 
-	dbgf("soff=%" PRIX64 ",off=%" PRIX64 "\n", (uint64_t)soff, (uint64_t)*off);
+	dbgf("soff=%zu,off=%zu\n", soff, *off);
 
 	if (*off + sizeof(struct rsrcdir) > size) {
 		fprintf(stderr, "bad rsrc node at level %u: file too small\n", level);
@@ -199,7 +201,7 @@ static int rsrc_walk(struct pe *x, unsigned level, size_t soff, off_t diff, size
 
 	struct rsrcdir *d = (struct rsrcdir*)(map + *off);
 #if DEBUG
-	printf("%8zX ", *off);
+	xtprintf("%8zX ", *off);
 	for (unsigned l = 0; l < level; ++l)
 		fputs("  ", stdout);
 	printf(
@@ -230,7 +232,7 @@ static int rsrc_walk(struct pe *x, unsigned level, size_t soff, off_t diff, size
 			poffp += sizeof(struct rsrcditem);
 		} else {
 #if DEBUG
-			printf("%8zX ", *off);
+			xtprintf("%8zX ", *off);
 			for (unsigned l = 0; l < level; ++l)
 				fputs("  ", stdout);
 
@@ -241,7 +243,7 @@ static int rsrc_walk(struct pe *x, unsigned level, size_t soff, off_t diff, size
 			if (level == 2) {
 				if (*sn != 0) {
 					if (poffp + sizeof(struct rsrcditem) >= size) {
-						fprintf(stderr, "bad offset: %zX\n", poffp);
+						xtfprintf(stderr, "bad offset: %zX\n", poffp);
 						return 1;
 					}
 					struct rsrcditem *m = (struct rsrcditem*)(map + poffp);
@@ -263,7 +265,7 @@ static int rsrc_walk(struct pe *x, unsigned level, size_t soff, off_t diff, size
 					return 1;
 
 				*off = roff;
-				printf("roff=%zX\n", roff);
+				xtprintf("roff=%zX\n", roff);
 				dir = 1;
 			} else {
 #if DEBUG
@@ -345,7 +347,7 @@ int pe_open(struct pe *this, const char *path)
 	size_t start = mz->e_cparhdr * 16;
 
 	if (start >= size) {
-		fprintf(stderr, "pe: bad exe start: got " PRIX64 ", max: " PRIX64 "\n", (uint64_t)start, (uint64_t)(size - 1));
+		xtfprintf(stderr, "pe: bad exe start: got %zu, max: %zu\n", start, size - 1);
 		return 1;
 	}
 
@@ -354,7 +356,7 @@ int pe_open(struct pe *this, const char *path)
 	if (mz->e_cblp) {
 		data_start -= 512 - mz->e_cblp;
 		if (data_start < 0) {
-			fprintf(stderr, "pe: bad data_start: -%" PRIX64 "\n", (uint64_t)-data_start);
+			xtfprintf(stderr, "pe: bad data_start: -%zd\n", data_start);
 			return 1;
 		}
 	}
@@ -383,7 +385,7 @@ int pe_open(struct pe *this, const char *path)
 	size_t pe_start = dos->e_lfanew;
 
 	if (pe_start >= size) {
-		fprintf(stderr, "bad pe start: got %zX, max: %zX\n", start, size - 1);
+		xtfprintf(stderr, "bad pe start: got %zX, max: %zX\n", start, size - 1);
 		return 1;
 	}
 
@@ -437,7 +439,7 @@ int pe_open(struct pe *this, const char *path)
 	}
 
 	this->nrvasz = pohdr->o_nrvasz;
-	dbgf("nrvasz: %" PRIX32 "\n", pohdr->o_nrvasz);
+	dbgf("nrvasz: %I32X\n", pohdr->o_nrvasz);
 
 	size_t sec_start = pe_start + sizeof(struct pehdr) + phdr->f_opthdr;
 

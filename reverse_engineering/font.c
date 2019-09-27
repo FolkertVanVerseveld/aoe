@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 #define CLASSNAME "ttfdump"
 
@@ -26,7 +27,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		TEXTMETRIC fm; // https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-textmetrica
 		const char *fname = "Arial";
 		int pt = 12;
-		fname = "Copperplate Gothic Light";
+		fname = "Cinzel Decorative";
 		pt = 28;
 
 		hdc = BeginPaint(hwnd, &ps);
@@ -36,7 +37,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				0, // 0=regular, 700=bold
 				0, 0, 0,
 				1, 0, 0, // TODO figure out what iCharSet=1 is
-				NONANTIALIASED_QUALITY, // antialiasing would be nice, but then we have to deal with transparency
+				2,//NONANTIALIASED_QUALITY, // antialiasing would be nice, but then we have to deal with transparency
 				2,
 				fname
 			);
@@ -73,9 +74,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			{
 				int glyph_start = fm.tmFirstChar;
 
-				SetBkMode(hdc, OPAQUE);
-				SetBkColor(hdc, RGB(0xff, 0xff, 0xff));
-				SetTextColor(hdc, RGB(0, 0, 0));
+				SetBkMode(hdc, TRANSPARENT);
 
 				SetBkColor(hdc, RGB(0, 0, 0));
 				SetTextColor(hdc, RGB(0xff, 0xff, 0xff));
@@ -160,7 +159,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	window.hInstance = hInstance;
 	window.hIcon = NULL;
 	window.hCursor = LoadCursor(NULL, IDC_ARROW);
-	window.hbrBackground = (HBRUSH)COLOR_WINDOW;
+	window.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));//(HBRUSH)COLOR_WINDOW;
 	window.lpszMenuName = NULL;
 	window.lpszClassName = CLASSNAME;
 

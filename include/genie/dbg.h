@@ -15,8 +15,9 @@
 #ifdef DEBUG
 
 #include <stdio.h>
+#include <xt/string.h>
 
-#define dbgf(f, ...) printf(f, ## __VA_ARGS__)
+#define dbgf(f, ...) xtprintf(f, ## __VA_ARGS__)
 #define dbgs(s) puts(s)
 
 static inline void dump(const void *mem, size_t n)

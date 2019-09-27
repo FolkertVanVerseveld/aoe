@@ -4,7 +4,7 @@ FLAGS=-Wall -Wextra -pedantic -Wno-parentheses -Wno-implicit-fallthrough -I../in
 
 CC?=gcc
 CFLAGS=$(FLAGS) -std=gnu11
-LDLIBS=-lm -lz
+LDLIBS=-lm -lz $(shell pkg-config --libs xtcommon)
 LDFLAGS?=
 DEBUG_LDLIBS?=
 DEBUG_LDFLAGS?=
@@ -31,6 +31,7 @@ endif
 UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx $(shell pkg-config --cflags --libs openssl)
 
 ifdef CROSS_COMPILE
+ifeq ($(CROSS_COMPILE),32)
 	CC=i686-w64-mingw32-gcc
 	CFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
 
@@ -38,8 +39,23 @@ ifdef CROSS_COMPILE
 	CXXFLAGS += -I"/usr/local/i686-w64-mingw32/include/"
 
 	LDFLAGS += -L"/usr/local/lib" -L"/usr/local/i686-w64-mingw32/lib/"
-	UI_LDLIBS = -lmingw32 -lSDL2 -lSDL2main -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mwin32 -lopengl32 -lstdc++ -lz
+else
+	CC=x86_64-w64-mingw32-gcc
+	CFLAGS += -I"/usr/local/x86_64-w64-mingw32/include/"
+
+	CXX=x86_64-w64-mingw32-g++
+	CXXFLAGS += -I"/usr/local/x86_64-w64-mingw32/include/"
+
+	LDFLAGS += -L"/usr/local/lib" -L"/usr/local/x86_64-w64-mingw32/lib/"
 endif
+
+	UI_LDLIBS = -lmingw32 -lSDL2 -lSDL2main -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mwin32 -lopengl32 -lstdc++ -lz
+
+	CFLAGS += -I"/usr/local/include/"
+	CXXFLAGS += -I"/usr/local/include/"
+endif
+
+LDLIBS += $(shell pkg-config --cflags xtcommon)
 
 OBJECTS=empires.o \
 	ui.o \
@@ -54,7 +70,7 @@ OBJECTS=empires.o \
 	inflate.o \
 	str.o \
 	scenario.o \
-	../lib/libgenie.a
+	../lib/libgeniegame.a
 
 default: empires
 empires: $(OBJECTS)
@@ -83,7 +99,7 @@ cpn.o: cpn.h cpn.c
 drs.o: drs.c drs.h res.h
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) drs.c -c -o drs.o $(LDFLAGS) $(LDLIBS)
 
-../lib/libgenie.a:
+../lib/libgeniegame.a:
 	$(MAKE) -C ../genie/
 
 ../setup/def.o: ../setup/def.h ../setup/def.c

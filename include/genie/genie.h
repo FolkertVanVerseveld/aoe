@@ -14,6 +14,9 @@ extern "C" {
 void open_readme(void);
 void video_play(const char *name);
 
+int GE_Init(int *pargc, char **argv);
+int GE_Quit(void);
+
 #ifdef __cplusplus
 }
 #endif

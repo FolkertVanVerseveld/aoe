@@ -19,6 +19,7 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
+#include <genie/genie.h>
 #include <genie/dbg.h>
 #include <genie/def.h>
 #include <genie/res.h>
@@ -373,6 +374,11 @@ void video_play(const char *name)
 
 int main(int argc, char **argv)
 {
+	int err;
+
+	if ((err = GE_Init(&argc, argv)))
+		return err;
+
 	cfg_parse(&cfg, argc, argv);
 
 	if (!find_setup_files())
@@ -432,5 +438,5 @@ int main(int argc, char **argv)
 	SDL_Quit();
 
 	pe_lib_close(&lib_lang);
-	return 0;
+	return GE_Quit();
 }
