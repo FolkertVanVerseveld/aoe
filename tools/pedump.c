@@ -14,6 +14,11 @@
  * QWORD = 64 bits
  */
 
+struct pestr {
+	uint16_t length;
+	char data[];
+};
+
 // NO typedef bullshit like windoze uses ad nauseam!
 // also use our own names for our own sanity
 
@@ -208,6 +213,13 @@ struct rsrctbl {
 struct rsrcditem {
 	uint32_t r_id;
 	uint32_t r_rva;
+};
+
+struct rsrcentry {
+	uint32_t e_addr; // OffsetToData
+	uint32_t e_size; // Size
+	uint32_t e_cp; // CodePage
+	uint32_t e_res; // Reserved
 };
 
 // IMAGE NT HEADERS
@@ -433,8 +445,10 @@ void dump_sechdr(const struct sechdr *hdr, size_t count)
 
 #define RSRC_DIR 0x80000000
 
-#define DATA_OFFSET(data, ptr) ((size_t)((const char*)ptr - (const char*)data))
+#define DATA_OFFSET(data, ptr) ((uint64_t)((const char*)ptr - (const char*)data))
 
+// Only define resource types if we are not on windoze
+#ifndef _WIN32
 #define RT_UNKNOWN      0
 #define RT_CURSOR       1
 #define RT_BITMAP       2
@@ -455,6 +469,7 @@ void dump_sechdr(const struct sechdr *hdr, size_t count)
 #define RT_VXD          20
 #define RT_ANICURSOR    21
 #define RT_ANIICON      22
+#endif
 
 static const char *rt_types[] = {
 	"unknown",
@@ -481,7 +496,111 @@ static const char *rt_types[] = {
 	"animated icon",
 };
 
-int dump_typedir(const struct rsrctbl *root, const struct rsrcditem *item, const void *data, size_t size)
+int dump_langdir(const struct sechdr *sec, const struct rsrctbl *root, const struct rsrctbl *typedir, const void *data, size_t size, uint32_t count, uint32_t type)
+{
+	const char *end = (char*)data + size;
+
+	if ((const char*)&typedir[1] + count * sizeof(struct rsrcditem) >= end) {
+		fputs("bad langdir: unexpected EOF\n", stderr);
+		return 1;
+	}
+
+	const struct rsrcditem *items = (struct rsrcditem*)&typedir[1];
+
+	for (uint32_t i = 0; i < count; ++i) {
+		if (!(items[i].r_rva & RSRC_DIR)) {
+			fprintf(stderr, "bad langdir: not a subdir at %" PRIX64 "\n", DATA_OFFSET(data, &items[i]));
+			return 1;
+		}
+		printf("%8" PRIX64 ":             ResDir: id: %" PRIX32 " SubDir: %" PRIX32 "\n", DATA_OFFSET(data, &items[i]), items[i].r_id, items[i].r_rva & ~RSRC_DIR);
+
+		const struct rsrctbl *langdir = (struct rsrctbl*)((char*)root + (items[i].r_rva & ~RSRC_DIR));
+
+		if ((char*)&langdir[1] >= end) {
+			fprintf(stderr, "bad langdir: invalid subdir location %" PRIX32 "\n", items[i].r_rva & ~RSRC_DIR);
+			return 1;
+		}
+
+		time_t time = langdir->r_time;
+
+		printf("%8" PRIX64 ":                 ResTbl Flags: %" PRIX32 " Named: %" PRIX32 " IDs: %" PRIX32 " v%" PRIX16 ".%" PRIX16 " %s",
+			DATA_OFFSET(data, langdir), langdir->r_flags, langdir->r_nname, langdir->r_nid, langdir->r_major, langdir->r_minor, ctime(&time));
+
+		// NOTE we assume that langdir->r_nid == 1 && langdir->r_nname == 0
+
+		const struct rsrcditem *leaf = (struct rsrcditem*)&langdir[1];
+
+		if ((char*)&leaf[1] >= end) {
+			fputs("bad resource leaf: unexpected EOF\n", stderr);
+			return 1;
+		}
+
+		// parse language item
+		printf("%8" PRIX64 ":                     ResLang: ID: %" PRIX32 " SubDir: %" PRIX32 "\n",
+			DATA_OFFSET(data, leaf), leaf->r_id, leaf->r_rva);
+
+		const struct rsrcentry *entry = (struct rsrcentry*)((char*)root + leaf->r_rva);
+
+		if ((char*)&entry[1] >= end) {
+			fputs("bad resource entry: unexpected EOF\n", stderr);
+			return 1;
+		}
+
+		// real address: .rsrc_start + res.rva - image_base.rva
+		off_t e_addr = sec->s_scnptr + entry->e_addr - sec->s_vaddr;
+
+		printf("%8" PRIX64 ":                         DataEntry: CodePage: %" PRIX32 " vaddr: %" PRIX32 " paddr: %" PRIX64 " Size: %" PRIX32 "\n",
+			DATA_OFFSET(data, entry), entry->e_cp, entry->e_addr, e_addr, entry->e_size);
+
+		if ((char*)data + e_addr >= end) {
+			fprintf(stderr, "bad resource entry: address: %" PRIX64 ", max %" PRIX64 "\n",
+				e_addr, size);
+			return 1;
+		}
+
+		switch (type) {
+		case RT_STRING: {
+			/*
+			 * String tables always have 16 items.
+			 * The resources indices are implicit and based on the parent node * 16
+			 */
+			uint16_t strid = items[i].r_id * 16;
+
+			// dump the string name
+			char buf[1024];
+			// NOTE end points to last valid position
+			const uint16_t *ptr = (uint16_t*)((char*)data + e_addr), *end = (uint16_t*)((char*)data + size - 2);
+
+			for (unsigned i = 0; i < 16; ++i, ++strid) {
+				const struct pestr *str = (const struct pestr*)ptr;
+
+				if (ptr > end || ptr + str->length > end) {
+					fputs("bad string table: unexpected EOF\n", stderr);
+					return 1;
+				}
+
+				unsigned max = str->length >= sizeof buf ? sizeof buf - 1 : str->length;
+
+				++ptr;
+
+				for (unsigned j = 0; j < max; ++j)
+					buf[j] = ptr[j];
+
+				ptr += str->length;
+				buf[max] = '\0';
+
+				if (str->length)
+					printf("%8" PRIX64 ": %" PRIu16 ": Size: %" PRIu16 " Data: \"%s\"\n", DATA_OFFSET(data, str), strid, str->length, buf);
+			}
+			break;
+		}
+		}
+	}
+
+	return 0;
+}
+
+int dump_typedir(const struct sechdr *sec, const struct rsrctbl *root, const struct rsrcditem *item, const void *data, size_t size, int named)
 {
 	const char *end = (char*)data + size;
 
@@ -495,14 +614,39 @@ int dump_typedir(const struct rsrctbl *root, const struct rsrcditem *item, const
 		return 1;
 	}
 
-	if (item->r_id < ARRAY_SIZE(rt_types))
-		printf("%8" PRIX64 ":     ResDir Type: %s SubDir: %" PRIX32 "\n",
-			DATA_OFFSET(data, item), rt_types[item->r_id], item->r_rva & ~RSRC_DIR);
-	else
-		printf("%8" PRIX64 ":     ResDir Type: %" PRIX32 " SubDir: %" PRIX32 "\n",
-			DATA_OFFSET(data, item), item->r_id, item->r_rva & ~RSRC_DIR);
+	uint32_t r_id = item->r_id;
 
-	const struct rsrctbl *typedir = (const struct rsrctbl*)((char*)root + (item->r_rva & ~RSRC_DIR));
+	if (r_id < ARRAY_SIZE(rt_types)) {
+		printf("%8" PRIX64 ":     ResDir Type: %s SubDir: %" PRIX32 "\n",
+			DATA_OFFSET(data, item), rt_types[r_id], item->r_rva & ~RSRC_DIR);
+	} else {
+		if (named && (r_id & RSRC_DIR)) {
+			r_id &= ~RSRC_DIR;
+
+			const struct pestr *str = (struct pestr*)((char*)root + r_id);
+
+			if ((char*)&str[1] >= end || (char*)root + str->length >= end) {
+				fputs("bad named typedir: unexpected EOF\n", stderr);
+				return 1;
+			}
+
+			char buf[256];
+			uint16_t count = str->length >= sizeof buf ? sizeof buf - 1 : str->length;
+
+			for (uint16_t i = 0; i < count; ++i)
+				buf[i] = str->data[2 * i];
+
+			buf[count] = '\0';
+
+			printf("%8" PRIX64 ":     ResDir Name: %s SubDir: %" PRIX32 "\n",
+				DATA_OFFSET(data, item), buf, item->r_rva & ~RSRC_DIR);
+		} else {
+			printf("%8" PRIX64 ":     ResDir Type: %" PRIX32 " SubDir: %" PRIX32 "\n",
+				DATA_OFFSET(data, item), r_id, item->r_rva & ~RSRC_DIR);
+		}
+	}
+
+	const struct rsrctbl *typedir = (struct rsrctbl*)((char*)root + (item->r_rva & ~RSRC_DIR));
 
 	if ((const char*)&typedir[1] >= end) {
 		fputs("bad typedir subdir: unexpected EOF\n", stderr);
@@ -513,6 +657,38 @@ int dump_typedir(const struct rsrctbl *root, const struct rsrcditem *item, const
 
 	printf("%8" PRIX64 ":         ResTbl Flags: %" PRIX32 " Named: %" PRIX32 " IDs: %" PRIX32 " v%" PRIX16 ".%" PRIX16 " %s",
 		DATA_OFFSET(data, typedir), typedir->r_flags, typedir->r_nname, typedir->r_nid, typedir->r_major, typedir->r_minor, ctime(&time));
+
+	switch (r_id) {
+	case RT_UNKNOWN:
+	case RT_CURSOR:
+	case RT_BITMAP:
+	case RT_ICON:
+	case RT_MENU:
+	case RT_DIALOG:
+	case RT_STRING:
+	case RT_FONTDIR:
+	case RT_FONT:
+	case RT_ACCELERATOR:
+	case RT_RCDATA:
+	case RT_MESSAGETABLE:
+	case RT_GROUP_CURSOR:
+	case RT_GROUP_ICON:
+	case RT_VERSION:
+	case RT_DLGINCLUDE:
+	case RT_PLUGPLAY:
+	case RT_VXD:
+	case RT_ANICURSOR:
+	case RT_ANIICON:
+		return dump_langdir(sec, root, typedir, data, size, typedir->r_nid, item->r_id);
+	default:
+		if (named) {
+			fputs("TODO: parse named resource type\n", stderr);
+			return 0;
+		} else {
+			fprintf(stderr, "%8" PRIX64 ": Unknown resource type: %" PRIX32 "\n", DATA_OFFSET(data, item), item->r_id);
+			return 1;
+		}
+	}
 
 	return 0;
 }
@@ -537,8 +713,15 @@ void dump_rsrc(const struct sechdr *hdr, const void *data, size_t size)
 
 	const struct rsrcditem *item = (const struct rsrcditem*)&tbl[1];
 
-	for (uint32_t i = 0; i < tbl->r_nid; ++i)
-		if (dump_typedir(tbl, &item[i], data, size))
+	// FIXME support named items: setupenu.dll has them
+	uint32_t j = 0;
+
+	for (uint32_t i = 0; i < tbl->r_nname; ++i, ++j)
+		if (dump_typedir(hdr, tbl, &item[j], data, size, 1))
+			break;
+
+	for (uint32_t i = 0; i < tbl->r_nid; ++i, ++j)
+		if (dump_typedir(hdr, tbl, &item[j], data, size, 0))
 			break;
 }
 

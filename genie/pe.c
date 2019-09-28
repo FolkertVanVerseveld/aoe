@@ -305,6 +305,7 @@ found:
 	size_t off = sec->s_scnptr, poff = off;
 	size_t n = 0;
 	off_t diff = (ssize_t)sec->s_scnptr - sec->s_vaddr;
+	dbgf("diff = %zd\n", diff);
 	int ret = rsrc_walk(x, 0, sec->s_scnptr, diff, &off, 0, &poff, &n);
 
 	dbgf("node count: %zu\n", n);

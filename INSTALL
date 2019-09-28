@@ -2,11 +2,14 @@ BUILDING THE GAME
 
 All code is spread across multiple directories. The game setup installer is
 located in setup/, the original game in empires/. The game engine itself is
-located in genie/, the game in game/ and tools in tools/ (as you can see, it is
-pretty self-explanatory).
+located in genie/ and tools in tools/ (as you can see, it is pretty
+self-explanatory).
 
-Note that game/, genie/ and tools/ are pretty outdated. setup/ and empires/ are
-actively maintained.
+Note that setup/ and reverse_engineering/ are pretty outdated. genie/ and
+empires/ are actively maintained.
+
+The genie engine requires XenoTech's cross platform common library v1.0.1 or
+better, which you can find at: https://github.com/XenoTech-Inc/libxtcommon
 
 You can build the game using:
 
@@ -20,9 +23,9 @@ Where `-j8' means `use 8 cores'.
 
 INSTALLING THE GAME
 
-Before you can run the executable, you have to copy the file to your AoE
-directory so it can find and load the data files. You can run it by double
-clicking it or starting it from a shell/terminal/whatever you prefer.
+After inserting an original AoE CD-ROM, the game should automatically find all
+the necessary files. You can also build an ISO image from the original CD-ROM.
+The provided setup program is not necessary to run in order to play the game.
 
 INSTALLATION RECIPIES
 
@@ -39,7 +42,8 @@ using:
 sudo apt-get install pev libssl-dev
 
 Note that the linking order on Xubuntu 14 for openssl and pev is broken! You
-have to swap the crypto and ssl libs during linking.
+have to swap the crypto and ssl libs during linking. Also, you will need to use
+a more recent version of GCC (probably version 5 or better).
 
 Windows:
 
@@ -47,8 +51,8 @@ Currently, empires.exe and some tools are known to compile and run successfully.
 Both can be compiled either with a native MinGW toolchain or within cygwin with
 its MinGW cross-compiler.
 
-Note: Since the original text data is stored in a 32 bit dll, it is currently
-impossible to compile empires.exe for 64 bit targets.
-
 All dependencies can be downloaded from libsdl.org. You don't have to compile
 these as long as you are using MinGW or Microsoft's Visual C++ Compiler
+
+When running make with a cross compiler or MinGW, you also have to specify
+CROSS_COMPILE=1 or CROSS_COMPILE=32 if you want to build a 32-bit executable.
