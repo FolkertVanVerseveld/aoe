@@ -1,6 +1,6 @@
 .PHONY: default clean
 
-FLAGS=-Wall -Wextra -pedantic -Wno-parentheses -Wno-implicit-fallthrough -I../include/
+FLAGS=-Wall -Wextra -pedantic -Wno-parentheses -Wno-implicit-fallthrough -I../include/ $(shell pkg-config --cflags xtcommon)
 
 CC?=gcc
 CFLAGS=$(FLAGS) -std=gnu11

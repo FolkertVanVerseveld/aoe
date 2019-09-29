@@ -158,33 +158,38 @@ int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size)
 // FIXME also support big endian machines
 int load_bitmap(struct pe_lib *lib, unsigned id, void **data, size_t *size)
 {
-#if 0
 	struct pe_data_entry entry;
 	struct bmp_header *hdr;
 
 	dbgf("load_bitmap %04X\n", id);
-	if (pe_load_data_entry(&lib->ctx, lib->res, &entry, RT_BITMAP, id))
+
+	void *ptr;
+	size_t count;
+
+	if (pe_load_res(lib->pe, RT_BITMAP, id, &ptr, &count)) {
+		dbgs("load_bitmap failed");
 		return 1;
-	scratch_resize(entry.size + sizeof *hdr);
+	}
+
+	scratch_resize(count + sizeof *hdr);
 	// reconstruct bmp_header in scratch mem
-	uint32_t offset = img_pixel_offset(entry.data, entry.size);
-	if (!offset)
+	uint32_t offset = img_pixel_offset(ptr, count);
+	if (!offset) {
+		dbgs("load_bitmap: bogus offset");
 		return 1;
+	}
+
 	hdr = scratch;
 	hdr->bfType = BMP_BF_TYPE;
 	hdr->bfSize = entry.size + sizeof *hdr;
 	hdr->bfReserved1 = hdr->bfReserved2 = 0;
 	hdr->bfOffBits = offset + sizeof *hdr;
 
-	memcpy(hdr + 1, entry.data, entry.size);
+	memcpy(hdr + 1, ptr, count);
 	dump_bmp(hdr, hdr->bfSize);
 
 	*data = hdr;
-	*size = entry.size + sizeof *hdr;
+	*size = count + sizeof *hdr;
 
 	return 0;
-#else
-	// FIXME integrate uncommented code above
-	return pe_load_res(lib->pe, RT_BITMAP, id, &data, &size);
-#endif
 }
