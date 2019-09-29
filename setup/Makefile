@@ -3,7 +3,7 @@
 
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -Wno-parentheses -std=gnu11 -I../include/
-LDLIBS=
+LDLIBS=$(shell pkg-config --libs xtcommon)
 LDFLAGS?=
 DEBUG_LDLIBS?=
 DEBUG_LDFLAGS?=

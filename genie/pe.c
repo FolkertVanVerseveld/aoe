@@ -4,12 +4,42 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <inttypes.h>
 #include <sys/types.h>
 
 #include <genie/dbg.h>
 
 #include <xt/string.h>
+
+#define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
+
+/*
+ * BYTE = 8 bits
+ * WORD = 16 bits
+ * DWORD = 32 bits
+ * QWORD = 64 bits
+ */
+
+struct pestr {
+	uint16_t length;
+	char data[];
+};
+
+static inline size_t peopthdr_size(const union peopthdr *opt)
+{
+	return opt->hdr32.coff.o_magic == 0x10b ? sizeof(struct peopthdr32) : sizeof(struct peopthdr64);
+}
+
+static inline uint32_t peopthdr_rva_count(const union peopthdr *opt)
+{
+	return opt->hdr32.coff.o_magic == 0x10b ? opt->hdr32.o_nrvasz : opt->hdr64.o_nrvasz;
+}
+
+static inline size_t penthdr_size(const struct penthdr *nt)
+{
+	return sizeof *nt - sizeof(union peopthdr) + peopthdr_size(&nt->OptionalHeader);
+}
 
 void pe_init(struct pe *pe)
 {
@@ -22,294 +52,8 @@ void pe_init(struct pe *pe)
 	pe->peopt = NULL;
 	pe->nrvan = pe->nrvasz = 0;
 	pe->sec = NULL;
+	pe->sec_rsrc = NULL;
 	pe->rsrc = NULL;
-}
-
-#define RSRC_NLEAF 16
-
-#define HEAPSZ 65536
-
-struct rsrcstr {
-	const uint16_t length;
-	const char str[];
-};
-
-struct rstrptr {
-	unsigned id;
-	struct rsrcstr *str;
-};
-
-static struct strheap {
-	struct rstrptr a[HEAPSZ];
-	unsigned n;
-	unsigned str_id;
-} strtbl;
-
-#define parent(x) (((x)-1)/2)
-#define right(x) (2*((x)+1))
-#define left(x) (right(x)-1)
-
-static inline void swap(struct strheap *h, unsigned a, unsigned b)
-{
-	struct rstrptr tmp;
-	tmp = h->a[a];
-	h->a[a] = h->a[b];
-	h->a[b] = tmp;
-}
-
-static inline int rptrcmp(struct rstrptr *a, struct rstrptr *b)
-{
-	return a->id - b->id;
-}
-
-static inline void siftup(struct strheap *h, unsigned i)
-{
-	register unsigned j;
-	register int cmp;
-	while (i) {
-		j = parent(i);
-		if ((cmp = rptrcmp(&h->a[j], &h->a[i])) > 0)
-			swap(h, j, i);
-		else
-			break;
-		i = j;
-	}
-}
-
-static inline void put(struct strheap *h, struct rstrptr *i)
-{
-	assert(h->n < HEAPSZ);
-	h->a[h->n] = *i;
-	siftup(h, h->n++);
-}
-
-#if 0
-static void dump(const struct strheap *h)
-{
-	unsigned i;
-	printf("heap len=%d\n", h->n);
-	for (i = 0; i < h->n; ++i)
-		printf(" %d", h->a[i].id);
-	putchar('\n');
-}
-#endif
-
-static int rsrc_strtbl(struct pe *x, unsigned level, off_t diff, size_t off)
-{
-	char *map = x->blob.data;
-	size_t mapsz = x->blob.size;
-	struct rsrcitem *i = (struct rsrcitem*)(map + off);
-
-	if (off + sizeof(struct rsrcitem) > mapsz) {
-		xtfprintf(stderr, "bad leaf at %zX: file too small\n", off);
-		return 1;
-	}
-	if (diff < 0 && diff + (ssize_t)i->d_rva < 0) {
-		xtfprintf(stderr, "bad leaf rva -%zX\n", (size_t)-diff);
-		return 1;
-	}
-#if DEBUG
-	xtprintf("%8zX ", off);
-	for (unsigned l = 0; l < level; ++l)
-		fputs("  ", stdout);
-#endif
-
-	size_t pp, p = i->d_rva + diff;
-	pp = p;
-
-	dbgf("strtbl at %zX: %zX bytes\n", p, (size_t)i->d_size);
-
-	uint16_t j, k, n, w, *hw;
-	char *str, buf[65536];
-
-	for (k = 0; p < pp + i->d_size; ++k) {
-		hw = (uint16_t*)(map + p);
-		p += sizeof(uint16_t);
-		w = *hw;
-
-#if DEBUG
-		xtprintf("%8zX ", p);
-		for (unsigned l = 0; l < level; ++l)
-			fputs("  ", stdout);
-#endif
-
-		if (w) {
-			if (p + 2 * w > mapsz) {
-				xtfprintf(stderr, "bad leaf at %zX: file too small\n", off);
-				return 1;
-			}
-			dbgf("#%2u ", k);
-			for (str = map + p, j = 0, n = w; j < n; str += 2)
-				buf[j++] = *str;
-			buf[j++] = '\0';
-			dbgs(buf);
-
-			struct rstrptr ptr;
-			ptr.id = strtbl.str_id + k;
-			ptr.str = (struct rsrcstr*)(map + p - 2);
-
-			dbgf("rsrc heap: put (%u,%s) @%" PRIX64 "\n", ptr.id, buf, (uint64_t)p);
-			put(&strtbl, &ptr);
-		} else {
-			printf("#%2u\n", k);
-		}
-
-		p += w * 2;
-	}
-
-	return 0;
-}
-
-static int rsrc_leaf(struct pe *x, unsigned level, size_t soff, off_t diff, size_t *off)
-{
-	char *map = x->blob.data;
-	size_t mapsz = x->blob.size;
-
-	if (*off + sizeof(struct rsrcditem) > mapsz) {
-		xtfprintf(stderr, "bad leaf at %zX: file too small\n", *off);
-		return 1;
-	}
-
-	struct rsrcditem *ri = (struct rsrcditem*)(map + *off);
-	size_t loff = soff + ri->r_rva;
-
-	if (rsrc_strtbl(x, level, diff, loff)) {
-		xtfprintf(stderr, "corrupt strtbl at %zX\n", loff);
-		return 1;
-	}
-
-	*off += sizeof(struct rsrcditem);
-
-	return 0;
-}
-
-static int rsrc_walk(struct pe *x, unsigned level, size_t soff, off_t diff, size_t *off, unsigned tn_id, size_t *poff, size_t *sn)
-{
-	char *map = x->blob.data;
-	size_t size = x->blob.size;
-
-	dbgf("soff=%zu,off=%zu\n", soff, *off);
-
-	if (*off + sizeof(struct rsrcdir) > size) {
-		fprintf(stderr, "bad rsrc node at level %u: file too small\n", level);
-		return 1;
-	}
-	if (level == 3) {
-		fputs("bad rsrc: too many levels\n", stderr);
-		return 1;
-	}
-
-	struct rsrcdir *d = (struct rsrcdir*)(map + *off);
-#if DEBUG
-	xtprintf("%8zX ", *off);
-	for (unsigned l = 0; l < level; ++l)
-		fputs("  ", stdout);
-	printf(
-		"ResDir Named:%02X ID:%02X TimeDate:%8X Vers:%u.%02u Char:%u\n",
-		d->r_nnment, d->r_nident, d->r_timdat, d->r_major, d->r_minor, d->r_flags
-	);
-#endif
-
-	unsigned n = d->r_nnment + d->r_nident;
-	*off += sizeof(struct rsrcdir);
-
-	if (*off + n * sizeof(struct rsrcdir) > size) {
-		fprintf(stderr, "bad rsrc node at level %u: file too small\n", level);
-		return 1;
-	}
-
-	int dir = 0;
-	size_t poffp = *poff;
-
-	for (unsigned i = 0; i < n; ++i) {
-		struct rsrcditem *ri = (struct rsrcditem*)(map + *off);
-
-		dbgf("rva item = %" PRIX64 "\n", (uint64_t)*off);
-
-		if (dir) {
-			if (rsrc_walk(x, level + 1, soff, diff, off, i < d->r_nnment ? TN_NAME : TN_ID, &poffp, sn))
-				return 1;
-			poffp += sizeof(struct rsrcditem);
-		} else {
-#if DEBUG
-			xtprintf("%8zX ", *off);
-			for (unsigned l = 0; l < level; ++l)
-				fputs("  ", stdout);
-
-			printf("id=%u,rva=%X,type=%s,poff=%zX,poffp=%zX,%u\n", ri->r_id, ri->r_rva, tn_id == TN_ID ? "id" : "name", *poff, poffp, level);
-#endif
-
-			// black magic
-			if (level == 2) {
-				if (*sn != 0) {
-					if (poffp + sizeof(struct rsrcditem) >= size) {
-						xtfprintf(stderr, "bad offset: %zX\n", poffp);
-						return 1;
-					}
-					struct rsrcditem *m = (struct rsrcditem*)(map + poffp);
-					strtbl.str_id = (m->r_id - 1) * 16;
-					printf("resid=%u\n", strtbl.str_id);
-				}
-				++*sn;
-			} else if (level == 1) {
-				strtbl.str_id = (ri->r_id - 1) * 16;
-				printf("resid=%u\n", strtbl.str_id);
-			}
-
-			poffp = *off + sizeof(struct rsrcditem);
-
-			if ((ri->r_rva >> 31) & 1) {
-				size_t roff = soff + (ri->r_rva & ~(1 << 31));
-
-				if (rsrc_walk(x, level + 1, soff, diff, &roff, i < d->r_nnment ? TN_NAME : TN_ID, &poffp, sn))
-					return 1;
-
-				*off = roff;
-				xtprintf("roff=%zX\n", roff);
-				dir = 1;
-			} else {
-#if DEBUG
-				printf("%8zX ", *off);
-				for (unsigned l = 0; l < level; ++l)
-					fputs("  ", stdout);
-
-				printf("#%u ID: %8X Offset: %8X\n", i, ri->r_id, ri->r_rva);
-#endif
-				if (rsrc_leaf(x, level + 1, soff, diff, off))
-					return 1;
-			}
-		}
-	}
-	return 0;
-}
-
-static int rsrc_stat(struct pe *x)
-{
-	struct sechdr *sec = x->sec;
-	assert(sec);
-
-	unsigned i;
-	for (i = 0; i < x->peopt->o_nrvasz; ++i, ++sec) {
-		char name[9];
-		strncpy(name, sec->s_name, 9);
-		name[8] = '\0';
-
-		if (!strcmp(name, ".rsrc"))
-			goto found;
-	}
-	fputs("pe: no .rsrc\n", stderr);
-	return 1;
-found:
-	dbgf("goto %u@%zX\n", i, (size_t)sec->s_scnptr);
-
-	size_t off = sec->s_scnptr, poff = off;
-	size_t n = 0;
-	off_t diff = (ssize_t)sec->s_scnptr - sec->s_vaddr;
-	dbgf("diff = %zd\n", diff);
-	int ret = rsrc_walk(x, 0, sec->s_scnptr, diff, &off, 0, &poff, &n);
-
-	dbgf("node count: %zu\n", n);
-	return ret;
 }
 
 int pe_open(struct pe *this, const char *path)
@@ -324,8 +68,9 @@ int pe_open(struct pe *this, const char *path)
 	if (err)
 		return err;
 
-	char *data = this->blob.data;
+	const char *data = this->blob.data;
 	size_t size = this->blob.size;
+	const char *end = data + size;
 
 	if (size < sizeof(struct mz)) {
 		fputs("pe: bad dos header: file too small\n", stderr);
@@ -341,7 +86,7 @@ int pe_open(struct pe *this, const char *path)
 
 	// verify fields
 	if (mz->e_magic != DOS_MAGIC) {
-		fprintf(stderr, "pe: bad dos magic: got %" PRIX16 ", %" PRIX16 " expected\n", mz->e_magic, DOS_MAGIC);
+		xtfprintf(stderr, "pe: bad dos magic: got %I16X, %I16X expected\n", mz->e_magic, DOS_MAGIC);
 		return 1;
 	}
 
@@ -414,132 +159,46 @@ int pe_open(struct pe *this, const char *path)
 	if (!phdr->f_opthdr)
 		return 0;
 
-	if (size < sizeof(struct pehdr) + pe_start + sizeof(struct peopthdr)) {
+	if (size < sizeof(struct pehdr) + pe_start + sizeof(union peopthdr)) {
 		fputs("bad pe/coff header: file too small\n", stderr);
 		return 1;
 	}
 
 	// this is definitely a winnt file
 	this->type = XT_PEOPT;
-	struct peopthdr *pohdr = (struct peopthdr*)(data + pe_start + sizeof(struct pehdr));
+
+	const struct penthdr *nt = (struct penthdr*)(data + pe_start);
+
+	union peopthdr *pohdr = (union peopthdr*)(data + pe_start + sizeof(struct pehdr));
 	this->peopt = pohdr;
 
 	dbgf("opthdr size: %hX\n", phdr->f_opthdr);
 
-	switch (pohdr->o_chdr.o_magic) {
+	switch (pohdr->hdr32.coff.o_magic) {
 		case 0x10b:
 			dbgs("type: portable executable 32 bit");
+			this->bits = 32;
+			this->nrvasz = pohdr->hdr32.o_nrvasz;
 			break;
 		case 0x20b:
 			dbgs("type: portable executable 64 bit");
 			this->bits = 64;
+			this->nrvasz = pohdr->hdr64.o_nrvasz;
 			break;
 		default:
-			dbgf("type: unknown: %" PRIX16 "\n", pohdr->o_chdr.o_magic);
-			break;
-	}
-
-	this->nrvasz = pohdr->o_nrvasz;
-	dbgf("nrvasz: %I32X\n", pohdr->o_nrvasz);
-
-	size_t sec_start = pe_start + sizeof(struct pehdr) + phdr->f_opthdr;
-
-	// verifiy section parameters
-	if (pohdr->o_ddir.d_end) {
-		fprintf(stderr, "pe: bad data dir end marker: %lX\n", pohdr->o_ddir.d_end);
-
-		// search for end marker
-		while (++sec_start <= size - sizeof(uint64_t) && *((uint64_t*)(data + sec_start)))
-			;
-
-		if (sec_start > size - sizeof(uint64_t)) {
-			fputs("pe: data dir end marker not found\n", stderr);
+			dbgf("type: unknown: %I16X\n", pohdr->hdr32.coff.o_magic);
+			this->bits = 0;
 			return 1;
-		}
-
-		sec_start += sizeof(uint64_t);
 	}
 
-	if (sec_start + pohdr->o_nrvasz * sizeof(struct sechdr) > size) {
-		fputs("pe: bad section table: file too small\n", stderr);
-		return 1;
-	}
+	this->ddir = (union peddir*)(nt + penthdr_size(nt));
 
-	struct sechdr *sec = this->sec = (struct sechdr*)(data + sec_start);
+	// NOTE we ignore section markers
+	size_t sec_start = pe_start + sizeof(struct pehdr) + phdr->f_opthdr;
+	this->sec = (struct sechdr*)(data + sec_start);
 
-	for (unsigned i = 0; i < pohdr->o_nrvasz; ++i, ++sec) {
-		char name[9];
-
-		strncpy(name, sec->s_name, 9);
-		name[8] = '\0';
-
-		if (!name[0] && !sec->s_scnptr) {
-			this->nrvan = i;
-			break;
-		}
-
-#ifdef DEBUG
-		char buf[256];
-		uint32_t flags = sec->s_flags;
-		buf[0] = '\0';
-
-		if (flags & SF_CODE) {
-			flags &= ~SF_CODE;
-			strcat(buf, " code");
-		}
-		if (flags & SF_DATA) {
-			flags &= ~SF_DATA;
-			strcat(buf, " data");
-		}
-		if (flags & SF_BSS) {
-			flags &= ~SF_BSS;
-			strcat(buf, " bss");
-		}
-		if (flags & SF_DBG) {
-			flags &= ~SF_DBG;
-			strcat(buf, " dbg");
-		}
-		if (flags & SF_LINK) {
-			flags &= ~SF_LINK;
-			strcat(buf, " link");
-		}
-		if (flags & SF_STRIP) {
-			flags &= ~SF_STRIP;
-			strcat(buf, " strip");
-		}
-		if (flags & SF_DIRECT) {
-			flags &= ~SF_DIRECT;
-			strcat(buf, " direct");
-		}
-		if (flags & SF_FIXED) {
-			flags &= ~SF_FIXED;
-			strcat(buf, " fixed");
-		}
-		if (flags & SF_SHARE) {
-			flags &= ~SF_SHARE;
-			strcat(buf, " share");
-		}
-		if (flags & SF_EXEC) {
-			flags &= ~SF_EXEC;
-			strcat(buf, " exec");
-		}
-		if (flags & SF_READ) {
-			flags &= ~SF_READ;
-			strcat(buf, " read");
-		}
-		if (flags & SF_WRITE) {
-			flags &= ~SF_WRITE;
-			strcat(buf, " write");
-		}
-		if (flags)
-			strcat(buf, " ??");
-		dbgf("#%2u: %-8s %8" PRIX32 " %8" PRIX32 "%s\n", i, name, sec->s_scnptr, sec->s_flags, buf);
-#endif
-	}
-	dbgf("section count: %u (occupied: %u)\n", pohdr->o_nrvasz, this->nrvan);
-	dbgf("text entry: %" PRIX64 "\n", (uint64_t)(pohdr->o_chdr.o_entry));
-
-	return rsrc_stat(this);
+	dbgf("sec_start: %zu\n", sec_start);
+	return 0;
 }
 
 void pe_close(struct pe *pe)
@@ -547,30 +206,226 @@ void pe_close(struct pe *pe)
 	fs_blob_close(&pe->blob);
 }
 
-int pe_load_string(unsigned id, char *str, size_t size)
+#define RSRC_DIR 0x80000000
+
+#define DATA_OFFSET(data, ptr) ((uint64_t)((const char*)ptr - (const char*)data))
+
+#define TD_NAMED 0x01
+#define TD_DUMP_RES 0x02
+
+static const char *rt_types[] = {
+	"unknown",
+	"cursor",
+	"bitmap",
+	"icon",
+	"menu",
+	"dialog",
+	"string",
+	"font directory",
+	"font",
+	"accelerator",
+	"rc data",
+	"message table",
+	"group cursor",
+	"group icon",
+	// mysterious type 13 missing
+	[RT_VERSION] = "version",
+	"dialog include",
+	// mysterious type 18 missing
+	[RT_PLUGPLAY] = "plug and play",
+	"vxd",
+	"animated cursor",
+	"animated icon",
+};
+
+int pe_load_res(struct pe *pe, unsigned type, unsigned id, void **ptr, size_t *count)
 {
-	for (unsigned i = 0; i < strtbl.n; ++i)
-		if (strtbl.a[i].id == id) {
-			dbgf("pe: load str %u\n", id);
+	const void *data = pe->blob.data;
+	size_t size = pe->blob.size;
+	unsigned language_id = 0; // TODO support multiple languages
 
-			const struct rsrcstr *text = strtbl.a[i].str;
-			size_t copy = size;
-			if (copy > text->length)
-				copy = text->length;
+	// ensure resource section is loaded
+	if (!pe->rsrc) {
+		const struct sechdr *sec = pe->sec;
 
-			// FIXME convert UCS2 to UTF8
-			// just truncate all UCS2 chars for now
-			for (size_t j = 0; j < copy; ++j)
-				str[j] = text->str[2 * j];
+		for (unsigned i = 0, n = pe->pe->f_nsect; i < n; ++i) {
+			char name[9];
+			memcpy(name, sec[i].s_name, sizeof name - 1);
+			name[sizeof name - 1] = '\0';
 
-			if (size) {
-				if (copy < size)
-					str[copy] = '\0';
-				str[size - 1] = '\0';
+			if (!strcmp(name, ".rsrc")) {
+				dbgf("pe: load resource section (nr %u)\n", i);
+				struct rsrctbl *rsrc = (struct rsrctbl*)((char*)data + sec[i].s_scnptr);
+				if ((char*)&rsrc[1] > (char*)data + pe->blob.size) {
+					dbgs("pe: bad rsrc: too small\n");
+					return 1;
+				}
+
+				pe->rsrc = rsrc;
+				pe->sec_rsrc = &sec[i];
+				break;
 			}
-
-			return 0;
 		}
 
+		if (!pe->rsrc)
+			return 1;
+	}
+
+	dbgf("load res: type=%u id=%u\n", type, id);
+
+	struct rsrctbl *rsrc = pe->rsrc;
+	time_t time = rsrc->r_time;
+
+	const struct rsrcditem *item = (struct rsrcditem*)&rsrc[1];
+
+	if (rsrc->r_nname) {
+		dbgf("skipping %I32u named\n", rsrc->r_nname);
+		item += rsrc->r_nname;
+	}
+
+	uint32_t t_id = rsrc->r_nid;
+
+	for (uint32_t i = 0; i < rsrc->r_nid; ++i, ++item) {
+		// traverse types (level one)
+		if (item->r_id == type) {
+			t_id = i;
+			break;
+		}
+	}
+
+	if (t_id == rsrc->r_nid) {
+		dbgs("res not found");
+		return 1;
+	}
+
+	if (!(item->r_rva & RSRC_DIR)) {
+		dbgs("pe: unexpected type leaf");
+		return 1;
+	}
+
+	uint32_t rva = item->r_rva & ~RSRC_DIR;
+
+	// level two
+	const struct rsrctbl *dirtbl = (struct rsrctbl*)((char*)rsrc + rva);
+	dbgf("type: %s subdir: %I32X ids: %I16X\n", rt_types[item->r_id], rva, dirtbl->r_nid);
+
+	// skip named items
+	const struct rsrcditem *diritem = (struct rsrcditem*)&dirtbl[1];
+
+	if (dirtbl->r_nname) {
+		dbgf("skipping %I32u named dirs\n", dirtbl->r_nname);
+		diritem += dirtbl->r_nname;
+	}
+
+	unsigned dirid = dirtbl->r_nid;
+
+	for (unsigned i = 0; i < dirtbl->r_nid; ++i, ++diritem) {
+		if (!(diritem->r_rva & RSRC_DIR)) {
+			dbgs("pe: unexpected identifier leaf");
+			return 1;
+		}
+
+		if (diritem->r_id == id || (type == RT_STRING && diritem->r_id - 1 == id / 16)) {
+			dirid = i;
+			break;
+		}
+	}
+
+	if (dirid == dirtbl->r_nid) {
+		dbgs("res not found");
+		return 1;
+	}
+
+	rva = diritem->r_rva & ~RSRC_DIR;
+	dbgf("resdir: id: %X rva: %X\n", diritem->r_id, rva);
+
+	const struct rsrctbl *langtbl = (struct rsrctbl*)((char*)rsrc + rva);
+	const struct rsrcditem *langitem = (struct rsrcditem*)&langtbl[1];
+
+	unsigned langid = langtbl->r_nid;
+
+	for (unsigned i = 0; i < langtbl->r_nid; ++i, ++langitem) {
+		if (langitem->r_rva & RSRC_DIR) {
+			dbgs("pe: unexpected language id dir");
+			return 1;
+		}
+
+		if (!language_id || langitem->r_id == language_id) {
+			langid = i;
+			break;
+		}
+	}
+
+	if (langid == langtbl->r_nid) {
+		dbgs("res not found");
+		return 1;
+	}
+
+	dbgf("langtbl: id: %X rva: %X\n", langitem->r_id, langitem->r_rva);
+
+	const struct rsrcentry *entry = (struct rsrcentry*)((char*)rsrc + langitem->r_rva);
+
+	off_t e_addr = pe->sec_rsrc->s_scnptr + entry->e_addr - pe->sec_rsrc->s_vaddr;
+
+	dbgf("DataEntry: CodePage: %u vaddr: %X paddr: %X Size: %X\n",
+		entry->e_cp, entry->e_addr, e_addr, entry->e_size);
+
+	if (type != RT_STRING) {
+		*ptr = (char*)data + e_addr;
+		*count = entry->e_size;
+		return 0;
+	}
+
+	uint16_t strid = (diritem->r_id - 1) * 16;
+
+	const uint16_t *strptr = (uint16_t*)((char*)data + e_addr), *end = (uint16_t*)((char*)data + pe->blob.size - 2);
+
+	for (unsigned i = 0; i < 16; ++i, ++strid) {
+		const struct pestr *str = (struct pestr*)strptr;
+
+		if (strptr > end || strptr + str->length > end) {
+			fputs("pe: bad string table: unexpected EOF\n", stderr);
+			return 1;
+		}
+
+		++strptr;
+
+		if (strid == id) {
+			dbgf("pe: found str: id=%u, size=%I16X\n", id, str->length * 2);
+			*ptr = strptr;
+			*count = str->length * 2;
+			return 0;
+		} else {
+			strptr += str->length;
+		}
+	}
+
+	dbgs("pe: res not found in strtbl");
 	return 1;
+}
+
+int pe_load_string(struct pe *pe, unsigned id, char *str, size_t size)
+{
+	int err;
+	void *ptr;
+	size_t count;
+
+	if (err = pe_load_res(pe, RT_STRING, id, &ptr, &count))
+		return err;
+
+	if (!size)
+		return 0;
+
+	count /= 2;
+	size_t max = count >= size ? size - 1 : count;
+
+	const uint16_t *data = ptr;
+
+	for (size_t i = 0; i < count; ++i)
+		str[i] = data[i];
+
+	str[count] = '\0';
+
+	dbgf("pe_load_string: id=%u: size=%zu\n", id, count);
+	return 0;
 }

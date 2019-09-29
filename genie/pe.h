@@ -11,6 +11,7 @@ extern "C" {
 #include <stdint.h>
 
 #include <genie/fs.h>
+#include <genie/res.h>
 
 // begin win32 pe crap
 // i've renamed a lot of variables for my own sanity
@@ -48,10 +49,11 @@ struct dos {
 	uint16_t e_lfanew;
 };
 
+// IMAGE FILE HEADER
 struct pehdr {
 	uint32_t f_magic;
 	uint16_t f_mach;
-	uint16_t f_nscns;
+	uint16_t f_nsect;
 	uint32_t f_timdat;
 	uint32_t f_symptr;
 	uint32_t f_nsyms;
@@ -61,7 +63,8 @@ struct pehdr {
 
 struct coffopthdr {
 	uint16_t o_magic;
-	uint16_t o_vstamp;
+	uint8_t o_major;
+	uint8_t o_minor;
 	uint32_t o_tsize;
 	uint32_t o_dsize;
 	uint32_t o_bsize;
@@ -71,7 +74,79 @@ struct coffopthdr {
 	uint32_t o_image;
 };
 
-struct peddir {
+// IMAGE OPTIONAL HEADER
+struct peopthdr32 {
+	struct coffopthdr coff;
+	uint32_t o_alnsec;
+	uint32_t o_alnfile;
+	uint16_t o_osmajor;
+	uint16_t o_osminor;
+	uint16_t o_imajor;
+	uint16_t o_iminor;
+	uint16_t o_smajor;
+	uint16_t o_sminor;
+	uint32_t o_version;
+	uint32_t o_isize;
+	uint32_t o_hsize;
+	uint32_t o_chksum;
+	uint16_t o_sub;
+	uint16_t o_dllflags;
+	uint32_t o_sres;
+	uint32_t o_scomm;
+	uint32_t o_hres;
+	uint32_t o_hcomm;
+	uint32_t o_ldflags;
+	uint32_t o_nrvasz;
+};
+
+// IMAGE OPTIONAL HEADER PE32+
+struct peopthdr64 {
+	// we could have used coffopthdr64 here,
+	// but this does not make sense for a 64-bit PE
+	uint16_t o_magic;
+	uint8_t o_major;
+	uint8_t o_minor;
+	uint32_t o_tsize;
+	uint32_t o_dsize;
+	uint32_t o_bsize;
+	uint32_t o_entry;
+	uint32_t o_text;
+	uint64_t o_image;
+	uint32_t o_alnsec;
+	uint32_t o_alnfile;
+	uint16_t o_osmajor;
+	uint16_t o_osminor;
+	uint16_t o_imajor;
+	uint16_t o_iminor;
+	uint16_t o_smajor;
+	uint16_t o_sminor;
+	uint32_t o_version;
+	uint32_t o_isize;
+	uint32_t o_hsize;
+	uint32_t o_chksum;
+	int16_t o_sub;
+	uint16_t o_dllflags;
+	uint64_t o_sres;
+	uint64_t o_scomm;
+	uint64_t o_hres;
+	uint64_t o_hcomm;
+	uint32_t o_ldflags;
+	uint32_t o_nrvasz;
+};
+
+// IMAGE OPTIONAL HEADER
+// it's really a misnomer... the header is *not* optional
+union peopthdr {
+	struct peopthdr32 hdr32;
+	struct peopthdr64 hdr64;
+};
+
+struct peditem {
+	uint32_t d_addr; // VirtualAddress
+	uint32_t d_size; // Size
+};
+
+struct peddef {
 	uint32_t d_texp;
 	uint32_t d_nexp;
 	uint32_t d_timp;
@@ -105,73 +180,9 @@ struct peddir {
 	uint64_t d_end;
 };
 
-// PE optional header
-// it's really a misnomer... the header is *not* optional
-struct peopthdr {
-	struct coffopthdr o_chdr;
-	uint32_t o_alnsec;
-	uint32_t o_alnfile;
-	uint16_t o_osmajor;
-	uint16_t o_osminor;
-	uint16_t o_imajor;
-	uint16_t o_iminor;
-	uint16_t o_smajor;
-	uint16_t o_sminor;
-	uint32_t o_vw32;
-	uint32_t o_isize;
-	uint32_t o_hsize;
-	uint32_t o_chksum;
-	uint16_t o_sub;
-	uint16_t o_dllflags;
-	uint32_t o_sres;
-	uint32_t o_scomm;
-	uint32_t o_hres;
-	uint32_t o_hcomm;
-	uint32_t o_ldflags;
-	uint32_t o_nrvasz;
-	struct peddir o_ddir;
-};
-
-#define RT_UNKNOWN      0
-#define RT_CURSOR       1
-#define RT_BITMAP       2
-#define RT_ICON         3
-#define RT_MENU         4
-#define RT_DIALOG       5
-#define RT_STRING       6
-#define RT_FONTDIR      7
-#define RT_FONT         8
-#define RT_ACCELERATOR  9
-#define RT_RCDATA       10
-#define RT_MESSAGETABLE 11
-#define RT_GROUP_CURSOR 12
-#define RT_GROUP_ICON   14
-#define RT_VERSION      16
-#define RT_DLGINCLUDE   17
-#define RT_PLUGPLAY     19
-#define RT_VXD          20
-#define RT_ANICURSOR    21
-#define RT_ANIICON      22
-
-struct rsrcdir {
-	uint32_t r_flags;
-	uint32_t r_timdat;
-	uint16_t r_major;
-	uint16_t r_minor;
-	uint16_t r_nnment;
-	uint16_t r_nident;
-};
-
-struct rsrcditem {
-	uint32_t r_id;
-	uint32_t r_rva;
-};
-
-struct rsrcitem {
-	uint32_t d_rva;
-	uint32_t d_size;
-	uint32_t d_page;
-	uint32_t d_res;
+union peddir {
+	struct peditem items[16];
+	struct peddef data;
 };
 
 #define SF_CODE   0x00000020
@@ -200,6 +211,34 @@ struct sechdr {
 	uint32_t s_flags;
 };
 
+struct rsrctbl {
+	uint32_t r_flags;
+	uint32_t r_time;
+	uint16_t r_major;
+	uint16_t r_minor;
+	uint16_t r_nname;
+	uint16_t r_nid;
+};
+
+struct rsrcditem {
+	uint32_t r_id;
+	uint32_t r_rva;
+};
+
+struct rsrcentry {
+	uint32_t e_addr;
+	uint32_t e_size;
+	uint32_t e_cp;
+	uint32_t e_res;
+};
+
+// IMAGE NT HEADERS
+struct penthdr {
+	uint32_t Signature;
+	struct pehdr FileHeader;
+	union peopthdr OptionalHeader;
+};
+
 #define XT_UNKNOWN 0
 #define XT_MZ      1
 #define XT_DOS     2
@@ -215,18 +254,20 @@ struct pe {
 	struct mz *mz;
 	struct dos *dos;
 	struct pehdr *pe;
-	struct peopthdr *peopt;
+	union peopthdr *peopt;
 	unsigned nrvasz;
 	unsigned nrvan;
-	struct sechdr *sec;
-	struct rsrcdir *rsrc;
+	union peddir *ddir;
+	struct sechdr *sec, *sec_rsrc;
+	struct rsrctbl *rsrc;
 };
 
 void pe_init(struct pe *pe);
 int pe_open(struct pe *pe, const char *path);
 void pe_close(struct pe *pe);
 
-int pe_load_string(unsigned id, char *str, size_t size);
+int pe_load_res(struct pe *pe, unsigned type, unsigned id, void **data, size_t *size);
+int pe_load_string(struct pe *pe, unsigned id, char *str, size_t size);
 
 #ifdef __cplusplus
 }

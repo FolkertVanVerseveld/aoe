@@ -151,7 +151,7 @@ static void dump_bmp(const void *data, size_t n)
 
 int load_string(struct pe_lib *lib, unsigned id, char *str, size_t size)
 {
-	pe_load_string(id, str, size);
+	pe_load_string(lib->pe, id, str, size);
 	return 0;
 }
 
@@ -184,10 +184,7 @@ int load_bitmap(struct pe_lib *lib, unsigned id, void **data, size_t *size)
 
 	return 0;
 #else
-	(void)lib;
-	(void)id;
-	(void)data;
-	(void)size;
-	return 1;
+	// FIXME integrate uncommented code above
+	return pe_load_res(lib->pe, RT_BITMAP, id, &data, &size);
 #endif
 }

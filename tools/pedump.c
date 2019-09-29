@@ -22,8 +22,9 @@ struct pestr {
 // NO typedef bullshit like windoze uses ad nauseam!
 // also use our own names for our own sanity
 
-// IMAGE DOS HEADER
-struct dos {
+// NOTE IMAGE DOS HEADER is split into mz and dos
+
+struct mz {
 	uint16_t e_magic;
 	uint16_t e_cblp;
 	uint16_t e_cp;
@@ -38,6 +39,10 @@ struct dos {
 	uint16_t e_cs;
 	uint16_t e_lfarlc;
 	uint16_t e_ovno;
+};
+
+struct dos {
+	struct mz mz;
 	uint16_t e_res[4];
 	uint16_t e_oemid;
 	uint16_t e_oeminfo;
@@ -47,80 +52,80 @@ struct dos {
 
 // IMAGE FILE HEADER
 struct pehdr {
-	uint16_t Machine;
-	uint16_t NumberOfSections;
-	uint32_t TimeDateStamp;
-	uint32_t PointerToSymbolTable;
-	uint32_t NumberOfSymbols;
-	uint16_t SizeOfOptionalHeader;
-	uint16_t Characteristics;
+	uint16_t f_mach; // Machine
+	uint16_t f_nsect; // NumberOfSections
+	uint32_t f_time; // TimeDateStamp
+	uint32_t f_symptr; // PointerToSymbolTable
+	uint32_t f_nsym; // NumberOfSymbols
+	uint16_t f_opthdr; // SizeOfOptionalHeader
+	uint16_t f_flags; // Characteristics
 };
 
 // IMAGE OPTIONAL HEADER
 struct peopthdr32 {
-	uint16_t Magic;
-	uint8_t MajorLinkerVersion;
-	uint8_t MinorLinkerVersion;
-	uint32_t SizeOfCode;
-	uint32_t SizeOfInitializedData;
-	uint32_t SizeOfUninitializedData;
-	uint32_t AddressOfEntryPoint;
-	uint32_t BaseOfCode;
-	uint32_t BaseOfData;
-	uint32_t ImageBase;
-	uint32_t SectionAlignment;
-	uint32_t FileAlignment;
-	uint16_t MajorOperatingSystemVersion;
-	uint16_t MinorOperatingSystemVersion;
-	uint16_t MajorImageVersion;
-	uint16_t MinorImageVersion;
-	uint16_t MajorSubsystemVersion;
-	uint16_t MinorSubsystemVersion;
-	uint32_t Win32VersionValue;
-	uint32_t SizeOfImage;
-	uint32_t SizeOfHeaders;
-	uint32_t CheckSum;
-	uint16_t Subsystem;
-	uint16_t DllCharacteristics;
-	uint32_t SizeOfStackReserve;
-	uint32_t SizeOfStackCommit;
-	uint32_t SizeOfHeapCommit;
-	uint32_t SizeOfHeapReserve;
-	uint32_t LoaderFlags;
-	uint32_t NumberOfRvaAndSizes;
+	uint16_t o_magic; // Magic
+	uint8_t o_major; // MajorLinkerVersion
+	uint8_t o_minor; // MinorLinkerVersion
+	uint32_t o_tsize; // SizeOfCode
+	uint32_t o_dsize; // SizeOfInitializedData
+	uint32_t o_bsize; // SizeOfUninitializedData
+	uint32_t o_entry; // AddressOfEntryPoint
+	uint32_t o_text; // BaseOfCode
+	uint32_t o_data; // BaseOfData
+	uint32_t o_image; // ImageBase
+	uint32_t o_alnsec; // SectionAlignment
+	uint32_t o_alnfile; // FileAlignment
+	uint16_t o_osmajor; // MajorOperatingSystemVersion
+	uint16_t o_osminor; // MinorOperatingSystemVersion
+	uint16_t o_imajor; // MajorImageVersion
+	uint16_t o_iminor; // MinorImageVersion
+	uint16_t o_smajor; // MajorSubsystemVersion
+	uint16_t o_sminor; // MinorSubsystemVersion
+	uint32_t o_version; // Win32VersionValue
+	uint32_t o_isize; // SizeOfImage
+	uint32_t o_hsize; // SizeOfHeaders
+	uint32_t o_chksum; // CheckSum
+	uint16_t o_sub; // Subsystem
+	uint16_t o_dllflags; // DllCharacteristics
+	uint32_t o_sres; // SizeOfStackReserve
+	uint32_t o_scomm; // SizeOfStackCommit
+	uint32_t o_hres; // SizeOfHeapCommit
+	uint32_t o_hcomm; // SizeOfHeapReserve
+	uint32_t o_ldflags; // LoaderFlags
+	uint32_t o_nrvasz; // NumberOfRvaAndSizes
 };
 
 // IMAGE OPTIONAL HEADER PE32+
 struct peopthdr64 {
-	uint16_t Magic;
-	uint8_t MajorLinkerVersion;
-	uint8_t MinorLinkerVersion;
-	uint32_t SizeOfCode;
-	uint32_t SizeOfInitializedData;
-	uint32_t SizeOfUninitializedData;
-	uint32_t AddressOfEntryPoint;
-	uint32_t BaseOfCode;
-	uint64_t ImageBase;
-	uint32_t SectionAlignment;
-	uint32_t FileAlignment;
-	uint16_t MajorOperatingSystemVersion;
-	uint16_t MinorOperatingSystemVersion;
-	uint16_t MajorImageVersion;
-	uint16_t MinorImageVersion;
-	uint16_t MajorSubsystemVersion;
-	uint16_t MinorSubsystemVersion;
-	uint32_t Win32VersionValue;
-	uint32_t SizeOfImage;
-	uint32_t SizeOfHeaders;
-	uint32_t CheckSum;
-	uint16_t Subsystem;
-	uint16_t DllCharacteristics;
-	uint64_t SizeOfStackReserve;
-	uint64_t SizeOfStackCommit;
-	uint64_t SizeOfHeapCommit;
-	uint64_t SizeOfHeapReserve;
-	uint32_t LoaderFlags;
-	uint32_t NumberOfRvaAndSizes;
+	uint16_t o_magic; // Magic
+	uint8_t o_major; // MajorLinkerVersion
+	uint8_t o_minor; // MinorLinkerVersion
+	uint32_t o_tsize; // SizeOfCode
+	uint32_t o_dsize; // SizeOfInitializedData
+	uint32_t o_bsize; // SizeOfUninitializedData
+	uint32_t o_entry; // AddressOfEntryPoint
+	uint32_t o_text; // BaseOfCode
+	uint64_t o_image; // ImageBase
+	uint32_t o_alnsec; // SectionAlignment
+	uint32_t o_alnfile; // FileAlignment
+	uint16_t o_osmajor; // MajorOperatingSystemVersion
+	uint16_t o_osminor; // MinorOperatingSystemVersion
+	uint16_t o_imajor; // MajorImageVersion
+	uint16_t o_iminor; // MinorImageVersion
+	uint16_t o_smajor; // MajorSubsystemVersion
+	uint16_t o_sminor; // MinorSubsystemVersion
+	uint32_t o_version; // Win32VersionValue
+	uint32_t o_isize; // SizeOfImage
+	uint32_t o_hsize; // SizeOfHeaders
+	uint32_t o_chksum; // CheckSum
+	int16_t o_sub; // Subsystem
+	uint16_t o_dllflags; // DllCharacteristics
+	uint64_t o_sres; // SizeOfStackReserve
+	uint64_t o_scomm; // SizeOfStackCommit
+	uint64_t o_hres; // SizeOfHeapReserve
+	uint64_t o_hcomm; // SizeOfHeapCommit
+	uint32_t o_ldflags; // LoaderFlags
+	uint32_t o_nrvasz; // NumberOfRvaAndSizes
 };
 
 // IMAGE OPTIONAL HEADER
@@ -131,8 +136,8 @@ union peopthdr {
 };
 
 struct peditem {
-	uint32_t VirtualAddress;
-	uint32_t Size;
+	uint32_t d_addr; // VirtualAddress
+	uint32_t d_size; // Size
 };
 
 // from xmap.h struct peddir
@@ -219,7 +224,7 @@ struct rsrcentry {
 	uint32_t e_addr; // OffsetToData
 	uint32_t e_size; // Size
 	uint32_t e_cp; // CodePage
-	uint32_t e_res; // Reserved
+	uint32_t e_res; // Reserved. Must be 0
 };
 
 // IMAGE NT HEADERS
@@ -231,12 +236,12 @@ struct penthdr {
 
 static inline size_t peopthdr_size(const union peopthdr *opt)
 {
-	return opt->hdr32.Magic == 0x10b ? sizeof(struct peopthdr32) : sizeof(struct peopthdr64);
+	return opt->hdr32.o_magic == 0x10b ? sizeof(struct peopthdr32) : sizeof(struct peopthdr64);
 }
 
 static inline uint32_t peopthdr_rva_count(const union peopthdr *opt)
 {
-	return opt->hdr32.Magic == 0x10b ? opt->hdr32.NumberOfRvaAndSizes : opt->hdr64.NumberOfRvaAndSizes;
+	return opt->hdr32.o_magic == 0x10b ? opt->hdr32.o_nrvasz : opt->hdr64.o_nrvasz;
 }
 
 static inline size_t penthdr_size(const struct penthdr *nt)
@@ -244,24 +249,29 @@ static inline size_t penthdr_size(const struct penthdr *nt)
 	return sizeof *nt - sizeof(union peopthdr) + peopthdr_size(&nt->OptionalHeader);
 }
 
-void dump_dos_header(const struct dos *dos)
+void dump_mz_header(const struct mz *mz)
 {
 	puts("=== MZ Header ===");
 	puts("");
-	printf("signature               : %4" PRIX16 "\n", dos->e_magic);
-	printf("bytes in last block     : %4" PRIX16 "\n", dos->e_cblp);
-	printf("blocks in file          : %4" PRIX16 "\n", dos->e_cp);
-	printf("relocation count        : %4" PRIX16 "\n", dos->e_crlc);
-	printf("paragraph headers       : %4" PRIX16 "\n", dos->e_cparhdr);
-	printf("min extra paragraphs    : %4" PRIX16 "\n", dos->e_minalloc);
-	printf("max extra paragraphs    : %4" PRIX16 "\n", dos->e_maxalloc);
-	printf("initial stack segment   : %4" PRIX16 "\n", dos->e_ss);
-	printf("initial stack pointer   : %4" PRIX16 "\n", dos->e_sp);
-	printf("checksum                : %4" PRIX16 "\n", dos->e_csum);
-	printf("initial program counter : %4" PRIX16 "\n", dos->e_ip);
-	printf("initial code segment    : %4" PRIX16 "\n", dos->e_cs);
-	printf("relocatable table offset: %4" PRIX16 "\n", dos->e_lfarlc);
-	printf("overlay number          : %4" PRIX16 "\n", dos->e_ovno);
+	printf("signature               : %4" PRIX16 "\n", mz->e_magic);
+	printf("bytes in last block     : %4" PRIX16 "\n", mz->e_cblp);
+	printf("blocks in file          : %4" PRIX16 "\n", mz->e_cp);
+	printf("relocation count        : %4" PRIX16 "\n", mz->e_crlc);
+	printf("paragraph headers       : %4" PRIX16 "\n", mz->e_cparhdr);
+	printf("min extra paragraphs    : %4" PRIX16 "\n", mz->e_minalloc);
+	printf("max extra paragraphs    : %4" PRIX16 "\n", mz->e_maxalloc);
+	printf("initial stack segment   : %4" PRIX16 "\n", mz->e_ss);
+	printf("initial stack pointer   : %4" PRIX16 "\n", mz->e_sp);
+	printf("checksum                : %4" PRIX16 "\n", mz->e_csum);
+	printf("initial program counter : %4" PRIX16 "\n", mz->e_ip);
+	printf("initial code segment    : %4" PRIX16 "\n", mz->e_cs);
+	printf("relocatable table offset: %4" PRIX16 "\n", mz->e_lfarlc);
+	printf("overlay number          : %4" PRIX16 "\n", mz->e_ovno);
+}
+
+void dump_dos_header(const struct dos *dos)
+{
+	dump_mz_header(&dos->mz);
 	printf("reserved                : %04" PRIX16 " %04" PRIX16 " %04" PRIX16 " %04" PRIX16 "\n", dos->e_res[0], dos->e_res[1], dos->e_res[2], dos->e_res[3]);
 	printf("OEM identifier          : %04" PRIX16 "\n", dos->e_oemid);
 	printf("OEM information         : %04" PRIX16 "\n", dos->e_oeminfo);
@@ -272,89 +282,89 @@ void dump_dos_header(const struct dos *dos)
 
 void dump_file_header(const struct pehdr *file)
 {
-	time_t time = file->TimeDateStamp;
+	time_t time = file->f_time;
 	puts("# IMAGE FILE HEADER");
-	printf("Machine             :     %04" PRIX16 "\n", file->Machine);
-	printf("NumberOfSections    :     %4" PRIX16 "\n", file->NumberOfSections);
+	printf("Machine             :     %04" PRIX16 "\n", file->f_mach);
+	printf("NumberOfSections    :     %4" PRIX16 "\n", file->f_nsect);
 	printf("TimeDateStamp       : %s", ctime(&time));
-	printf("PointerToSymbolTable: %8" PRIX32 "\n", file->PointerToSymbolTable);
-	printf("NumberOfSymbols     : %8" PRIX32 "\n", file->NumberOfSymbols);
-	printf("SizeOfOptionalHeader:     %4" PRIX16 "\n", file->SizeOfOptionalHeader);
-	printf("Characteristics     :     %04" PRIX16 "\n", file->Characteristics);
+	printf("PointerToSymbolTable: %8" PRIX32 "\n", file->f_symptr);
+	printf("NumberOfSymbols     : %8" PRIX32 "\n", file->f_nsym);
+	printf("SizeOfOptionalHeader:     %4" PRIX16 "\n", file->f_opthdr);
+	printf("Characteristics     :     %04" PRIX16 "\n", file->f_flags);
 }
 
 void dump_optional_header32(const struct peopthdr32 *opt)
 {
 	puts("# IMAGE OPTIONAL HEADER32");
-	printf("Magic                      :     %04" PRIX16 "\n", opt->Magic);
-	printf("MajorLinkerVersion         :       %02" PRIX8 "\n", opt->MajorLinkerVersion);
-	printf("MinorLinkerVersion         :       %02" PRIX8 "\n", opt->MinorLinkerVersion);
-	printf("SizeOfCode                 : %8" PRIX32 "\n", opt->SizeOfCode);
-	printf("SizeOfInitializedData      : %8" PRIX32 "\n", opt->SizeOfInitializedData);
-	printf("SizeOfUninitializedData    : %8" PRIX32 "\n", opt->SizeOfUninitializedData);
-	printf("AddressOfEntryPoint        : %8" PRIX32 "\n", opt->AddressOfEntryPoint);
-	printf("BaseOfCode                 : %8" PRIX32 "\n", opt->BaseOfCode);
-	printf("BaseOfData                 : %8" PRIX32 "\n", opt->BaseOfData);
-	printf("ImageBase                  : %8" PRIX32 "\n", opt->ImageBase);
-	printf("SectionAlignment           : %8" PRIX32 "\n", opt->SectionAlignment);
-	printf("FileAlignment              : %8" PRIX32 "\n", opt->FileAlignment);
-	printf("MajorOperatingSystemVersion: %8" PRIX16 "\n", opt->MajorOperatingSystemVersion);
-	printf("MinorOperatingSystemVersion: %8" PRIX16 "\n", opt->MinorOperatingSystemVersion);
-	printf("MajorImageVersion          : %8" PRIX16 "\n", opt->MajorImageVersion);
-	printf("MinorImageVersion          : %8" PRIX16 "\n", opt->MinorImageVersion);
-	printf("MajorSubsystemVersion      : %8" PRIX16 "\n", opt->MajorSubsystemVersion);
-	printf("MinorSubsystemVersion      : %8" PRIX16 "\n", opt->MinorSubsystemVersion);
-	printf("Win32VersionValue          : %8" PRIX32 "\n", opt->Win32VersionValue);
-	printf("SizeOfImage                : %8" PRIX32 "\n", opt->SizeOfImage);
-	printf("SizeOfHeaders              : %8" PRIX32 "\n", opt->SizeOfHeaders);
-	printf("CheckSum                   : %8" PRIX32 "\n", opt->CheckSum);
-	printf("Subsystem                  :     %4" PRIX16 "\n", opt->Subsystem);
-	printf("DllCharacteristics         :     %04" PRIX16 "\n", opt->DllCharacteristics);
-	printf("SizeOfStackReserve         : %8" PRIX32 "\n", opt->SizeOfStackReserve);
-	printf("SizeOfStackCommit          : %8" PRIX32 "\n", opt->SizeOfStackCommit);
-	printf("SizeOfHeapCommit           : %8" PRIX32 "\n", opt->SizeOfHeapCommit);
-	printf("SizeOfHeapReserve          : %8" PRIX32 "\n", opt->SizeOfHeapReserve);
-	printf("LoaderFlags                : %8" PRIX32 "\n", opt->LoaderFlags);
-	printf("NumberOfRvaAndSizes        : %8" PRIX32 "\n", opt->NumberOfRvaAndSizes);
+	printf("Magic                      :     %04" PRIX16 "\n", opt->o_magic);
+	printf("MajorLinkerVersion         :       %02" PRIX8 "\n", opt->o_major);
+	printf("MinorLinkerVersion         :       %02" PRIX8 "\n", opt->o_minor);
+	printf("SizeOfCode                 : %8" PRIX32 "\n", opt->o_tsize);
+	printf("SizeOfInitializedData      : %8" PRIX32 "\n", opt->o_dsize);
+	printf("SizeOfUninitializedData    : %8" PRIX32 "\n", opt->o_bsize);
+	printf("AddressOfEntryPoint        : %8" PRIX32 "\n", opt->o_entry);
+	printf("BaseOfCode                 : %8" PRIX32 "\n", opt->o_text);
+	printf("BaseOfData                 : %8" PRIX32 "\n", opt->o_data);
+	printf("ImageBase                  : %8" PRIX32 "\n", opt->o_image);
+	printf("SectionAlignment           : %8" PRIX32 "\n", opt->o_alnsec);
+	printf("FileAlignment              : %8" PRIX32 "\n", opt->o_alnfile);
+	printf("MajorOperatingSystemVersion: %8" PRIX16 "\n", opt->o_osmajor);
+	printf("MinorOperatingSystemVersion: %8" PRIX16 "\n", opt->o_osminor);
+	printf("MajorImageVersion          : %8" PRIX16 "\n", opt->o_imajor);
+	printf("MinorImageVersion          : %8" PRIX16 "\n", opt->o_iminor);
+	printf("MajorSubsystemVersion      : %8" PRIX16 "\n", opt->o_smajor);
+	printf("MinorSubsystemVersion      : %8" PRIX16 "\n", opt->o_sminor);
+	printf("Win32VersionValue          : %8" PRIX32 "\n", opt->o_version);
+	printf("SizeOfImage                : %8" PRIX32 "\n", opt->o_isize);
+	printf("SizeOfHeaders              : %8" PRIX32 "\n", opt->o_hsize);
+	printf("CheckSum                   : %8" PRIX32 "\n", opt->o_chksum);
+	printf("Subsystem                  :     %4" PRIX16 "\n", opt->o_sub);
+	printf("DllCharacteristics         :     %04" PRIX16 "\n", opt->o_dllflags);
+	printf("SizeOfStackReserve         : %8" PRIX32 "\n", opt->o_sres);
+	printf("SizeOfStackCommit          : %8" PRIX32 "\n", opt->o_scomm);
+	printf("SizeOfHeapReserve          : %8" PRIX32 "\n", opt->o_hres);
+	printf("SizeOfHeapCommit           : %8" PRIX32 "\n", opt->o_hcomm);
+	printf("LoaderFlags                : %8" PRIX32 "\n", opt->o_ldflags);
+	printf("NumberOfRvaAndSizes        : %8" PRIX32 "\n", opt->o_nrvasz);
 }
 
 void dump_optional_header64(const struct peopthdr64 *opt)
 {
 	puts("# IMAGE OPTIONAL HEADER64");
-	printf("Magic                      :             %04" PRIX16 "\n", opt->Magic);
-	printf("MajorLinkerVersion         :               %02" PRIX8 "\n", opt->MajorLinkerVersion);
-	printf("MinorLinkerVersion         :               %02" PRIX8 "\n", opt->MinorLinkerVersion);
-	printf("SizeOfCode                 :         %8" PRIX32 "\n", opt->SizeOfCode);
-	printf("SizeOfInitializedData      :         %8" PRIX32 "\n", opt->SizeOfInitializedData);
-	printf("SizeOfUninitializedData    :         %8" PRIX32 "\n", opt->SizeOfUninitializedData);
-	printf("AddressOfEntryPoint        :         %8" PRIX32 "\n", opt->AddressOfEntryPoint);
-	printf("BaseOfCode                 :         %8" PRIX32 "\n", opt->BaseOfCode);
-	printf("ImageBase                  : %16" PRIX64 "\n", opt->ImageBase);
-	printf("SectionAlignment           :         %8" PRIX32 "\n", opt->SectionAlignment);
-	printf("FileAlignment              :         %8" PRIX32 "\n", opt->FileAlignment);
-	printf("MajorOperatingSystemVersion:         %8" PRIX16 "\n", opt->MajorOperatingSystemVersion);
-	printf("MinorOperatingSystemVersion:         %8" PRIX16 "\n", opt->MinorOperatingSystemVersion);
-	printf("MajorImageVersion          :         %8" PRIX16 "\n", opt->MajorImageVersion);
-	printf("MinorImageVersion          :         %8" PRIX16 "\n", opt->MinorImageVersion);
-	printf("MajorSubsystemVersion      :         %8" PRIX16 "\n", opt->MajorSubsystemVersion);
-	printf("MinorSubsystemVersion      :         %8" PRIX16 "\n", opt->MinorSubsystemVersion);
-	printf("Win32VersionValue          :         %8" PRIX32 "\n", opt->Win32VersionValue);
-	printf("SizeOfImage                :         %8" PRIX32 "\n", opt->SizeOfImage);
-	printf("SizeOfHeaders              :         %8" PRIX32 "\n", opt->SizeOfHeaders);
-	printf("CheckSum                   :         %8" PRIX32 "\n", opt->CheckSum);
-	printf("Subsystem                  :             %4" PRIX16 "\n", opt->Subsystem);
-	printf("DllCharacteristics         :             %04" PRIX16 "\n", opt->DllCharacteristics);
-	printf("SizeOfStackReserve         :         %8" PRIX64 "\n", opt->SizeOfStackReserve);
-	printf("SizeOfStackCommit          :         %8" PRIX64 "\n", opt->SizeOfStackCommit);
-	printf("SizeOfHeapCommit           :         %8" PRIX64 "\n", opt->SizeOfHeapCommit);
-	printf("SizeOfHeapReserve          :         %8" PRIX64 "\n", opt->SizeOfHeapReserve);
-	printf("LoaderFlags                :         %8" PRIX32 "\n", opt->LoaderFlags);
-	printf("NumberOfRvaAndSizes        :         %8" PRIX32 "\n", opt->NumberOfRvaAndSizes);
+	printf("Magic                      :             %04" PRIX16 "\n", opt->o_magic);
+	printf("MajorLinkerVersion         :               %02" PRIX8 "\n", opt->o_major);
+	printf("MinorLinkerVersion         :               %02" PRIX8 "\n", opt->o_minor);
+	printf("SizeOfCode                 :         %8" PRIX32 "\n", opt->o_tsize);
+	printf("SizeOfInitializedData      :         %8" PRIX32 "\n", opt->o_dsize);
+	printf("SizeOfUninitializedData    :         %8" PRIX32 "\n", opt->o_bsize);
+	printf("AddressOfEntryPoint        :         %8" PRIX32 "\n", opt->o_entry);
+	printf("BaseOfCode                 :         %8" PRIX32 "\n", opt->o_text);
+	printf("ImageBase                  : %16" PRIX64 "\n", opt->o_image);
+	printf("SectionAlignment           :         %8" PRIX32 "\n", opt->o_alnsec);
+	printf("FileAlignment              :         %8" PRIX32 "\n", opt->o_alnfile);
+	printf("MajorOperatingSystemVersion:         %8" PRIX16 "\n", opt->o_osmajor);
+	printf("MinorOperatingSystemVersion:         %8" PRIX16 "\n", opt->o_osminor);
+	printf("MajorImageVersion          :         %8" PRIX16 "\n", opt->o_imajor);
+	printf("MinorImageVersion          :         %8" PRIX16 "\n", opt->o_iminor);
+	printf("MajorSubsystemVersion      :         %8" PRIX16 "\n", opt->o_smajor);
+	printf("MinorSubsystemVersion      :         %8" PRIX16 "\n", opt->o_sminor);
+	printf("Win32VersionValue          :         %8" PRIX32 "\n", opt->o_version);
+	printf("SizeOfImage                :         %8" PRIX32 "\n", opt->o_isize);
+	printf("SizeOfHeaders              :         %8" PRIX32 "\n", opt->o_hsize);
+	printf("CheckSum                   :         %8" PRIX32 "\n", opt->o_chksum);
+	printf("Subsystem                  :             %4" PRIX16 "\n", opt->o_sub);
+	printf("DllCharacteristics         :             %04" PRIX16 "\n", opt->o_dllflags);
+	printf("SizeOfStackReserve         :         %8" PRIX64 "\n", opt->o_sres);
+	printf("SizeOfStackCommit          :         %8" PRIX64 "\n", opt->o_scomm);
+	printf("SizeOfHeapCommit           :         %8" PRIX64 "\n", opt->o_hres);
+	printf("SizeOfHeapReserve          :         %8" PRIX64 "\n", opt->o_hcomm);
+	printf("LoaderFlags                :         %8" PRIX32 "\n", opt->o_ldflags);
+	printf("NumberOfRvaAndSizes        :         %8" PRIX32 "\n", opt->o_nrvasz);
 }
 
 void dump_optional_header(const union peopthdr *opt)
 {
-	if (opt->hdr32.Magic == 0x10b)
+	if (opt->hdr32.o_magic == 0x10b)
 		dump_optional_header32(&opt->hdr32);
 	else
 		dump_optional_header64(&opt->hdr64);
@@ -401,7 +411,7 @@ void dump_data_dir(const union peddir *dd, size_t count)
 	for (unsigned i = 0; i < count; ++i)
 		printf("%-12s RVA: %8" PRIX32 "  Size: %8" PRIX32 "\n",
 			i < ARRAY_SIZE(names) ? names[i] : "",
-			dd->items[i].VirtualAddress, dd->items[i].Size);
+			dd->items[i].d_addr, dd->items[i].d_size);
 }
 
 void dump_sechdr(const struct sechdr *hdr, size_t count)
@@ -496,7 +506,7 @@ static const char *rt_types[] = {
 	"animated icon",
 };
 
-int dump_langdir(const struct sechdr *sec, const struct rsrctbl *root, const struct rsrctbl *typedir, const void *data, size_t size, uint32_t count, uint32_t type)
+static int dump_langdir(const struct sechdr *sec, const struct rsrctbl *root, const struct rsrctbl *typedir, const void *data, size_t size, uint32_t count, uint32_t type, int dump_entries)
 {
 	const char *end = (char*)data + size;
 
@@ -558,13 +568,16 @@ int dump_langdir(const struct sechdr *sec, const struct rsrctbl *root, const str
 			return 1;
 		}
 
+		if (!dump_entries)
+			continue;
+
 		switch (type) {
 		case RT_STRING: {
 			/*
 			 * String tables always have 16 items.
 			 * The resources indices are implicit and based on the parent node * 16
 			 */
-			uint16_t strid = items[i].r_id * 16;
+			uint16_t strid = (items[i].r_id - 1) * 16;
 
 			// dump the string name
 			char buf[1024];
@@ -600,9 +613,13 @@ int dump_langdir(const struct sechdr *sec, const struct rsrctbl *root, const str
 	return 0;
 }
 
-int dump_typedir(const struct sechdr *sec, const struct rsrctbl *root, const struct rsrcditem *item, const void *data, size_t size, int named)
+#define TD_NAMED 0x01
+#define TD_DUMP_RES 0x02
+
+static int dump_typedir(const struct sechdr *sec, const struct rsrctbl *root, const struct rsrcditem *item, const void *data, size_t size, unsigned options)
 {
 	const char *end = (char*)data + size;
+	unsigned named = options & TD_NAMED;
 
 	if ((const char*)&item[1] >= end) {
 		fputs("bad typedir: unexpected EOF\n", stderr);
@@ -679,7 +696,7 @@ int dump_typedir(const struct sechdr *sec, const struct rsrctbl *root, const str
 	case RT_VXD:
 	case RT_ANICURSOR:
 	case RT_ANIICON:
-		return dump_langdir(sec, root, typedir, data, size, typedir->r_nid, item->r_id);
+		return dump_langdir(sec, root, typedir, data, size, typedir->r_nid, item->r_id, 1);
 	default:
 		if (named) {
 			fputs("TODO: parse named resource type\n", stderr);
@@ -717,12 +734,12 @@ void dump_rsrc(const struct sechdr *hdr, const void *data, size_t size)
 	uint32_t j = 0;
 
 	for (uint32_t i = 0; i < tbl->r_nname; ++i, ++j)
-		if (dump_typedir(hdr, tbl, &item[j], data, size, 1))
-			break;
+		if (dump_typedir(hdr, tbl, &item[j], data, size, TD_NAMED))
+			return;
 
 	for (uint32_t i = 0; i < tbl->r_nid; ++i, ++j)
 		if (dump_typedir(hdr, tbl, &item[j], data, size, 0))
-			break;
+			return;
 }
 
 int dump_pe(const void *data, size_t size)
@@ -738,7 +755,7 @@ int dump_pe(const void *data, size_t size)
 	const struct penthdr *nt = (const struct penthdr*)((char*)data + dos->e_lfanew);
 	const char *end = (const char*)data + size;
 
-	if ((const char*)&nt[1] >= end) {
+	if ((char*)&nt[1] > end) {
 		fputs("bad nt header address\n", stderr);
 		return 1;
 	}
@@ -748,7 +765,7 @@ int dump_pe(const void *data, size_t size)
 
 	const union peddir *dir = (const union peddir*)((char*)nt + penthdr_size(nt));
 
-	if ((const char*)&dir[1] >= end) {
+	if ((char*)&dir[1] > end) {
 		fputs("bad data dir address\n", stderr);
 		return 1;
 	}
@@ -757,7 +774,7 @@ int dump_pe(const void *data, size_t size)
 	dump_data_dir(dir, peopthdr_rva_count(&nt->OptionalHeader));
 
 	const struct sechdr *sec = (const struct sechdr*)&dir[1];
-	size_t nsec = nt->FileHeader.NumberOfSections;
+	size_t nsec = nt->FileHeader.f_nsect;
 
 	if ((const char*)&sec[nsec] >= end) {
 		fputs("bad section count\n", stderr);
