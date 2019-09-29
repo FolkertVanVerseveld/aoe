@@ -1,7 +1,7 @@
 # Project status
 
 *The current state of the project is documented here. At the moment, it can
-start a dummy 2 player singleplayer game without any real game mechanics.*
+start a dummy singleplayer game without any real game mechanics.*
 
 All items are in random order unless stated otherwise.
 Binaries are not provided at this moment, because there is no game to be played.
@@ -10,9 +10,10 @@ distro binaries (e.g. Ubuntu) will be provided.
 
 ## Working
 
-Note: the genie game engine is being redesigned and integrated directly in
-empires/. Once the game is playable the engine is extracted once again to
-genie/. These items are implemented in either the genie game engine or the game:
+We have written a game engine that mimmicks the original genie game engine which
+is integrated directly into setup/ and a more sophisticated version into
+empires/. These items are implemented in either the genie game engine or the
+game:
 
 Subsystem      | Task / Purpose           | Notes
 ---------------|--------------------------|----------------------------------------------------

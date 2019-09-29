@@ -10,12 +10,12 @@ is an educational non-profit project we are writing in our free time.*
 
 ## Overview
 
-Linux native game port of windows game Age of Empires Rise of Rome
+Cross-platform game port of windows game Age of Empires Rise of Rome
 
-It tries to take fully advantage of POSIX while mimicking the windows API and
-the genie game engine for compatibility reasons. In order to achieve this, some
-code is reconstructed from the dissassembly. We have provided a couple of tools
-that verify, test, and inspect the original data files.
+It tries to take fully advantage of modern technology and APIs while mimicking
+the windows API and the genie game engine for compatibility reasons. In order to
+achieve this, some code is reconstructed from the dissassembly. We have provided
+a couple of tools that verify, test, and inspect the original data files.
 
 You still need to own an original legitimate copy of Age of Empires in order to
 run this program, since you need the original game data to run the game.
