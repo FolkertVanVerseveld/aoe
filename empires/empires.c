@@ -19,6 +19,8 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
+#include <xt/os_macros.h>
+
 #include <genie/engine.h>
 #include <genie/cfg.h>
 #include <genie/dbg.h>
@@ -266,7 +268,7 @@ void gfx_update(void)
 
 void video_play(const char *name)
 {
-#ifdef _WIN32
+#if XT_IS_WINDOWS
 	fprintf(stderr, "%s: no video playback on windows yet!\n", name);
 #else
 	char path[4096], buf[4096];
@@ -316,7 +318,7 @@ int main(int argc, char **argv)
 	if (load_lib_lang())
 		panic("CD-ROM files are corrupt");
 
-	game_installed = find_wine_installation();
+	game_installed = find_game_installation();
 	if (has_wine)
 		dbgs("wine detected");
 	dbgf("game installed: %s\n", game_installed ? "yes" : "no");

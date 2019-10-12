@@ -157,7 +157,7 @@ void init_main_menu(void)
 	SDL_Color fg = {0, 0, 0, 255};
 	char path[PATH_MAX];
 
-	game_installed = find_wine_installation();
+	game_installed = find_game_installation();
 	if (has_wine)
 		dbgs("wine detected");
 

@@ -49,7 +49,7 @@ void panic(const char *str) __attribute__((noreturn));
 void panicf(const char *format, ...) __attribute__((noreturn));
 
 /* Wine auto detection */
-int find_wine_installation(void);
+int find_game_installation(void);
 
 /* CD-ROM/ISO auto detection */
 int find_setup_files(void);

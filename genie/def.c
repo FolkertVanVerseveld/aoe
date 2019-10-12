@@ -9,6 +9,8 @@
 
 #include <genie/def.h>
 
+#include <xt/os_macros.h>
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -20,12 +22,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#ifndef _WIN32
+#if XT_IS_LINUX
 	#include <pwd.h>
 #else
 	#include <windows.h>
 	#include <winuser.h>
 #endif
+
 #include <dirent.h>
 
 #include <genie/error.h>
@@ -41,7 +44,7 @@ int game_installed;
 void show_error(const char *str)
 {
 	fprintf(stderr, "%s\n", str);
-#ifndef _WIN32
+#if XT_IS_LINUX
 	char buf[PANIC_BUFSZ];
 	// TODO escape str
 	snprintf(buf, PANIC_BUFSZ, "zenity --error --text=\"%s\"", str);
@@ -111,7 +114,7 @@ void panicf(const char *format, ...)
 	exit(1);
 }
 
-int find_wine_installation(void)
+int find_game_installation(void)
 {
 	char path[PATH_MAX];
 	const char *user;
@@ -123,7 +126,7 @@ int find_wine_installation(void)
 	 * If found, check if the game has already been installed.
 	 */
 
-#ifndef _WIN32
+#if XT_IS_LINUX
 	pwd = getpwuid(getuid());
 	user = pwd->pw_name;
 
@@ -173,7 +176,7 @@ int find_setup_files(void)
 	struct passwd *pwd;
 	int found = 0;
 
-#ifndef _WIN32
+#if XT_IS_LINUX
 	/*
 	 * Try following paths in specified order:
 	 * /media/cdrom
@@ -210,6 +213,7 @@ int find_setup_files(void)
 
 	closedir(dir);
 #else
+	// Just enumerate every drive letter starting at D:
 	for (char drv = 'D'; drv <= 'Z'; ++drv) {
 		path[0] = drv;
 		path[1] = ':';
