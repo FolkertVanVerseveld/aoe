@@ -11,6 +11,7 @@
 	#include <SDL2/SDL2_gfxPrimitives.h>
 #endif
 
+#include <cctype>
 #include <cassert>
 #include <cstdio>
 #include <cstddef>
@@ -711,8 +712,8 @@ public:
 
 		switch (GE_cfg.screen_mode) {
 		case GE_CFG_MODE_640x480: which = 0; break;
-		case GE_CFG_MODE_1024x768: which = 2; break;
-		default: which = 1; break;
+		case GE_CFG_MODE_800x600: which = 1; break;
+		default: which = 2; break;
 		}
 
 		animation.open(&palette, (unsigned)bkg_id[which]);
@@ -1234,11 +1235,58 @@ public:
 	}
 };
 
+class InputField final : public UI {
+	Border bounds;
+	std::string text;
+
+public:
+	bool visible;
+
+	InputField(int x, int y, unsigned w, unsigned h, std::string text="", bool visible=true)
+		: UI(x, y, w, h), bounds(x, y, w, h), text(text), visible(visible) {}
+
+	void keydown(int ch) {
+		if (ch == SDLK_BACKSPACE) {
+			if (text.size())
+				text.pop_back();
+		} else if (ch <= 0xff && isprint(ch))
+			text += ch;
+	}
+
+	std::string str() const {
+		return text;
+	}
+
+	void focus(bool clear=true) {
+		visible = true;
+		if (clear)
+			text.clear();
+	}
+
+	void draw() const override {
+		if (!visible)
+			return;
+
+		// draw black background
+		SDL_Rect pos = {x, y, (int)w, (int)h};
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+		SDL_RenderFillRect(renderer, &pos);
+
+		bounds.draw();
+
+		pos = {x + 4, y + 4, w - 8, h - 8};
+		SDL_SetTextureColorMod(fnt_tex_default, 0xff, 0xff, 0xff);
+		gfx_draw_textlen(fnt_tex_default, &pos, text.c_str(), text.size());
+	}
+};
+
 class Menu : public UI {
 protected:
 	std::vector<std::shared_ptr<UI>> objects;
 	mutable ButtonGroup group;
 	Background *bkg;
+	// if this is not NULL, then all keystrokes are forwarded
+	InputField *input_field = NULL;
 public:
 	int stop = 0;
 
@@ -1272,6 +1320,14 @@ public:
 
 	virtual void keydown(SDL_KeyboardEvent *event) {
 		unsigned virt = event->keysym.sym;
+
+		if (input_field) {
+			if (virt == '\r' || virt == '\n')
+				input_field = NULL;
+			else
+				input_field->keydown(virt);
+			return;
+		}
 
 		if (virt == SDLK_DOWN)
 			group.ror();
@@ -1496,8 +1552,9 @@ public:
 				stop = 5;
 				game.stop();
 				mus_play(MUS_MAIN);
-			} else
+			} else {
 				stop = 1;
+			}
 			break;
 		case 1: ui_state.go_to(new MenuTimeline(type)); break;
 		}
@@ -1583,14 +1640,17 @@ public:
 		if (id == 0) {
 			game.speed = gs->focus;
 			GE_cfg.screen_mode = ss->focus;
+
 			if (mi->focus)
 				GE_cfg.options |= GE_CFG_NORMAL_MOUSE;
 			else
 				GE_cfg.options &= ~GE_CFG_NORMAL_MOUSE;
+
 			if (tt->focus)
 				GE_cfg.options &= ~GE_CFG_GAME_HELP;
 			else
 				GE_cfg.options |= GE_CFG_GAME_HELP;
+
 			GE_cfg.music_volume = mv->value;
 			GE_cfg.sound_volume = sv->value;
 			GE_cfg.scroll_speed = scroll->value;
@@ -1860,6 +1920,7 @@ class MenuGame final : public Menu {
 	Palette palette;
 	AnimationTexture menu_bar;
 	Text str_paused;
+	InputField *chat;
 public:
 	MenuGame()
 		: Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false)
@@ -1917,6 +1978,8 @@ public:
 			CENTER, MIDDLE
 		);
 
+		objects.emplace_back(chat = new InputField(260, 288, 665 - 260, 312 - 288, "", false));
+
 		game.reshape(0, top, gfx_cfg.width, gfx_cfg.height - top - top2);
 		game.start();
 	}
@@ -1935,12 +1998,29 @@ public:
 	}
 
 	void keydown(SDL_KeyboardEvent *event) override {
-		if (!game.keydown(event))
+		unsigned virt = event->keysym.sym;
+
+		if (virt == '\r' || virt == '\n') {
+			if (!input_field) {
+				chat->focus();
+				input_field = chat;
+			} else {
+				if (!game.cheat(input_field->str().c_str())) {
+					dbgf("TODO: add to chat: %s\n", input_field->str().c_str());
+					sfx_play(SFX_CHAT);
+				}
+				chat->visible = false;
+				Menu::keydown(event);
+			}
+		} else if (input_field) {
 			Menu::keydown(event);
+		} else if (!game.keydown(event)) {
+			Menu::keydown(event);
+		}
 	}
 
 	void keyup(SDL_KeyboardEvent *event) override {
-		if (!game.keyup(event))
+		if (!input_field && !game.keyup(event))
 			Menu::keyup(event);
 	}
 

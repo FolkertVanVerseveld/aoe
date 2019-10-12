@@ -229,8 +229,6 @@ void main_event_loop(void)
 		idle();
 		display();
 
-		SDL_Delay(50);
-
 		if (!music_playing && in_game) {
 			music_index = (music_index + 1) % ARRAY_SIZE(music_list);
 			mus_play(music_list[music_index]);

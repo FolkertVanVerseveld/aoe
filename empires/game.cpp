@@ -493,6 +493,25 @@ void Game::start() {
 	set_cursor(0);
 }
 
+bool Game::cheat(const char *str) {
+	bool good = false;
+	Resources res = {0, 0, 0, 0};
+
+	if (!strcmp(str, "woodstock")) {
+		res.wood = 1000; good = true;
+	} else if (!strcmp(str, "pepperoni pizza")) {
+		res.food = 1000; good = true;
+	} else if (!strcmp(str, "coinage")) {
+		res.gold = 1000; good = true;
+	} else if (!strcmp(str, "quarry")) {
+		res.stone = 1000; good = true;
+	}
+
+	controlling_player()->resources += res;
+
+	return good;
+}
+
 void Game::set_cursor(unsigned index) {
 	const AnimationTexture &cursors = cache->get(DRS_CURSORS);
 	if (cursor)
@@ -1118,7 +1137,7 @@ pause:
 	return true;
 }
 
-const Player *Game::controlling_player() const {
+Player *Game::controlling_player() {
 	return players[player_index].get();
 }
 

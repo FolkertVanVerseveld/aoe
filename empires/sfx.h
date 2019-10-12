@@ -36,6 +36,7 @@ extern "C" {
 #define SFX_VILLAGER5 5171
 
 #define SFX_BUTTON4 50300
+#define SFX_CHAT 50302
 #define SFX_BUTTON_GAME 5036
 
 #define MUS_MAIN 0

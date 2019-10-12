@@ -77,6 +77,23 @@ public:
 			&& lhs.gold == rhs.gold && lhs.stone == rhs.stone;
 	}
 	friend bool operator!=(const Resources &lhs, const Resources &rhs) { return !(lhs == rhs); }
+
+	/* NOTE any underflow or overflow that may occur is ignored (i.e. implementation defined). */
+	Resources &operator+=(const Resources &res) {
+		food += res.food;
+		wood += res.wood;
+		gold += res.gold;
+		stone += res.stone;
+		return *this;
+	}
+
+	Resources &operator-=(const Resources &res) {
+		food -= res.food;
+		wood -= res.wood;
+		gold -= res.gold;
+		stone -= res.stone;
+		return *this;
+	}
 };
 
 const class Resources res_low_default(200, 200, 0, 150);
@@ -314,11 +331,13 @@ public:
 		map.reshape(x, y, w, h);
 	}
 
+	bool cheat(const char *str);
+
 	void draw();
 	void draw_hud(unsigned w, unsigned h);
 	void spawn(Unit *obj);
 
-	const Player *controlling_player() const;
+	Player *controlling_player();
 };
 
 extern Game game;
