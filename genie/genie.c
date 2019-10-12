@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
+struct config cfg = {CFG_NORMAL_MOUSE, CFG_MODE_800x600, 50, 0.7, 1, 0.3};
+
 int GE_Init(int *pargc, char **argv)
 {
 	int argc = *pargc;

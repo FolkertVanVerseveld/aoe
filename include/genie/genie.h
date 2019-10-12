@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+#include "cfg.h"
+
 // maximum resolution supported by original game
 #define MAX_BKG_WIDTH 1024
 #define MAX_BKG_HEIGHT 768

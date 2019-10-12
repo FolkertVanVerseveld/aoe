@@ -20,12 +20,12 @@
 #include <SDL2/SDL_ttf.h>
 
 #include <genie/genie.h>
+#include <genie/cfg.h>
 #include <genie/dbg.h>
 #include <genie/def.h>
 #include <genie/res.h>
 #include <genie/fs.h>
 
-#include "cfg.h"
 #include "drs.h"
 
 #include "gfx.h"
@@ -46,8 +46,6 @@ struct pe_lib lib_lang;
 #define BUFSZ 4096
 
 int running = 0;
-
-struct config cfg = {CFG_NORMAL_MOUSE, CFG_MODE_800x600, 50, 0.7, 1, 0.3};
 
 unsigned const music_list[] = {
 	MUS_GAME1, MUS_GAME2, MUS_GAME3, MUS_GAME4, MUS_GAME5,

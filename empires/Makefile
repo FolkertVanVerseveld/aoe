@@ -75,12 +75,12 @@ OBJECTS=empires.o \
 default: empires
 empires: $(OBJECTS)
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) $(OBJECTS) -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lstdc++
-empires.o: empires.c cfg.h
+empires.o: empires.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.c -c -o empires.o $(LDFLAGS) $(LDLIBS)
 game.o: game.hpp game.cpp ui.h image.hpp render.hpp world.hpp drs.h lang.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) game.cpp -c -o game.o $(LDFLAGS) $(LDLIBS)
 
-ui.o: ui.h ui.cpp gfx.o game.o editor.o scenario.o cfg.h sfx.o math.h
+ui.o: ui.h ui.cpp gfx.o game.o editor.o scenario.o sfx.o math.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) ui.cpp -c -o ui.o $(LDFLAGS) $(LDLIBS)
 editor.o: editor.cpp editor.hpp game.hpp world.hpp
 scenario.o: scenario.cpp scenario.hpp cpn.h scn.h
@@ -92,7 +92,7 @@ qtree.o: world.hpp qtree.cpp
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) qtree.cpp -c -o qtree.o $(LDFLAGS) $(LDLIBS)
 gfx.o: gfx.h gfx.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) gfx.c -c -o gfx.o $(LDFLAGS) $(LDLIBS)
-sfx.o: sfx.h sfx.cpp cfg.h
+sfx.o: sfx.h sfx.cpp
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) sfx.cpp -c -o sfx.o $(LDFLAGS) $(LDLIBS)
 cpn.o: cpn.h cpn.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) cpn.c -c -o cpn.o $(LDFLAGS) $(LDLIBS)

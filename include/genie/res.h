@@ -18,7 +18,7 @@ extern "C" {
 
 #include <stddef.h>
 
-#ifndef _WIN32
+#ifndef RT_STRING
 #define RT_UNKNOWN      0
 #define RT_CURSOR       1
 #define RT_BITMAP       2

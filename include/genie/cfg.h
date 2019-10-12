@@ -1,7 +1,7 @@
 /* Copyright 2016-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
-#ifndef CFG_H
-#define CFG_H
+#ifndef GENIE_CFG_H
+#define GENIE_CFG_H
 
 #define POP_MIN 25
 #define POP_MAX 200
