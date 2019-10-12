@@ -19,16 +19,16 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
-#include <genie/genie.h>
+#include <genie/engine.h>
 #include <genie/cfg.h>
 #include <genie/dbg.h>
 #include <genie/def.h>
+#include <genie/gfx.h>
 #include <genie/res.h>
 #include <genie/fs.h>
 
 #include "drs.h"
 
-#include "gfx.h"
 #include "sfx.h"
 
 #include "ui.h"
@@ -119,9 +119,9 @@ static void toggle_fullscreen(void)
 
 	int desired_width, desired_height;
 
-	switch (cfg.screen_mode) {
-	case CFG_MODE_640x480: desired_width = 640; desired_height = 480; break;
-	case CFG_MODE_1024x768: desired_width = 1024; desired_height = 768; break;
+	switch (GE_cfg.screen_mode) {
+	case GE_CFG_MODE_640x480: desired_width = 640; desired_height = 480; break;
+	case GE_CFG_MODE_1024x768: desired_width = 1024; desired_height = 768; break;
 	default: desired_width = 800; desired_height = 600; break;
 	}
 
@@ -245,67 +245,6 @@ void main_event_loop(void)
 	}
 }
 
-#define hasopt(x,a,b) (!strcasecmp(x, a b) || !strcasecmp(x, a "_" b) || !strcasecmp(x, a " " b))
-
-void cfg_parse(struct config *cfg, int argc, char **argv)
-{
-	for (int i = 1; i < argc; ++i) {
-		if (hasopt(argv[i], "no", "startup"))
-			cfg->options |= CFG_NO_INTRO;
-		else if (hasopt(argv[i], "system", "memory"))
-			fputs("System memory not supported\n", stderr);
-		else if (hasopt(argv[i], "midi", "music"))
-			fputs("Midi support unavailable\n", stderr);
-		else if (!strcasecmp(argv[i], "msync"))
-			fputs("SoundBlaster AWE not supported\n", stderr);
-		else if (!strcasecmp(argv[i], "mfill"))
-			fputs("Matrox Video adapter not supported\n", stderr);
-		else if (hasopt(argv[i], "no", "sound"))
-			cfg->options |= CFG_NO_SOUND;
-		else if (!strcmp(argv[i], "640"))
-			cfg->screen_mode = CFG_MODE_640x480;
-		else if (!strcmp(argv[i], "800"))
-			cfg->screen_mode = CFG_MODE_800x600;
-		else if (!strcmp(argv[i], "1024"))
-			cfg->screen_mode = CFG_MODE_1024x768;
-		else if (hasopt(argv[i], "no", "music"))
-			cfg->options |= CFG_NO_MUSIC;
-		else if (hasopt(argv[i], "normal", "mouse"))
-			cfg->options |= CFG_NORMAL_MOUSE;
-		/* Rise of Rome options: */
-		else if (hasopt(argv[i], "no", "terrainsound"))
-			cfg->options |= CFG_NO_AMBIENT;
-		else if (i + 1 < argc &&
-			(!strcasecmp(argv[i], "limit") || !strcasecmp(argv[i], "limit=")))
-		{
-			int n = atoi(argv[i + 1]);
-			if (n < POP_MIN)
-				n = POP_MIN;
-			else if (n > POP_MAX)
-				n = POP_MAX;
-			cfg->limit = (unsigned)n;
-		}
-	}
-
-	const char *mode = "???";
-	switch (cfg->screen_mode) {
-	case CFG_MODE_640x480: mode = "640x480"; break;
-	case CFG_MODE_800x600: mode = "800x600"; break;
-	case CFG_MODE_1024x768: mode = "1024x768"; break;
-	}
-	dbgf("screen mode: %s\n", mode);
-
-	// TODO support different screen resolutions
-	if (cfg->screen_mode != CFG_MODE_800x600)
-		show_error("Unsupported screen resolution");
-
-	switch (cfg->screen_mode) {
-	case CFG_MODE_640x480: gfx_cfg.width = 640; gfx_cfg.height = 480; break;
-	case CFG_MODE_800x600: gfx_cfg.width = 800; gfx_cfg.height = 600; break;
-	case CFG_MODE_1024x768: gfx_cfg.width = 1024; gfx_cfg.height = 768; break;
-	}
-}
-
 void gfx_update(void)
 {
 	int display;
@@ -365,19 +304,12 @@ void video_play(const char *name)
 #endif
 }
 
-// hack for windows...
-#ifdef main
-	#undef main
-#endif
-
 int main(int argc, char **argv)
 {
 	int err;
 
 	if ((err = GE_Init(&argc, argv)))
 		return err;
-
-	cfg_parse(&cfg, argc, argv);
 
 	if (!find_setup_files())
 		panic("Please insert or mount the game CD-ROM");

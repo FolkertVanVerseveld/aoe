@@ -39,6 +39,7 @@ endif
 
 OBJECTS=\
 	def.o \
+	gfx.o \
 	res.o \
 	fs.o \
 	memory.o \

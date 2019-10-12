@@ -49,7 +49,7 @@ else
 	LDFLAGS += -L"/usr/local/lib" -L"/usr/local/x86_64-w64-mingw32/lib/"
 endif
 
-	UI_LDLIBS = -lmingw32 -lSDL2 -lSDL2main -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mwin32 -lopengl32 -lstdc++ -lz
+	UI_LDLIBS = -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mwin32 -lopengl32 -lstdc++ -lz
 
 	CFLAGS += -I"/usr/local/include/"
 	CXXFLAGS += -I"/usr/local/include/"
@@ -90,7 +90,7 @@ str.o: str.c str.h
 qtree.o: world.hpp qtree.cpp
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) editor.cpp -c -o editor.o $(LDFLAGS) $(LDLIBS)
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) qtree.cpp -c -o qtree.o $(LDFLAGS) $(LDLIBS)
-gfx.o: gfx.h gfx.c
+gfx.o: ../lib/libgeniegame.a gfx.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) gfx.c -c -o gfx.o $(LDFLAGS) $(LDLIBS)
 sfx.o: sfx.h sfx.cpp
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) sfx.cpp -c -o sfx.o $(LDFLAGS) $(LDLIBS)

@@ -6,8 +6,8 @@
  * Licensed under MIT-License.
  */
 
-#ifndef DBG_H
-#define DBG_H
+#ifndef GENIE_DBG_H
+#define GENIE_DBG_H
 
 #include <assert.h>
 #include <stddef.h>

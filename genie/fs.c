@@ -32,7 +32,7 @@
 #include <genie/dbg.h>
 #include <genie/def.h>
 #include <genie/error.h>
-#include <genie/genie.h>
+#include <genie/engine.h>
 
 #ifdef _WIN32
 	#define INVALID_MAPPING NULL

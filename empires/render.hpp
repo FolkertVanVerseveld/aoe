@@ -6,7 +6,7 @@
 
 #include <stack>
 
-#include "gfx.h"
+#include <genie/gfx.h>
 
 /** Text horizontal/vertical alignment */
 enum TextAlign {

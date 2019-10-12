@@ -1,6 +1,6 @@
 /* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
-#include "gfx.h"
+#include <genie/gfx.h>
 
 #include <genie/def.h>
 
@@ -12,8 +12,6 @@ TTF_Font *fnt_button;
 TTF_Font *fnt_large;
 
 #define BUFSZ 4096
-
-struct gfx_cfg gfx_cfg = {0, 0, 0, 800, 600};
 
 void gfx_init(void)
 {

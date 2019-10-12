@@ -192,7 +192,7 @@ void sfx_free(void)
 
 void sfx_play(unsigned id)
 {
-	if (cfg.options & CFG_NO_SOUND)
+	if (GE_cfg.options & GE_CFG_NO_SOUND)
 		return;
 
 	auto clip = sfx.find(id);
@@ -209,7 +209,7 @@ void sfx_play(unsigned id)
 
 void mus_play(unsigned id)
 {
-	if (cfg.options & CFG_NO_MUSIC)
+	if (GE_cfg.options & GE_CFG_NO_MUSIC)
 		return;
 
 	char buf[FS_BUFSZ];
