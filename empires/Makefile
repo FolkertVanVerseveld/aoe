@@ -28,7 +28,7 @@ else
 	CFLAGS += -O3
 endif
 
-UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lSDL2_gfx $(shell pkg-config --cflags --libs openssl)
+UI_LDLIBS=$(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer -lSDL2_gfx $(shell pkg-config --cflags --libs openssl)
 
 ifdef CROSS_COMPILE
 ifeq ($(CROSS_COMPILE),32)
@@ -49,7 +49,7 @@ else
 	LDFLAGS += -L"/usr/local/lib" -L"/usr/local/x86_64-w64-mingw32/lib/"
 endif
 
-	UI_LDLIBS = -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mwin32 -lopengl32 -lstdc++ -lz
+	UI_LDLIBS = -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_mixer -mwin32 -lopengl32 -lstdc++ -lz
 
 	CFLAGS += -I"/usr/local/include/"
 	CXXFLAGS += -I"/usr/local/include/"

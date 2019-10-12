@@ -11,10 +11,6 @@
 
 struct gfx_cfg gfx_cfg = {0, 0, 0, 800, 600};
 
-TTF_Font *fnt_default;
-TTF_Font *fnt_button;
-TTF_Font *fnt_large;
-
 #define BUFSZ 4096
 
 extern const unsigned char _binary_fnt_default_png_start[];
@@ -50,20 +46,6 @@ void gfx_init(void)
 
 	if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG))
 		panic("Could not initialize image subsystem");
-	if (TTF_Init())
-		panic("Could not initialize fonts");
-
-	snprintf(buf, BUFSZ, "%s/system/fonts/" FONT_NAME_DEFAULT, path_cdrom);
-	if (!(fnt_default = TTF_OpenFont(buf, FONT_PT_DEFAULT)))
-		panic("Could not setup default font");
-
-	snprintf(buf, BUFSZ, "%s/system/fonts/" FONT_NAME_BUTTON, path_cdrom);
-	if (!(fnt_button = TTF_OpenFont(buf, FONT_PT_BUTTON)))
-		panic("Could not setup button font");
-
-	snprintf(buf, BUFSZ, "%s/system/fonts/" FONT_NAME_LARGE, path_cdrom);
-	if (!(fnt_large = TTF_OpenFont(buf, FONT_PT_LARGE)))
-		panic("Could not setup large font");
 
 	ge_gfx_load_font(&fnt_tex_default, _binary_fnt_default_png_start, _binary_fnt_default_png_end);
 	ge_gfx_load_font(&fnt_tex_button, _binary_fnt_button_png_start, _binary_fnt_button_png_end);
@@ -76,15 +58,10 @@ void gfx_free(void)
 	SDL_DestroyTexture(fnt_tex_button);
 	SDL_DestroyTexture(fnt_tex_default);
 
-	TTF_CloseFont(fnt_large);
-	TTF_CloseFont(fnt_button);
-	TTF_CloseFont(fnt_default);
-
-	TTF_Quit();
 	IMG_Quit();
 }
 
-int gfx_get_textlen_bounds(const struct SDL_Texture *font, SDL_Rect *bounds, const char *text, unsigned count)
+int gfx_get_textlen_bounds(struct SDL_Texture *font, SDL_Rect *bounds, const char *text, unsigned count)
 {
 	// FIXME use pos->w and pos->h to clip glyphs if out of bounds
 	SDL_Rect ren_pos, tex_pos;
@@ -135,7 +112,7 @@ int gfx_get_textlen_bounds(const struct SDL_Texture *font, SDL_Rect *bounds, con
 	return 0;
 }
 
-void gfx_draw_textlen(const struct SDL_Texture *font, const SDL_Rect *pos, const char *text, unsigned count)
+void gfx_draw_textlen(struct SDL_Texture *font, const SDL_Rect *pos, const char *text, unsigned count)
 {
 	// FIXME use pos->w and pos->h to clip glyphs if out of bounds
 	SDL_Rect ren_pos, tex_pos;
@@ -181,13 +158,8 @@ void gfx_draw_textlen(const struct SDL_Texture *font, const SDL_Rect *pos, const
 		tex_pos.w = gw;
 		tex_pos.h = gh;
 
-		//printf("draw glyph %u at (%d,%d,%d,%d) (%d,%d,%d,%d)\n", ch, ren_pos.x, ren_pos.y, ren_pos.w, ren_pos.w, tex_pos.x, tex_pos.y, tex_pos.w, tex_pos.h);
-
 		SDL_RenderCopy(renderer, font, &tex_pos, &ren_pos);
 
 		tx += gw;
 	}
-
-	//printf("%s: %s, count:%u\n", __func__, text, count);
-	//panic("whoah");
 }

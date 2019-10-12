@@ -166,7 +166,7 @@ int load_bitmap(struct pe_lib *lib, unsigned id, void **data, size_t *size)
 	void *ptr;
 	size_t count;
 
-	if (pe_load_res(lib->pe, RT_BITMAP, id, &ptr, &count)) {
+	if (pe_load_res(lib->pe, (unsigned)RT_BITMAP, id, &ptr, &count)) {
 		dbgs("load_bitmap failed");
 		return 1;
 	}

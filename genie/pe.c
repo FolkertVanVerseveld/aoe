@@ -410,7 +410,7 @@ int pe_load_string(struct pe *pe, unsigned id, char *str, size_t size)
 	void *ptr;
 	size_t count;
 
-	if (err = pe_load_res(pe, RT_STRING, id, &ptr, &count))
+	if (err = pe_load_res(pe, (unsigned)RT_STRING, id, &ptr, &count))
 		return err;
 
 	if (!size)
@@ -421,8 +421,19 @@ int pe_load_string(struct pe *pe, unsigned id, char *str, size_t size)
 
 	const uint16_t *data = ptr;
 
-	for (size_t i = 0; i < count; ++i)
-		str[i] = data[i];
+	for (size_t i = 0; i < count; ++i) {
+		unsigned ch = data[i];
+
+		if (ch > UINT8_MAX) {
+			// try to convert character
+			switch (ch) {
+			case 0x2122: ch = 0x99; break;
+			default: dbgf("%s: truncate ch %I16X\n", __func__, ch); break;
+			}
+		}
+
+		str[i] = ch;
+	}
 
 	str[count] = '\0';
 

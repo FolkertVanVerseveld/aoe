@@ -37,13 +37,6 @@ extern struct gfx_cfg {
 	unsigned width, height;
 } gfx_cfg;
 
-// Default small text font
-extern TTF_Font *fnt_default;
-// Default user interface button font
-extern TTF_Font *fnt_button;
-// Default menu heading font
-extern TTF_Font *fnt_large;
-
 extern SDL_Texture *fnt_tex_default, *fnt_tex_button, *fnt_tex_large;
 
 void gfx_init(void);
@@ -53,9 +46,9 @@ void gfx_update(void);
 /**
  * Precompute the boundaries of the specified text and always returns 0.
  */
-int gfx_get_textlen_bounds(const struct SDL_Texture *font, SDL_Rect *bounds, const char *text, unsigned count);
+int gfx_get_textlen_bounds(struct SDL_Texture *font, SDL_Rect *bounds, const char *text, unsigned count);
 
-void gfx_draw_textlen(const struct SDL_Texture *font, const SDL_Rect *pos, const char *text, unsigned count);
+void gfx_draw_textlen(struct SDL_Texture *font, const SDL_Rect *pos, const char *text, unsigned count);
 
 #ifdef __cplusplus
 }
