@@ -129,6 +129,7 @@ int cs_read(FILE *f, struct fnt_cs *cs, unsigned count)
 		cs->data[2 * (i + fnt_tm.tm_chrfst) + 1] = h;
 	}
 
+	printf("max: %d,%d\n", cs->max_w, cs->max_h);
 	return 1;
 }
 

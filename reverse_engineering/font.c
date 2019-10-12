@@ -25,19 +25,17 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		HFONT hfont;
 		RECT rect;
 		TEXTMETRIC fm; // https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-textmetrica
-		const char *fname = "Arial";
-		int pt = 12;
-		fname = "Cinzel Decorative";
-		pt = 28;
+		const char *fname = "Copperplate Gothic Light";
+		int pt = 16;
 
 		hdc = BeginPaint(hwnd, &ps);
 			hfont = CreateFont(
 				-pt, 0,
 				0, 0,
-				0, // 0=regular, 700=bold
+				700, // 0=regular, 700=bold
 				0, 0, 0,
 				1, 0, 0, // TODO figure out what iCharSet=1 is
-				2,//NONANTIALIASED_QUALITY, // antialiasing would be nice, but then we have to deal with transparency
+				NONANTIALIASED_QUALITY,//NONANTIALIASED_QUALITY, // antialiasing would be nice, but then we have to deal with transparency
 				2,
 				fname
 			);

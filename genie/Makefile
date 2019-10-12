@@ -43,14 +43,32 @@ OBJECTS=\
 	res.o \
 	fs.o \
 	memory.o \
-	pe.o
+	pe.o \
+	fnt_data.o
 
 GAME_OBJECTS=\
 	engine.o
 
-ALL_OBJECTS=$(GAME_OBJECTS) $(OBJECTS)
+FONT_OBJECTS=\
+	fnt_default.o \
+	fnt_button.o \
+	fnt_large.o
+
+FONTS=\
+	fnt_default.png \
+	fnt_button.png \
+	fnt_large.png
+
+ALL_OBJECTS=$(GAME_OBJECTS) $(OBJECTS) $(FONT_OBJECTS)
 
 default: ../lib/libgenie.a ../lib/libgeniegame.a
+
+fnt_default.o: fnt_default.png
+	ld -r -b binary -o fnt_default.o fnt_default.png
+fnt_button.o: fnt_button.png
+	ld -r -b binary -o fnt_button.o fnt_button.png
+fnt_large.o: fnt_large.png
+	ld -r -b binary -o fnt_large.o fnt_large.png
 
 ../lib:
 	mkdir -p ../lib

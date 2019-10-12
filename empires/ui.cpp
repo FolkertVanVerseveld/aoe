@@ -318,7 +318,6 @@ class Text final : public UI {
 public:
 	const std::string str;
 private:
-	SDL_Surface *surf;
 	SDL_Texture *tex;
 
 public:
@@ -329,8 +328,15 @@ public:
 		: UI(x, y), str(load_string(id))
 	{
 		SDL_Color col = {255, 255, 255, SDL_ALPHA_OPAQUE};
-		surf = TTF_RenderText_Solid(fnt, str.c_str(), col);
-		tex = SDL_CreateTextureFromSurface(renderer, surf);
+
+		if (fnt == fnt_default)
+			tex = fnt_tex_default;
+		else if (fnt == fnt_button)
+			tex = fnt_tex_button;
+		else if (fnt == fnt_large)
+			tex = fnt_tex_large;
+		else
+			panic("bad font");
 
 		reshape(halign, valign);
 	}
@@ -342,8 +348,14 @@ public:
 		, SDL_Color col=col_default)
 		: UI(x, y), str(str)
 	{
-		surf = TTF_RenderText_Solid(fnt, str.c_str(), col);
-		tex = SDL_CreateTextureFromSurface(renderer, surf);
+		if (fnt == fnt_default)
+			tex = fnt_tex_default;
+		else if (fnt == fnt_button)
+			tex = fnt_tex_button;
+		else if (fnt == fnt_large)
+			tex = fnt_tex_large;
+		else
+			panic("bad font");
 
 		reshape(halign, valign);
 	}
@@ -355,32 +367,34 @@ public:
 		, SDL_Color col=col_default)
 		: UI(x, y), str(str)
 	{
-		surf = TTF_RenderText_Solid(fnt, str, col);
-		tex = SDL_CreateTextureFromSurface(renderer, surf);
+		if (fnt == fnt_default)
+			tex = fnt_tex_default;
+		else if (fnt == fnt_button)
+			tex = fnt_tex_button;
+		else if (fnt == fnt_large)
+			tex = fnt_tex_large;
+		else
+			panic("bad font");
 
 		reshape(halign, valign);
 	}
 
-	~Text() {
-		SDL_DestroyTexture(tex);
-		SDL_FreeSurface(surf);
-	}
-
 private:
 	void reshape(TextAlign halign, TextAlign valign) {
-		this->w = surf->w;
-		this->h = surf->h;
+		SDL_Rect bounds;
+
+		gfx_get_textlen_bounds(tex, &bounds, str.c_str(), str.size());
 
 		switch (halign) {
 		case LEFT: break;
-		case CENTER: this->x -= (int)w / 2; break;
-		case RIGHT: this->x -= (int)w; break;
+		case CENTER: this->x -= (int)bounds.w / 2; break;
+		case RIGHT: this->x -= (int)bounds.w; break;
 		}
 
 		switch (valign) {
 		case TOP: break;
-		case MIDDLE: this->y -= (int)h / 2; break;
-		case BOTTOM: this->y -= (int)h; break;
+		case MIDDLE: this->y -= (int)bounds.h / 2; break;
+		case BOTTOM: this->y -= (int)bounds.h; break;
 		}
 	}
 
@@ -405,13 +419,15 @@ public:
 		// draw shadow
 		SDL_SetTextureColorMod(tex, 0, 0, 0);
 		SDL_RenderCopy(renderer, tex, NULL, &pos);
+		gfx_draw_textlen(tex, &pos, str.c_str(), str.size());
 		++pos.x;
 		--pos.y;
 		// draw foreground text
 		RendererState &s = canvas.get_state();
 		SDL_Color &col = focus ? s.col_text_f : s.col_text;
 		SDL_SetTextureColorMod(tex, col.r, col.g, col.b);
-		SDL_RenderCopy(renderer, tex, NULL, &pos);
+		//SDL_RenderCopy(renderer, tex, NULL, &pos);
+		gfx_draw_textlen(tex, &pos, str.c_str(), str.size());
 	}
 };
 

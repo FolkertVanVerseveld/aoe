@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <SDL2/SDL_image.h>
 
+#include "fnt_data.h"
+
 struct gfx_cfg gfx_cfg = {0, 0, 0, 800, 600};
 
 TTF_Font *fnt_default;
@@ -14,6 +16,33 @@ TTF_Font *fnt_button;
 TTF_Font *fnt_large;
 
 #define BUFSZ 4096
+
+extern const unsigned char _binary_fnt_default_png_start[];
+extern const unsigned char _binary_fnt_default_png_end[];
+extern const unsigned char _binary_fnt_button_png_start[];
+extern const unsigned char _binary_fnt_button_png_end[];
+extern const unsigned char _binary_fnt_large_png_start[];
+extern const unsigned char _binary_fnt_large_png_end[];
+
+SDL_Texture *fnt_tex_default, *fnt_tex_button, *fnt_tex_large;
+
+extern SDL_Renderer *renderer;
+
+static void ge_gfx_load_font(SDL_Texture **dst, const void *start, const void *end)
+{
+	SDL_RWops *mem;
+	SDL_Surface *surf;
+	SDL_Texture *tex;
+
+	mem = SDL_RWFromConstMem(start, (int)(end - start));
+	if (!mem)
+		panic("Could not load font from memory");
+
+	if (!(surf = IMG_Load_RW(mem, 1)) || !(tex = SDL_CreateTextureFromSurface(renderer, surf)))
+		panic("Corrupt font data");
+
+	*dst = tex;
+}
 
 void gfx_init(void)
 {
@@ -35,14 +64,130 @@ void gfx_init(void)
 	snprintf(buf, BUFSZ, "%s/system/fonts/" FONT_NAME_LARGE, path_cdrom);
 	if (!(fnt_large = TTF_OpenFont(buf, FONT_PT_LARGE)))
 		panic("Could not setup large font");
+
+	ge_gfx_load_font(&fnt_tex_default, _binary_fnt_default_png_start, _binary_fnt_default_png_end);
+	ge_gfx_load_font(&fnt_tex_button, _binary_fnt_button_png_start, _binary_fnt_button_png_end);
+	ge_gfx_load_font(&fnt_tex_large, _binary_fnt_large_png_start, _binary_fnt_large_png_end);
 }
 
 void gfx_free(void)
 {
+	SDL_DestroyTexture(fnt_tex_large);
+	SDL_DestroyTexture(fnt_tex_button);
+	SDL_DestroyTexture(fnt_tex_default);
+
 	TTF_CloseFont(fnt_large);
 	TTF_CloseFont(fnt_button);
 	TTF_CloseFont(fnt_default);
 
 	TTF_Quit();
 	IMG_Quit();
+}
+
+int gfx_get_textlen_bounds(const struct SDL_Texture *font, SDL_Rect *bounds, const char *text, unsigned count)
+{
+	// FIXME use pos->w and pos->h to clip glyphs if out of bounds
+	SDL_Rect ren_pos, tex_pos;
+	int x = 0, y = 0;
+	int tx = x, ty = y;
+	const struct fnt_tm *tm;
+	const struct fnt_cs *cs;
+
+	if (font == fnt_tex_default) { tm = &fnt_tm_default; cs = &fnt_cs_default; }
+	else if (font == fnt_tex_button) { tm = &fnt_tm_button; cs = &fnt_cs_button; }
+	else if (font == fnt_tex_large) { tm = &fnt_tm_large; cs = &fnt_cs_large; }
+	else { panic("bad font"); }
+
+	int max_w = 0, max_h = 0;
+
+	for (const unsigned char *ptr = (const unsigned char*)text; count; ++ptr, --count) {
+		int gpos, gx, gy, gw, gh;
+		unsigned ch = *ptr;
+
+		// treat invalid characters as break
+		if (ch < tm->tm_chrfst || ch > tm->tm_chrend)
+			ch = tm->tm_chrbrk;
+
+		if (ch == '\r')
+			continue;
+
+		if (ch == '\n') {
+			tx = x;
+			ty += tm->tm_height;
+		}
+
+		gw = cs->data[2 * ch + 0];
+		gh = cs->data[2 * ch + 1];
+		gpos = ch - tm->tm_chrfst;
+		gy = gpos / 16;
+		gx = gpos % 16;
+
+		if (tx + gw >= max_w)
+			max_w = tx + gw;
+		if (ty + gh >= max_h)
+			max_h = ty + gh;
+
+		tx += gw;
+	}
+
+	bounds->w = max_w;
+	bounds->h = max_h;
+	return 0;
+}
+
+void gfx_draw_textlen(const struct SDL_Texture *font, const SDL_Rect *pos, const char *text, unsigned count)
+{
+	// FIXME use pos->w and pos->h to clip glyphs if out of bounds
+	SDL_Rect ren_pos, tex_pos;
+	int x = pos->x, y = pos->y;
+	int tx = x, ty = y;
+	const struct fnt_tm *tm;
+	const struct fnt_cs *cs;
+
+	if (font == fnt_tex_default) { tm = &fnt_tm_default; cs = &fnt_cs_default; }
+	else if (font == fnt_tex_button) { tm = &fnt_tm_button; cs = &fnt_cs_button; }
+	else if (font == fnt_tex_large) { tm = &fnt_tm_large; cs = &fnt_cs_large; }
+	else { panic("bad font"); }
+
+	for (const unsigned char *ptr = (const unsigned char*)text; count; ++ptr, --count) {
+		int gpos, gx, gy, gw, gh;
+		unsigned ch = *ptr;
+
+		// treat invalid characters as break
+		if (ch < tm->tm_chrfst || ch > tm->tm_chrend)
+			ch = tm->tm_chrbrk;
+
+		if (ch == '\r')
+			continue;
+
+		if (ch == '\n') {
+			tx = x;
+			ty += tm->tm_height;
+		}
+
+		gw = cs->data[2 * ch + 0];
+		gh = cs->data[2 * ch + 1];
+		gpos = ch - tm->tm_chrfst;
+		gy = gpos / 16;
+		gx = gpos % 16;
+
+		ren_pos.x = tx;
+		ren_pos.y = ty;
+		ren_pos.w = gw;
+		ren_pos.h = gh;
+
+		tex_pos.x = gx * cs->max_w;
+		tex_pos.y = gy * cs->max_h;
+		tex_pos.w = gw;
+		tex_pos.h = gh;
+
+		//printf("draw glyph %u at (%d,%d,%d,%d) (%d,%d,%d,%d)\n", ch, ren_pos.x, ren_pos.y, ren_pos.w, ren_pos.w, tex_pos.x, tex_pos.y, tex_pos.w, tex_pos.h);
+
+		SDL_RenderCopy(renderer, font, &tex_pos, &ren_pos);
+
+		tx += gw;
+	}
+
+	//printf("%s: %s, count:%u\n", __func__, text, count);
+	//panic("whoah");
 }
