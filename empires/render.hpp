@@ -78,12 +78,12 @@ public:
 	void draw_text(int x, int y, const char *str
 		, TextAlign halign=LEFT
 		, TextAlign valign=TOP
-		, TTF_Font *fnt=fnt_default);
+		, SDL_Texture *fnt=fnt_tex_default);
 
 	void draw_text(int x, int y, unsigned id
 		, TextAlign halign=LEFT
 		, TextAlign valign=TOP
-		, TTF_Font *fnt=fnt_default);
+		, SDL_Texture *fnt=fnt_tex_default);
 
 	void save_screen();
 	void read_screen();
