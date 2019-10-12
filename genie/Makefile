@@ -46,7 +46,7 @@ OBJECTS=\
 	pe.o
 
 GAME_OBJECTS=\
-	genie.o
+	engine.o
 
 ALL_OBJECTS=$(GAME_OBJECTS) $(OBJECTS)
 

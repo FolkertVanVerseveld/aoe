@@ -43,8 +43,6 @@ unsigned init = 0;
 SDL_Window *window;
 SDL_Renderer *renderer;
 
-struct pe_lib lib_lang;
-
 #define BUFSZ 4096
 
 int running = 0;
@@ -60,13 +58,6 @@ unsigned const music_list[] = {
 unsigned music_index = 0;
 
 int in_game = 0;
-
-int load_lib_lang(void)
-{
-	char buf[BUFSZ];
-	fs_game_path(buf, BUFSZ, "language.dll");
-	return pe_lib_open(&lib_lang, buf);
-}
 
 #define FSE_QUERY 1
 #define FSE_NO_SUPPORT 2
@@ -313,11 +304,6 @@ int main(int argc, char **argv)
 	if ((err = GE_Init(&argc, argv)))
 		return err;
 
-	if (!find_setup_files())
-		panic("Please insert or mount the game CD-ROM");
-	if (load_lib_lang())
-		panic("CD-ROM files are corrupt");
-
 	game_installed = find_game_installation();
 	if (has_wine)
 		dbgs("wine detected");
@@ -369,6 +355,5 @@ int main(int argc, char **argv)
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 
-	pe_lib_close(&lib_lang);
 	return GE_Quit();
 }

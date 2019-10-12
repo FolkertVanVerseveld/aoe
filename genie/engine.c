@@ -5,6 +5,8 @@
 #include <genie/dbg.h>
 #include <genie/def.h>
 #include <genie/gfx.h>
+#include <genie/res.h>
+#include <genie/fs.h>
 
 #include <xt/error.h>
 #include <xt/os.h>
@@ -13,6 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+struct pe_lib lib_lang;
 
 struct GE_config GE_cfg = {GE_CFG_NORMAL_MOUSE, GE_CFG_MODE_800x600, 50, 0.7, 1, 0.3};
 
@@ -98,6 +102,15 @@ static void ge_cfg_parse(struct GE_config *cfg, int argc, char **argv)
 	}
 }
 
+#define BUFSZ 4096
+
+int load_lib_lang(void)
+{
+	char buf[BUFSZ];
+	fs_game_path(buf, BUFSZ, "language.dll");
+	return pe_lib_open(&lib_lang, buf);
+}
+
 int GE_Init(int *pargc, char **argv)
 {
 	int argc = *pargc;
@@ -115,10 +128,17 @@ int GE_Init(int *pargc, char **argv)
 
 	ge_cfg_parse(&GE_cfg, argc, argv);
 
+	if (!find_setup_files())
+		panic("Please insert or mount the game CD-ROM");
+
+	if (load_lib_lang())
+		panic("CD-ROM files are corrupt");
+
 	return 0;
 }
 
 int GE_Quit(void)
 {
+	pe_lib_close(&lib_lang);
 	return 0;
 }

@@ -76,6 +76,7 @@ empires: $(OBJECTS)
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) $(OBJECTS) -o empires $(LDFLAGS) $(LDLIBS) $(UI_LDLIBS) -lstdc++
 empires.o: empires.c
 	$(CC) $(CFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) empires.c -c -o empires.o $(LDFLAGS) $(LDLIBS)
+
 game.o: game.hpp game.cpp ui.h image.hpp render.hpp world.hpp drs.h lang.h
 	$(CXX) $(CXXFLAGS) $(DEBUG_LDFLAGS) $(DEBUG_LDLIBS) game.cpp -c -o game.o $(LDFLAGS) $(LDLIBS)
 
