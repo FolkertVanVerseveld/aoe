@@ -12,7 +12,9 @@ extern "C" {
 
 #include <sys/types.h>
 
+#ifndef HEADLESS
 #include <SDL2/SDL_surface.h>
+#endif
 
 #include "res.h"
 
@@ -68,11 +70,13 @@ struct drs_hdr {
 // FIXME error handling
 void slp_map(struct slp *dst, const void *data);
 
+#ifndef HEADLESS
 /**
  * Construct surface with specified palette from \a data for a \a player
  * \return whether the image is dynamic
  */
 bool slp_read(SDL_Surface *surf, const struct SDL_Palette *pal, const void *data, const struct slp_frame_info *frame, unsigned player);
+#endif
 
 /** Initialize Data Resources System */
 void drs_init(void);

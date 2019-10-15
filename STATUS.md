@@ -36,11 +36,7 @@ These items are being worked on:
 
 Subsystem       | Task / Purpose        | Notes
 ----------------|-----------------------|-------------------------------------
-Empires folder  | Replicate and port    | Basic graphics and audio
-"       "       | old game and launcher | subsystem working
-User Interface  | True Type Fonts       | Porting to new launcher
-"    "          | Menu navigation       | Basic buttons and group navigation
-"    "          | Main menu             | See next task
+User Interface  | Missing menu's etc.   |
 Game logic      | Dynamic Unit logic    | Movement stub
 
 ## Backlog
@@ -52,19 +48,18 @@ Subsystem      | Task / Purpose                 | Notes
 Shell          | Command line interface         | Migrate from old to new game
 Bugreport      | Debug info for crashes         | "", crash handler in case the engine or game crashes
 Video          | AVI video playback             | "", uses command-line interface for VLC
-"              | Refactor graphics renderer     | Provide plain SDL renderer and OpenGL
 Tools          | Autostrip BMP and WAVE headers | Headers must be stripped to be recognized properly by the original game.
 User interface | Create chatfield for commands  | Spawn units, get resources etc.
 "              | Split code in more files       | Some stuff really doesn't belong here...
-Global         | Refactoring some parts to C    | I'm stupid and can't get everything work fast and properly in C++...
 
 ## On hold
 
 These items are more troublesome, boring or difficult than other items. Some may
 require more investigation or the scope of the issue has to be clarified.
 
-Subsystem      | Task / Purpose | Notes
----------------|----------------|----------------------------------------------
-Multiplayer    | Networking     | For multiplayer games etc.
-Engine         | MIDI playback  | Old launcher is being migrated to the new one
-Other stuff    | Configuration  | Either on compile time (./configure) or runtime (~/.aoerc)
+Subsystem      | Task / Purpose             | Notes
+---------------|----------------------------|----------------------------------------------
+Multiplayer    | Networking                 | For multiplayer games etc.
+Engine         | MIDI playback              | Old launcher is being migrated to the new one
+Other stuff    | Configuration              | Either on compile time (./configure) or runtime (~/.aoerc)
+Video          | Refactor graphics renderer | Provide plain SDL renderer and OpenGL

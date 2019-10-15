@@ -1141,6 +1141,21 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 	return false;
 }
 
+static unsigned unit_sfx_destroy(const Unit *u)
+{
+	if (dynamic_cast<const Building*>(u))
+		return SFX_BUILDING_DESTROY1 + rand() % SFX_BUILDING_DESTROY_COUNT;
+
+	const DynamicUnit *d = dynamic_cast<const DynamicUnit*>(u);
+
+	if (d) {
+		if (dynamic_cast<const Villager*>(d))
+			return SFX_VILLAGER_DESTROY1 + rand() % SFX_VILLAGER_DESTROY_COUNT;
+	}
+
+	return SFX_TRIBE_DESTROY1 + rand() % SFX_TRIBE_DESTROY_COUNT;
+}
+
 bool Game::keydown(SDL_KeyboardEvent *event) {
 	unsigned virt = event->keysym.sym;
 
@@ -1166,6 +1181,18 @@ bool Game::keydown(SDL_KeyboardEvent *event) {
 	case SDLK_LEFT : keys |= KEY_LEFT ; break;
 	case ' ':
 		break;
+	case SDLK_DELETE:
+		for (auto unit : selected) {
+			Unit *obj = unit.get();
+			sfx_play(unit_sfx_destroy(obj));
+			erase(obj);
+		}
+
+		if (selected.size())
+			canvas_dirty();
+		selected.clear();
+
+		return true;
 	default:
 		return false;
 	}
@@ -1219,6 +1246,11 @@ Player *Game::controlling_player() {
 void Game::spawn(Unit *obj) {
 	if (!units.put(obj))
 		panic("Game: could not spawn unit");
+}
+
+void Game::erase(Unit *obj) {
+	if (!units.erase(obj))
+		panic("Game: could not erase unit");
 }
 
 /* Image cache stuff */

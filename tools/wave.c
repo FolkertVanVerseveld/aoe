@@ -15,6 +15,8 @@
 #include <sys/stat.h>
 #include <AL/al.h>
 #include <AL/alc.h>
+
+#define HEADLESS
 #include "../empires/drs.h"
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN

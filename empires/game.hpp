@@ -199,6 +199,7 @@ public:
 	}
 };
 
+/** Player statistics for different categories. */
 class Summary final {
 public:
 	StatsMilitary military;
@@ -214,6 +215,25 @@ public:
 	}
 };
 
+class PlayerConfig final {
+public:
+	std::string name;
+	bool is_CPU;
+	Resources res;
+	unsigned color;
+
+	PlayerConfig(unsigned civ, Resources res, unsigned color, bool is_CPU=true, std::string name="");
+};
+
+/** Static settings that are loaded before starting a game. */
+class GameConfig final {
+public:
+	std::vector<PlayerConfig> players;
+
+	GameConfig() : players() {}
+};
+
+/** Dynamic settings that may be changed during the game. */
 class GameSettings final {
 public:
 	float gamespeed;
@@ -344,6 +364,7 @@ public:
 	void draw();
 	void draw_hud(unsigned w, unsigned h);
 	void spawn(Unit *obj);
+	void erase(Unit *obj);
 
 	Player *controlling_player();
 };

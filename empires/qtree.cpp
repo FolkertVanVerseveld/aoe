@@ -25,7 +25,6 @@ void Point::to_screen(Point &dst) const {
 
 void Quadtree::clear() {
 	assert(!split);
-	dynamic_objects.clear();
 	objects.clear();
 }
 
@@ -57,13 +56,14 @@ bool Quadtree::erase(Unit *obj) {
 
 			if (*obj == *o) {
 				dynamic_objects.erase(it);
-				break;
+				goto erase_obj;
 			}
 		}
 
 		return false;
 	}
 
+erase_obj:
 	for (auto it = objects.begin(); it != objects.end(); ++it) {
 		auto o = *it;
 

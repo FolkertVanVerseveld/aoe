@@ -201,14 +201,16 @@ public:
 };
 
 class Quadtree final {
-	std::unique_ptr<Quadtree[]> children;
 	AABB bounds;
 public:
+	// this one manages all non-units only
+	std::vector<std::shared_ptr<Particle>> particles;
+	// this one manages the memory, hence it uses shared_ptr
 	std::vector<std::shared_ptr<Unit>> objects;
+	// this one only holds the dynamic units from objects, hence no shared_ptr
 	std::vector<DynamicUnit*> dynamic_objects;
 	bool split;
-	Quadtree(AABB bounds = {})
-		: children(), bounds(bounds), objects(), split(false) {}
+	Quadtree(AABB bounds = {}) : bounds(bounds), particles(), objects(), split(false) {}
 
 	bool put(Unit *obj);
 	bool erase(Unit *obj);
@@ -216,6 +218,7 @@ public:
 	void clear();
 
 	void query(std::vector<std::shared_ptr<Unit>> &lst, AABB bounds);
+	void query(std::vector<std::shared_ptr<Particle>> &lst, AABB bounds);
 private:
 	void reshape(AABB bounds) { this->bounds = bounds; }
 };

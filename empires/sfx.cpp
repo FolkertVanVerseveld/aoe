@@ -192,7 +192,7 @@ void sfx_free(void)
 
 void sfx_play(unsigned id)
 {
-	if (GE_cfg.options & GE_CFG_NO_SOUND)
+	if (!id || (GE_cfg.options & GE_CFG_NO_SOUND))
 		return;
 
 	auto clip = sfx.find(id);

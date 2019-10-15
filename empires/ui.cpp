@@ -2126,6 +2126,7 @@ public:
 		objects.emplace_back(new Border(25, 75, 750, 104 - 75, true, true));
 		objects.emplace_back(new Text(29, 53, STR_BTN_SCENARIO, LEFT, TOP, fnt_tex_button));
 		objects.emplace_back(new Text(702, 53, STR_PLAYERS, LEFT, TOP, fnt_tex_button));
+		// TODO add missing UI objects
 
 		group.add(87, 550, STR_BTN_OK);
 		group.add(412, 550, STR_BTN_CANCEL);
