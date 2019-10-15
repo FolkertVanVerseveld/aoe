@@ -17,6 +17,7 @@
 #include "ui.h"
 #include "lang.h"
 
+#include <genie/cfg.h>
 #include <genie/dbg.h>
 #include <genie/def.h>
 #include <genie/res.h>
@@ -383,7 +384,7 @@ void Map::reshape(int view_x, int view_y, int view_w, int view_h)
 
 Game::Game()
 	: run(false), x(0), y(0), w(800), h(600)
-	, keys(0), player_index(0), ms(0), end_timer(END_TIMER), end_msg(), speed(0), paused(false), end(false), win(false)
+	, keys(0), player_index(0), ms(0), tick_timer(0), ticks(0), end_timer(END_TIMER), end_msg(), speed(0), paused(false), end(false), win(false)
 	, map(), cache(), players(), state(), cursor(nullptr)
 {
 }
@@ -392,9 +393,9 @@ Game::~Game()
 {
 }
 
-void Game::dispose(void) {
+void Game::dispose() {
 	if (run)
-		panic("Bad game state");
+		dbgs("dispose directly");
 
 	selected.clear();
 	players.clear();
@@ -412,6 +413,7 @@ void Game::reset(unsigned players) {
 		panic("Bad game state");
 
 	paused = end = win = false;
+	end_msg = "";
 	end_timer = END_TIMER;
 	player_index = 0;
 	selected.clear();
@@ -453,30 +455,47 @@ bool Game::idle(unsigned ms) {
 
 	this->ms += ms;
 
-	// Dynamic objects game tick
-	for (auto &unit : units.dynamic_objects)
-		unit->tick();
+	unsigned hh, mm, ss = this->ms / 1000;
 
-	// Always repaint the screen
-	canvas_dirty();
+	hh = ss / 3600;
+	ss %= 3600;
+	mm = ss / 60;
+	ss %= 60;
+
+	snprintf(elapsed, sizeof elapsed, "%02u:%02u:%02u", hh, mm, ss);
+	snprintf(elapsed_full, sizeof elapsed_full, "%02u:%02u:%02u (%.1f)", hh, mm, ss, 1.0);
+
+	tick_timer += ms;
+
+	if (tick_timer >= TICK_INTERVAL) {
+		unsigned steps = tick_timer / TICK_INTERVAL;
+
+		for (unsigned i = 0; i < steps; ++i, ++ticks) {
+			// Dynamic objects game tick
+			for (auto &unit : units.dynamic_objects)
+				unit->tick();
+		}
+
+		tick_timer %= TICK_INTERVAL;
+	}
 
 	// Determine displacement vector
-	int dx = 0, dy = 0;
+	float speed = GE_cfg.scroll_speed * ms, dx = 0, dy = 0;
 
 	if (keys & KEY_DOWN)
-		dy += MOVE_SPEED;
+		dy += speed;
 	if (keys & KEY_UP)
-		dy -= MOVE_SPEED;
+		dy -= speed;
 	if (keys & KEY_RIGHT)
-		dx += MOVE_SPEED;
+		dx += speed;
 	if (keys & KEY_LEFT)
-		dx -= MOVE_SPEED;
+		dx -= speed;
 
 	state.move_view(dx, dy);
 
 	// limit viewport bounds
 	// TODO strafe viewport if hitting boundaries
-	int vx = state.view_x, vy = state.view_y;
+	float vx = state.view_x, vy = state.view_y;
 	if (vx < map.left)
 		vx = map.left;
 	else if (vx > map.right)
@@ -487,6 +506,9 @@ bool Game::idle(unsigned ms) {
 		vy = map.bottom;
 
 	state.set_view(vx, vy);
+
+	// Always repaint the screen
+	canvas_dirty();
 
 #if 0
 	if (dx || dy)
@@ -508,7 +530,7 @@ void Game::start() {
 }
 
 bool Game::cheat(const char *str) {
-	bool good = false;
+	bool good = true;
 	Resources res = {0, 0, 0, 0};
 
 	if (!strcmp(str, "resign")) {
@@ -520,13 +542,15 @@ bool Game::cheat(const char *str) {
 		end_msg = load_string(STR_WIN);
 		sfx_play(SFX_WIN);
 	} else if (!strcmp(str, "woodstock")) {
-		res.wood = 1000; good = true;
+		res.wood = 1000;
 	} else if (!strcmp(str, "pepperoni pizza")) {
-		res.food = 1000; good = true;
+		res.food = 1000;
 	} else if (!strcmp(str, "coinage")) {
-		res.gold = 1000; good = true;
+		res.gold = 1000;
 	} else if (!strcmp(str, "quarry")) {
-		res.stone = 1000; good = true;
+		res.stone = 1000;
+	} else {
+		good = false;
 	}
 
 	controlling_player()->resources += res;
@@ -654,24 +678,14 @@ void Game::draw() {
 	 * Draw in-game text.
 	 * NOTE we have to add the game window offset
 	 */
-	char buf[32];
 	SDL_Color fg = {0xff, 0xff, 0xff, 0}, bg = {0, 0, 0, 0};
 	SDL_Rect pos = {4, 26, 0, 0};
 
-	unsigned hh, mm, ss = ms / 1000;
-
-	hh = ss / 3600;
-	ss %= 3600;
-	mm = ss / 60;
-	ss %= 60;
-
-	snprintf(buf, sizeof buf, "%02u:%02u:%02u (%.1f)", hh, mm, ss, 1.0);
-
-	gfx_draw_textlen_shadow(fnt_tex_default_bold, &fg, &bg, &pos, buf, strlen(buf));
+	gfx_draw_textlen_shadow(fnt_tex_default_bold, &fg, &bg, &pos, elapsed, strlen(elapsed));
 
 	if (end_msg.size()) {
-		pos.x = 0; pos.y = 200;
-		gfx_draw_textlen_shadow(fnt_tex_large, &fg, &bg, &pos, end_msg.c_str(), end_msg.size());
+		pos.x = gfx_cfg.width / 2; pos.y = 200;
+		gfx_draw_textlen_shadow_ext(fnt_tex_large, &fg, &bg, &pos, end_msg.c_str(), end_msg.size(), CENTER, TOP);
 	}
 }
 
@@ -831,6 +845,9 @@ static void play_unit_select(unsigned id)
 }
 
 void Game::button_activate(unsigned id) {
+	if (end)
+		return;
+
 	switch (id) {
 	case 14:
 		selected.clear();
@@ -1045,6 +1062,10 @@ static bool point_to_tile(Map &map, int &tx, int &ty, int &dx, int &dy, int px, 
 bool Game::mousedown(SDL_MouseButtonEvent *event) {
 	// translate mouse coordinates to in game
 	int mx, my;
+
+	// munch all mouse events if ended
+	if (end)
+		return true;
 
 	mx = event->x + state.view_x;
 	my = event->y + state.view_y;

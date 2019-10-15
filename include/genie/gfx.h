@@ -44,6 +44,18 @@ void gfx_init(void);
 void gfx_free(void);
 void gfx_update(void);
 
+enum Halign {
+	LEFT,
+	CENTER,
+	RIGHT
+};
+
+enum Valign {
+	TOP,
+	MIDDLE,
+	BOTTOM
+};
+
 /**
  * Precompute the boundaries of the specified text and always returns 0.
  */
@@ -51,6 +63,8 @@ int gfx_get_textlen_bounds(struct SDL_Texture *font, SDL_Rect *bounds, const cha
 
 void gfx_draw_textlen(struct SDL_Texture *font, const SDL_Rect *pos, const char *text, unsigned count);
 void gfx_draw_textlen_shadow(struct SDL_Texture *font, const SDL_Color *fg, const SDL_Color *bg, const SDL_Rect *pos, const char *text, unsigned count);
+
+void gfx_draw_textlen_shadow_ext(struct SDL_Texture *font, const SDL_Color *fg, const SDL_Color *bg, const SDL_Rect *pos, const char *text, unsigned count, enum Halign ha, enum Valign va);
 
 #ifdef __cplusplus
 }

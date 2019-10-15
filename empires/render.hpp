@@ -8,16 +8,9 @@
 
 #include <genie/gfx.h>
 
-/** Text horizontal/vertical alignment */
-enum TextAlign {
-	LEFT = 0, TOP = 0,
-	CENTER = 1, MIDDLE = 1,
-	RIGHT = 2, BOTTOM = 2
-};
-
 class RendererState final {
 public:
-	int view_x, view_y;
+	float view_x, view_y;
 	SDL_Color col_text, col_text_f;
 
 	RendererState() : view_x(0), view_y(0) {
@@ -29,15 +22,15 @@ public:
 		col_text_f.b = 0;
 	}
 
-	RendererState(int view_x, int view_y)
+	RendererState(float view_x, float view_y)
 		: view_x(view_x), view_y(view_y) {}
 
-	void move_view(int dx, int dy) {
+	void move_view(float dx, float dy) {
 		view_x += dx;
 		view_y += dy;
 	}
 
-	void set_view(int vx, int vy) {
+	void set_view(float vx, float vy) {
 		view_x = vx;
 		view_y = vy;
 	}
@@ -76,13 +69,13 @@ public:
 
 	// NOTE SLOW
 	void draw_text(int x, int y, const char *str
-		, TextAlign halign=LEFT
-		, TextAlign valign=TOP
+		, Halign halign=LEFT
+		, Valign valign=TOP
 		, SDL_Texture *fnt=fnt_tex_default);
 
 	void draw_text(int x, int y, unsigned id
-		, TextAlign halign=LEFT
-		, TextAlign valign=TOP
+		, Halign halign=LEFT
+		, Valign valign=TOP
 		, SDL_Texture *fnt=fnt_tex_default);
 
 	void save_screen();

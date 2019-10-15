@@ -343,8 +343,8 @@ ID        type description
   342    model jason die
   343    model scout die
   344    model ??
-  345    model die (unused)
-  346    model gazelle (unused)
+  345    model tribe die (unused)
+  346    model tribe gazelle (unused)
   347    model ??
   348    model ??
   349    model ??

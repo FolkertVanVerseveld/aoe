@@ -178,3 +178,29 @@ void gfx_draw_textlen_shadow(struct SDL_Texture *tex, const SDL_Color *fg, const
 	SDL_SetTextureColorMod(tex, fg->r, fg->g, fg->b);
 	gfx_draw_textlen(tex, pos, text, count);
 }
+
+void gfx_draw_textlen_shadow_ext(struct SDL_Texture *tex, const SDL_Color *fg, const SDL_Color *bg, const SDL_Rect *pos, const char *text, unsigned count, enum Halign ha, enum Valign va)
+{
+	SDL_Rect bounds;
+	gfx_get_textlen_bounds(tex, &bounds, text, count);
+
+	SDL_Rect target = *pos;
+
+	switch (ha) {
+	case LEFT: break;
+	case CENTER: target.x -= bounds.w / 2; break;
+	case RIGHT: target.x -= bounds.w; break;
+	}
+
+	switch (va) {
+	case TOP: break;
+	case MIDDLE: target.y -= bounds.h / 2; break;
+	case BOTTOM: target.y -= bounds.h; break;
+	}
+
+	SDL_Rect pos2 = {target.x - 1, target.y + 1, target.w, target.h};
+	SDL_SetTextureColorMod(tex, bg->r, bg->g, bg->b);
+	gfx_draw_textlen(tex, &pos2, text, count);
+	SDL_SetTextureColorMod(tex, fg->r, fg->g, fg->b);
+	gfx_draw_textlen(tex, &target, text, count);
+}

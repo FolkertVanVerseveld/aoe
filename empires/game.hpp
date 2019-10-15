@@ -33,8 +33,6 @@
 #define TILE_WIDTH 32
 #define TILE_HEIGHT 16
 
-#define MOVE_SPEED 16
-
 #define MAX_PLAYER_COUNT 8
 
 #define CIV_EGYPTIAN 0
@@ -51,6 +49,10 @@
 #define CIV_CHOSON 11
 
 #define MAX_CIVILIZATION_COUNT (CIV_CHOSON + 1)
+
+#define TICKS_PER_SECOND 20
+
+#define TICK_INTERVAL (1000 / TICKS_PER_SECOND)
 
 extern const unsigned menu_bar_tbl[MAX_CIVILIZATION_COUNT];
 
@@ -283,7 +285,7 @@ class Game final {
 	int x, y, w, h;
 	unsigned keys;
 	unsigned player_index;
-	unsigned ms;
+	unsigned ms, tick_timer, ticks;
 	unsigned end_timer;
 	std::string end_msg;
 public:
@@ -291,6 +293,8 @@ public:
 	bool paused, end, win;
 	Map map;
 	std::unique_ptr<ImageCache> cache;
+	/** C str of \a ms. */
+	char elapsed[20], elapsed_full[20];
 	// XXX use set?
 	// just use vector: negleglible delay for using something more sophisticated for just 9 players
 	std::vector<std::shared_ptr<Player>> players;
@@ -308,7 +312,7 @@ public:
 	~Game();
 
 	void reset(unsigned players = 2);
-	void dispose(void);
+	void dispose();
 
 	void resize(MapSize size);
 	size_t player_count() { return players.size(); }

@@ -320,42 +320,71 @@ public:
 	const std::string str;
 private:
 	SDL_Texture *tex;
-	SDL_Color col;
+	SDL_Color fg_focus, fg, bg_focus, bg;
+
+	static constexpr SDL_Color bg_default = {0, 0, 0, 0};
 
 public:
 	Text(int x, int y, unsigned id
-		, TextAlign halign=LEFT
-		, TextAlign valign=TOP
+		, Halign halign=LEFT
+		, Valign valign=TOP
 		, SDL_Texture *font=fnt_tex_default)
 		: UI(x, y), str(load_string(id)), tex(font)
 	{
-		col = {0, 0, 0, 1};
+		RendererState &s = canvas.get_state();
+
+		fg_focus = s.col_text_f;
+		fg = s.col_text;
+		bg_focus = bg = bg_default;
+
 		reshape(halign, valign);
 	}
 
 	Text(int x, int y, const std::string &str
-		, TextAlign halign=LEFT
-		, TextAlign valign=TOP
-		, SDL_Texture *font=fnt_tex_default
-		, SDL_Color col=col_default)
+		, Halign halign=LEFT
+		, Valign valign=TOP
+		, SDL_Texture *font=fnt_tex_default)
 		: UI(x, y), str(str), tex(font)
 	{
-		this->col = col;
+		RendererState &s = canvas.get_state();
+
+		fg_focus = s.col_text_f;
+		fg = s.col_text;
+		bg_focus = bg = bg_default;
+
+		reshape(halign, valign);
+	}
+
+	Text(int x, int y, const std::string &str
+		, Halign halign
+		, Valign valign
+		, SDL_Texture *font
+		, SDL_Color fg)
+		: UI(x, y), str(str), tex(font)
+	{
+		fg_focus = this->fg = fg;
+		bg_focus = bg = bg_default;
+
 		reshape(halign, valign);
 	}
 
 	Text(int x, int y, const char *str
-		, TextAlign halign=LEFT
-		, TextAlign valign=TOP
+		, Halign halign=LEFT
+		, Valign valign=TOP
 		, SDL_Texture *font=fnt_tex_default)
 		: UI(x, y), str(str), tex(font)
 	{
-		col = {0, 0, 0, 1};
+		RendererState &s = canvas.get_state();
+
+		fg_focus = s.col_text_f;
+		fg = s.col_text;
+		bg_focus = bg = bg_default;
+
 		reshape(halign, valign);
 	}
 
 private:
-	void reshape(TextAlign halign, TextAlign valign) {
+	void reshape(Halign halign, Valign valign) {
 		SDL_Rect bounds;
 
 		gfx_get_textlen_bounds(tex, &bounds, str.c_str(), str.size());
@@ -374,7 +403,7 @@ private:
 	}
 
 public:
-	void move(int x, int y, TextAlign halign, TextAlign valign) {
+	void move(int x, int y, Halign halign, Valign valign) {
 		this->x = x;
 		this->y = y;
 
@@ -390,22 +419,21 @@ public:
 	}
 
 	void draw(int x, int y, bool focus=false) const {
-		RendererState &s = canvas.get_state();
 		SDL_Rect pos = {x, y, (int)w, (int)h};
-		const SDL_Color &fg = (!col.r && !col.g && !col.b && col.a == 1) ? focus ? s.col_text_f : s.col_text : col, bg = {0, 0, 0};
+		const SDL_Color &fg = focus ? fg_focus : this->fg, &bg = focus ? bg_focus : this->bg;
 		gfx_draw_textlen_shadow(tex, &fg, &bg, &pos, str.c_str(), str.size());
 	}
 };
 
 void Renderer::draw_text(int x, int y, const char *str
-	, TextAlign halign, TextAlign valign, SDL_Texture *fnt)
+	, Halign halign, Valign valign, SDL_Texture *fnt)
 {
 	Text text(x, y, str, halign, valign, fnt);
 	text.draw();
 }
 
 void Renderer::draw_text(int x, int y, unsigned id
-	, TextAlign halign, TextAlign valign, SDL_Texture *fnt)
+	, Halign halign, Valign valign, SDL_Texture *fnt)
 {
 	Text text(x, y, id, halign, valign, fnt);
 	text.draw();
@@ -726,12 +754,12 @@ public:
 	}
 };
 
-static constexpr int text_halign(TextAlign align, int w, int margin=4)
+static constexpr int text_halign(Halign align, int w, int margin=4)
 {
 	return align == LEFT ? margin : align == CENTER ? w / 2 : w - margin;
 }
 
-static constexpr int text_valign(TextAlign align, int h, int margin=4)
+static constexpr int text_valign(Valign align, int h, int margin=4)
 {
 	return align == TOP ? margin : align == MIDDLE ? h / 2 : h - margin;
 }
@@ -745,14 +773,14 @@ public:
 	bool visible;
 	unsigned sfx;
 
-	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false, TextAlign halign=CENTER, TextAlign valign=MIDDLE)
+	Button(int x, int y, unsigned w, unsigned h, unsigned id, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false, Halign halign=CENTER, Valign valign=MIDDLE)
 		: Border(x, y, w, h)
 		, text(x + text_halign(halign, w), y + text_valign(valign, h), id, halign, valign, def_fnt ? fnt_tex_default : fnt_tex_button)
 		, focus(false), down(false), hold(hold), play_sfx(play_sfx), visible(true), sfx(sfx)
 	{
 	}
 
-	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false, TextAlign halign=CENTER, TextAlign valign=MIDDLE, SDL_Color col=col_default)
+	Button(int x, int y, unsigned w, unsigned h, const std::string &str, bool def_fnt=false, bool play_sfx=true, unsigned sfx=SFX_BUTTON4, bool hold=false, Halign halign=CENTER, Valign valign=MIDDLE, SDL_Color col=col_default)
 		: Border(x, y, w, h)
 		, text(x + w / 2, y + h / 2, str, halign, valign, def_fnt ? fnt_tex_default : fnt_tex_button, col)
 		, focus(false), down(false), hold(hold), play_sfx(play_sfx), visible(true), sfx(sfx)
@@ -1150,7 +1178,7 @@ public:
 		add(rel_x, rel_y, id, 0, 0, def_fnt);
 	}
 
-	void add(int rel_x, int rel_y, unsigned id, unsigned w, unsigned h, bool def_fnt=false, TextAlign halign=CENTER, TextAlign valign=MIDDLE, bool play_sfx=true) {
+	void add(int rel_x, int rel_y, unsigned id, unsigned w, unsigned h, bool def_fnt=false, Halign halign=CENTER, Valign valign=MIDDLE, bool play_sfx=true) {
 		if (!w) w = this->w;
 		if (!h) h = this->h;
 
@@ -1288,7 +1316,7 @@ public:
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
-				gfx_cfg.width / 2, 12, title_id, MIDDLE, TOP, fnt
+				gfx_cfg.width / 2, 12, title_id, CENTER, TOP, fnt
 			));
 	}
 
@@ -1297,7 +1325,7 @@ public:
 	{
 		if (show_title)
 			objects.emplace_back(new Text(
-				gfx_cfg.width / 2, y + 12, title_id, MIDDLE, TOP, fnt
+				gfx_cfg.width / 2, y + 12, title_id, CENTER, TOP, fnt
 			));
 	}
 
@@ -1404,7 +1432,7 @@ public:
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_tex_large
+			gfx_cfg.width / 2, 8, STR_TITLE_ACHIEVEMENTS, CENTER, TOP, fnt_tex_large
 		));
 
 		objects.emplace_back(new Text(gfx_cfg.width / 2, 44, STR_BTN_TIMELINE, CENTER, TOP, fnt_tex_large));
@@ -1491,13 +1519,13 @@ public:
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 8, STR_TITLE_ACHIEVEMENTS, MIDDLE, TOP, fnt_tex_large
+			gfx_cfg.width / 2, 8, STR_TITLE_ACHIEVEMENTS, CENTER, TOP, fnt_tex_large
 		));
 
 		objects.emplace_back(new Text(gfx_cfg.width / 2, 44, STR_TITLE_SUMMARY, CENTER, TOP, fnt_tex_large));
 
 		// TODO compute elapsed time
-		objects.emplace_back(new Text(685, 15, "00:00:00"));
+		objects.emplace_back(new Text(685, 15, game.elapsed, LEFT, TOP, fnt_tex_default_bold));
 
 		if (type) {
 			group.add(550, 551, STR_BTN_CLOSE);
@@ -1513,7 +1541,7 @@ public:
 		cat->add(124, 187, STR_BTN_MILITARY, 289 - 124, 212 - 187, true, LEFT, TOP, false);
 		cat->add(191, 162, STR_BTN_ECONOMY, 354 - 191, 187 - 162, true, LEFT, TOP, false);
 		cat->add(266, 137, STR_BTN_RELIGION, 420 - 266, 162 - 138, true, LEFT, TOP, false);
-		cat->add(351, 112, STR_BTN_TECHNOLOGY, 549 - 351, 137 - 112, true, MIDDLE, TOP, false);
+		cat->add(351, 112, STR_BTN_TECHNOLOGY, 549 - 351, 137 - 112, true, CENTER, TOP, false);
 		objects.emplace_back(cat);
 
 		objects.emplace_back(new Text(633, 140, STR_SURVIVAL, RIGHT, TOP, fnt_tex_default));
@@ -1579,7 +1607,7 @@ public:
 		objects.emplace_back(new Border(100, 105, 700 - 100, 495 - 105, false));
 
 		// add title manually because we want it to be drawn on top of the background
-		objects.emplace_back(new Text(gfx_cfg.width / 2, 105 + 12, STR_TITLE_GAME_SETTINGS, MIDDLE, TOP, fnt_tex_large));
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 105 + 12, STR_TITLE_GAME_SETTINGS, CENTER, TOP, fnt_tex_large));
 
 		group.add(220 - 100, 450 - 105, STR_BTN_OK, 390 - 220, 480 - 450);
 		group.add(410 - 100, 450 - 105, STR_BTN_CANCEL, 580 - 410, 480 - 450);
@@ -1685,7 +1713,7 @@ public:
 		objects.emplace_back(bkg = new Background(bkg_id, 0, 0));
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 12, id, MIDDLE, TOP, fnt_tex_button
+			gfx_cfg.width / 2, 12, id, CENTER, TOP, fnt_tex_button
 		));
 		objects.emplace_back(sel_file = new SelectorArea(25, 81, 775 - 21, 521 - 81, STR_TITLE_PATH));
 
@@ -1917,12 +1945,12 @@ public:
 	MenuGame()
 		: Menu(STR_TITLE_MAIN, 0, 0, 728 - 620, 18, false)
 		, palette(), menu_bar()
-		, str_paused(0, 0, STR_PAUSED, MIDDLE, CENTER, fnt_tex_large)
+		, str_paused(0, 0, STR_PAUSED, CENTER, MIDDLE, fnt_tex_large)
 	{
 		group.add(728, 0, STR_BTN_MENU, gfx_cfg.width - 728, 18, true);
 		group.add(620, 0, STR_BTN_DIPLOMACY, 728 - 620, 18, true);
 
-		objects.emplace_back(new Text(gfx_cfg.width / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 3, STR_AGE_STONE, CENTER, TOP));
 
 		const Player *you = game.controlling_player();
 
@@ -1963,6 +1991,9 @@ public:
 	}
 
 	void button_group_activate(unsigned id) override final {
+		if (game.end)
+			return;
+
 		canvas.read_screen();
 		switch (id) {
 		case 0:
@@ -1977,6 +2008,12 @@ public:
 
 	void keydown(SDL_KeyboardEvent *event) override {
 		unsigned virt = event->keysym.sym;
+
+		if (virt == SDLK_ESCAPE) {
+			ui_state.go_to(new MenuGameMenu());
+			ui_state.dirty();
+			return;
+		}
 
 		if (virt == '\r' || virt == '\n') {
 			if (!input_field) {
@@ -2020,6 +2057,7 @@ public:
 			in_game = 0;
 			game.stop();
 			ui_state.go_to(new MenuAchievements(0, game.win ? 2 : 1));
+			ui_state.dirty();
 		}
 	}
 
@@ -2082,7 +2120,7 @@ public:
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER_SCENARIO, MIDDLE, TOP, fnt_tex_button
+			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER_SCENARIO, CENTER, TOP, fnt_tex_button
 		));
 
 		objects.emplace_back(new Border(25, 75, 750, 104 - 75, true, true));
@@ -2106,7 +2144,7 @@ public:
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER, MIDDLE, TOP, fnt_tex_button
+			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER, CENTER, TOP, fnt_tex_button
 		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -2180,7 +2218,7 @@ public:
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 8, STR_BTN_CAMPAIGN, MIDDLE, TOP, fnt_tex_large
+			gfx_cfg.width / 2, 8, STR_BTN_CAMPAIGN, CENTER, TOP, fnt_tex_large
 		));
 		objects.emplace_back(sel_cpn = new SelectorArea(25, 87, 750, 249 - 87, STR_SELECT_CAMPAIGN, -4, -24));
 		objects.emplace_back(sel_scn = new SelectorArea(25, 287, 750, 449 - 287, STR_SELECT_SCENARIO, -4, -24));
@@ -2280,7 +2318,7 @@ public:
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 8, STR_TITLE_CAMPAIGN_SELECT_PLAYER, MIDDLE, TOP, fnt_tex_large
+			gfx_cfg.width / 2, 8, STR_TITLE_CAMPAIGN_SELECT_PLAYER, CENTER, TOP, fnt_tex_large
 		));
 
 		objects.emplace_back(new Text(80, 100, STR_CAMPAIGN_PLAYER_NAME, LEFT, TOP, fnt_tex_button));
@@ -2314,7 +2352,7 @@ public:
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER_MENU, MIDDLE, TOP, fnt_tex_button
+			gfx_cfg.width / 2, 12, STR_TITLE_SINGLEPLAYER_MENU, CENTER, TOP, fnt_tex_button
 		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -2351,7 +2389,7 @@ public:
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_MULTIPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 12, STR_TITLE_MULTIPLAYER, MIDDLE, TOP, fnt_tex_button
+			gfx_cfg.width / 2, 12, STR_TITLE_MULTIPLAYER, CENTER, TOP, fnt_tex_button
 		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
@@ -2383,7 +2421,7 @@ public:
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SCENARIO, 0, 0));
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
-			gfx_cfg.width / 2, 12, STR_TITLE_SCENARIO_EDITOR, MIDDLE, TOP, fnt_tex_button
+			gfx_cfg.width / 2, 12, STR_TITLE_SCENARIO_EDITOR, CENTER, TOP, fnt_tex_button
 		));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
 
