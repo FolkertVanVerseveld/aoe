@@ -82,7 +82,7 @@ class UI_State {
 	static unsigned const DIRTY = 1;
 	static unsigned const BUTTON_DOWN = 2;
 
-	std::stack<std::shared_ptr<Menu>> navigation;
+	std::stack<std::unique_ptr<Menu>> navigation;
 public:
 	std::string file_selected;
 
@@ -320,6 +320,7 @@ public:
 	const std::string str;
 private:
 	SDL_Texture *tex;
+	SDL_Color col;
 
 public:
 	Text(int x, int y, unsigned id
@@ -328,8 +329,7 @@ public:
 		, SDL_Texture *font=fnt_tex_default)
 		: UI(x, y), str(load_string(id)), tex(font)
 	{
-		SDL_Color col = {255, 255, 255, SDL_ALPHA_OPAQUE};
-
+		col = {0, 0, 0, 1};
 		reshape(halign, valign);
 	}
 
@@ -340,6 +340,7 @@ public:
 		, SDL_Color col=col_default)
 		: UI(x, y), str(str), tex(font)
 	{
+		this->col = col;
 		reshape(halign, valign);
 	}
 
@@ -349,6 +350,7 @@ public:
 		, SDL_Texture *font=fnt_tex_default)
 		: UI(x, y), str(str), tex(font)
 	{
+		col = {0, 0, 0, 1};
 		reshape(halign, valign);
 	}
 
@@ -388,26 +390,10 @@ public:
 	}
 
 	void draw(int x, int y, bool focus=false) const {
-		#if 0
-		SDL_Rect pos = {x - 1, y + 1, (int)w, (int)h};
-		// draw shadow
-		SDL_SetTextureColorMod(tex, 0, 0, 0);
-		SDL_RenderCopy(renderer, tex, NULL, &pos);
-		gfx_draw_textlen(tex, &pos, str.c_str(), str.size());
-		++pos.x;
-		--pos.y;
-		// draw foreground text
-		RendererState &s = canvas.get_state();
-		SDL_Color &col = focus ? s.col_text_f : s.col_text;
-		SDL_SetTextureColorMod(tex, col.r, col.g, col.b);
-		//SDL_RenderCopy(renderer, tex, NULL, &pos);
-		gfx_draw_textlen(tex, &pos, str.c_str(), str.size());
-		#else
 		RendererState &s = canvas.get_state();
 		SDL_Rect pos = {x, y, (int)w, (int)h};
-		SDL_Color &fg = focus ? s.col_text_f : s.col_text, bg = {0, 0, 0};
+		const SDL_Color &fg = (!col.r && !col.g && !col.b && col.a == 1) ? focus ? s.col_text_f : s.col_text : col, bg = {0, 0, 0};
 		gfx_draw_textlen_shadow(tex, &fg, &bg, &pos, str.c_str(), str.size());
-		#endif
 	}
 };
 
@@ -1497,10 +1483,10 @@ public:
 };
 
 class MenuAchievements final : public Menu {
-	unsigned type;
+	unsigned pop_extra, type;
 	ButtonRadioGroup *cat;
 public:
-	MenuAchievements(unsigned type = 0) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, type ? 775 - 550 : 375 - 125, 588 - 551, false), type(type) {
+	MenuAchievements(unsigned pop_extra, unsigned type) : Menu(STR_TITLE_ACHIEVEMENTS, 0, 0, type ? 775 - 550 : 375 - 125, 588 - 551, false), pop_extra(pop_extra), type(type) {
 		objects.emplace_back(bkg = new Background(type ? type == 2 ? DRS_BACKGROUND_VICTORY : DRS_BACKGROUND_DEFEAT : DRS_BACKGROUND_ACHIEVEMENTS, 0, 0));
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Button(779, 4, 795 - 779, 16, STR_EXIT, true));
@@ -1553,12 +1539,14 @@ public:
 		switch (id) {
 		case 0:
 			if (type) {
-				stop = 5;
+				stop = 4;
 				game.stop();
 				mus_play(MUS_MAIN);
 			} else {
 				stop = 1;
 			}
+
+			stop += pop_extra;
 			break;
 		case 1: ui_state.go_to(new MenuTimeline(type)); break;
 		}
@@ -1823,9 +1811,9 @@ public:
 		case 0:
 			in_game = 0;
 			game.stop();
-			ui_state.go_to(new MenuAchievements(1));
+			ui_state.go_to(new MenuAchievements(1, 1));
 			break;
-		case 1: ui_state.go_to(new MenuAchievements()); break;
+		case 1: ui_state.go_to(new MenuAchievements(0, 0)); break;
 		case 6: ui_state.go_to(new MenuGameSettings()); break;
 		case 9: stop = 1; canvas.clear(); break;
 		}
@@ -2031,7 +2019,7 @@ public:
 		if (!game.idle(ms)) {
 			in_game = 0;
 			game.stop();
-			ui_state.go_to(new MenuAchievements(game.win ? 2 : 1));
+			ui_state.go_to(new MenuAchievements(0, game.win ? 2 : 1));
 		}
 	}
 
