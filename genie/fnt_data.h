@@ -42,7 +42,7 @@ struct fnt_cs {
 	int data[2 * 256];
 };
 
-extern const struct fnt_tm fnt_tm_default, fnt_tm_button, fnt_tm_large;
-extern const struct fnt_cs fnt_cs_default, fnt_cs_button, fnt_cs_large;
+extern const struct fnt_tm fnt_tm_default, fnt_tm_default_bold, fnt_tm_button, fnt_tm_large;
+extern const struct fnt_cs fnt_cs_default, fnt_cs_default_bold, fnt_cs_button, fnt_cs_large;
 
 #endif

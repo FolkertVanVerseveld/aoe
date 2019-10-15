@@ -15,12 +15,14 @@ struct gfx_cfg gfx_cfg = {0, 0, 0, 800, 600};
 
 extern const unsigned char _binary_fnt_default_png_start[];
 extern const unsigned char _binary_fnt_default_png_end[];
+extern const unsigned char _binary_fnt_default_bold_png_start[];
+extern const unsigned char _binary_fnt_default_bold_png_end[];
 extern const unsigned char _binary_fnt_button_png_start[];
 extern const unsigned char _binary_fnt_button_png_end[];
 extern const unsigned char _binary_fnt_large_png_start[];
 extern const unsigned char _binary_fnt_large_png_end[];
 
-SDL_Texture *fnt_tex_default, *fnt_tex_button, *fnt_tex_large;
+SDL_Texture *fnt_tex_default, *fnt_tex_default_bold, *fnt_tex_button, *fnt_tex_large;
 
 extern SDL_Renderer *renderer;
 
@@ -48,6 +50,7 @@ void gfx_init(void)
 		panic("Could not initialize image subsystem");
 
 	ge_gfx_load_font(&fnt_tex_default, _binary_fnt_default_png_start, _binary_fnt_default_png_end);
+	ge_gfx_load_font(&fnt_tex_default_bold, _binary_fnt_default_bold_png_start, _binary_fnt_default_bold_png_end);
 	ge_gfx_load_font(&fnt_tex_button, _binary_fnt_button_png_start, _binary_fnt_button_png_end);
 	ge_gfx_load_font(&fnt_tex_large, _binary_fnt_large_png_start, _binary_fnt_large_png_end);
 }
@@ -56,6 +59,7 @@ void gfx_free(void)
 {
 	SDL_DestroyTexture(fnt_tex_large);
 	SDL_DestroyTexture(fnt_tex_button);
+	SDL_DestroyTexture(fnt_tex_default_bold);
 	SDL_DestroyTexture(fnt_tex_default);
 
 	IMG_Quit();
@@ -71,6 +75,7 @@ int gfx_get_textlen_bounds(struct SDL_Texture *font, SDL_Rect *bounds, const cha
 	const struct fnt_cs *cs;
 
 	if (font == fnt_tex_default) { tm = &fnt_tm_default; cs = &fnt_cs_default; }
+	else if (font == fnt_tex_default_bold) { tm = &fnt_tm_default_bold; cs = &fnt_cs_default_bold; }
 	else if (font == fnt_tex_button) { tm = &fnt_tm_button; cs = &fnt_cs_button; }
 	else if (font == fnt_tex_large) { tm = &fnt_tm_large; cs = &fnt_cs_large; }
 	else { panic("bad font"); }
@@ -122,6 +127,7 @@ void gfx_draw_textlen(struct SDL_Texture *font, const SDL_Rect *pos, const char 
 	const struct fnt_cs *cs;
 
 	if (font == fnt_tex_default) { tm = &fnt_tm_default; cs = &fnt_cs_default; }
+	else if (font == fnt_tex_default_bold) { tm = &fnt_tm_default_bold; cs = &fnt_cs_default_bold; }
 	else if (font == fnt_tex_button) { tm = &fnt_tm_button; cs = &fnt_cs_button; }
 	else if (font == fnt_tex_large) { tm = &fnt_tm_large; cs = &fnt_cs_large; }
 	else { panic("bad font"); }
@@ -162,4 +168,13 @@ void gfx_draw_textlen(struct SDL_Texture *font, const SDL_Rect *pos, const char 
 
 		tx += gw;
 	}
+}
+
+void gfx_draw_textlen_shadow(struct SDL_Texture *tex, const SDL_Color *fg, const SDL_Color *bg, const SDL_Rect *pos, const char *text, unsigned count)
+{
+	SDL_Rect pos2 = {pos->x - 1, pos->y + 1, pos->w, pos->h};
+	SDL_SetTextureColorMod(tex, bg->r, bg->g, bg->b);
+	gfx_draw_textlen(tex, &pos2, text, count);
+	SDL_SetTextureColorMod(tex, fg->r, fg->g, fg->b);
+	gfx_draw_textlen(tex, pos, text, count);
 }

@@ -12,6 +12,7 @@
 #ifndef GFX_H
 #define GFX_H
 
+#include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_ttf.h>
@@ -37,7 +38,7 @@ extern struct gfx_cfg {
 	unsigned width, height;
 } gfx_cfg;
 
-extern SDL_Texture *fnt_tex_default, *fnt_tex_button, *fnt_tex_large;
+extern SDL_Texture *fnt_tex_default, *fnt_tex_default_bold, *fnt_tex_button, *fnt_tex_large;
 
 void gfx_init(void);
 void gfx_free(void);
@@ -49,6 +50,7 @@ void gfx_update(void);
 int gfx_get_textlen_bounds(struct SDL_Texture *font, SDL_Rect *bounds, const char *text, unsigned count);
 
 void gfx_draw_textlen(struct SDL_Texture *font, const SDL_Rect *pos, const char *text, unsigned count);
+void gfx_draw_textlen_shadow(struct SDL_Texture *font, const SDL_Color *fg, const SDL_Color *bg, const SDL_Rect *pos, const char *text, unsigned count);
 
 #ifdef __cplusplus
 }

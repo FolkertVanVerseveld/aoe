@@ -21,6 +21,8 @@
 #include <genie/def.h>
 #include <genie/res.h>
 
+#include <xt/string.h>
+
 Game game;
 extern struct pe_lib lib_lang;
 
@@ -274,7 +276,7 @@ void Player::init_dummy() {
 		spawn_desert_tree(rand() % map.w, rand() % map.h);
 }
 
-void Player::idle() {
+void Player::idle(unsigned) {
 	// TODO do logic
 	tick();
 }
@@ -381,7 +383,7 @@ void Map::reshape(int view_x, int view_y, int view_w, int view_h)
 
 Game::Game()
 	: run(false), x(0), y(0), w(800), h(600)
-	, keys(0), player_index(0), speed(0), paused(false)
+	, keys(0), player_index(0), ms(0), end_timer(END_TIMER), end_msg(), speed(0), paused(false), end(false), win(false)
 	, map(), cache(), players(), state(), cursor(nullptr)
 {
 }
@@ -409,6 +411,8 @@ void Game::reset(unsigned players) {
 	if (run)
 		panic("Bad game state");
 
+	paused = end = win = false;
+	end_timer = END_TIMER;
 	player_index = 0;
 	selected.clear();
 	units.clear();
@@ -436,9 +440,18 @@ void Game::resize(MapSize size) {
 	map.resize(size);
 }
 
-void Game::idle() {
+bool Game::idle(unsigned ms) {
+	if (end) {
+		if (ms > end_timer)
+			return false;
+		else
+			end_timer -= ms;
+	}
+
 	if (paused)
-		return;
+		return true;
+
+	this->ms += ms;
 
 	// Dynamic objects game tick
 	for (auto &unit : units.dynamic_objects)
@@ -479,6 +492,7 @@ void Game::idle() {
 	if (dx || dy)
 		dbgf("view: (%d,%d)\n", state.view_x, state.view_y);
 #endif
+	return true;
 }
 
 void Game::start() {
@@ -497,7 +511,15 @@ bool Game::cheat(const char *str) {
 	bool good = false;
 	Resources res = {0, 0, 0, 0};
 
-	if (!strcmp(str, "woodstock")) {
+	if (!strcmp(str, "resign")) {
+		end = true;
+		end_msg = load_string(STR_LOST);
+		sfx_play(SFX_LOST);
+	} else if (!strcmp(str, "homerun")) {
+		win = end = true;
+		end_msg = load_string(STR_WIN);
+		sfx_play(SFX_WIN);
+	} else if (!strcmp(str, "woodstock")) {
 		res.wood = 1000; good = true;
 	} else if (!strcmp(str, "pepperoni pizza")) {
 		res.food = 1000; good = true;
@@ -627,6 +649,30 @@ void Game::draw() {
 		unit->draw(map);
 
 	canvas.pop_state();
+
+	/*
+	 * Draw in-game text.
+	 * NOTE we have to add the game window offset
+	 */
+	char buf[32];
+	SDL_Color fg = {0xff, 0xff, 0xff, 0}, bg = {0, 0, 0, 0};
+	SDL_Rect pos = {4, 26, 0, 0};
+
+	unsigned hh, mm, ss = ms / 1000;
+
+	hh = ss / 3600;
+	ss %= 3600;
+	mm = ss / 60;
+	ss %= 60;
+
+	snprintf(buf, sizeof buf, "%02u:%02u:%02u (%.1f)", hh, mm, ss, 1.0);
+
+	gfx_draw_textlen_shadow(fnt_tex_default_bold, &fg, &bg, &pos, buf, strlen(buf));
+
+	if (end_msg.size()) {
+		pos.x = 0; pos.y = 200;
+		gfx_draw_textlen_shadow(fnt_tex_large, &fg, &bg, &pos, end_msg.c_str(), end_msg.size());
+	}
 }
 
 static unsigned unit_name_id(unsigned id)
@@ -786,7 +832,7 @@ static void play_unit_select(unsigned id)
 
 void Game::button_activate(unsigned id) {
 	switch (id) {
-	case 18:
+	case 14:
 		selected.clear();
 		break;
 	default:
@@ -1077,6 +1123,10 @@ bool Game::mousedown(SDL_MouseButtonEvent *event) {
 bool Game::keydown(SDL_KeyboardEvent *event) {
 	unsigned virt = event->keysym.sym;
 
+	// munch all keyboard events if ended
+	if (end)
+		return true;
+
 	if (paused) {
 		switch (virt) {
 		case SDLK_F3:
@@ -1105,6 +1155,10 @@ bool Game::keydown(SDL_KeyboardEvent *event) {
 
 bool Game::keyup(SDL_KeyboardEvent *event) {
 	unsigned virt = event->keysym.sym;
+
+	// munch all keyboard events if ended
+	if (end)
+		return true;
 
 	if (paused) {
 		switch (virt) {

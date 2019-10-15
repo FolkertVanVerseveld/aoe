@@ -258,7 +258,7 @@ public:
 	 */
 	void init_dummy();
 
-	void idle();
+	void idle(unsigned ms);
 
 	virtual void tick() = 0;
 };
@@ -278,13 +278,17 @@ public:
 };
 
 class Game final {
+	static constexpr unsigned END_TIMER = 5000;
 	bool run;
 	int x, y, w, h;
 	unsigned keys;
 	unsigned player_index;
+	unsigned ms;
+	unsigned end_timer;
+	std::string end_msg;
 public:
 	unsigned speed;
-	bool paused;
+	bool paused, end, win;
 	Map map;
 	std::unique_ptr<ImageCache> cache;
 	// XXX use set?
@@ -309,7 +313,7 @@ public:
 	void resize(MapSize size);
 	size_t player_count() { return players.size(); }
 
-	void idle();
+	bool idle(unsigned ms);
 
 	void start();
 	void stop();

@@ -100,7 +100,7 @@ public:
 		state |= DIRTY;
 	}
 
-	void idle();
+	void idle(unsigned ms);
 	void display();
 	void dispose();
 private:
@@ -388,6 +388,7 @@ public:
 	}
 
 	void draw(int x, int y, bool focus=false) const {
+		#if 0
 		SDL_Rect pos = {x - 1, y + 1, (int)w, (int)h};
 		// draw shadow
 		SDL_SetTextureColorMod(tex, 0, 0, 0);
@@ -401,6 +402,12 @@ public:
 		SDL_SetTextureColorMod(tex, col.r, col.g, col.b);
 		//SDL_RenderCopy(renderer, tex, NULL, &pos);
 		gfx_draw_textlen(tex, &pos, str.c_str(), str.size());
+		#else
+		RendererState &s = canvas.get_state();
+		SDL_Rect pos = {x, y, (int)w, (int)h};
+		SDL_Color &fg = focus ? s.col_text_f : s.col_text, bg = {0, 0, 0};
+		gfx_draw_textlen_shadow(tex, &fg, &bg, &pos, str.c_str(), str.size());
+		#endif
 	}
 };
 
@@ -1308,7 +1315,7 @@ public:
 			));
 	}
 
-	virtual void idle() {}
+	virtual void idle(unsigned) {}
 
 	virtual void draw() const {
 		for (auto x : objects)
@@ -1417,7 +1424,7 @@ public:
 		objects.emplace_back(new Text(gfx_cfg.width / 2, 44, STR_BTN_TIMELINE, CENTER, TOP, fnt_tex_large));
 
 		// TODO compute elapsed time
-		objects.emplace_back(new Text(685, 15, "00:00:00"));
+		//objects.emplace_back(new Text(685, 15, "00:00:00"));
 
 		objects.emplace_back(new Border(12, 106, 787 - 12, 518 - 106, 100));
 
@@ -1529,20 +1536,17 @@ public:
 
 		unsigned y = 225, nr = 0;
 
-		// FIXME bold and normal type
-		//TTF_SetFontStyle(fnt_tex_default, TTF_STYLE_BOLD);
-
 		for (auto p : game.players) {
-			objects.emplace_back(new Text(31, y, p->name, LEFT, TOP, fnt_tex_default, col_players[nr % MAX_PLAYER_COUNT]));
+			objects.emplace_back(new Text(31, y, p->name, LEFT, TOP, fnt_tex_default_bold, col_players[nr % MAX_PLAYER_COUNT]));
 
 			y += 263 - 225;
 			++nr;
 		}
 
-		//TTF_SetFontStyle(fnt_tex_default, TTF_STYLE_NORMAL);
-
-		if (type)
-			mus_play(MUS_DEFEAT);
+		switch (type) {
+		case 2: mus_play(MUS_VICTORY); break;
+		case 1: mus_play(MUS_DEFEAT); break;
+		}
 	}
 
 	virtual void button_group_activate(unsigned id) override final {
@@ -1900,8 +1904,8 @@ public:
 		return game.mousedown(event);
 	}
 
-	void idle() override final {
-		editor.idle();
+	void idle(unsigned ms) override final {
+		editor.idle(ms);
 	}
 
 	void draw() const override final {
@@ -1933,20 +1937,6 @@ public:
 		objects.emplace_back(new Text(gfx_cfg.width / 2, 3, STR_AGE_STONE, MIDDLE, TOP));
 
 		const Player *you = game.controlling_player();
-
-		char buf[32];
-		int x = 32;
-		snprintf(buf, sizeof buf, "%u", you->resources.food);
-		objects.emplace_back(new Text(x, 3, buf));
-		x = 98;
-		snprintf(buf, sizeof buf, "%u", you->resources.wood);
-		objects.emplace_back(new Text(x, 3, buf));
-		x = 166;
-		snprintf(buf, sizeof buf, "%u", you->resources.gold);
-		objects.emplace_back(new Text(x, 3, buf));
-		x = 234;
-		snprintf(buf, sizeof buf, "%u", you->resources.stone);
-		objects.emplace_back(new Text(x, 3, buf));
 
 		// Lower HUD stuff
 		objects.emplace_back(new Button(765, 482, 795 - 765, 512 - 482, STR_BTN_SCORE, true));
@@ -2037,8 +2027,12 @@ public:
 		return game.mousedown(event);
 	}
 
-	void idle() override final {
-		game.idle();
+	void idle(unsigned ms) override final {
+		if (!game.idle(ms)) {
+			in_game = 0;
+			game.stop();
+			ui_state.go_to(new MenuAchievements(game.win ? 2 : 1));
+		}
 	}
 
 	void draw() const override final {
@@ -2060,10 +2054,29 @@ public:
 		// enable/disable hud buttons
 		unsigned state = game.hud_mask();
 
-		for (unsigned mask = 1, i = 0, j = 7; i < 6 * 2; ++i, mask <<= 1, ++j) {
+		for (unsigned mask = 1, i = 0, j = 3; i < 6 * 2; ++i, mask <<= 1, ++j) {
 			Button *b = reinterpret_cast<Button*>(objects[j].get());
 			b->visible = state & mask;
 		}
+
+		// draw resources of controlling player
+		char buf[32];
+		const Player *p = game.controlling_player();
+
+		SDL_Color fg = {0xff, 0xff, 0xff, 0}, bg = {0, 0, 0, 0};
+
+		pos = {32, 2, 0, 0};
+		snprintf(buf, sizeof buf, "%u", p->resources.wood);
+		gfx_draw_textlen_shadow(fnt_tex_default_bold, &fg, &bg, &pos, buf, strlen(buf));
+		pos.x = 98;
+		snprintf(buf, sizeof buf, "%u", p->resources.food);
+		gfx_draw_textlen_shadow(fnt_tex_default_bold, &fg, &bg, &pos, buf, strlen(buf));
+		pos.x = 166;
+		snprintf(buf, sizeof buf, "%u", p->resources.gold);
+		gfx_draw_textlen_shadow(fnt_tex_default_bold, &fg, &bg, &pos, buf, strlen(buf));
+		pos.x = 234;
+		snprintf(buf, sizeof buf, "%u", p->resources.stone);
+		gfx_draw_textlen_shadow(fnt_tex_default_bold, &fg, &bg, &pos, buf, strlen(buf));
 
 		// draw buttons
 		Menu::draw();
@@ -2197,10 +2210,10 @@ public:
 		group.add(0, 0, STR_BTN_OK);
 		group.add(413 - 88, 0, STR_BTN_CANCEL);
 
-		if (!files.size())
+		if (!files.size()) {
 			// TODO show error
 			stop = 1;
-		else {
+		} else {
 			std::sort(files.begin(), files.end(), [](const std::string &a, const std::string &b) {
 				return strcasecmp(a.c_str(), b.c_str()) < 0;
 			});
@@ -2357,6 +2370,8 @@ public:
 		objects.emplace_back(new Text(30, 96, STR_MULTIPLAYER_NAME, LEFT, TOP, fnt_tex_button));
 		objects.emplace_back(new Text(30, 209, STR_MULTIPLAYER_TYPE, LEFT, TOP, fnt_tex_button));
 
+		objects.emplace_back(input_field = new InputField(25, 125, 775 - 25, 148 - 125, "", false));
+
 		group.add(0, 0, STR_BTN_OK);
 		group.add(412 - 87, 0, STR_BTN_CANCEL);
 	}
@@ -2429,8 +2444,6 @@ public:
 		group.add(0, 410 - 222, STR_BTN_EDIT);
 		group.add(0, 472 - 222, STR_BTN_EXIT);
 
-		// FIXME (tm) probably gets truncated by resource handling in res.h (ascii, unicode stuff)
-		// XXX or it may even use a separate slp or gfx object to draw this...
 		objects.emplace_back(new Text(gfx_cfg.width / 2, 542, STR_MAIN_COPY1, CENTER));
 		// FIXME (copy) and (p) before this line
 		objects.emplace_back(new Text(gfx_cfg.width / 2, 561, STR_MAIN_COPY2, CENTER));
@@ -2477,7 +2490,7 @@ void ui_free(void)
 }
 
 /* Wrappers for ui_state */
-void idle() { ui_state.idle(); }
+void idle(unsigned ms) { ui_state.idle(ms); }
 
 void display() { ui_state.display(); }
 
@@ -2525,12 +2538,12 @@ void UI_State::dispose()
 		navigation.pop();
 }
 
-void UI_State::idle()
+void UI_State::idle(unsigned ms)
 {
 	if (navigation.empty())
 		return;
 
-	navigation.top()->idle();
+	navigation.top()->idle(ms);
 }
 
 void UI_State::display()

@@ -37,6 +37,8 @@ extern "C" {
 
 #define SFX_BUTTON4 50300
 #define SFX_CHAT 50302
+#define SFX_WIN 50320
+#define SFX_LOST 50321
 #define SFX_BUTTON_GAME 5036
 
 #define MUS_MAIN 0

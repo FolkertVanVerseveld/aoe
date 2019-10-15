@@ -57,6 +57,10 @@ unsigned const music_list[] = {
 
 unsigned music_index = 0;
 
+#define DEFAULT_TICKS 16
+
+Uint32 timer;
+
 int in_game = 0;
 
 #define FSE_QUERY 1
@@ -226,13 +230,16 @@ void main_event_loop(void)
 		while (SDL_PollEvent(&ev))
 			handle_event(&ev);
 
-		idle();
+		Uint32 next = SDL_GetTicks();
+		idle(next >= timer ? next - timer : DEFAULT_TICKS);
 		display();
 
 		if (!music_playing && in_game) {
 			music_index = (music_index + 1) % ARRAY_SIZE(music_list);
 			mus_play(music_list[music_index]);
 		}
+
+		timer = next;
 	}
 }
 

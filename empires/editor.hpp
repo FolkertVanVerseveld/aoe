@@ -21,7 +21,7 @@ public:
 		this->w = w; this->h = h;
 	}
 
-	void idle();
+	void idle(unsigned ms);
 
 	void start(const char *path);
 	void stop();

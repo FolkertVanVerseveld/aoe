@@ -18,8 +18,8 @@ Editor editor;
 Editor::Editor() : run(false), x(0), y(0), w(640), h(480) {}
 Editor::~Editor() {}
 
-void Editor::idle() {
-	game.idle();
+void Editor::idle(unsigned ms) {
+	game.idle(ms);
 }
 
 void Editor::start(const char *path) {

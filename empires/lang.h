@@ -110,6 +110,8 @@
 #define STR_BTN_SCORE 4131
 
 #define STR_PAUSED 9001
+#define STR_WIN 9004
+#define STR_LOST 9005
 
 /* Game menu */
 #define STR_BTN_GAME_QUIT 9273

@@ -25,8 +25,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		HFONT hfont;
 		RECT rect;
 		TEXTMETRIC fm; // https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-textmetrica
-		const char *fname = "Copperplate Gothic Light";
-		int pt = 16;
+		const char *fname = "Arial";
+		int pt = 13;
 
 		hdc = BeginPaint(hwnd, &ps);
 			hfont = CreateFont(
@@ -72,9 +72,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			{
 				int glyph_start = fm.tmFirstChar;
 
-				SetBkMode(hdc, TRANSPARENT);
+				//SetBkMode(hdc, TRANSPARENT);
 
-				SetBkColor(hdc, RGB(0, 0, 0));
+				SetBkColor(hdc, RGB(0xa0, 0xa0, 0xa0));
 				SetTextColor(hdc, RGB(0xff, 0xff, 0xff));
 
 				int glyph_width = 0, glyph_height = 0;

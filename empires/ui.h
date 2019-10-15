@@ -21,7 +21,7 @@ extern int running;
 void ui_init(void);
 void ui_free(void);
 
-void idle(void);
+void idle(unsigned ms);
 void display(void);
 void repaint(void);
 

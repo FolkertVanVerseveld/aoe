@@ -51,11 +51,13 @@ GAME_OBJECTS=\
 
 FONT_OBJECTS=\
 	fnt_default.o \
+	fnt_default_bold.o \
 	fnt_button.o \
 	fnt_large.o
 
 FONTS=\
 	fnt_default.png \
+	fnt_default_bold.png \
 	fnt_button.png \
 	fnt_large.png
 
@@ -65,6 +67,8 @@ default: ../lib/libgenie.a ../lib/libgeniegame.a
 
 fnt_default.o: fnt_default.png
 	ld -r -b binary -o fnt_default.o fnt_default.png
+fnt_default_bold.o: fnt_default_bold.png
+	ld -r -b binary -o fnt_default_bold.o fnt_default_bold.png
 fnt_button.o: fnt_button.png
 	ld -r -b binary -o fnt_button.o fnt_button.png
 fnt_large.o: fnt_large.png
