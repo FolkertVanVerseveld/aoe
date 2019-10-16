@@ -161,6 +161,19 @@ void Building::draw(Map &map) const {
 	overlay.draw(scr.x, scr.y, overlay_index, color);
 }
 
+PlayerConfig::PlayerConfig(Resources res, unsigned color, bool is_CPU, std::string name) : PlayerConfig(rand() % MAX_CIVILIZATION_COUNT, res, color, is_CPU, name) {}
+
+PlayerConfig::PlayerConfig(unsigned civ, Resources res, unsigned color, bool is_CPU, std::string name)
+	: civ(civ), name(name), is_CPU(is_CPU), res(res), color(color)
+{
+	if (!name.size()) {
+		std::string buf = load_string(STR_BTN_CIVTBL + 10 * civ);
+		unsigned name_count;
+		sscanf(buf.c_str(), "%u", &name_count);
+		this->name = load_string(STR_BTN_CIVTBL + 10 * civ + rand() % name_count + 1);
+	}
+}
+
 static void spawn_town_center(int x, int y, unsigned color)
 {
 	game.spawn(
@@ -384,7 +397,7 @@ void Map::reshape(int view_x, int view_y, int view_w, int view_h)
 
 Game::Game()
 	: run(false), x(0), y(0), w(800), h(600)
-	, keys(0), player_index(0), ms(0), tick_timer(0), ticks(0), end_timer(END_TIMER), end_msg(), speed(0), paused(false), end(false), win(false)
+	, keys(0), player_index(0), ms(0), tick_timer(0), ticks(0), end_timer(END_TIMER), end_msg(), cfg(), speed(0), paused(false), end(false), win(false)
 	, map(), cache(), players(), state(), cursor(nullptr)
 {
 }
@@ -408,7 +421,7 @@ void Game::dispose() {
 	}
 }
 
-void Game::reset(unsigned players) {
+void Game::reset(const GameConfig &cfg) {
 	if (run)
 		panic("Bad game state");
 
@@ -423,16 +436,19 @@ void Game::reset(unsigned players) {
 	cache.reset(new ImageCache());
 	resize(MICRO);
 
-	this->players.clear();
+	players.clear();
 	this->x = this->y = 0;
 
 	unsigned color = 0;
 
-	if (players) {
-		this->players.emplace_back(new PlayerHuman("you", color++));
+	// add gaia
+	players.emplace_back(new PlayerComputer(8));
 
-		while (--players)
-			this->players.emplace_back(new PlayerComputer(color++));
+	for (auto &x : cfg.players) {
+		if (x.is_CPU)
+			players.emplace_back(new PlayerComputer(color++));
+		else
+			players.emplace_back(new PlayerHuman("you", color++));
 	}
 
 	stats_reset();
@@ -537,7 +553,7 @@ bool Game::cheat(const char *str) {
 		end = true;
 		end_msg = load_string(STR_LOST);
 		sfx_play(SFX_LOST);
-	} else if (!strcmp(str, "homerun")) {
+	} else if (!strcmp(str, "home run")) {
 		win = end = true;
 		end_msg = load_string(STR_WIN);
 		sfx_play(SFX_WIN);

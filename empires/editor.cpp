@@ -14,6 +14,7 @@
 #include <genie/dbg.h>
 
 Editor editor;
+GameConfig editor_gamecfg;
 
 Editor::Editor() : run(false), x(0), y(0), w(640), h(480) {}
 Editor::~Editor() {}
@@ -28,7 +29,7 @@ void Editor::start(const char *path) {
 		Scenario scn(path);
 		scn.dump();
 	}
-	game.reset();
+	game.reset(editor_gamecfg);
 	game.reshape(x, y, w, h);
 }
 

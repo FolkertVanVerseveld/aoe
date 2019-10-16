@@ -217,11 +217,13 @@ public:
 
 class PlayerConfig final {
 public:
+	unsigned civ;
 	std::string name;
 	bool is_CPU;
 	Resources res;
 	unsigned color;
 
+	PlayerConfig(Resources res, unsigned color, bool is_CPU=true, std::string name="");
 	PlayerConfig(unsigned civ, Resources res, unsigned color, bool is_CPU=true, std::string name="");
 };
 
@@ -231,6 +233,11 @@ public:
 	std::vector<PlayerConfig> players;
 
 	GameConfig() : players() {}
+
+	void set_res(Resources res) {
+		for (auto &x : players)
+			x.res = res;
+	}
 };
 
 /** Dynamic settings that may be changed during the game. */
@@ -263,6 +270,7 @@ public:
 	const AnimationTexture &get(unsigned id);
 };
 
+// TODO derive PlayerConfig
 class Player {
 public:
 	std::string name;
@@ -308,6 +316,7 @@ class Game final {
 	unsigned ms, tick_timer, ticks;
 	unsigned end_timer;
 	std::string end_msg;
+	GameConfig cfg;
 public:
 	unsigned speed;
 	bool paused, end, win;
@@ -331,7 +340,7 @@ public:
 	Game();
 	~Game();
 
-	void reset(unsigned players = 2);
+	void reset(const GameConfig &cfg);
 	void dispose();
 
 	void resize(MapSize size);

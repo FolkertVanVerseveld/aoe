@@ -39,3 +39,11 @@ Sat, Oct 12, 2019 18:53:10
 
 Finally embedded fonts into the executable.
 Still need to fix some minor things here and there.
+
+Tue, Oct 15, 2019
+
+Designed a new unit subsystem & game logic diagram
+
+Wed, Oct 16, 2019 22:22:02
+
+start gameconfig

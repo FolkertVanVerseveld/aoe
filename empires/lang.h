@@ -23,7 +23,8 @@
 
 /* Main menu copyright footer */
 #define STR_MAIN_COPY1 9241
-#define STR_MAIN_COPY2 9244
+#define STR_MAIN_COPY2A 9243
+#define STR_MAIN_COPY2B 9244
 #define STR_MAIN_COPY3 9253
 
 /* Singleplayer menu */

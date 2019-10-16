@@ -2137,11 +2137,18 @@ public:
 	}
 };
 
+Resources res_def[3] = {
+	{200, 200, 0, 150},
+	{500, 500, 0, 250},
+	{1000, 1000, 0, 750},
+};
+
 class MenuSinglePlayerSettings final : public Menu {
 	SelectorArea *sel_players;
 	Text *txt_computer;
+	GameConfig config;
 public:
-	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550, false) {
+	MenuSinglePlayerSettings() : Menu(STR_TITLE_SINGLEPLAYER, 0, 0, 386 - 87, 586 - 550, false), config() {
 		objects.emplace_back(bkg = new Background(DRS_BACKGROUND_SINGLEPLAYER, 0, 0));
 		objects.emplace_back(new Border(0, 0, gfx_cfg.width, gfx_cfg.height, false));
 		objects.emplace_back(new Text(
@@ -2153,17 +2160,22 @@ public:
 		group.add(412, 550, STR_BTN_CANCEL);
 		group.add(525, 62, STR_BTN_SETTINGS, 786 - 525, 98 - 62);
 
+		unsigned player_count = 2;
+
 		// TODO add missing UI objects
 
+		for (unsigned i = 0; i < MAX_PLAYER_COUNT; ++i)
+			config.players.emplace_back(res_def[0], i, i != 0);
+
 		// setup players
-		game.reset();
+		game.reset(config);
 
 		objects.emplace_back(new Text(37, 72, STR_PLAYER_NAME, LEFT, TOP, fnt_tex_button));
 		objects.emplace_back(new Text(240, 72, STR_PLAYER_CIVILIZATION, LEFT, TOP, fnt_tex_button));
 		objects.emplace_back(new Text(363, 72, STR_PLAYER_ID, LEFT, TOP, fnt_tex_button));
 		objects.emplace_back(new Text(467, 72, STR_PLAYER_TEAM, LEFT, TOP, fnt_tex_button));
 		objects.emplace_back(new Text(39, 110, STR_PLAYER_YOU));
-		objects.emplace_back(txt_computer = new Text(39, -140, STR_PLAYER_COMPUTER));
+		objects.emplace_back(txt_computer = new Text(39, -140, STR_PLAYER_COMPUTER, LEFT, TOP, fnt_tex_default_bold));
 
 		objects.emplace_back(sel_players = new SelectorArea(38, 402, 125 - 38, 30, STR_PLAYER_COUNT, -2, -30));
 		char buf[2] = "0";
@@ -2171,7 +2183,7 @@ public:
 			buf[0] = '0' + i;
 			sel_players->add(buf);
 		}
-		sel_players->select(1);
+		sel_players->select(player_count - 1);
 
 		objects.emplace_back(new Button(387, 106, 424 - 387, 25, "1", true, true, SFX_BUTTON4, false, CENTER, MIDDLE, col_players[0]));
 		objects.emplace_back(new Button(475, 106, 424 - 387, 25, "-"));
@@ -2180,6 +2192,11 @@ public:
 	void button_group_activate(unsigned id) override final {
 		switch (id) {
 		case 0:
+			// update config
+			for (unsigned i = sel_players->focus() + 1; i < MAX_PLAYER_COUNT; ++i)
+				config.players.pop_back();
+
+			game.reset(config);
 			ui_state.go_to(new MenuGame());
 			break;
 		case 1:
@@ -2473,7 +2490,7 @@ public:
 
 		objects.emplace_back(new Text(gfx_cfg.width / 2, 542, STR_MAIN_COPY1, CENTER));
 		// FIXME (copy) and (p) before this line
-		objects.emplace_back(new Text(gfx_cfg.width / 2, 561, STR_MAIN_COPY2, CENTER));
+		objects.emplace_back(new Text(gfx_cfg.width / 2, 561, load_string(STR_MAIN_COPY2A) + load_string(STR_MAIN_COPY2B), CENTER));
 		objects.emplace_back(new Text(gfx_cfg.width / 2, 578, STR_MAIN_COPY3, CENTER));
 
 		mus_play(MUS_MAIN);

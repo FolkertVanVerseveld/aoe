@@ -32,7 +32,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			hfont = CreateFont(
 				-pt, 0,
 				0, 0,
-				700, // 0=regular, 700=bold
+				0, // 0=regular, 700=bold
 				0, 0, 0,
 				1, 0, 0, // TODO figure out what iCharSet=1 is
 				NONANTIALIASED_QUALITY,//NONANTIALIASED_QUALITY, // antialiasing would be nice, but then we have to deal with transparency
