@@ -37,4 +37,19 @@ extern struct ge_config {
 	float scroll_speed;
 } ge_cfg;
 
+extern const struct ge_start_cfg {
+	const char *title;
+	/**
+	 * A NULL terminated list of video cinematics, that will be played
+	 * during startup. Any missing cinematics are skipped.
+	 */
+	const char **vfx;
+	/**
+	 * A NULL terminated list of in game background music. The first three
+	 * items must be the main menu, victory and defeat music. All other
+	 * items are played during gameplay. There must be at least four items.
+	 */
+	const char **msc;
+} ge_start_cfg;
+
 #endif

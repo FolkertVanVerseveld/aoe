@@ -54,6 +54,43 @@ const char *vfx_start[] = {
 	NULL
 };
 
+const char *msc[] = {
+#if XT_IS_LINUX
+	"Track 2.wav",
+	"Track 3.wav",
+	"Track 4.wav",
+	"Track 5.wav",
+	"Track 6.wav",
+	"Track 7.wav",
+	"Track 8.wav",
+	"Track 9.wav",
+	"Track 10.wav",
+	"Track 11.wav",
+	"Track 12.wav",
+	"Track 13.wav",
+	"Track 14.wav",
+#else
+	"OPEN.MID",
+	"WON.MID",
+	"LOST.MID",
+	"MUSIC1.MID",
+	"MUSIC2.MID",
+	"MUSIC3.MID",
+	"MUSIC4.MID",
+	"MUSIC5.MID",
+	"MUSIC6.MID",
+	"MUSIC7.MID",
+	"MUSIC8.MID",
+	"MUSIC9.MID",
+#endif
+};
+
+const struct ge_start_cfg ge_start_cfg = {
+	"Age of Empires",
+	vfx_start,
+	msc
+};
+
 unsigned const music_list[] = {
 	MUS_GAME1, MUS_GAME2, MUS_GAME3, MUS_GAME4, MUS_GAME5,
 	MUS_GAME6, MUS_GAME7, MUS_GAME8, MUS_GAME9,
@@ -64,191 +101,7 @@ unsigned const music_list[] = {
 
 unsigned music_index = 0;
 
-#define DEFAULT_TICKS 16
-
-Uint32 timer;
-
 int in_game = 0;
-
-#define FSE_QUERY 1
-#define FSE_NO_SUPPORT 2
-
-static void fse_show_error(int code, int desired_width, int desired_height)
-{
-	switch (code) {
-	case FSE_QUERY: show_error_format("Can't go to fullscreen mode: can't query display info: %s", SDL_GetError()); break;
-	case FSE_NO_SUPPORT: show_error_format("Can't go to fullscreen mode: display does not support %dx%d", desired_width, desired_height); break;
-	default: show_error("Well, this is interesting"); break;
-	}
-}
-
-static int best_fullscreen_mode(SDL_DisplayMode *bnds, int display, int desired_width, int desired_height)
-{
-	int modes;
-
-	if ((modes = SDL_GetNumDisplayModes(display)) < 0)
-		return FSE_QUERY;
-
-	// check if the fullscreen mode is supported
-	SDL_DisplayMode best = {.w = 0, .h = 0, .refresh_rate = 1};
-
-	for (int i = 0; i < modes; ++i) {
-		SDL_DisplayMode mode;
-		// skip any modes we can't query
-		if (SDL_GetDisplayMode(display, i, &mode))
-			continue;
-
-		dbgf("mode: %dx%d %dHz\n", mode.w, mode.h, mode.refresh_rate);
-
-		if (mode.w == desired_width && mode.h == desired_height && mode.refresh_rate > best.refresh_rate)
-			best = mode;
-	}
-
-	if (!best.w || !best.h)
-		return FSE_NO_SUPPORT;
-
-	*bnds = best;
-	return 0;
-}
-
-static void toggle_fullscreen(void)
-{
-	unsigned flags = SDL_GetWindowFlags(window);
-
-	if (flags & SDL_WINDOW_FULLSCREEN) {
-		SDL_SetWindowFullscreen(window, 0);
-		gfx_update();
-		return;
-	}
-
-	int desired_width, desired_height;
-
-	switch (ge_cfg.screen_mode) {
-	case GE_CFG_MODE_640x480: desired_width = 640; desired_height = 480; break;
-	case GE_CFG_MODE_1024x768: desired_width = 1024; desired_height = 768; break;
-	default: desired_width = 800; desired_height = 600; break;
-	}
-
-	// FIXME fucked up fullscreen mode on linux
-	/*
-	 * For some reason, whenever i have two displays and go fullscreen from
-	 * windowed mode 800x600 in the second display (the first one apparantly
-	 * does not support anything else than 1920x1080), the fullscreen
-	 * display goes in a really fucked up state where the display looks like
-	 * to have proper dimensions (only aspect ratio has changed, but that's
-	 * okay because we didn't ask to keep it the same) until i move the
-	 * mouse to the far right edge of the screen where it continues to
-	 * scroll as if the fullscreen display is really like 1920x600...
-	 *
-	 * So in conclusion, the display state gets fucked up and I have no idea
-	 * why... we could change the UI subsystem to only allow fullscreen mode
-	 * if it is either on the primary display or OpenGL is rendering the
-	 * window rather than the SDL renderer.
-	 */
-
-	// only check the display the main window is located
-	int err, count, display, modes;
-
-	if ((count = SDL_GetNumVideoDisplays()) < 1 || (display = SDL_GetWindowDisplayIndex(window)) < 0) {
-		fse_show_error(FSE_QUERY, desired_width, desired_height);
-		return;
-	}
-
-	// try display window is located at
-	SDL_DisplayMode best;
-
-	if (!(err = best_fullscreen_mode(&best, display, desired_width, desired_height))) {
-		dbgf("using mode: %dx%d %dHz format: %u\n", best.w, best.h, best.refresh_rate, best.format);
-
-		SDL_SetWindowDisplayMode(window, &best);
-		SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-		gfx_update();
-
-		return;
-	}
-
-	// try all other displays skipping the one we've just tried
-	for (int i = 0; i < count; ++i) {
-		if (i == display)
-			continue;
-
-		if (!(err = best_fullscreen_mode(&best, i, desired_width, desired_height))) {
-			SDL_Rect bnds;
-
-			if (SDL_GetDisplayBounds(i, &bnds)) {
-				err = FSE_QUERY;
-				continue;
-			}
-
-			dbgf("using mode: %dx%d %dHz format: %u\n", best.w, best.h, best.refresh_rate, best.format);
-			dbgf("move to: (%d,%d)\n", bnds.x, bnds.y);
-
-			SDL_SetWindowPosition(window, bnds.x, bnds.y);
-			SDL_SetWindowDisplayMode(window, &best);
-			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-			gfx_update();
-
-			return;
-		}
-	}
-
-	fse_show_error(err ? err : FSE_NO_SUPPORT, desired_width, desired_height);
-}
-
-void handle_event(SDL_Event *ev)
-{
-	switch (ev->type) {
-	case SDL_QUIT:
-		running = 0;
-		return;
-	case SDL_KEYDOWN: keydown(&ev->key); break;
-	case SDL_KEYUP:
-		/*
-		 * Third party bug: whenever a zenity prompt is closed,
-		 * SDL receives a spurious SDL_KEYUP event for SDLK_F4
-		 */
-		if (ev->key.keysym.sym == SDLK_F11)
-			toggle_fullscreen();
-		else
-			keyup(&ev->key);
-		break;
-	case SDL_MOUSEBUTTONDOWN: mousedown(&ev->button); break;
-	case SDL_MOUSEBUTTONUP: mouseup(&ev->button); break;
-	case SDL_WINDOWEVENT:
-		switch (ev->window.event) {
-		case SDL_WINDOWEVENT_FOCUS_GAINED:
-			repaint();
-			break;
-		}
-		break;
-	default:
-		break;
-	}
-}
-
-void main_event_loop(void)
-{
-	SDL_Event ev;
-
-	running = 1;
-	display();
-
-	while (running) {
-		while (SDL_PollEvent(&ev))
-			handle_event(&ev);
-
-		Uint32 next = SDL_GetTicks();
-		idle(next >= timer ? next - timer : DEFAULT_TICKS);
-		display();
-
-		if (!music_playing && in_game) {
-			music_index = (music_index + 1) % ARRAY_SIZE(music_list);
-			mus_play(music_list[music_index]);
-		}
-
-		timer = next;
-	}
-}
 
 void gfx_update(void)
 {
@@ -273,26 +126,8 @@ int main(int argc, char **argv)
 {
 	int err;
 
-	if ((err = ge_init(&argc, argv, vfx_start)))
+	if ((err = ge_init(&argc, argv)))
 		return err;
-
-	/* Setup graphical state */
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
-		panic("Could not initialize user interface");
-
-	if (!(window = SDL_CreateWindow(
-		TITLE, SDL_WINDOWPOS_CENTERED,
-		SDL_WINDOWPOS_CENTERED, gfx_cfg.width, gfx_cfg.height,
-		SDL_WINDOW_SHOWN)))
-	{
-		panic("Could not create user interface");
-	}
-
-	dbgf("Available render drivers: %d\n", SDL_GetNumVideoDrivers());
-
-	/* Create default renderer and don't care if it is accelerated. */
-	if (!(renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)))
-		panic("Could not create rendering context");
 
 	drs_add("Border.drs");
 	drs_add("graphics.drs");
@@ -307,16 +142,12 @@ int main(int argc, char **argv)
 
 	gfx_update();
 
-	main_event_loop();
+	ge_main();
 
 	ui_free();
 	drs_free();
 	gfx_free();
 	sfx_free();
-
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
 
 	return ge_quit();
 }

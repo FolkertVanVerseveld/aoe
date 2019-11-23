@@ -48,7 +48,8 @@ OBJECTS=\
 
 GAME_OBJECTS=\
 	engine.o \
-	vfx.o
+	vfx.o \
+	sfx.o
 
 FONT_OBJECTS=\
 	fnt_default.o \

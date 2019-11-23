@@ -215,12 +215,6 @@ extern "C" {
 #define DRS_GOLD 481
 #define DRS_STONE 622
 
-// FIXME also support big-endian machines
-#define DT_BINARY 0x62696e61
-#define DT_SHP    0x73687020
-#define DT_SLP    0x736c7020
-#define DT_WAVE   0x77617620
-
 #ifdef __cplusplus
 }
 #endif

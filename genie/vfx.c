@@ -35,6 +35,11 @@ void ge_video_play(const char *name)
 		}
 	}
 
+	/*
+	 * We have no real way to verify that any video playback application is
+	 * installed, so we just try to call it and ignore if it fails.
+	 */
+
 #if XT_IS_WINDOWS
 	/*
 	 * system is executed as CMD /C, which means that in case the specified

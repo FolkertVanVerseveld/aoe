@@ -19,6 +19,15 @@ extern "C" {
 
 #include "cfg.h"
 
+/** Global engine state */
+extern struct ge_state {
+	/** The in-game music index that is being played that *doesn't* include
+	 * the main, victory and defeat music. */
+	unsigned music_index;
+	/** The in-game music count (excluding main, victory, defeat!) */
+	unsigned music_count;
+} ge_state;
+
 // maximum resolution supported by original game
 #define MAX_BKG_WIDTH 1024
 #define MAX_BKG_HEIGHT 768
@@ -27,22 +36,20 @@ void open_readme(void);
 /**
  * Play the specified AVI cinematics. The engine first looks in the installed
  * directory and falls back to the CD-ROM path if it cannot be found. If the
- * video cannot be found at all, it acts like a NOP.
- *
- * We have no real way to verify that any video playback application is
- * installed, so we just try to call it and ignore if it fails.
+ * video cannot be found at all, it acts like a NOP. Any errors while starting
+ * or during playback are ignored.
  */
 void ge_video_play(const char *name);
 
 /**
  * Initialize the Genie Game Engine, parse any engine parameters and return
- * modified argc and argv where all engine parameters have been removed. The
- * last argument is a NULL terminated list of video cinematics, that will be
- * played during startup. Any missing cinematics are skipped.
+ * modified argc and argv where all engine parameters have been removed.
  */
-int ge_init(int *pargc, char **argv, const char **vfx);
+int ge_init(int *pargc, char **argv);
 /** Cleanup the Genie Game Engine. */
 int ge_quit(void);
+
+void ge_main(void);
 
 #ifdef __cplusplus
 }

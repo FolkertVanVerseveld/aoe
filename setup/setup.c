@@ -79,8 +79,6 @@ char buf[BUFSZ];
 
 struct pe_lib lib_lang;
 
-// XXX peres -x /media/methos/AOE/setupenu.dll
-
 int load_lib_lang(void)
 {
 	snprintf(buf, BUFSZ, "%s/setupenu.dll", path_cdrom);

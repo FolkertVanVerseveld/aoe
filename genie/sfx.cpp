@@ -1,6 +1,6 @@
 /* Copyright 2018-2019 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
-#include "sfx.h"
+#include <genie/sfx.h>
 
 #include <limits.h>
 #include <cstdio>
@@ -10,14 +10,13 @@
 #include <map>
 #include <memory>
 
+#include "engine.h"
+
 #include <genie/dbg.h>
 #include <genie/cfg.h>
 #include <genie/def.h>
 #include <genie/fs.h>
-
-#include "drs.h"
-
-#define SFX_CHANNEL_COUNT 20
+#include <genie/drs.h>
 
 Mix_Chunk *music_chunk = NULL;
 
@@ -164,8 +163,7 @@ volatile int music_playing = 0;
 void hook_finished()
 {
 	music_playing = 0;
-
-	puts("sfx: music stop");
+	dbgs("sfx: music stop");
 }
 
 void sfx_init(void)
@@ -216,44 +214,10 @@ void mus_play(unsigned id)
 
 	const char *name = "";
 
-#ifndef _WIN32
-	switch (id) {
-	case MUS_MAIN   : name = "Track 2.wav"; break;
-	case MUS_VICTORY: name = "Track 3.wav"; break;
-	case MUS_DEFEAT : name = "Track 4.wav"; break;
-	case MUS_GAME1  : name = "Track 5.wav"; break;
-	case MUS_GAME2  : name = "Track 6.wav"; break;
-	case MUS_GAME3  : name = "Track 7.wav"; break;
-	case MUS_GAME4  : name = "Track 8.wav"; break;
-	case MUS_GAME5  : name = "Track 9.wav"; break;
-	case MUS_GAME6  : name = "Track 10.wav"; break;
-	case MUS_GAME7  : name = "Track 11.wav"; break;
-	case MUS_GAME8  : name = "Track 12.wav"; break;
-	case MUS_GAME9  : name = "Track 13.wav"; break;
-	case MUS_GAME10 : name = "Track 14.wav"; break;
-	default:
+	if (id >= _ge_state.msc_count)
 		fprintf(stderr, "sfx: bad music ID %u\n", id);
-		return;
-	}
-#else
-	switch (id) {
-	case MUS_MAIN   : name = "OPEN.MID"; break;
-	case MUS_VICTORY: name = "WON.MID"; break;
-	case MUS_DEFEAT : name = "LOST.MID"; break;
-	case MUS_GAME1  : name = "MUSIC1.MID"; break;
-	case MUS_GAME2  : name = "MUSIC2.MID"; break;
-	case MUS_GAME3  : name = "MUSIC3.MID"; break;
-	case MUS_GAME4  : name = "MUSIC4.MID"; break;
-	case MUS_GAME5  : name = "MUSIC5.MID"; break;
-	case MUS_GAME6  : name = "MUSIC6.MID"; break;
-	case MUS_GAME7  : name = "MUSIC7.MID"; break;
-	case MUS_GAME8  : name = "MUSIC8.MID"; break;
-	case MUS_GAME9  : name = "MUSIC9.MID"; break;
-	default:
-		fprintf(stderr, "sfx: bad music ID %u\n", id);
-		return;
-	}
-#endif
+	else
+		name = ge_start_cfg.msc[id];
 
 	if (fs_cdrom_audio_path(buf, sizeof buf, name)) {
 		fprintf(stderr, "sfx: could not load music ID %u\n", id);
