@@ -157,6 +157,7 @@ static void strtolower(char *str)
 		*ptr = tolower(*ptr);
 }
 
+// FIXME use xtGetUsername
 #ifndef _WIN32
 static const char *username()
 {

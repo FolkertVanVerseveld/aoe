@@ -27,7 +27,7 @@ how.
 
 ## Function naming
 
-All exported functions in genie/ must be prefixed with ``genie_`` to
+All exported functions in genie/ must be prefixed with ``ge_`` to
 clearly distinguish them from foreign code that is using it and to
 prevent name clashes. The macro constants must be prefixed with with
-``GENIE_`` for the same reason.
+``GE_`` for the same reason.

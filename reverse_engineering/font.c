@@ -25,8 +25,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		HFONT hfont;
 		RECT rect;
 		TEXTMETRIC fm; // https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-textmetrica
-		const char *fname = "Arial";
-		int pt = 13;
+		// NOTE: free fonts need manual adjustment! (see next NOTE)
+		const char *fname = "Argos";
+		int pt = 28;
 
 		hdc = BeginPaint(hwnd, &ps);
 			hfont = CreateFont(
@@ -74,7 +75,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 				//SetBkMode(hdc, TRANSPARENT);
 
-				SetBkColor(hdc, RGB(0xa0, 0xa0, 0xa0));
+				SetBkColor(hdc, RGB(0xa0, 0x00, 0x00));
 				SetTextColor(hdc, RGB(0xff, 0xff, 0xff));
 
 				int glyph_width = 0, glyph_height = 0;
@@ -99,6 +100,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							glyph_height = dim.cy;
 					}
 				}
+
+				// NOTE: free fonts need manual adjustment!
+				glyph_width += 0;
 
 				// draw font glyphes
 				for (int y = 0, glyph = 0; y < 16; ++y) {

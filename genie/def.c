@@ -141,8 +141,6 @@ int find_game_installation(void)
 		return 0;
 	close(fd);
 	snprintf(path_wine, PATH_MAX, WINE_PATH_FORMAT, user);
-
-	return 1;
 #else
 	const char *root = "C:/Program Files (x86)/Microsoft Games/Age of Empires";
 	snprintf(path, PATH_MAX, "%s/Empires.exe", root);
@@ -150,8 +148,8 @@ int find_game_installation(void)
 	if ((fd = open(path, O_RDONLY)) == -1)
 		return 0;
 	close(fd);
-	return 1;
 #endif
+	return 1;
 }
 
 int find_lib_lang(char *path)

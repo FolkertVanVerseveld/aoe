@@ -731,7 +731,7 @@ public:
 
 		unsigned which;
 
-		switch (GE_cfg.screen_mode) {
+		switch (ge_cfg.screen_mode) {
 		case GE_CFG_MODE_640x480: which = 0; break;
 		case GE_CFG_MODE_800x600: which = 1; break;
 		default: which = 2; break;
@@ -1621,33 +1621,33 @@ public:
 		objects.emplace_back(gs);
 
 		objects.emplace_back(new Text(270, 154, STR_TITLE_MUSIC));
-		objects.emplace_back(mv = new VerticalSlider(270, 190, 20, 100, GE_cfg.music_volume));
+		objects.emplace_back(mv = new VerticalSlider(270, 190, 20, 100, ge_cfg.music_volume));
 
 		objects.emplace_back(new Text(410, 154, STR_TITLE_SOUND));
-		objects.emplace_back(sv = new VerticalSlider(410, 190, 20, 100, GE_cfg.sound_volume));
+		objects.emplace_back(sv = new VerticalSlider(410, 190, 20, 100, ge_cfg.sound_volume));
 		objects.emplace_back(new Text(550, 154, STR_TITLE_SCROLL));
-		objects.emplace_back(scroll = new VerticalSlider(550, 190, 20, 100, GE_cfg.scroll_speed));
+		objects.emplace_back(scroll = new VerticalSlider(550, 190, 20, 100, ge_cfg.scroll_speed));
 
 		objects.emplace_back(new Text(125, 303, STR_TITLE_SCREEN));
 		ss = new ButtonRadioGroup(true, 120, 330);
 		ss->add(0, 0, STR_BTN_SCREEN_SMALL, true);
 		ss->add(0, 365 - 330, STR_BTN_SCREEN_NORMAL, true);
 		ss->add(0, 400 - 330, STR_BTN_SCREEN_LARGE, true);
-		ss->select(GE_cfg.screen_mode);
+		ss->select(ge_cfg.screen_mode);
 		objects.emplace_back(ss);
 
 		objects.emplace_back(new Text(275, 303, STR_TITLE_MOUSE));
 		mi = new ButtonRadioGroup(true, 270, 330);
 		mi->add(0, 0, STR_BTN_MOUSE_NORMAL, true);
 		mi->add(0, 365 - 330, STR_BTN_MOUSE_ONE, true);
-		mi->select(!(GE_cfg.options & GE_CFG_NORMAL_MOUSE));
+		mi->select(!(ge_cfg.options & GE_CFG_NORMAL_MOUSE));
 		objects.emplace_back(mi);
 
 		objects.emplace_back(new Text(435, 303, STR_TITLE_HELP));
 		tt = new ButtonRadioGroup(true, 430, 330);
 		tt->add(0, 0, STR_BTN_HELP_ON, true);
 		tt->add(0, 365 - 330, STR_BTN_HELP_OFF, true);
-		tt->select(!(GE_cfg.options & GE_CFG_GAME_HELP));
+		tt->select(!(ge_cfg.options & GE_CFG_GAME_HELP));
 		objects.emplace_back(tt);
 
 		objects.emplace_back(new Text(565, 303, STR_TITLE_PATH));
@@ -1659,21 +1659,21 @@ public:
 		// if OK
 		if (id == 0) {
 			game.speed = gs->focus;
-			GE_cfg.screen_mode = ss->focus;
+			ge_cfg.screen_mode = ss->focus;
 
 			if (mi->focus)
-				GE_cfg.options |= GE_CFG_NORMAL_MOUSE;
+				ge_cfg.options |= GE_CFG_NORMAL_MOUSE;
 			else
-				GE_cfg.options &= ~GE_CFG_NORMAL_MOUSE;
+				ge_cfg.options &= ~GE_CFG_NORMAL_MOUSE;
 
 			if (tt->focus)
-				GE_cfg.options &= ~GE_CFG_GAME_HELP;
+				ge_cfg.options &= ~GE_CFG_GAME_HELP;
 			else
-				GE_cfg.options |= GE_CFG_GAME_HELP;
+				ge_cfg.options |= GE_CFG_GAME_HELP;
 
-			GE_cfg.music_volume = mv->value;
-			GE_cfg.sound_volume = sv->value;
-			GE_cfg.scroll_speed = scroll->value;
+			ge_cfg.music_volume = mv->value;
+			ge_cfg.sound_volume = sv->value;
+			ge_cfg.scroll_speed = scroll->value;
 		}
 	}
 

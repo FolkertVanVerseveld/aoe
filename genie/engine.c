@@ -18,11 +18,11 @@
 
 struct pe_lib lib_lang;
 
-struct GE_config GE_cfg = {GE_CFG_NORMAL_MOUSE, GE_CFG_MODE_800x600, 50, 0.7, 1, 0.3};
+struct ge_config ge_cfg = {GE_CFG_NORMAL_MOUSE, GE_CFG_MODE_800x600, 50, 0.7, 1, 0.3};
 
 #define hasopt(x,a,b) (!strcasecmp(x[i], a b) || !strcasecmp(x[i], a "_" b) || !strcasecmp(x[i], a " " b) || (i + 1 < argc && !strcasecmp(x[i], a) && !strcasecmp(x[i+1], b)))
 
-static void ge_cfg_parse(struct GE_config *cfg, int argc, char **argv)
+static void _ge_cfg_parse(struct ge_config *cfg, int argc, char **argv)
 {
 	for (int i = 1; i < argc; ++i) {
 		if (hasopt(argv, "no", "startup"))
@@ -111,33 +111,44 @@ int load_lib_lang(void)
 	return pe_lib_open(&lib_lang, buf);
 }
 
-int GE_Init(int *pargc, char **argv)
+int ge_init(int *pargc, char **argv, const char **vfx)
 {
 	int argc = *pargc;
 
 	for (int i = 1; i < argc; ++i) {
 		const char *arg = argv[i];
 
-		if (!strcmp(arg, "--version") || !strcmp(arg, "-v")) {
+		if (!strcmp(arg, "--version") || !strcmp(arg, "-v"))
 			puts("Genie Engine v0");
-		}
 
 		if (!strcmp(arg, "--"))
 			break;
 	}
 
-	ge_cfg_parse(&GE_cfg, argc, argv);
+	_ge_cfg_parse(&ge_cfg, argc, argv);
 
-	if (!find_setup_files())
-		panic("Please insert or mount the game CD-ROM");
+	if (!find_setup_files()) {
+		show_error("Please insert or mount the game CD-ROM");
+		return 1;
+	}
 
-	if (load_lib_lang())
-		panic("CD-ROM files are corrupt");
+	if (load_lib_lang()) {
+		show_error("CD-ROM files are corrupt");
+		return 1;
+	}
+
+	game_installed = find_game_installation();
+	if (has_wine)
+		dbgs("wine detected");
+	dbgf("game installed: %s\n", game_installed ? "yes" : "no");
+
+	for (unsigned i = 0; vfx[i]; ++i)
+		ge_video_play(vfx[i]);
 
 	return 0;
 }
 
-int GE_Quit(void)
+int ge_quit(void)
 {
 	pe_lib_close(&lib_lang);
 	return 0;

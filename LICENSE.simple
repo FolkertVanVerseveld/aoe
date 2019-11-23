@@ -18,13 +18,16 @@ Required
 --------
 
 #Disclose source
-Source code must be made available when distributing the software. In the case of LGPL and OSL 3.0, the source for the library (and not the entire program) must be made available.
+Source code must be made available when distributing the software. In the case
+of LGPL and OSL 3.0, the source for the library (and not the entire program)
+must be made available.
 
 #License and copyright notice
 Include a copy of the license and copyright notice with the code.
 
 #Network Use is Distribution
-Users who interact with the software via network are given the right to receive a copy of the corresponding source code.
+Users who interact with the software via network are given the right to receive
+a copy of the corresponding source code.
 
 #State Changes
 Indicate significant changes made to the code.
@@ -33,7 +36,9 @@ Permitted
 ---------
 
 #Commercial Use
-This software and derivatives may be used for commercial purposes.
+This software and derivatives may be used for commercial purposes. This *does
+not* apply when the program is bundled with any game assets from the original
+game, because Microsoft and Ensemble Studios still own their respective rights!
 
 #Distribution
 You may distribute this software.
@@ -42,7 +47,8 @@ You may distribute this software.
 This software may be modified
 
 #Patent Use
-This license provides an express grant of patent rights from the contributor to the recipient.
+This license provides an express grant of patent rights from the contributor to
+the recipient. See the commercial use permission notes for any IP licensing.
 
 #Private Use
 You may use and modify the software without distributing it.
@@ -51,4 +57,5 @@ Forbidden
 ---------
 
 #Hold Liable
-Software is provided without warranty and the software author/license owner cannot be held liable for damages.
+Software is provided without warranty and the software author/license owner
+cannot be held liable for damages.

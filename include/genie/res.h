@@ -6,11 +6,11 @@
  * Licensed under Affero General Public License v3.0
  * Copyright by Folkert van Verseveld.
  *
- * Convient API for reading PE resources
+ * Convenient API for reading PE resources
  */
 
-#ifndef RES_H
-#define RES_H
+#ifndef GENIE_RES_H
+#define GENIE_RES_H
 
 #ifdef __cplusplus
 extern "C" {

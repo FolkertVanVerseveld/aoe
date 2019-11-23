@@ -496,7 +496,7 @@ bool Game::idle(unsigned ms) {
 	}
 
 	// Determine displacement vector
-	float speed = GE_cfg.scroll_speed * ms, dx = 0, dy = 0;
+	float speed = ge_cfg.scroll_speed * ms, dx = 0, dy = 0;
 
 	if (keys & KEY_DOWN)
 		dy += speed;

@@ -47,6 +47,13 @@ SDL_Renderer *renderer;
 
 int running = 0;
 
+const char *vfx_start[] = {
+	"logo1.avi",
+	"logo2.avi",
+	"intro.avi",
+	NULL
+};
+
 unsigned const music_list[] = {
 	MUS_GAME1, MUS_GAME2, MUS_GAME3, MUS_GAME4, MUS_GAME5,
 	MUS_GAME6, MUS_GAME7, MUS_GAME8, MUS_GAME9,
@@ -116,7 +123,7 @@ static void toggle_fullscreen(void)
 
 	int desired_width, desired_height;
 
-	switch (GE_cfg.screen_mode) {
+	switch (ge_cfg.screen_mode) {
 	case GE_CFG_MODE_640x480: desired_width = 640; desired_height = 480; break;
 	case GE_CFG_MODE_1024x768: desired_width = 1024; desired_height = 768; break;
 	default: desired_width = 800; desired_height = 600; break;
@@ -262,61 +269,12 @@ void gfx_update(void)
 	//gfx_cfg.height = bnds.h;
 }
 
-void video_play(const char *name)
-{
-#if XT_IS_WINDOWS
-	fprintf(stderr, "%s: no video playback on windows yet!\n", name);
-#else
-	char path[4096], buf[4096];
-
-	if (cfg.options & CFG_NO_INTRO)
-		return;
-
-	fs_get_path(path, sizeof path, "avi/", name, 0);
-	if (access(path, F_OK | R_OK)) {
-		// retry and force to read from CD-ROM
-		fs_get_path(path, sizeof path, "game/avi/", name, FS_OPT_NEED_CDROM);
-
-		if (access(path, F_OK | R_OK)) {
-			fprintf(stderr, "%s: file not found or readable\n", path);
-			return;
-		}
-	}
-
-	/*
-	 * we have no real way to check if ffplay is installed, so we just try
-	 * it and see if it fails. an unknown command error yields code 0x7f00
-	 * on my machine...
-	 *
-	 * if ffplay fails for whatever reason, try cvlc and don't bother
-	 * checking if that worked because there are no real distro independent
-	 * alternatives to try after that point...
-	 */
-	snprintf(buf, sizeof buf, "ffplay -fs -loop 1 -autoexit \"%s\"", path);
-	int code = system(buf);
-	if (code < 0 || code == 0x7f00) {
-		// probably command not found... try cvlc
-		snprintf(buf, sizeof buf, "cvlc --play-and-exit -f \"%s\"", path);
-		system(buf);
-	}
-#endif
-}
-
 int main(int argc, char **argv)
 {
 	int err;
 
-	if ((err = GE_Init(&argc, argv)))
+	if ((err = ge_init(&argc, argv, vfx_start)))
 		return err;
-
-	game_installed = find_game_installation();
-	if (has_wine)
-		dbgs("wine detected");
-	dbgf("game installed: %s\n", game_installed ? "yes" : "no");
-
-	video_play("logo1.avi");
-	video_play("logo2.avi");
-	video_play("intro.avi");
 
 	/* Setup graphical state */
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
@@ -360,5 +318,5 @@ int main(int argc, char **argv)
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 
-	return GE_Quit();
+	return ge_quit();
 }

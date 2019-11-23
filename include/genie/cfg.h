@@ -23,17 +23,18 @@
 /** Use whatever resolution the display has while in fullscreen mode. */
 #define GE_CFG_NATIVE_RESOLUTION 0x80
 
+// FIXME refactor to enum, add custom mode
 #define GE_CFG_MODE_640x480  0
 #define GE_CFG_MODE_800x600  1
 #define GE_CFG_MODE_1024x768 2
 
-extern struct GE_config {
+extern struct ge_config {
 	unsigned options;
 	unsigned screen_mode;
 	unsigned limit;
 	float music_volume;
 	float sound_volume;
 	float scroll_speed;
-} GE_cfg;
+} ge_cfg;
 
 #endif
