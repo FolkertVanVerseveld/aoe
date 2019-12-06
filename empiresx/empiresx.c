@@ -31,6 +31,8 @@
 
 #if XT_IS_WINDOWS
 #include <windows.h>
+#else
+#include <pwd.h>
 #endif
 
 #define TITLE "Age of Empires"
@@ -93,6 +95,8 @@ static struct cfg {
 };
 
 static char cdrom[PATH_MAX];
+
+static char *username;
 
 #define INIT_SDL 1
 
@@ -321,8 +325,7 @@ static void cfg_init(void)
 		fclose(f);
 	}
 
-	xtGetUsername(name, sizeof name);
-	xtsnprintf(path, sizeof path, PATH_CFG_LOCAL, name);
+	xtsnprintf(path, sizeof path, PATH_CFG_LOCAL, username);
 	dbgf("local config path: %s\n", path);
 
 	if (f = fopen(path, "r")) {
@@ -345,15 +348,30 @@ static int cdrom_check(void)
 	char path[PATH_MAX];
 	struct stat st;
 
+#if XT_IS_LINUX
+	/*
+	 * Try following paths in specified order:
+	 * /media/cdrom
+	 * /media/username/cdrom
+	 * Finally, traverse every directory in /media/username
+	 */
+
+	strcpy(path, "/media/cdrom/GAME/LANGUAGE.DLL");
+	if (!stat(path, &st)) {
+		strcpy(cdrom, "/media/cdrom/");
+
+		// check if the installation is legitimate, but do not
+		// stop program execution if not legitimate (for now)
+		strcpy(path, "/media/cdrom/README.DOC");
+
+		goto check;
+	}
+#else
 	path[1] = ':';
 	path[2] = DIR_SEP_CH;
 
 	for (char dl = 'D'; dl <= 'Z'; ++dl) {
 		path[0] = dl;
-
-		strcpy(path + 3, "setupenu.dll");
-		if (stat(path, &st))
-			continue;
 
 		strcpy(path + 3, "game" DIR_SEP_STR "language.dll");
 		if (stat(path, &st))
@@ -365,15 +383,18 @@ static int cdrom_check(void)
 		// check if the installation is legitimate, but do not
 		// stop program execution if not legitimate (for now)
 		strcpy(path + 3, "readme.doc");
-		if (stat(path, &st) || st.st_size != README_SIZE_1_0_A) {
-			fputs("tainted cdrom\n", stderr);
-			ge_state.tainted |= TAINTED_CDROM;
-		}
 
-		return 1;
+		goto check;
 	}
+#endif
 
 	return 0;
+check:
+	if (stat(path, &st) || st.st_size != README_SIZE_1_0_A) {
+		fputs("tainted cdrom\n", stderr);
+		ge_state.tainted |= TAINTED_CDROM;
+	}
+	return 1;
 }
 
 #define DRS_FILES 5
@@ -384,6 +405,12 @@ static const char *drs_files[DRS_FILES] = {
 	"Interfac",
 	"sounds",
 	"Terrain"
+}, *drs_files_uc[DRS_FILES] = {
+	"BORDER",
+	"GRAPHICS",
+	"INTERFAC",
+	"SOUNDS",
+	"TERRAIN"
 };
 
 #define TRIBE_MAGIC "1.00tribe"
@@ -444,7 +471,7 @@ static int blob_open(struct blob *b, const char *path, int prot, int flags)
 	} else if (prot & XT_MMAN_PROT_WRITE)
 		mode = O_WRONLY;
 
-	if ((fd = open(path, mode) == -1) || fstat(fd, &st))
+	if ((fd = open(path, mode)) == -1 || fstat(fd, &st))
 		goto fail;
 
 	if (st.st_size && (data = xtmmap(NULL, st.st_size, prot, flags, fd, 0)) == XT_MMAN_MAP_FAILED)
@@ -495,14 +522,21 @@ static int drs_open(struct drs *drs, const char *path)
 {
 	int ret;
 
+	dbgf("drs_open: %s\n", path);
+
 	ret = blob_open(&drs->blob, path, XT_MMAN_PROT_READ, XT_MMAN_MAP_FILE | XT_MMAN_MAP_SHARED);
-	if (ret) return ret;
+	if (ret) {
+		show_error("Some DRS files are missing");
+		return ret;
+	}
 
 	drs->used = drs->total = 0;
 
 	const struct drs_hdr *hdr = drs->blob.data;
-	if (memcmp(hdr->version, TRIBE_MAGIC, TRIBE_MAGIC_SIZE))
+	if (memcmp(hdr->version, TRIBE_MAGIC, TRIBE_MAGIC_SIZE)) {
+		show_error("Some DRS files are corrupt");
 		return 1;
+	}
 
 	return 0;
 }
@@ -514,16 +548,11 @@ static int drs_init(void)
 	for (unsigned i = 0; i < DRS_FILES; ++i) {
 		struct drs *drs = &drs_cache.data[i];
 
-		xtsnprintf(base, sizeof base, "game" DIR_SEP_STR "data" DIR_SEP_STR "%s.drs", drs_files[i]);
+		xtsnprintf(base, sizeof base, "GAME" DIR_SEP_STR "DATA" DIR_SEP_STR "%s.DRS", drs_files_uc[i]);
 		cdrom_path(path, sizeof path, base);
 
-		dbgf("path: %s\n", path);
-
-		if (drs_open(drs, path)) {
-			perror("drs_open");
-			show_error("Data files are missing or corrupt");
+		if (drs_open(drs, path))
 			return 1;
-		}
 	}
 
 	return 0;
@@ -532,6 +561,12 @@ static int drs_init(void)
 int main(int argc, char **argv)
 {
 	int ret = 1;
+
+#if XT_IS_LINUX
+	username = getpwuid(getuid())->pw_name;
+#else
+	username = getenv("USERNAME");
+#endif
 
 	cfg_init();
 

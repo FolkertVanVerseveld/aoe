@@ -35,7 +35,7 @@ else
 	CFLAGS += -O3
 endif
 
-LDLIBS += $(shell pkg-config --cflags --libs sdl2 gl openal) -lSDL2_image -lSDL2_mixer $(shell pkg-config --cflags --libs openssl)
+LDLIBS += $(shell pkg-config --cflags --libs sdl2) -lSDL2_image -lSDL2_mixer
 
 ifdef CROSS_COMPILE
 ifeq ($(CROSS_COMPILE),32)
