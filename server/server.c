@@ -39,9 +39,6 @@
 
 #define CFG_NAME "settings"
 
-#define TEXT_BUFSZ 1024
-#define MOTD_SZ TEXT_BUFSZ
-
 // maximum number of users including gaia. the theoretical limit is the number
 // of tcp ports, but making it this huge will decrease performance dramatically
 #define MAX_USERS 1024
@@ -101,7 +98,7 @@ struct user {
 	struct res res;
 };
 
-#define INVALID_USER_ID UINT_FAST16_MAX
+#define INVALID_USER_ID UINT16_MAX
 
 #define PLAYER_ACTIVE 0x01
 #define PLAYER_OP     0x02
@@ -145,32 +142,45 @@ struct user {
 #define PH_INSTANT_ALL        (PH_INSTANT_GATHER|PH_INSTANT_BUILD|PH_INSTANT_TRAIN|PH_INSTANT_CONVERT)
 // no resources need to be paid
 #define PH_NO_RES_COSTS       0x1000
-// can only die if it resigns
-#define PH_IMMORTAL           0x2000
 // NOTE teleport only applies to the current player
-#define PH_TELEPORT_UNITS     0x4000
-#define PH_TELEPORT_BUILDINGS 0x8000
+#define PH_TELEPORT_UNITS     0x2000
+#define PH_TELEPORT_BUILDINGS 0x4000
 #define PH_TELEPORT_ALL       (PH_TELEPORT_UNITS|PH_TELEPORT_BUILDINGS)
 // XXX no clip mode?
 // all above handicaps combined
-#define PH_GOD                0xFFFF
+#define PH_GOD                0x7FFF
 
-// virtual user, this makes it possible for multiple players to control the same user
-// NOTE never ever cache a pointer or index to a player directly, since they can change on the fly!
+/**
+ * Virtual user, this makes it possible for multiple players to control the
+ * same user. NOTE never ever cache a pointer or index to a player directly,
+ * since it can change on the fly!
+ */
 struct player {
-	uint_fast16_t id; // unique
-	uint_fast16_t uid; // not unique
+	uint16_t id; // unique
+	uint16_t uid; // index to user table, not unique
 	unsigned state;
 	unsigned hc; // handicap
 	unsigned ai; // determines the AI mode, zero if human player without handicap/assistance
 	char name[MAX_USERNAME];
 };
 
-// NOTE never ever cache a pointer or index to a slave/peer directly, since they can change on the fly!
+/** Cache for pending packets to send or receive */
+struct netheap {
+	char *send, *recv;
+	unsigned *sendpos, *recvpos;
+	unsigned used, count, cap;
+	// keeps track of first available slots
+	unsigned rpop[MAX_USERS], rpopi;
+} netheap;
+
+/**
+ * Wrapper for epoll_event. NOTE never ever cache a pointer or index to a
+ * slave/peer directly, since they can change on the fly!
+ */
 struct slave {
 	int fd; // underlying socket connection
-	uint_fast16_t id; // unique
-	uint_fast16_t pid; // virtual player unique identifier (also used to detect modification changes)
+	uint16_t id; // unique
+	uint16_t pid; // virtual player unique identifier (also used to detect modification changes)
 	struct sockaddr in_addr; // the underlying socket address
 };
 
@@ -270,15 +280,17 @@ fail:
 #define heap_parent(x) (((x)-1)/2)
 
 // slave heap errors
-#define SHE_NOMEM 1
-#define SHE_FULL  2
-#define SHE_BADFD 3
+#define SHE_NOMEM  1
+#define SHE_FULL   2
+#define SHE_BADFD  3
+#define SHE_BADPID 4
 
 static const char *she_str[] = {
 	"success",
 	"out of memory",
 	"server is full",
 	"bad file descriptor",
+	"bad player id",
 };
 
 int sheap_new_slave(int fd, struct sockaddr *in_addr)
@@ -319,8 +331,8 @@ int sheap_new_slave(int fd, struct sockaddr *in_addr)
 	// initialize data
 	s->fd = fd;
 	s->in_addr = *in_addr;
-	s->id = sheap.smod;
-	s->pid = p->id = sheap.pmod;
+	s->id = sheap.smod++;
+	s->pid = p->id = sheap.pmod++;
 	p->uid = INVALID_USER_ID;
 	p->state = PLAYER_ACTIVE | PLAYER_HUMAN;
 	p->hc = p->ai = 0;
@@ -344,14 +356,144 @@ int sheap_new_slave(int fd, struct sockaddr *in_addr)
 	return 0;
 }
 
+struct slave *sheap_find_slave(int fd)
+{
+	for (unsigned i = 0; i < sheap.scount;) {
+		struct slave *s = &sheap.sdata[i];
+
+		if (s->fd == fd)
+			return s;
+		else
+			i = fd < s->fd ? heap_left(i) : heap_right(i);
+	}
+
+	return NULL;
+}
+
+struct player *sheap_find_player(uint16_t pid)
+{
+	for (unsigned i = 0; i < sheap.pcount;) {
+		struct player *p = &sheap.pdata[i];
+
+		if (p->id == pid)
+			return p;
+		else
+			i = pid < p->id ? heap_left(i) : heap_right(i);
+	}
+
+	return NULL;
+}
+
+void sheap_delete_player(struct player *p)
+{
+	// first, purge the user reference
+	if (p->uid != INVALID_USER_ID) {
+		assert(sheap.udata[p->uid].ref);
+		--sheap.udata[p->uid].ref;
+	}
+
+	if (!--sheap.pcount)
+		return;
+
+	// second, move last element to current player
+	unsigned pos = (unsigned)(p - sheap.pdata);
+	sheap.pdata[pos] = sheap.pdata[sheap.pcount];
+
+	// restore heap property
+	if (pos && sheap.pdata[pos].id >= sheap.pdata[heap_parent(pos)].id) {
+		do {
+			struct player tmp = sheap.pdata[pos];
+			sheap.pdata[pos] = sheap.pdata[heap_parent(pos)];
+			sheap.pdata[heap_parent(pos)] = tmp;
+
+			pos = heap_parent(pos);
+		} while (pos && sheap.pdata[pos].id >= sheap.pdata[heap_parent(pos)].id);
+	} else {
+		for (unsigned l, r, m;; pos = m) {
+			l = heap_left(pos);
+			r = heap_right(pos);
+			m = pos;
+
+			if (l < sheap.pcount && sheap.pdata[l].id < sheap.pdata[m].id)
+				m = l;
+			if (r < sheap.pcount && sheap.pdata[r].id < sheap.pdata[m].id)
+				m = r;
+
+			if (m == pos)
+				break;
+
+			struct player tmp = sheap.pdata[pos];
+			sheap.pdata[pos] = sheap.pdata[m];
+			sheap.pdata[m] = tmp;
+		}
+	}
+}
+
+void sheap_delete_slave(struct slave *s)
+{
+	if (!--sheap.scount)
+		return;
+
+	// move last element to current slave
+	unsigned pos = (unsigned)(s - sheap.sdata);
+	sheap.sdata[pos] = sheap.sdata[sheap.scount];
+
+	// restore heap property
+	if (pos && sheap.sdata[pos].id >= sheap.pdata[heap_parent(pos)].id) {
+		do {
+			struct slave tmp = sheap.sdata[pos];
+			sheap.sdata[pos] = sheap.sdata[heap_parent(pos)];
+			sheap.sdata[heap_parent(pos)] = tmp;
+
+			pos = heap_parent(pos);
+		} while (pos && sheap.sdata[pos].id >= sheap.sdata[heap_parent(pos)].id);
+	} else {
+		for (unsigned l, r, m;; pos = m) {
+			l = heap_left(pos);
+			r = heap_right(pos);
+			m = pos;
+
+			if (l < sheap.scount && sheap.sdata[l].id < sheap.pdata[m].id)
+				m = l;
+			if (r < sheap.scount && sheap.sdata[r].id < sheap.sdata[m].id)
+				m = r;
+
+			if (m == pos)
+				break;
+
+			struct slave tmp = sheap.sdata[pos];
+			sheap.sdata[pos] = sheap.sdata[m];
+			sheap.sdata[m] = tmp;
+		}
+	}
+}
+
+/**
+ * Remove the peer/slave associated with the specified fd.
+ * Returns non-zero on failure.
+ */
 int sheap_close_fd(int fd)
 {
+	int err;
+	struct slave *s;
+	struct player *p;
+
 	if (fd == -1)
 		return SHE_BADFD;
 
-	// FIXME stub
+	if ((err = close(fd)))
+		perror("sheap_close_fd");
 
-	return SHE_BADFD;
+	if (!(s = sheap_find_slave(fd)))
+		return SHE_BADFD;
+
+	if (!(p = sheap_find_player(s->pid)))
+		return SHE_BADPID;
+
+	sheap_delete_player(p);
+	sheap_delete_slave(s);
+
+	return err ? SHE_BADFD : 0;
 }
 
 /** similar to xtStringTrim, but faster */
@@ -616,6 +758,7 @@ reject:
 	}
 }
 
+// event processing errors
 #define EPE_INVALID 1
 #define EPE_READ    2
 

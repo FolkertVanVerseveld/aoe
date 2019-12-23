@@ -8,4 +8,14 @@
 #define IO_BUFSZ 4096
 #define PATHSZ IO_BUFSZ
 
+#define MOTD_SZ TEXT_BUFSZ
+#define TEXT_BUFSZ 1024
+
+#include <stdint.h>
+#include <inttypes.h>
+
+struct net_pkg {
+	uint16_t type, length;
+};
+
 #endif
