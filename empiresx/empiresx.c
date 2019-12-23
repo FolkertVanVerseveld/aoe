@@ -163,6 +163,9 @@ static void idle(unsigned ms)
 
 static void display(void)
 {
+	SDL_SetRenderDrawColor(ge_state.ctx, 0, 0, 0, 255);
+	SDL_RenderClear(ge_state.ctx);
+	SDL_RenderPresent(ge_state.ctx);
 }
 
 static int handle_event(SDL_Event *ev)
