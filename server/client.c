@@ -162,7 +162,7 @@ int run_cmd(char *line, unsigned n)
 		return -1;
 
 	if (n >= 3 && xtStringStartsWith(line, "say")) {
-		char *text = xtStringTrim(line + 3);
+		return cmd_say(xtStringTrim(line + 3));
 	} else if (!strcmp(line, "crash")) {
 		fatal_error("crash", 1000, 0);
 	}

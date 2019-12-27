@@ -53,14 +53,21 @@
 // hint, ignored in most cases
 #define EPOLL_SIZE 64
 
-#define INIT_NET 1
-#define INIT_SHEAP 2
+#define INIT_NET   0x01
+#define INIT_SHEAP 0x02
 
 unsigned init = 0;
 int running = 0;
 
 char path_cdrom[PATHSZ];
 char motd[MOTD_SZ] = "Welcome to this AoE server. Be nice and adhere to the rules. ~FvV";
+
+__attribute__((noreturn))
+void panic(const char *msg)
+{
+	fprintf(stderr, "%s\n", msg);
+	abort();
+}
 
 struct cfg {
 	uint16_t port;
@@ -179,23 +186,15 @@ struct player {
 	char name[MAX_USERNAME];
 };
 
-/** Cache for pending packets to send or receive */
-struct netheap {
-	char *send, *recv;
-	unsigned *sendpos, *recvpos;
-	unsigned used, count, cap;
-	// keeps track of first available slots
-	unsigned rpop[MAX_USERS], rpopi;
-} netheap;
-
 /**
  * Wrapper for epoll_event. NOTE never ever cache a pointer or index to a
  * slave/peer directly, since they can change on the fly!
  */
 struct slave {
 	int fd; // underlying socket connection
-	uint16_t id; // unique
-	uint16_t pid; // virtual player unique identifier (also used to detect modification changes)
+	uint16_t id; /**< unique identifier (is equal to modification counter at creation) */
+	uint16_t pid; /**< virtual player unique identifier (also used to detect modification changes) */
+	uint16_t bid; /**< netheap buffer identifier */
 	struct sockaddr in_addr; // the underlying socket address
 };
 
@@ -205,6 +204,8 @@ struct slave {
  * multiple mappings in order to speed up searching for elements with different
  * key types. The first mapping sorts the peers on fd, the second on id, and
  * the last one on uid.
+ * NOTE AI-only players are not stored in this heap, since AI-only players are
+ * just virtual players and hence do not need a socket connection to the server.
  */
 struct sheap {
 	// NOTE data and pdata are binary heaps and therefore non-incrementally stored!
@@ -216,8 +217,17 @@ struct sheap {
 	unsigned scount, scap; // no need for size_t, since maximum fits in unsigned anyway
 	unsigned pcount, pcap;
 	unsigned ucount, ucap; // fixed once the game is active
-	// modification counters
+	/** modification counters */
 	uint16_t smod, pmod;
+	// network data: Cache for pending packets to receive
+	struct netbuf {
+		unsigned size;
+		struct net_pkg pkg;
+	} *ncache;
+	/** used is the number of active slots, count the number of reserved slots. */
+	unsigned nused, ncount, ncap;
+	// keeps track of first available slots
+	unsigned *rpop, rpopi;
 } sheap;
 
 static inline void player_reset(unsigned id, unsigned uid, unsigned state, unsigned handicap, unsigned ai, const char *name)
@@ -254,6 +264,10 @@ void slave_init(struct slave *s, int fd)
 
 void sheap_free(const struct sheap *h)
 {
+	// network data
+	free(h->rpop);
+	free(h->ncache);
+	// slave heap
 	free(h->udata);
 	free(h->pdata);
 	free(h->sdata);
@@ -261,7 +275,7 @@ void sheap_free(const struct sheap *h)
 
 int sheap_init(void)
 {
-	int ret = 1;
+	int err = 1;
 	struct sheap h = {0};
 
 	assert(sizeof *h.pdata == sizeof(struct player));
@@ -269,23 +283,25 @@ int sheap_init(void)
 
 	if (!(h.sdata = malloc(DEFAULT_SHEAP_PEERS * sizeof *h.sdata))
 		|| !(h.pdata = malloc(DEFAULT_SHEAP_PEERS * sizeof *h.pdata))
-		|| !(h.udata = malloc(DEFAULT_SHEAP_USERS * sizeof *h.udata))) {
+		|| !(h.udata = malloc(DEFAULT_SHEAP_USERS * sizeof *h.udata))
+		|| !(h.ncache = malloc(DEFAULT_SHEAP_USERS * sizeof *h.ncache))
+		|| !(h.rpop = malloc(DEFAULT_SHEAP_USERS * sizeof *h.rpop))) {
 		goto fail;
 	}
 
 	sheap = h;
-	sheap.pcap = sheap.scap = DEFAULT_SHEAP_PEERS;
+	sheap.ncap = sheap.pcap = sheap.scap = DEFAULT_SHEAP_PEERS;
 	sheap.ucap = DEFAULT_SHEAP_USERS;
 	// setup special users: gaia
 	user_reset(0, USER_ACTIVE | USER_ALIVE | USER_ASSIST | USER_IMMORTAL);
 	sheap.ucount = 1;
 
-	ret = 0;
+	err = 0;
 fail:
-	if (ret)
+	if (err)
 		sheap_free(&h);
 
-	return 0;
+	return err;
 }
 
 #define heap_left(x) (2*(x)+1)
@@ -305,6 +321,22 @@ static const char *she_str[] = {
 	"bad file descriptor",
 	"bad player id",
 };
+
+static void netbuf_init(struct netbuf *b)
+{
+	b->size = 0;
+}
+
+static void netbuf_recv(struct netbuf *nbuf, const unsigned char *buf, unsigned n)
+{
+	unsigned rem = sizeof *nbuf - nbuf->size;
+	unsigned copy = n > rem ? rem : n;
+
+	if (copy) {
+		memcpy(((unsigned char*)&nbuf->pkg) + nbuf->size, buf, copy);
+		nbuf->size += copy;
+	}
+}
 
 int sheap_new_slave(int fd, struct sockaddr *in_addr)
 {
@@ -337,6 +369,31 @@ int sheap_new_slave(int fd, struct sockaddr *in_addr)
 		sheap.pcap = newcap;
 	}
 
+	// recycle empty slots
+	unsigned slot = 0;
+
+	if (sheap.rpopi) {
+		slot = sheap.rpop[--sheap.rpopi];
+		goto put;
+	}
+
+	if (sheap.ncount == sheap.ncap) {
+		if (sheap.ncap >= MAX_USERS >> 1)
+			return SHE_FULL;
+
+		size_t newcap = sheap.ncap << 1;
+		struct netbuf *ncache;
+
+		if (!(ncache = realloc(sheap.ncache, newcap * sizeof *ncache)))
+			return SHE_NOMEM;
+
+		sheap.ncache = ncache;
+		sheap.ncap = newcap;
+	}
+
+	slot = sheap.ncount++;
+put:
+	;
 	// grab data
 	struct slave *s = &sheap.sdata[sheap.scount];
 	struct player *p = &sheap.pdata[sheap.pcount];
@@ -365,6 +422,11 @@ int sheap_new_slave(int fd, struct sockaddr *in_addr)
 			sheap.pdata[pos] = sheap.pdata[heap_parent(pos)];
 			sheap.pdata[heap_parent(pos)] = tmp;
 		}
+
+	// commit new slave
+	++sheap.nused;
+	s->bid = slot;
+	netbuf_init(&sheap.ncache[slot]);
 
 	return 0;
 }
@@ -443,6 +505,22 @@ void sheap_delete_player(struct player *p)
 
 void sheap_delete_slave(struct slave *s)
 {
+	// ensure the network data heap has enough room
+	if (sheap.ncount == sheap.ncap) {
+		assert(sheap.ncap < SIZE_MAX >> 1);
+
+		size_t newcap = sheap.ncap << 1;
+		unsigned *rpop;
+
+		// if this fails, the server is unrecoverable anyway
+		if (!(rpop = realloc(sheap.rpop, newcap * sizeof *rpop)))
+			panic("sheap network heap overflow");
+	}
+
+	sheap.rpop[sheap.rpopi++] = s->bid;
+	assert(sheap.nused);
+	--sheap.nused;
+
 	if (!--sheap.scount)
 		return;
 
@@ -769,9 +847,58 @@ reject:
 	}
 }
 
+static int net_pkg_process(struct net_pkg *pkg, struct slave *s)
+{
+	switch (pkg->type) {
+	case NT_TEXT:
+		// FIXME stub
+		pkg->data.text.text[TEXT_BUFSZ - 1] = '\0';
+		printf("%d: %s\n", s->fd, pkg->data.text.text);
+		return 0;
+	default:
+		fprintf(stderr, "net_pkg_process: bad packet from fd %d\n", s->fd);
+		return 1;
+	}
+
+	return 0;
+}
+
 // event processing errors
-#define EPE_INVALID 1
-#define EPE_READ    2
+#define EPE_INVALID  1
+#define EPE_READ     2
+#define EPE_BADFD    3
+
+static int peer_handle(int fd, unsigned char *buf, unsigned n)
+{
+	struct slave *s;
+
+	if (!(s = sheap_find_slave(fd)))
+		return EPE_BADFD;
+
+	struct netbuf *nbuf = &sheap.ncache[s->bid];
+	netbuf_recv(nbuf, buf, n);
+
+	// process all complete packets
+	while (1) {
+		unsigned len = (unsigned)xtbe16toh(nbuf->pkg.length) + NET_HEADER_SIZE;
+
+		if (nbuf->size >= NET_HEADER_SIZE && nbuf->pkg.length >= len) {
+			int err;
+
+			net_pkg_ntoh(&nbuf->pkg);
+
+			if ((err = net_pkg_process(&nbuf->pkg, s)))
+				return err;
+
+			memmove(&nbuf->pkg, ((const unsigned char*)&nbuf->pkg) + nbuf->size, nbuf->size - len);
+			nbuf->size -= len;
+		} else {
+			break;
+		}
+	}
+
+	return 0;
+}
 
 /**
  * Read any pending data from the specified socket poll event.
@@ -791,6 +918,7 @@ int event_process(struct epoll_event *ev)
 	}
 
 	while (1) {
+		int err;
 		ssize_t n;
 		unsigned char buf[NET_PACKET_SIZE];
 
@@ -807,7 +935,8 @@ int event_process(struct epoll_event *ev)
 			printf("event_process: remote closed fd %d\n", fd);
 			return EPE_READ;
 		}
-		// TODO peer handle
+		if ((err = peer_handle(fd, buf, n)))
+			return err;
 	}
 
 	return 0;
@@ -857,18 +986,19 @@ int main(void)
 	printf("Starting server \"%s\"...\n", cfg.host);
 	printf("Max users: %" PRIu16 "\n", cfg.maxuser);
 
+	// initialize subsystems
+
 	if (net_init()) {
 		perror("net_init");
 		goto fail;
 	}
-
 	init |= INIT_NET;
 
 	if ((ret = sheap_init()))
 		goto fail;
-
 	init |= INIT_SHEAP;
 
+	// enter event main loop
 	ret = event_loop();
 fail:
 	if (init & INIT_SHEAP)

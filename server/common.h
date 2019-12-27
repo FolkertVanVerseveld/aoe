@@ -16,14 +16,17 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+/** Maximum network packet size in bytes. This should be a power of two */
 #define NET_PACKET_SIZE 1024
 #define NET_HEADER_SIZE 4
 
 #define NET_MESSAGE_SIZE (1024 - NET_HEADER_SIZE - 4)
 
-#define NET_TEXT_RECP_ALL    INVALID_USER_ID
-#define NET_TEXT_TYPE_USER   0
-#define NET_TEXT_TYPE_SERVER 1
+#define NET_TEXT_RECP_ALL     INVALID_USER_ID
+#define NET_TEXT_TYPE_USER    0
+#define NET_TEXT_TYPE_SERVER  1
+#define NET_TEXT_TYPE_ALLIES  2
+#define NET_TEXT_TYPE_ENEMIES 3
 
 #define NT_TEXT 0
 
