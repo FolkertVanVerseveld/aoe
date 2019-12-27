@@ -137,12 +137,33 @@ void *event_loop(struct xtThread *t, void *arg)
 	return NULL;
 }
 
+int net_pkg_send(struct net_pkg *p)
+{
+	uint16_t dummy;
+	uint16_t size = NET_HEADER_SIZE + p->length;
+
+	net_pkg_hton(p);
+
+	return tcp_write(sockfd, p, size, &dummy);
+}
+
+int cmd_say(const char *msg)
+{
+	struct net_pkg p;
+
+	net_pkg_init(&p, NT_TEXT, NET_TEXT_RECP_ALL, NET_TEXT_TYPE_USER, msg);
+
+	return net_pkg_send(&p);
+}
+
 int run_cmd(char *line, unsigned n)
 {
 	if ((n == 1 && line[0] == 'q') || (n == 4 && !strcmp(line, "quit")))
 		return -1;
 
-	if (!strcmp(line, "crash")) {
+	if (n >= 3 && xtStringStartsWith(line, "say")) {
+		char *text = xtStringTrim(line + 3);
+	} else if (!strcmp(line, "crash")) {
 		fatal_error("crash", 1000, 0);
 	}
 
@@ -176,7 +197,7 @@ int mainloop(void)
 			case KEY_ENTER:
 				xtStringTrim(line);
 
-				if (run_cmd(line, linepos) < 0)
+				if (run_cmd(line, strlen(line)) < 0)
 					return 0;
 
 				line[linepos = 0] = '\0';

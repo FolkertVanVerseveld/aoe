@@ -51,7 +51,7 @@
 #define HOSTSZ 120
 
 // hint, ignored in most cases
-#define EPOLL_SIZE 16
+#define EPOLL_SIZE 64
 
 #define INIT_NET 1
 #define INIT_SHEAP 2
@@ -98,57 +98,71 @@ struct user {
 	struct res res;
 };
 
-#define INVALID_USER_ID UINT16_MAX
-
 #define PLAYER_ACTIVE 0x01
 #define PLAYER_OP     0x02
 #define PLAYER_HUMAN  0x04
 
 /*
- * player handicaps (includes cheats)
- * NOTE the following handicaps can crash the server and/or seriously degrade
+ * player cheats
+ * NOTE the following cheats can crash the server and/or seriously degrade
  * performance (in order of seriousness, the first being the most dangerous):
- * - PH_GOD
- * - PH_NO_USERCAP
- * - PH_SPY_ALL
- * - PH_SPY_UNITS
- * - PH_SPY_GAIA
- * - PH_INSTANT_TRAIN
- * - PH_REVEAL_MAP
- * - PH_NO_FOG
+ * - CHEAT_GOD
+ * - CHEAT_INSTANT_ALL
+ * - CHEAT_INSTANT_TRAIN
+ * - CHEAT_INSTANT_BUILD
+ * - CHEAT_REVEAL_MAP
+ * - CHEAT_NO_FOG
  */
-#define PH_NO_FOG             0x0001
-#define PH_REVEAL_MAP         0x0002
-// see all units
-#define PH_SPY_UNITS          0x0004
-// see all buildings
-#define PH_SPY_BUILDINGS      0x0008
-// see all player resources
-#define PH_SPY_RESOURCES      0x0010
-#define PH_SPY_GAIA_STATIC    0x0020
-#define PH_SPY_GAIA_DYNAMIC   0x0040
-#define PH_SPY_GAIA           (PH_SPY_GAIA_STATIC|PH_SPY_GAIA_DYNAMIC)
-#define PH_SPY_ALL            (PH_SPY_UNITS|PH_SPY_BUILDINGS|PH_SPY_RESOURCES|PH_SPY_GAIA)
-#define PH_NO_USERCAP         0x0080
-// resources are instantly collected
-#define PH_INSTANT_GATHER     0x0100
-// buildings are instantly completed
-#define PH_INSTANT_BUILD      0x0200
-// units are instantly created
-#define PH_INSTANT_TRAIN      0x0400
-// priests instantly convert units and buildings
-#define PH_INSTANT_CONVERT    0x0800
-// player on steroids
-#define PH_INSTANT_ALL        (PH_INSTANT_GATHER|PH_INSTANT_BUILD|PH_INSTANT_TRAIN|PH_INSTANT_CONVERT)
-// no resources need to be paid
-#define PH_NO_RES_COSTS       0x1000
-// NOTE teleport only applies to the current player
-#define PH_TELEPORT_UNITS     0x2000
-#define PH_TELEPORT_BUILDINGS 0x4000
-#define PH_TELEPORT_ALL       (PH_TELEPORT_UNITS|PH_TELEPORT_BUILDINGS)
-// XXX no clip mode?
-// all above handicaps combined
-#define PH_GOD                0x7FFF
+#define CHEAT_NO_FOG             0x0001
+#define CHEAT_REVEAL_MAP         0x0002
+/** see all player resources */
+#define CHEAT_SPY_RESOURCES      0x0004
+/** resources are instantly collected */
+#define CHEAT_INSTANT_GATHER     0x0008
+/** buildings are instantly completed */
+#define CHEAT_INSTANT_BUILD      0x0010
+/** units are instantly created */
+#define CHEAT_INSTANT_TRAIN      0x0020
+/** priests instantly convert units and buildings */
+#define CHEAT_INSTANT_CONVERT    0x0040
+/** player on steroids */
+#define CHEAT_INSTANT_ALL        (CHEAT_INSTANT_GATHER|CHEAT_INSTANT_BUILD|CHEAT_INSTANT_TRAIN|CHEAT_INSTANT_CONVERT)
+/** no resources need to be paid */
+#define CHEAT_NO_RES_COSTS       0x0080
+/** NOTE teleport only applies to the current player */
+#define CHEAT_TELEPORT_UNITS     0x0100
+#define CHEAT_TELEPORT_BUILDINGS 0x0200
+#define CHEAT_TELEPORT_ALL       (CHEAT_TELEPORT_UNITS|CHEAT_TELEPORT_BUILDINGS)
+// Don't add clip mode: this seriously breaks the quadtree world logic
+/** all above handicaps combined */
+#define CHEAT_GOD                0x03FF
+
+/*
+ * Player handicaps
+ * These handicaps provide more novice users an initial or overall advantage
+ * to make a match against more experienced players fairer. The exact bonus or
+ * advantage is adjustable in the server settings. NOTE the bonus may also be
+ * negative (i.e. positive bonus for novice players, negative bonus for expert
+ * players).
+ */
+#define PH_RES             0x0001
+#define PH_COST_UNITS      0x0002
+#define PH_COST_BUILDINGS  0x0004
+#define PH_COST_TECHS      0x0008
+#define PH_GATHER          0x0010
+#define PH_BUILD           0x0020
+#define PH_TRAIN_UNITS     0x0040
+#define PH_TRAIN_BUILDINGS 0x0080
+#define PH_TRAIN_TECHS     0x0100
+#define PH_TRAIN           (PH_TRAIN_UNITS|PH_TRAIN_BUILDINGS|PH_TRAIN_TECHS)
+#define PH_CONVERT         0x0200
+#define PH_REPAIR_WONDER   0x0400
+#define PH_REPAIR          0x0800
+// countdown for wonders and ruins victory is faster
+#define PH_WINCOUNTER      0x1000
+#define PH_TRADE           0x2000
+
+#define PH_ALL             0x3FFF
 
 /**
  * Virtual user, this makes it possible for multiple players to control the
@@ -156,11 +170,12 @@ struct user {
  * since it can change on the fly!
  */
 struct player {
-	uint16_t id; // unique
-	uint16_t uid; // index to user table, not unique
+	uint16_t id; /**< unique */
+	uint16_t uid; /**< index to user table, not unique */
 	unsigned state;
-	unsigned hc; // handicap
-	unsigned ai; // determines the AI mode, zero if human player without handicap/assistance
+	unsigned hc; /**< player handicap */
+	unsigned cheats; /**< active OP actions */
+	unsigned ai; /**< determines the AI mode, zero if human player without handicap/assistance */
 	char name[MAX_USERNAME];
 };
 
@@ -197,7 +212,7 @@ struct sheap {
 	struct player *pdata;
 	// user data must be incrementally stored
 	struct user *udata;
-	unsigned *pid, *uid; // mappings for player id and user id
+	//unsigned *pid, *uid; // mappings for player id and user id
 	unsigned scount, scap; // no need for size_t, since maximum fits in unsigned anyway
 	unsigned pcount, pcap;
 	unsigned ucount, ucap; // fixed once the game is active
@@ -239,8 +254,6 @@ void slave_init(struct slave *s, int fd)
 
 void sheap_free(const struct sheap *h)
 {
-	free(h->uid);
-	free(h->pid);
 	free(h->udata);
 	free(h->pdata);
 	free(h->sdata);
@@ -252,7 +265,7 @@ int sheap_init(void)
 	struct sheap h = {0};
 
 	assert(sizeof *h.pdata == sizeof(struct player));
-	assert(!h.sdata && !h.pdata && !h.udata && !h.pid && !h.uid);
+	assert(!h.sdata && !h.pdata && !h.udata);
 
 	if (!(h.sdata = malloc(DEFAULT_SHEAP_PEERS * sizeof *h.sdata))
 		|| !(h.pdata = malloc(DEFAULT_SHEAP_PEERS * sizeof *h.pdata))
@@ -328,7 +341,7 @@ int sheap_new_slave(int fd, struct sockaddr *in_addr)
 	struct slave *s = &sheap.sdata[sheap.scount];
 	struct player *p = &sheap.pdata[sheap.pcount];
 
-	// initialize data
+	// initialize data and update modification counters
 	s->fd = fd;
 	s->in_addr = *in_addr;
 	s->id = sheap.smod++;
@@ -400,7 +413,7 @@ void sheap_delete_player(struct player *p)
 	sheap.pdata[pos] = sheap.pdata[sheap.pcount];
 
 	// restore heap property
-	if (pos && sheap.pdata[pos].id >= sheap.pdata[heap_parent(pos)].id) {
+	if (pos && sheap.pdata[pos].id >= sheap.pdata[heap_parent(pos)].id)
 		do {
 			struct player tmp = sheap.pdata[pos];
 			sheap.pdata[pos] = sheap.pdata[heap_parent(pos)];
@@ -408,7 +421,7 @@ void sheap_delete_player(struct player *p)
 
 			pos = heap_parent(pos);
 		} while (pos && sheap.pdata[pos].id >= sheap.pdata[heap_parent(pos)].id);
-	} else {
+	else
 		for (unsigned l, r, m;; pos = m) {
 			l = heap_left(pos);
 			r = heap_right(pos);
@@ -426,7 +439,6 @@ void sheap_delete_player(struct player *p)
 			sheap.pdata[pos] = sheap.pdata[m];
 			sheap.pdata[m] = tmp;
 		}
-	}
 }
 
 void sheap_delete_slave(struct slave *s)
@@ -439,7 +451,7 @@ void sheap_delete_slave(struct slave *s)
 	sheap.sdata[pos] = sheap.sdata[sheap.scount];
 
 	// restore heap property
-	if (pos && sheap.sdata[pos].id >= sheap.pdata[heap_parent(pos)].id) {
+	if (pos && sheap.sdata[pos].id >= sheap.pdata[heap_parent(pos)].id)
 		do {
 			struct slave tmp = sheap.sdata[pos];
 			sheap.sdata[pos] = sheap.sdata[heap_parent(pos)];
@@ -447,7 +459,7 @@ void sheap_delete_slave(struct slave *s)
 
 			pos = heap_parent(pos);
 		} while (pos && sheap.sdata[pos].id >= sheap.sdata[heap_parent(pos)].id);
-	} else {
+	else
 		for (unsigned l, r, m;; pos = m) {
 			l = heap_left(pos);
 			r = heap_right(pos);
@@ -465,7 +477,6 @@ void sheap_delete_slave(struct slave *s)
 			sheap.sdata[pos] = sheap.sdata[m];
 			sheap.sdata[m] = tmp;
 		}
-	}
 }
 
 /**
@@ -535,23 +546,23 @@ int cfg_init(void)
 	}
 
 	while (fgets(line, sizeof line, f)) {
-		char *sep, *key, *val;
+		char *start, *sep, *key, *val;
 
 		++lno;
-		xtStringTrim(line);
+		start = strtrim(line);
 
 		// ignore blank lines and comments
-		if (!*line || *line == ';' || *line == '#')
+		if (!*start || *start == ';' || *start == '#')
 			continue;
 
 		// key=value
-		if (!(sep = strchr(line, '='))) {
+		if (!(sep = strchr(start, '='))) {
 			fprintf(stderr, "%s: garbage at line %zu\n", CFG_NAME, lno);
 			goto fail;
 		}
 
 		*sep = '\0';
-		key = strtrim(line);
+		key = strtrim(start);
 		val = strtrim(sep + 1);
 
 		// parse option
@@ -781,7 +792,7 @@ int event_process(struct epoll_event *ev)
 
 	while (1) {
 		ssize_t n;
-		unsigned char buf[256];
+		unsigned char buf[NET_PACKET_SIZE];
 
 		if ((n = read(fd, buf, sizeof buf)) < 0) {
 			if (errno != EAGAIN && errno != EWOULDBLOCK) {

@@ -12,8 +12,8 @@ ifdef DEBUG
 	CFLAGS += -g -DDEBUG
 ifeq ($(DEBUG),2)
 	CFLAGS += -fsanitize=address $(shell pkg-config --libs check)
-	DEBUG_LDLIBS += $(shell pkg-config --libs check)
-	DEBUG_LDFLAGS += -fsanitize=address
+	LDLIBS += $(shell pkg-config --libs check)
+	LDFLAGS += -fsanitize=address
 endif
 else
 	CFLAGS += -O3
@@ -21,7 +21,10 @@ endif
 
 default: server
 all: server client
-client: client.c
-	$(CC) $(CFLAGS) -o client client.c $(shell pkg-config --cflags --libs ncurses) $(LDLIBS)
+server: server.o net.o
+client: client.o net.o
+	$(CC) -o $@ $^ $(shell pkg-config --libs ncurses) $(LDLIBS)
+client.o: client.c
+	$(CC) -c -o $@ $(CFLAGS) $(DEBUG_LDFLAGS) $(shell pkg-config --cflags ncurses) $<
 clean:
 	rm -f server client *.o
