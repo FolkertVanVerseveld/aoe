@@ -847,6 +847,20 @@ reject:
 	}
 }
 
+static int net_server_control(struct net_serverctl *ctl)
+{
+	switch (ctl->opcode) {
+	case SC_STOP:
+		running = 0;
+		return 0;
+	default:
+		fprintf(stderr, "net_server_control: bad opcode: %04" PRIX16 "\n", ctl->opcode);
+		return 1;
+	}
+
+	return 1;
+}
+
 static int net_pkg_process(struct net_pkg *pkg, struct slave *s)
 {
 	switch (pkg->type) {
@@ -855,6 +869,8 @@ static int net_pkg_process(struct net_pkg *pkg, struct slave *s)
 		pkg->data.text.text[TEXT_BUFSZ - 1] = '\0';
 		printf("%d: %s\n", s->fd, pkg->data.text.text);
 		return 0;
+	case NT_SERVER_CONTROL:
+		return net_server_control(&pkg->data.serverctl);
 	default:
 		fprintf(stderr, "net_pkg_process: bad packet from fd %d\n", s->fd);
 		return 1;

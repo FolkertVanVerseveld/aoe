@@ -10,7 +10,8 @@
 #include <xt/string.h>
 
 static const uint16_t nt_tblsz[] = {
-	[NT_TEXT] = sizeof(struct net_text),
+	[NT_TEXT          ] = sizeof(struct net_text),
+	[NT_SERVER_CONTROL] = sizeof(struct net_serverctl),
 };
 
 #ifndef XT_SOCKET_TCP_IO_TRIES
@@ -105,6 +106,10 @@ void net_pkg_init(struct net_pkg *p, unsigned type, ...)
 	case NT_TEXT:
 		net_pkg_init_text(p, args);
 		break;
+	case NT_SERVER_CONTROL:
+		p->data.serverctl.opcode = va_arg(args, unsigned);
+		p->data.serverctl.data = va_arg(args, unsigned);
+		break;
 	default:
 		assert(0);
 		break;
@@ -127,6 +132,10 @@ void net_pkg_ntoh(struct net_pkg *p)
 		data->text.recipient = xtbe16toh(data->text.recipient);
 		data->text.type = xtbe16toh(data->text.type);
 		break;
+	case NT_SERVER_CONTROL:
+		data->serverctl.opcode = xtbe16toh(data->serverctl.opcode);
+		data->serverctl.data = xtbe16toh(data->serverctl.data);
+		break;
 	default:
 		assert(0);
 		break;
@@ -141,6 +150,10 @@ void net_pkg_hton(struct net_pkg *p)
 	case NT_TEXT:
 		data->text.recipient = xthtobe16(data->text.recipient);
 		data->text.type = xthtobe16(data->text.type);
+		break;
+	case NT_SERVER_CONTROL:
+		data->serverctl.opcode = xthtobe16(data->serverctl.opcode);
+		data->serverctl.data = xthtobe16(data->serverctl.data);
 		break;
 	default:
 		assert(0);

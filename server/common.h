@@ -28,9 +28,12 @@
 #define NET_TEXT_TYPE_ALLIES  2
 #define NET_TEXT_TYPE_ENEMIES 3
 
-#define NT_TEXT 0
+#define NT_TEXT           0
+#define NT_SERVER_CONTROL 1
 
-#define NT_MAX 0
+#define NT_MAX 1
+
+#define SC_STOP 0
 
 #include <xt/endian.h>
 #include <xt/utils.h>
@@ -49,10 +52,15 @@ struct net_text {
 	char text[TEXT_BUFSZ];
 };
 
+struct net_serverctl {
+	uint16_t opcode, data;
+};
+
 struct net_pkg {
 	uint16_t type, length;
 	union pdata {
 		struct net_text text;
+		struct net_serverctl serverctl;
 	} data;
 };
 

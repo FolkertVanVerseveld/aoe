@@ -147,6 +147,15 @@ int net_pkg_send(struct net_pkg *p)
 	return tcp_write(sockfd, p, size, &dummy);
 }
 
+int cmd_serverctl(uint16_t opcode, uint16_t data)
+{
+	struct net_pkg p;
+
+	net_pkg_init(&p, NT_SERVER_CONTROL, opcode, data);
+
+	return net_pkg_send(&p);
+}
+
 int cmd_say(const char *msg)
 {
 	struct net_pkg p;
@@ -161,7 +170,9 @@ int run_cmd(char *line, unsigned n)
 	if ((n == 1 && line[0] == 'q') || (n == 4 && !strcmp(line, "quit")))
 		return -1;
 
-	if (n >= 3 && xtStringStartsWith(line, "say")) {
+	if (n == 4 && !strcmp(line, "stop")) {
+		return cmd_serverctl(SC_STOP, 0);
+	} else if (n >= 3 && xtStringStartsWith(line, "say")) {
 		return cmd_say(xtStringTrim(line + 3));
 	} else if (!strcmp(line, "crash")) {
 		fatal_error("crash", 1000, 0);
@@ -322,6 +333,8 @@ connected:
 
 	if ((err = start_workers()))
 		goto fail;
+
+	init |= INIT_WORKERS;
 
 	if (!(win = initscr())) {
 		perror("ncurses failed to start");
