@@ -12,6 +12,7 @@
 static const uint16_t nt_tblsz[] = {
 	[NT_TEXT          ] = sizeof(struct net_text),
 	[NT_SERVER_CONTROL] = sizeof(struct net_serverctl),
+	[NT_OP            ] = sizeof(struct net_op),
 };
 
 #ifndef XT_SOCKET_TCP_IO_TRIES
@@ -110,6 +111,9 @@ void net_pkg_init(struct net_pkg *p, unsigned type, ...)
 		p->data.serverctl.opcode = va_arg(args, unsigned);
 		p->data.serverctl.data = va_arg(args, unsigned);
 		break;
+	case NT_OP:
+		xtstrncpy(p->data.op.passwd, va_arg(args, const char*), MAX_PASSWORD);
+		break;
 	default:
 		assert(0);
 		break;
@@ -136,6 +140,8 @@ void net_pkg_ntoh(struct net_pkg *p)
 		data->serverctl.opcode = xtbe16toh(data->serverctl.opcode);
 		data->serverctl.data = xtbe16toh(data->serverctl.data);
 		break;
+	case NT_OP:
+		break;
 	default:
 		assert(0);
 		break;
@@ -154,6 +160,8 @@ void net_pkg_hton(struct net_pkg *p)
 	case NT_SERVER_CONTROL:
 		data->serverctl.opcode = xthtobe16(data->serverctl.opcode);
 		data->serverctl.data = xthtobe16(data->serverctl.data);
+		break;
+	case NT_OP:
 		break;
 	default:
 		assert(0);

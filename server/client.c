@@ -108,10 +108,25 @@ void fatal_error(const char *str, int delay, int code)
 		exit(code);
 }
 
+static int net_pkg_process(struct net_pkg *pkg)
+{
+	switch (pkg->type) {
+	case NT_TEXT:
+		pkg->data.text.text[TEXT_BUFSZ - 1] = '\0';
+		mvaddstr(2, 0, pkg->data.text.text);
+		break;
+	default:
+		fatal_error("communication error", 1000, -1);
+		return 1;
+	}
+	return 0;
+}
+
 void *event_loop(struct xtThread *t, void *arg)
 {
 	int err;
 	char buf[256];
+	struct net_pkg pkg;
 
 	(void)t;
 	(void)arg;
@@ -119,19 +134,33 @@ void *event_loop(struct xtThread *t, void *arg)
 	while (1) {
 		uint16_t in, n;
 
-		// keep reading data
-		// TODO proper packet handling
-		if ((err = xtSocketTCPRead(sockfd, buf, sizeof buf, &n))) {
-			// FIXME any ncurses calls here are race conditions...
-			if (err != XT_ESHUTDOWN) {
-				snprintf(buf, sizeof buf, "event_loop: %s", xtGetErrorStr(err));
-				fatal_error(buf, 1500, -2);
+		// keep reading the packet header
+		for (in = 0; in != NET_HEADER_SIZE; in += n)
+			if ((err = xtSocketTCPRead(sockfd, &pkg, NET_HEADER_SIZE - in, &n)))
+				goto read_error;
+
+
+		uint16_t length = xtbe16toh(pkg.length);
+
+		mvprintw(1, 0, "grab %hu bytes...\n", length);
+
+		union pdata *data = &pkg.data;
+
+		for (in = 0; in != length; in += n) {
+			if ((err = xtSocketTCPRead(sockfd, data, length - in, &n))) {
+read_error:
+				if (err != XT_ESHUTDOWN) {
+					snprintf(buf, sizeof buf, "event_loop: %s", xtGetErrorStr(err));
+					fatal_error(buf, 1500, -2);
+				}
+
+				fatal_error("server stopped", 1500, -1);
+				return NULL;
 			}
-
-			fatal_error("server stopped", 1500, -1);
-
-			return NULL;
 		}
+
+		net_pkg_ntoh(&pkg);
+		net_pkg_process(&pkg);
 	}
 
 	return NULL;
@@ -165,6 +194,15 @@ int cmd_say(const char *msg)
 	return net_pkg_send(&p);
 }
 
+int cmd_op(const char *passwd)
+{
+	struct net_pkg p;
+
+	net_pkg_init(&p, NT_OP, passwd);
+
+	return net_pkg_send(&p);
+}
+
 int run_cmd(char *line, unsigned n)
 {
 	if ((n == 1 && line[0] == 'q') || (n == 4 && !strcmp(line, "quit")))
@@ -174,6 +212,9 @@ int run_cmd(char *line, unsigned n)
 		return cmd_serverctl(SC_STOP, 0);
 	} else if (n >= 3 && xtStringStartsWith(line, "say")) {
 		return cmd_say(xtStringTrim(line + 3));
+	} else if (n >= 3 && xtStringStartsWith(line, "op ")) {
+		// password may contain spaces at begin or end. hence, do not trim.
+		return cmd_op(line + 3);
 	} else if (!strcmp(line, "crash")) {
 		fatal_error("crash", 1000, 0);
 	}
@@ -187,7 +228,7 @@ int mainloop(void)
 	mvaddstr(0, 0, str_hdr);
 
 	while (1) {
-		int ch;
+		int ch, idle = 0;
 
 		if ((ch = getch()) == KEY_RESIZE) {
 			getmaxyx(win, rows, cols);
@@ -196,6 +237,7 @@ int mainloop(void)
 				toosmall = 1;
 				return 1;
 			}
+			idle = 1;
 		} else {
 			switch (ch) {
 			case '\b':
@@ -217,6 +259,8 @@ int mainloop(void)
 				if (ch <= 0xff && isprint(ch) && linepos < COL_MIN - 1) {
 					line[linepos++] = ch;
 					line[linepos] = '\0';
+				} else {
+					idle = 1;
 				}
 				break;
 			}
@@ -225,9 +269,11 @@ int mainloop(void)
 			clrtoeol();
 		}
 
-		refresh();
-
-		napms(50);
+		// only refresh the screen if the keyboard input buffer has been processed
+		if (idle) {
+			refresh();
+			napms(50);
+		}
 	}
 
 	return 0;

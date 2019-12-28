@@ -13,6 +13,11 @@
 
 #define INVALID_USER_ID UINT16_MAX
 
+/** Maximum username length in UTF8 characters, note that this limit is 13 if each codepoint is encoded as 6 bytes. */
+#define MAX_USERNAME 80
+// this should be sufficient as long as there are no practical quantum computers yet
+#define MAX_PASSWORD 80
+
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -30,8 +35,9 @@
 
 #define NT_TEXT           0
 #define NT_SERVER_CONTROL 1
+#define NT_OP             2
 
-#define NT_MAX 1
+#define NT_MAX 2
 
 #define SC_STOP 0
 
@@ -56,11 +62,16 @@ struct net_serverctl {
 	uint16_t opcode, data;
 };
 
+struct net_op {
+	char passwd[MAX_PASSWORD];
+};
+
 struct net_pkg {
 	uint16_t type, length;
 	union pdata {
 		struct net_text text;
 		struct net_serverctl serverctl;
+		struct net_op op;
 	} data;
 };
 

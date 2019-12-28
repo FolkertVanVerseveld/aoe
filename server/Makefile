@@ -21,10 +21,13 @@ endif
 
 default: server
 all: server client
+
 server: server.o net.o
 client: client.o net.o
 	$(CC) -o $@ $^ $(shell pkg-config --libs ncurses) $(LDLIBS)
 client.o: client.c
 	$(CC) -c -o $@ $(CFLAGS) $(DEBUG_LDFLAGS) $(shell pkg-config --cflags ncurses) $<
+net.o: net.c common.h
+
 clean:
 	rm -f server client *.o

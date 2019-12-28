@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <string.h>
+#include <time.h>
 #include <signal.h>
 
 #include <unistd.h>
@@ -32,6 +33,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include <xt/crypto.h>
 #include <xt/hashmap.h>
 #include <xt/string.h>
 
@@ -78,7 +80,9 @@ struct cfg {
 	"test server"
 };
 
-#define MAX_USERNAME 80
+#define LOGROUNDS 8
+
+char op_hash[XT_BCRYPT_KEY_LENGTH];
 
 #define DEFAULT_SHEAP_PEERS 64
 #define DEFAULT_SHEAP_USERS 16
@@ -145,31 +149,31 @@ struct user {
 #define CHEAT_GOD                0x03FF
 
 /*
- * Player handicaps
+ * User handicaps
  * These handicaps provide more novice users an initial or overall advantage
  * to make a match against more experienced players fairer. The exact bonus or
  * advantage is adjustable in the server settings. NOTE the bonus may also be
  * negative (i.e. positive bonus for novice players, negative bonus for expert
  * players).
  */
-#define PH_RES             0x0001
-#define PH_COST_UNITS      0x0002
-#define PH_COST_BUILDINGS  0x0004
-#define PH_COST_TECHS      0x0008
-#define PH_GATHER          0x0010
-#define PH_BUILD           0x0020
-#define PH_TRAIN_UNITS     0x0040
-#define PH_TRAIN_BUILDINGS 0x0080
-#define PH_TRAIN_TECHS     0x0100
-#define PH_TRAIN           (PH_TRAIN_UNITS|PH_TRAIN_BUILDINGS|PH_TRAIN_TECHS)
-#define PH_CONVERT         0x0200
-#define PH_REPAIR_WONDER   0x0400
-#define PH_REPAIR          0x0800
+#define UH_RES             0x0001
+#define UH_COST_UNITS      0x0002
+#define UH_COST_BUILDINGS  0x0004
+#define UH_COST_TECHS      0x0008
+#define UH_GATHER          0x0010
+#define UH_BUILD           0x0020
+#define UH_TRAIN_UNITS     0x0040
+#define UH_TRAIN_BUILDINGS 0x0080
+#define UH_TRAIN_TECHS     0x0100
+#define UH_TRAIN           (UH_TRAIN_UNITS|UH_TRAIN_BUILDINGS|UH_TRAIN_TECHS)
+#define UH_CONVERT         0x0200
+#define UH_REPAIR_WONDER   0x0400
+#define UH_REPAIR          0x0800
 // countdown for wonders and ruins victory is faster
-#define PH_WINCOUNTER      0x1000
-#define PH_TRADE           0x2000
+#define UH_WINCOUNTER      0x1000
+#define UH_TRADE           0x2000
 
-#define PH_ALL             0x3FFF
+#define UH_ALL             0x3FFF
 
 /**
  * Virtual user, this makes it possible for multiple players to control the
@@ -186,6 +190,13 @@ struct player {
 	char name[MAX_USERNAME];
 };
 
+#define SLAVE_OP        0x01
+#define SLAVE_SPECTATOR 0x02
+
+#define SB_BLOCK_PKG    20
+#define SB_COMPLETE_PKG (-2)
+#define SB_THRESHOLD    500
+
 /**
  * Wrapper for epoll_event. NOTE never ever cache a pointer or index to a
  * slave/peer directly, since they can change on the fly!
@@ -195,8 +206,18 @@ struct slave {
 	uint16_t id; /**< unique identifier (is equal to modification counter at creation) */
 	uint16_t pid; /**< virtual player unique identifier (also used to detect modification changes) */
 	uint16_t bid; /**< netheap buffer identifier */
+	/**
+	 * Score that indicates how likely this slave is going to be kicked.
+	 * NOTE all spectators are kicked first.
+	 */
+	int16_t bad;
+	unsigned state;
 	struct sockaddr in_addr; // the underlying socket address
 };
+
+#define WNT_CLIENT 0
+/** This indicates netmsg->sid is ignored */
+#define WNT_SERVER 1
 
 /**
  * The slaves heap. It uses a binary tree, which makes all operations in worst
@@ -219,11 +240,29 @@ struct sheap {
 	unsigned ucount, ucap; // fixed once the game is active
 	/** modification counters */
 	uint16_t smod, pmod;
-	// network data: Cache for pending packets to receive
+	/** network data: Cache for pending packets to receive */
 	struct netbuf {
 		unsigned size;
 		struct net_pkg pkg;
-	} *ncache;
+	} *rncache;
+	/** network send queue: Cache for pending packets to send */
+	struct wncache {
+		struct netmsg {
+			/** Message type. This can be used for special messages */
+			uint16_t type;
+			/**
+			 * Source slave identifier (i.e. player->id).
+			 * This information ensures the server can verify if the
+			 * original sender is still connected to the server. If
+			 * not, the message has become invalid.
+			 */
+			uint16_t sid;
+			/** Destination slave identifier */
+			uint16_t sid_to;
+			struct netbuf buf;
+		} *data;
+		unsigned front, back, count, cap;
+	} wncache;
 	/** used is the number of active slots, count the number of reserved slots. */
 	unsigned nused, ncount, ncap;
 	// keeps track of first available slots
@@ -265,8 +304,9 @@ void slave_init(struct slave *s, int fd)
 void sheap_free(const struct sheap *h)
 {
 	// network data
+	free(h->wncache.data);
 	free(h->rpop);
-	free(h->ncache);
+	free(h->rncache);
 	// slave heap
 	free(h->udata);
 	free(h->pdata);
@@ -279,18 +319,20 @@ int sheap_init(void)
 	struct sheap h = {0};
 
 	assert(sizeof *h.pdata == sizeof(struct player));
+	assert(sizeof *h.wncache.data == sizeof(struct netmsg));
 	assert(!h.sdata && !h.pdata && !h.udata);
 
 	if (!(h.sdata = malloc(DEFAULT_SHEAP_PEERS * sizeof *h.sdata))
 		|| !(h.pdata = malloc(DEFAULT_SHEAP_PEERS * sizeof *h.pdata))
 		|| !(h.udata = malloc(DEFAULT_SHEAP_USERS * sizeof *h.udata))
-		|| !(h.ncache = malloc(DEFAULT_SHEAP_USERS * sizeof *h.ncache))
-		|| !(h.rpop = malloc(DEFAULT_SHEAP_USERS * sizeof *h.rpop))) {
+		|| !(h.rncache = malloc(DEFAULT_SHEAP_USERS * sizeof *h.rncache))
+		|| !(h.rpop = malloc(DEFAULT_SHEAP_USERS * sizeof *h.rpop))
+		|| !(h.wncache.data = malloc(DEFAULT_SHEAP_USERS * sizeof *h.wncache.data))) {
 		goto fail;
 	}
 
 	sheap = h;
-	sheap.ncap = sheap.pcap = sheap.scap = DEFAULT_SHEAP_PEERS;
+	sheap.wncache.cap = sheap.ncap = sheap.pcap = sheap.scap = DEFAULT_SHEAP_PEERS;
 	sheap.ucap = DEFAULT_SHEAP_USERS;
 	// setup special users: gaia
 	user_reset(0, USER_ACTIVE | USER_ALIVE | USER_ASSIST | USER_IMMORTAL);
@@ -313,6 +355,7 @@ fail:
 #define SHE_FULL   2
 #define SHE_BADFD  3
 #define SHE_BADPID 4
+#define SHE_BLOCK  5
 
 static const char *she_str[] = {
 	"success",
@@ -320,6 +363,7 @@ static const char *she_str[] = {
 	"server is full",
 	"bad file descriptor",
 	"bad player id",
+	"operation would block",
 };
 
 static void netbuf_init(struct netbuf *b)
@@ -338,9 +382,151 @@ static void netbuf_recv(struct netbuf *nbuf, const unsigned char *buf, unsigned 
 	}
 }
 
+/** Allocate network packet to be sent. */
+int sheap_new_netmsg(struct netmsg **msg)
+{
+	// ensure network send queue is big enough
+	if (sheap.wncache.count == sheap.wncache.cap) {
+		if (sheap.wncache.cap >= UINT_MAX >> 1)
+			return SHE_FULL;
+
+		unsigned newcap = sheap.wncache.cap << 1;
+		struct netmsg *data;
+
+		// don't use realloc, because we have to reorder the data anyway
+		if (!(data = malloc(newcap * sizeof *data)))
+			return SHE_NOMEM;
+
+		// copy data
+		for (unsigned i = 0, pos = sheap.wncache.front; i < sheap.wncache.count; ++i, pos = (pos + 1) % sheap.wncache.count)
+			data[i] = sheap.wncache.data[pos];
+
+		// update state
+		free(sheap.wncache.data);
+		sheap.wncache.data = data;
+		sheap.wncache.front = 0;
+		sheap.wncache.back = sheap.wncache.count;
+		sheap.wncache.cap = newcap;
+	}
+
+	// grab item
+	*msg = &sheap.wncache.data[sheap.wncache.back];
+	// update counters
+	sheap.wncache.back = (sheap.wncache.back + 1) % sheap.wncache.cap;
+	++sheap.wncache.count;
+
+	return 0;
+}
+
+int slave_adjust_badness(struct slave *s, int score)
+{
+	long newscore = s->bad + score;
+
+	if (newscore < INT16_MIN)
+		newscore = INT16_MIN;
+	else if (newscore > INT16_MAX)
+		newscore = INT16_MAX;
+
+	return s->bad = newscore;
+}
+
+struct player *sheap_find_player(uint16_t pid);
+struct slave *sheap_find_slave_fd(int fd);
+int sheap_close_fd(int fd);
+
+struct slave *sheap_find_slave_id(uint16_t id)
+{
+	for (unsigned i = 0; i < sheap.scount;) {
+		struct slave *s = &sheap.sdata[i];
+
+		if (s->id == id)
+			return s;
+		else
+			i = id < s->id ? heap_left(i) : heap_right(i);
+	}
+
+	return NULL;
+}
+
+/** Try to write the oldest network packet. */
+int sheap_wncache_pop(void)
+{
+	if (!sheap.wncache.count)
+		return SHE_BLOCK;
+
+	int err = 0;
+	struct netmsg *next = &sheap.wncache.data[sheap.wncache.front];
+	struct slave *from = NULL, *to;
+
+	// drop packet if destination is unreachable or has been changed
+	if (!(to = sheap_find_slave_id(next->sid_to))) {
+		printf("sheap_wncache_pop: drop packet: unreachable or obsolete destination id=%" PRIu16 "\n", next->sid_to);
+		goto drop;
+	}
+
+	// TODO determine badness score changes
+	const struct netbuf *nbuf = &next->buf;
+	const unsigned char *data = (unsigned char*)&nbuf->pkg + nbuf->size;
+	unsigned rem = xtbe16toh(nbuf->pkg.length) + NET_HEADER_SIZE - nbuf->size;
+	ssize_t n;
+
+	if ((n = write(to->fd, data, rem)) < 0) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			// keep packet in queue, but indicate that we cannot send more data
+			return SHE_BLOCK;
+
+		if (errno == EPIPE)
+			fprintf(stderr, "sheap_wncache_pop: remote closed slave id=%" PRIu16 "\n", next->sid_to);
+		else
+			fprintf(stderr, "sheap_wncache_pop: remote closed slave id=%" PRIu16 "\n", next->sid_to);
+
+		assert(next->type != WNT_SERVER);
+
+		if (!(err = sheap_close_fd(to->fd)))
+			err = SHE_BADFD;
+
+		goto drop;
+	}
+
+	// return 0 if not all data could be sent
+	if (rem -= n) {
+		if (!n)
+			slave_adjust_badness(to, SB_BLOCK_PKG);
+		return 0;
+	}
+
+	// full packet has been sent
+	slave_adjust_badness(to, SB_COMPLETE_PKG);
+	if (from)
+		slave_adjust_badness(from, SB_COMPLETE_PKG);
+	err = 0;
+
+drop:
+	assert(sheap.wncache.count);
+	--sheap.wncache.count;
+	sheap.wncache.front = (sheap.wncache.front + 1) % sheap.wncache.cap;
+
+	return err;
+}
+
+/**
+ * Try to write any pending network packets.
+ * Returns a negative number on error.
+ * Otherwise, the return value indicates the number of packets sent.
+ */
+int sheap_wncache_flush(void)
+{
+	int err, count = 0;
+
+	while (!(err = sheap_wncache_pop()))
+		++count;
+
+	return count ? count : -err;
+}
+
 int sheap_new_slave(int fd, struct sockaddr *in_addr)
 {
-	// ensure both heaps are big enough
+	// ensure all heaps are big enough
 	if (sheap.scount == sheap.scap) {
 		if (sheap.scap >= MAX_USERS >> 1)
 			return SHE_FULL;
@@ -382,12 +568,12 @@ int sheap_new_slave(int fd, struct sockaddr *in_addr)
 			return SHE_FULL;
 
 		size_t newcap = sheap.ncap << 1;
-		struct netbuf *ncache;
+		struct netbuf *rncache;
 
-		if (!(ncache = realloc(sheap.ncache, newcap * sizeof *ncache)))
+		if (!(rncache = realloc(sheap.rncache, newcap * sizeof *rncache)))
 			return SHE_NOMEM;
 
-		sheap.ncache = ncache;
+		sheap.rncache = rncache;
 		sheap.ncap = newcap;
 	}
 
@@ -399,10 +585,13 @@ put:
 	struct player *p = &sheap.pdata[sheap.pcount];
 
 	// initialize data and update modification counters
+	// XXX wrap initcode in function
 	s->fd = fd;
 	s->in_addr = *in_addr;
 	s->id = sheap.smod++;
 	s->pid = p->id = sheap.pmod++;
+	s->state = s->bad = 0;
+	s->bid = slot;
 	p->uid = INVALID_USER_ID;
 	p->state = PLAYER_ACTIVE | PLAYER_HUMAN;
 	p->hc = p->ai = 0;
@@ -425,13 +614,12 @@ put:
 
 	// commit new slave
 	++sheap.nused;
-	s->bid = slot;
-	netbuf_init(&sheap.ncache[slot]);
+	netbuf_init(&sheap.rncache[slot]);
 
 	return 0;
 }
 
-struct slave *sheap_find_slave(int fd)
+struct slave *sheap_find_slave_fd(int fd)
 {
 	for (unsigned i = 0; i < sheap.scount;) {
 		struct slave *s = &sheap.sdata[i];
@@ -573,7 +761,7 @@ int sheap_close_fd(int fd)
 	if ((err = close(fd)))
 		perror("sheap_close_fd");
 
-	if (!(s = sheap_find_slave(fd)))
+	if (!(s = sheap_find_slave_fd(fd)))
 		return SHE_BADFD;
 
 	if (!(p = sheap_find_player(s->pid)))
@@ -847,6 +1035,82 @@ reject:
 	}
 }
 
+static int netmsg_init(struct netmsg **ptr, uint16_t type, ...)
+{
+	int err = 0;
+	struct netmsg *msg;
+	struct slave *s;
+	va_list args;
+
+	va_start(args, type);
+
+	if ((err = sheap_new_netmsg(&msg)))
+		goto fail;
+
+	switch (type) {
+	case WNT_CLIENT:
+		s = va_arg(args, struct slave*);
+		msg->sid = s->id;
+		msg->sid_to = va_arg(args, unsigned);
+		break;
+	case WNT_SERVER:
+		msg->sid_to = va_arg(args, unsigned);
+		break;
+	default:
+		assert(0);
+		break;
+	}
+
+	msg->type = type;
+	netbuf_init(&msg->buf);
+
+	*ptr = msg;
+	err = 0;
+fail:
+	va_end(args);
+	return err;
+}
+
+static int net_text(struct net_text *msg, struct slave *s)
+{
+	int err;
+	struct netmsg *netmsg;
+
+	msg->text[TEXT_BUFSZ - 1] = '\0';
+	printf("%d: %s\n", s->fd, msg->text);
+
+	// always send the message back to the original sender first
+	if ((err = netmsg_init(&netmsg, WNT_CLIENT, s, s->id)))
+		return err;
+
+	struct net_pkg *pkg = &netmsg->buf.pkg;
+	xtstrncpy(pkg->data.text.text, msg->text, TEXT_BUFSZ);
+
+	if ((err = sheap_wncache_pop()) != SHE_BLOCK)
+		return err;
+
+	// FIXME determine recipients
+	// default policy: broadcast to everyone
+	uint16_t id_ignore = s->id;
+
+	for (unsigned i = 0; i < sheap.scount; ++i) {
+		s = &sheap.sdata[i];
+		if (s->id == id_ignore)
+			continue;
+
+		if ((err = netmsg_init(&netmsg, WNT_CLIENT, s, s->id)))
+			return err;
+
+		pkg = &netmsg->buf.pkg;
+		xtstrncpy(pkg->data.text.text, msg->text, TEXT_BUFSZ);
+
+		if ((err = sheap_wncache_pop()) != SHE_BLOCK)
+			return err;
+	}
+
+	return 0;
+}
+
 static int net_server_control(struct net_serverctl *ctl)
 {
 	switch (ctl->opcode) {
@@ -865,12 +1129,10 @@ static int net_pkg_process(struct net_pkg *pkg, struct slave *s)
 {
 	switch (pkg->type) {
 	case NT_TEXT:
-		// FIXME stub
-		pkg->data.text.text[TEXT_BUFSZ - 1] = '\0';
-		printf("%d: %s\n", s->fd, pkg->data.text.text);
-		return 0;
+		return net_text(&pkg->data.text, s);
 	case NT_SERVER_CONTROL:
 		return net_server_control(&pkg->data.serverctl);
+	// FIXME add NT_OP
 	default:
 		fprintf(stderr, "net_pkg_process: bad packet from fd %d\n", s->fd);
 		return 1;
@@ -888,10 +1150,10 @@ static int peer_handle(int fd, unsigned char *buf, unsigned n)
 {
 	struct slave *s;
 
-	if (!(s = sheap_find_slave(fd)))
+	if (!(s = sheap_find_slave_fd(fd)))
 		return EPE_BADFD;
 
-	struct netbuf *nbuf = &sheap.ncache[s->bid];
+	struct netbuf *nbuf = &sheap.rncache[s->bid];
 	netbuf_recv(nbuf, buf, n);
 
 	// process all complete packets
@@ -960,12 +1222,13 @@ int event_process(struct epoll_event *ev)
 
 int event_loop(void)
 {
+	int dt = -1;
+
 	for (running = 1; running;) {
 		int err, n;
 
-		// XXX check if we need to implement a send_queue
-
-		if ((n = epoll_wait(efd, events, MAX_EVENTS, -1)) == -1) {
+		// wait for new events
+		if ((n = epoll_wait(efd, events, MAX_EVENTS, dt)) == -1) {
 			/*
 			 * This case occurs only when the server itself has been
 			 * suspended and resumed. We can just ignore this case.
@@ -977,6 +1240,7 @@ int event_loop(void)
 			return 1;
 		}
 
+		// process events and drop any bad ones
 		for (int i = 0; i < n; ++i)
 			if ((err = event_process(&events[i]))) {
 				if (err == EPE_INVALID)
@@ -987,9 +1251,68 @@ int event_loop(void)
 					return 1;
 				}
 			}
+
+		/*
+		 * send any pending packets and wait 10ms during
+		 * next loop if pendings packets have been sent
+		 * to make sure pendings packets are sent more
+		 * quickly.
+		 */
+		dt = sheap_wncache_flush() > 0 ? 10 : -1;
 	}
 
 	return 0;
+}
+
+static int compare_salt(const char *passwd, const char *hash)
+{
+	char bcrypted[XT_BCRYPT_KEY_LENGTH] = {0};
+	xtBcrypt(passwd, hash, bcrypted, sizeof bcrypted);
+
+	/*
+	 * We cannot use strcmp, because it would become vulnerable to timing
+	 * attacks. Hence, we use a custom comparison method that should always
+	 * take the same execution time.
+	 */
+	int diff = 0;
+
+	for (unsigned i = 0; i < sizeof bcrypted; ++i)
+		diff += bcrypted[i] ^ hash[i];
+
+	return diff;
+}
+
+static void init_shadow(void)
+{
+	const char *abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz"
+		" 0123456789!@#$%^&*()"
+		",./;'[]\\-=`<>?:\"{}|_+~";
+	unsigned passmin = MAX_PASSWORD * 3 / 4;
+	unsigned passlen = passmin + rand() % (MAX_PASSWORD - 1 - passmin);
+
+	char passwd[MAX_PASSWORD] = {0};
+
+	for (unsigned i = 0; i < passlen; ++i)
+		passwd[i] = abc[rand() % strlen(abc)];
+
+	passwd[passlen - 1] = '\0';
+	printf("password: \"%s\"\n", passwd);
+
+	// save the hashed version of the password to prevent any
+	// eavesdropper learning the plain text password.
+	char salt[XT_BCRYPT_SALT_LENGTH];
+	uint8_t seed[XT_BCRYPT_MAXSALT];
+	for (unsigned i = 0; i < sizeof seed; ++i)
+		seed[i] = rand();
+
+	xtBcryptGenSalt(LOGROUNDS, seed, sizeof seed, salt, sizeof salt);
+
+	printf("salt: %s\n", salt);
+	xtBcrypt(passwd, salt, op_hash, sizeof op_hash);
+	printf("hash: %s\n", op_hash);
+
+	assert(!compare_salt(passwd, op_hash));
 }
 
 int main(void)
@@ -1013,6 +1336,9 @@ int main(void)
 	if ((ret = sheap_init()))
 		goto fail;
 	init |= INIT_SHEAP;
+
+	srand(time(NULL));
+	init_shadow();
 
 	// enter event main loop
 	ret = event_loop();
