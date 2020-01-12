@@ -26,77 +26,13 @@
 #include "os.hpp"
 #include "net.hpp"
 #include "engine.hpp"
+#include "font.hpp"
 
 #if windows
 #pragma comment(lib, "opengl32")
 #endif
 
 #define DEFAULT_TITLE "dummy window"
-
-// FIXME move render stuff to separate file
-
-class Render {
-protected:
-	SDL_Window *handle;
-
-	Render(SDL_Window *handle) : handle(handle) {}
-public:
-	virtual void clear() = 0;
-	virtual void paint() = 0;
-};
-
-class SimpleRender : public Render {
-	std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> handle;
-public:
-	SimpleRender(SDL_Window *handle, Uint32 flags, int index=-1) : Render(handle), handle(NULL, &SDL_DestroyRenderer) {
-		SDL_Renderer *r;
-
-		if (!(r = SDL_CreateRenderer(handle, index, flags)))
-			throw std::runtime_error(std::string("Could not initialize SDL renderer: ") + SDL_GetError());
-
-		this->handle.reset(r);
-	}
-
-	SDL_Renderer *canvas() { return handle.get(); }
-
-	void clear() override {
-		SDL_RenderClear(handle.get());
-	}
-
-	void color(SDL_Color c) {
-		SDL_SetRenderDrawColor(handle.get(), c.r, c.g, c.b, c.a);
-	}
-
-	void paint() override {
-		SDL_RenderPresent(handle.get());
-	}
-};
-
-class GLRender : public Render {
-	SDL_GLContext ctx;
-public:
-	GLRender(SDL_Window *handle, Uint32 flags) : Render(handle) {
-		if (!(ctx = SDL_GL_CreateContext(handle)))
-			throw std::runtime_error(std::string("Could not initialize OpenGL renderer: ") + SDL_GetError());
-
-		if (flags & SDL_RENDERER_PRESENTVSYNC)
-			SDL_GL_SetSwapInterval(1);
-	}
-
-	~GLRender() {
-		SDL_GL_DeleteContext(ctx);
-	}
-
-	SDL_GLContext context() { return ctx; }
-
-	void clear() override {
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
-
-	void paint() override {
-		SDL_GL_SwapWindow(handle);
-	}
-};
 
 // FIXME move to engine
 
@@ -199,40 +135,6 @@ public:
 
 	Mix_Chunk *data() { return handle.get(); }
 };
-
-namespace genie {
-
-// FIXME move to font.hpp
-
-class Font final {
-	std::unique_ptr<TTF_Font, decltype(&TTF_CloseFont)> handle;
-public:
-	const int ptsize;
-
-	Font(const char *fname, int ptsize) : handle(NULL, &TTF_CloseFont), ptsize(ptsize) {
-		TTF_Font *f;
-
-		if (!(f = TTF_OpenFont(fname, ptsize)))
-			throw std::runtime_error(std::string("Unable to open font \"") + fname + "\": " + TTF_GetError());
-
-		handle.reset(f);
-	}
-
-	Font(TTF_Font *handle, int ptsize=12) : handle(handle, &TTF_CloseFont), ptsize(ptsize) {}
-
-	SDL_Surface *surf_solid(const char *text, SDL_Color fg) {
-		return TTF_RenderText_Solid(handle.get(), text, fg);
-	}
-
-	SDL_Texture *tex_solid(SimpleRender &r, const char *text, SDL_Color fg) {
-		std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> s(surf_solid(text, fg), &SDL_FreeSurface);
-		return SDL_CreateTextureFromSurface(r.canvas(), s.get());
-	}
-
-	TTF_Font *data() { return handle.get(); }
-};
-
-}
 
 // FIXME move to font.hpp
 

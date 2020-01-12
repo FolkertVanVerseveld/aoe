@@ -9,12 +9,12 @@
 #include <type_traits>
 
 #if windows
+#define WIN32_LEAN_AND_MEAN
+
+#include <Windows.h>
+#include <WinSock2.h>
+
 static_assert(std::is_same<SOCKET, sockfd>::value, "SOCKET must match sockfd type");
-
-	#define WIN32_LEAN_AND_MEAN
-
-	#include <Windows.h>
-	#include <WinSock2.h>
 
 #define WSA_VERSION_MINOR 2
 #define WSA_VERSION_MAJOR 2
