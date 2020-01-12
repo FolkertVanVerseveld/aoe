@@ -100,6 +100,8 @@ public:
 
 // FIXME move to engine
 
+namespace genie {
+
 class Window final {
 	std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> handle;
 	std::unique_ptr<Render> renderer;
@@ -126,6 +128,8 @@ public:
 
 	Render &render() { return *(renderer.get()); }
 };
+
+}
 
 // FIXME move to separate file
 
@@ -196,6 +200,8 @@ public:
 	Mix_Chunk *data() { return handle.get(); }
 };
 
+namespace genie {
+
 // FIXME move to font.hpp
 
 class Font final {
@@ -208,7 +214,7 @@ public:
 
 		if (!(f = TTF_OpenFont(fname, ptsize)))
 			throw std::runtime_error(std::string("Unable to open font \"") + fname + "\": " + TTF_GetError());
-		
+
 		handle.reset(f);
 	}
 
@@ -226,13 +232,15 @@ public:
 	TTF_Font *data() { return handle.get(); }
 };
 
+}
+
 // FIXME move to font.hpp
 
 class Text final {
 	Texture tex;
 	std::string str;
 public:
-	Text(SimpleRender& r, Font& f, const std::string& s, SDL_Color fg) : tex(r, f.surf_solid(s.c_str(), fg)), str(s) {}
+	Text(SimpleRender& r, genie::Font& f, const std::string& s, SDL_Color fg) : tex(r, f.surf_solid(s.c_str(), fg)), str(s) {}
 };
 
 enum class ConfigScreenMode {
@@ -317,8 +325,9 @@ int main(int argc, char **argv)
 
 		Engine eng;
 
+#if windows
 		char path_fnt[] = "D:\\SYSTEM\\FONTS\\ARIAL.TTF";
-		TTF_Font* h_fnt = NULL;
+		TTF_Font *h_fnt = NULL;
 
 		// find cdrom drive
 		for (char dl = 'D'; dl <= 'Z'; ++dl) {
@@ -327,6 +336,10 @@ int main(int argc, char **argv)
 			if ((h_fnt = TTF_OpenFont(path_fnt, 13)) != NULL)
 				break;
 		}
+#else
+		char path_fnt[] = "/media/cdrom/SYSTEM/FONTS/ARIAL.TTF";
+		TTF_Font *h_fnt = TTF_OpenFont(path_fnt, 13);
+#endif
 
 		if (!h_fnt) {
 			std::cerr << "default font not found" << std::endl;
@@ -345,7 +358,7 @@ int main(int argc, char **argv)
 		}
 
 		// run simple demo with SDL_Renderer
-		Window w(DEFAULT_TITLE, width, height);
+		genie::Window w(DEFAULT_TITLE, width, height);
 
 #if windows
 		SDL_SysWMinfo info;
@@ -356,13 +369,13 @@ int main(int argc, char **argv)
 
 		SimpleRender& r = (SimpleRender&)w.render();
 
-		Font fnt(h_fnt);
+		genie::Font fnt(h_fnt);
 		Surface host_surf(fnt.surf_solid("host?", SDL_Color{ 0, 0xff, 0 }));
 		Texture host_tex(r, host_surf);
 
 		Surface test("joi_rebels.jpg");
 		Texture tex(r, test);
-		
+
 		MenuLobby menu(r);
 
 #if windows

@@ -5,5 +5,9 @@ out/
 # windows
 *.exe
 
+# linux
+empiresx
+Makefile
+
 # C/C++
 *.o

@@ -7,7 +7,7 @@
 #if windows
 typedef uintptr_t sockfd;
 #else
-typedef int socket;
+typedef int sockfd;
 #endif
 
 class Net final {

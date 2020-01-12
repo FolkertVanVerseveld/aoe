@@ -6,10 +6,7 @@
 
 #include <cassert>
 
-#ifndef windows
-#error stub
-#endif
-
+#if windows
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
@@ -39,3 +36,35 @@ OS::OS() : compname("DinnurBlaster"), username("King Harkinian") {
 		delete[] buf2;
 	}
 }
+#elif linux
+#include <cstdlib>
+
+#include <sys/types.h>
+#include <pwd.h>
+#include <unistd.h>
+
+#include <memory>
+
+OS::OS() : compname("DinnurBlaster"), username(getpwuid(getuid())->pw_name) {
+	char *buf = NULL;
+	size_t count = 0;
+
+	errno = 0;
+
+	while (gethostname(buf, count)) {
+		if ((errno != EINVAL && errno != ENAMETOOLONG) || count >= SIZE_MAX / 2)
+			break;
+
+		count = count ? count << 1 : 256;
+
+		if (buf)
+			delete[] buf;
+		buf = new char[count];
+	}
+
+	buf[count - 1] = '\0';
+	this->compname = buf;
+}
+#else
+#error stub
+#endif
