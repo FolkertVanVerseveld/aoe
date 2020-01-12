@@ -1,3 +1,9 @@
-*.o
+# VStudio
+out/
+.vs/
+
+# windows
 *.exe
-empiresx
+
+# C/C++
+*.o
