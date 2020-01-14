@@ -6,6 +6,9 @@
 #include <SDL2/SDL_ttf.h>
 
 #include <stdexcept>
+#include <string>
+
+namespace genie {
 
 SDL::SDL() {
 	if (SDL_Init(SDL_INIT_VIDEO))
@@ -53,3 +56,5 @@ TTF::~TTF() {
 
 Engine::Engine() {}
 Engine::~Engine() {}
+
+}

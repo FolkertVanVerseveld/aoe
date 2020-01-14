@@ -6,6 +6,7 @@
  * This is just a quick template to get started. Most code is quickly hacked together and could be made more consistent but I won't bother as long as it fucking works
  */
 
+#include <cctype>
 #include <cassert>
 #include <cstdlib>
 #include <cstddef>
@@ -14,6 +15,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <memory>
+#include <vector>
+#include <stack>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -27,6 +30,8 @@
 #include "net.hpp"
 #include "engine.hpp"
 #include "font.hpp"
+#include "menu.hpp"
+#include "game.hpp"
 
 #if windows
 #pragma comment(lib, "opengl32")
@@ -65,57 +70,7 @@ public:
 	Render &render() { return *(renderer.get()); }
 };
 
-}
-
 // FIXME move to separate file
-
-class Surface final {
-	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> handle;
-public:
-	Surface(const char *fname) : handle(NULL, &SDL_FreeSurface) {
-		SDL_Surface *surf;
-
-		if (!(surf = IMG_Load(fname)))
-			throw std::runtime_error(std::string("Could not load image \"") + fname + "\": " + IMG_GetError());
-
-		handle.reset(surf);
-	}
-
-	Surface(SDL_Surface *handle) : handle(handle, &SDL_FreeSurface) {}
-
-	SDL_Surface *data() { return handle.get(); }
-};
-
-class Texture final {
-	std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)> handle;
-public:
-	int width, height;
-
-	Texture(SimpleRender &r, Surface &s) : handle(NULL, &SDL_DestroyTexture) {
-		reset(r, s.data());
-	}
-
-	Texture(SimpleRender& r, SDL_Surface* s, bool close = false) : handle(NULL, &SDL_DestroyTexture) {
-		reset(r, s);
-		if (close)
-			SDL_FreeSurface(s);
-	}
-
-	Texture(int width, int height, SDL_Texture *handle) : handle(handle, &SDL_DestroyTexture), width(width), height(height) {}
-
-	SDL_Texture *data() { return handle.get(); }
-private:
-	void reset(SimpleRender &r, SDL_Surface *surf) {
-		SDL_Texture* tex;
-
-		if (!(tex = SDL_CreateTextureFromSurface(r.canvas(), surf)))
-			throw std::runtime_error(std::string("Could not create texture from surface: ") + SDL_GetError());
-
-		width = surf->w;
-		height = surf->h;
-		handle.reset(tex);
-	}
-};
 
 class Sfx final {
 	std::unique_ptr<Mix_Chunk, decltype(&Mix_FreeChunk)> handle;
@@ -134,15 +89,6 @@ public:
 	}
 
 	Mix_Chunk *data() { return handle.get(); }
-};
-
-// FIXME move to font.hpp
-
-class Text final {
-	Texture tex;
-	std::string str;
-public:
-	Text(SimpleRender& r, genie::Font& f, const std::string& s, SDL_Color fg) : tex(r, f.surf_solid(s.c_str(), fg)), str(s) {}
 };
 
 enum class ConfigScreenMode {
@@ -194,28 +140,173 @@ Config::Config(int argc, char* argv[]) : scrmode(ConfigScreenMode::MODE_800_600)
 	}
 }
 
-class Menu {
-public:
-	std::string title;
-
-	Menu(const std::string& t) : title(t) {}
-
-	virtual void paint(SimpleRender &r) {
-		r.color(SDL_Color{ 0xff, 0, 0 });
-		r.clear();
-	}
-};
-
 class MenuLobby final : public Menu {
+	std::unique_ptr<Multiplayer> mp;
+	bool host;
 public:
-	MenuLobby(SimpleRender& r) : Menu("Multiplayer lobby") {
-	}
+	MenuLobby(SimpleRender& r, Font& f, uint16_t port, bool host = true)
+		: Menu(r, f, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
+		, mp(host ? (Multiplayer*)new MultiplayerHost(port) : (Multiplayer*)new MultiplayerClient(port)), host(host) {}
 
-	void paint(SimpleRender& r) override {
-		r.color(SDL_Color{ 0, 0xff, 0xff });
-		r.clear();
+	void keydown(int ch) override {
+		switch (ch) {
+		case 'q':
+		case 'Q':
+			nav->quit(1);
+			break;
+		}
 	}
 };
+
+class MenuMultiplayer final : public Menu {
+	Text txt_host, txt_join, txt_back, txt_port, txt_address;
+	TextBuf buf_port, buf_address;
+public:
+	MenuMultiplayer(SimpleRender& r, Font& f)
+		: Menu(r, f, "Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_host(r, f, "(H) Host Game", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_join(r, f, "(J) Join Game", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_back(r, f, "(Q) Back", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_port(r, f, "Port: ", SDL_Color{ 0xff, 0xff, 0xff })
+		, buf_port(r, f, "25659", SDL_Color{ 0xff, 0xff, 0 })
+		, txt_address(r, f, "Server IP: ", SDL_Color{ 0xff, 0xff, 0xff })
+		, buf_address(r, f, "127.0.0.1", SDL_Color{ 0xff, 0xff, 0 }) {}
+
+	void keydown(int ch) override {
+		if (ch >= '0' && ch <= '9') {
+			if (buf_port.str().size() < 5)
+				buf_port.append(ch);
+			return;
+		}
+
+		switch (ch) {
+		case SDLK_BACKSPACE:
+			buf_port.erase();
+			break;
+		case 'h':
+		case 'H':
+			nav->go_to(new MenuLobby(r, f, atoi(buf_port.str().c_str()), true));
+			break;
+		case 'j':
+		case 'J':
+			nav->go_to(new MenuLobby(r, f, atoi(buf_port.str().c_str()), false));
+			break;
+		case 'q':
+		case 'Q':
+			nav->quit(1);
+			break;
+		}
+	}
+
+	void paint() override {
+		Menu::paint();
+
+		txt_host.paint(r, 40, 80);
+		txt_join.paint(r, 40, 120);
+
+		txt_port.paint(r, 40, 160);
+		buf_port.paint(r, 40 + txt_port.tex().width, 160);
+
+		txt_address.paint(r, 40, 200);
+		buf_address.paint(r, 40 + txt_address.tex().width, 200);
+
+		txt_back.paint(r, 40, 240);
+	}
+};
+
+class MenuStart final : public Menu {
+public:
+	Text txt_single, txt_multi, txt_quit;
+
+	MenuStart(SimpleRender& r, Font& f)
+		: Menu(r, f, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_single(r, f, "(S) Single Player", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_multi(r, f, "(M) Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_quit(r, f, "(Q) Quit", SDL_Color{ 0xff, 0xff, 0xff }) {}
+
+	void keydown(int ch) override {
+		switch (ch) {
+		case 's':
+		case 'S':
+			break;
+		case 'm':
+		case 'M':
+			nav->go_to(new MenuMultiplayer(r, f));
+			break;
+		case 'q':
+		case 'Q':
+			nav->quit();
+			break;
+		}
+	}
+
+	void paint() override {
+		Menu::paint();
+
+		txt_single.paint(r, 40, 80);
+		txt_multi.paint(r, 40, 120);
+		txt_quit.paint(r, 40, 160);
+	}
+};
+
+Navigator::Navigator(SimpleRender& r, Font& f_hdr) : r(r), f_hdr(f_hdr), trace(), top() {
+	trace.emplace_back(top = new MenuStart(r, f_hdr));
+}
+
+void Navigator::mainloop() {
+	while (1) {
+		SDL_Event ev;
+
+		while (SDL_PollEvent(&ev)) {
+			switch (ev.type) {
+			case SDL_QUIT:
+				return;
+			case SDL_KEYDOWN:
+				if (!top) {
+					quit();
+					return;
+				}
+
+				top->keydown(ev.key.keysym.sym);
+				break;
+			}
+		}
+
+		if (!top) {
+			quit();
+			return;
+		}
+		top->idle();
+
+		if (!top) {
+			quit();
+			return;
+		}
+		top->paint();
+
+		r.paint();
+	}
+}
+
+void Navigator::go_to(Menu *m) {
+	assert(m);
+	trace.emplace_back(top = m);
+}
+
+void Navigator::quit(unsigned count) {
+	if (!count || count >= trace.size()) {
+		trace.clear();
+		top = nullptr;
+		return;
+	}
+
+	trace.erase(trace.end() - count);
+	top = trace[trace.size() - 1].get();
+}
+
+}
+
+using namespace genie;
 
 int main(int argc, char **argv)
 {
@@ -260,79 +351,15 @@ int main(int argc, char **argv)
 		}
 
 		// run simple demo with SDL_Renderer
-		genie::Window w(DEFAULT_TITLE, width, height);
-
-#if windows
-		SDL_SysWMinfo info;
-		SDL_VERSION(&info.version);
-		if (!SDL_GetWindowWMInfo(w.data(), &info))
-			throw std::runtime_error(std::string("Could not get window WM info: ") + SDL_GetError());
-#endif
+		Window w(DEFAULT_TITLE, width, height);
 
 		SimpleRender& r = (SimpleRender&)w.render();
 
-		genie::Font fnt(h_fnt);
-		Surface host_surf(fnt.surf_solid("host?", SDL_Color{ 0, 0xff, 0 }));
-		Texture host_tex(r, host_surf);
+		Font fnt(h_fnt);
 
-		Surface test("joi_rebels.jpg");
-		Texture tex(r, test);
+		nav.reset(new Navigator(r, fnt));
 
-		MenuLobby menu(r);
-
-#if windows
-		HFONT hfont;
-		RECT rect;
-		TEXTMETRIC fm;
-		HDC hdc = info.info.win.hdc;
-		int pt = 28;
-
-		hfont = CreateFont(-pt, 0, 0, 0,
-						   FW_DONTCARE,
-						   FALSE, 0, FALSE,
-						   DEFAULT_CHARSET, 0, CLIP_DEFAULT_PRECIS,
-						   CLEARTYPE_QUALITY,
-						   VARIABLE_PITCH,
-						   path_fnt);
-		if (!hfont)
-			throw std::runtime_error(std::string("Could not create HFONT: code ") + std::to_string(GetLastError()));
-#endif
-
-		for (bool running = true; running;) {
-			SDL_Event ev;
-
-			while (SDL_PollEvent(&ev)) {
-				switch (ev.type) {
-				case SDL_QUIT:
-					running = false;
-					continue;
-				}
-			}
-
-			menu.paint(r);
-
-			SDL_RenderCopy(r.canvas(), tex.data(), NULL, NULL);
-			SDL_Rect pos{ 0, 0, host_tex.width, host_tex.height };
-			SDL_RenderCopy(r.canvas(), host_tex.data(), NULL, &pos);
-
-#if windows
-			HGDIOBJ old = SelectObject(hdc, hfont);
-			{
-				//SetBkColor(hdc, RGB(0xa0, 0x00, 0x00));
-				SetBkMode(hdc, TRANSPARENT);
-				SetTextColor(hdc, RGB(0xff, 0xff, 0xff));
-
-				TextOut(hdc, 40, 40, "do you want to host?", strlen("do you want to host?"));
-			}
-			SelectObject(hdc, old);
-#endif
-
-			r.paint();
-		}
-
-#if windows
-		DeleteObject(hfont);
-#endif
+		nav->mainloop();
 	} catch (const std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;

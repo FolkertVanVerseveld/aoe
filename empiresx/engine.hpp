@@ -2,6 +2,8 @@
 
 #include "font.hpp"
 
+namespace genie {
+
 //// SDL subsystems ////
 
 class SDL final {
@@ -33,3 +35,5 @@ public:
 	Engine();
 	~Engine();
 };
+
+}
