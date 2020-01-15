@@ -3,17 +3,18 @@
 #include "os_macros.hpp"
 
 #include <cassert>
+#include <cstring>
+
 #include <chrono>
 #include <thread>
-
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 
+#include "endian.h"
+
 #if windows
 #include <io.h>
-
-static_assert(std::is_same<SOCKET, sockfd>::value, "SOCKET must match sockfd type");
 
 #define WSA_VERSION_MINOR 2
 #define WSA_VERSION_MAJOR 2
@@ -72,7 +73,7 @@ void Socket::close() {
 	fd = INVALID_SOCKET;
 }
 
-void ServerSocket::eventloop() {
+void ServerSocket::eventloop(ServerCallback &cb) {
 	SOCKET sock;
 	sockaddr_in addr;
 	int addrlen = sizeof addr;
@@ -80,17 +81,8 @@ void ServerSocket::eventloop() {
 	activated.store(true);
 
 	while (activated.load()) {
-		// FIXME use while loop
-		if ((sock = accept(this->sock.fd, (sockaddr*)&addr, &addrlen)) == INVALID_SOCKET) {
-			int err = WSAGetLastError();
-			if (err != WSAEWOULDBLOCK) {
-				fprintf(stderr, "accept: %d\n", err);
-				return;
-			}
-		}
-		else {
-			puts("accepted socket");
-
+		int err, incoming = 0;
+		while ((sock = accept(this->sock.fd, (sockaddr*)&addr, &addrlen)) != INVALID_SOCKET) {
 			sock_block(sock, false);
 
 			WSAPOLLFD ev = { 0 };
@@ -98,6 +90,16 @@ void ServerSocket::eventloop() {
 			ev.events = POLLRDNORM;
 
 			peers.push_back(ev);
+			cb.incoming(ev);
+			++incoming;
+		}
+		if (incoming)
+			printf("accepted %d socket%s\n", incoming, incoming == 1 ? "" : "s");
+
+		if ((err = WSAGetLastError()) != WSAEWOULDBLOCK) {
+			fprintf(stderr, "accept: %d\n", err);
+			activated.store(false);
+			continue;
 		}
 
 		// WSAPoll does not work properly if there are no peers, so check if we have to wait for any connections to arrive
@@ -110,13 +112,14 @@ void ServerSocket::eventloop() {
 
 		if ((events = WSAPoll(peers.data(), peers.size(), 500)) < 0) {
 			fprintf(stderr, "poll failed: code %d\n", WSAGetLastError());
-			return;
+			activated.store(false);
+			continue;
 		}
 
 		if (!events)
 			continue;
 
-		printf("poll: got %d events\n", events);
+		printf("poll: got %d event%s\n", events, events == 1 ? "" : "s");
 
 		// choose which peers we want to keep
 		std::vector<WSAPOLLFD> keep;
@@ -128,6 +131,7 @@ void ServerSocket::eventloop() {
 			if (ev->revents & (POLLERR | POLLHUP | POLLNVAL)) {
 				printf("drop event %u\n", i);
 				--events;
+				cb.removepeer(ev->fd);
 				continue;
 			}
 
@@ -140,6 +144,7 @@ void ServerSocket::eventloop() {
 				if ((n = recv(ev->fd, dummy, sizeof dummy, 0)) == SOCKET_ERROR && (err = WSAGetLastError()) != WSAEWOULDBLOCK) {
 					printf("drop event %u: code %d\n", i, err);
 					--events;
+					cb.removepeer(ev->fd);
 					continue;
 				}
 
@@ -148,6 +153,7 @@ void ServerSocket::eventloop() {
 			else if (ev->revents) {
 				printf("drop event %u: bogus state %d\n", i, ev->revents);
 				--events;
+				cb.removepeer(ev->fd);
 				continue;
 			}
 
@@ -156,6 +162,11 @@ void ServerSocket::eventloop() {
 
 		peers.swap(keep);
 	}
+
+	for (unsigned i = 0; i < peers.size(); ++i)
+		closesocket(peers[i].fd);
+
+	cb.shutdown();
 }
 
 ServerSocket::ServerSocket(uint16_t port) : sock(port), activated(false) {
@@ -214,6 +225,42 @@ int get_error() {
 
 namespace genie {
 
+enum CmdType {
+	TEXT,
+};
+
+void CmdData::hton() {}
+void CmdData::ntoh() {}
+
+void Command::hton() {
+	type = htobe16(type);
+	length = htobe16(length);
+	data.hton();
+}
+
+void Command::ntoh() {
+	type = be16toh(type);
+	length = be16toh(length);
+	data.ntoh();
+}
+
+std::string Command::text() {
+	assert(type == CmdType::TEXT);
+	data.text[TEXT_LIMIT - 1] = '\0';
+	return data.text;
+}
+
+Command Command::text(const std::string& str) {
+	Command cmd;
+
+	cmd.type = CmdType::TEXT;
+	cmd.length = sizeof cmd.data.text;
+
+	strncpy(cmd.data.text, str.c_str(), cmd.length);
+
+	return cmd;
+}
+
 void Socket::reuse(bool enabled) {
 	int val = enabled;
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char*)&val, sizeof val))
@@ -244,6 +291,44 @@ int Socket::connect() {
 void Socket::listen() {
 	if (::listen(fd, SOMAXCONN))
 		throw std::runtime_error(std::string("Could not listen with TCP socket: code ") + std::to_string(get_error()));
+}
+
+int Socket::send(const void* buf, unsigned len) {
+	return ::send(fd, (const char*)buf, len, 0);
+}
+
+int Socket::recv(void* buf, unsigned len) {
+	return ::recv(fd, (char*)buf, len, 0);
+}
+
+void Socket::sendFully(const void *buf, unsigned len) {
+	for (unsigned sent = 0, rem = len; rem;) {
+		int out;
+
+		if ((out = send((const char*)buf + sent, rem)) <= 0)
+			throw std::runtime_error(std::string("Could not send TCP data: code ") + std::to_string(get_error()));
+
+		sent += out;
+		rem -= out;
+	}
+}
+
+void Socket::recvFully(void* buf, unsigned len) {
+	for (unsigned got = 0, rem = len; rem;) {
+		int in;
+
+		if ((in = recv((char*)buf + got, rem)) <= 0)
+			throw std::runtime_error(std::string("Could not receive TCP data: code ") + std::to_string(get_error()));
+
+		got += in;
+		rem -= in;
+	}
+}
+
+void Socket::send(Command& cmd, bool net_order) {
+	if (!net_order)
+		cmd.hton();
+	sendFully((const void*)&cmd, cmd.size());
 }
 
 }

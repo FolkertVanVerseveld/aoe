@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <atomic>
+#include <string>
 
 #if windows
 #ifndef WIN32_LEAN_AND_MEAN
@@ -14,7 +15,7 @@
 #include <Windows.h>
 #include <WinSock2.h>
 
-typedef uintptr_t sockfd;
+typedef SOCKET sockfd;
 #else
 typedef int sockfd;
 #endif
@@ -27,6 +28,29 @@ public:
 	~Net();
 };
 
+static constexpr unsigned TEXT_LIMIT = 256;
+
+union CmdData final {
+	char text[TEXT_LIMIT];
+
+	void hton();
+	void ntoh();
+};
+
+class Command final {
+	uint16_t type, length;
+	union CmdData data;
+public:
+	std::string text();
+
+	unsigned size() const { return 4 + length; }
+
+	void hton();
+	void ntoh();
+
+	static Command text(const std::string &str);
+};
+
 class ServerSocket;
 
 class Socket final {
@@ -35,6 +59,7 @@ class Socket final {
 	sockfd fd;
 	uint16_t port;
 public:
+	/** Construct server accepted socket. If you want to specify the port, you have to use the second ctor. */
 	Socket();
 	Socket(uint16_t port);
 	~Socket();
@@ -47,6 +72,41 @@ public:
 	int connect();
 
 	void close();
+
+	int send(const void* buf, unsigned size);
+	int recv(void* buf, unsigned size);
+
+	/**
+	 * Block until all data has been fully send.
+	 * It is UB to call this if the socket is in non-blocking mode.
+	 */
+	void sendFully(const void* buf, unsigned len);
+	void recvFully(void* buf, unsigned len);
+
+	template<typename T> int send(const T& t) {
+		return send((const void*)&t, sizeof t);
+	}
+
+	template<typename T> int recv(T& t) {
+		return recv((void*)&t, sizeof t);
+	}
+
+	template<typename T> void sendFully(const T& t) {
+		sendFully(&t, sizeof t);
+	}
+
+	template<typename T> void recvFully(T& t) {
+		recvFully(&t, sizeof t);
+	}
+
+	void send(Command& cmd, bool net_order=false);
+};
+
+class ServerCallback {
+public:
+	virtual void incoming(WSAPOLLFD& ev) = 0;
+	virtual void removepeer(sockfd fd) = 0;
+	virtual void shutdown() = 0;
 };
 
 class ServerSocket final {
@@ -59,7 +119,7 @@ public:
 
 	void close();
 
-	void eventloop();
+	void eventloop(ServerCallback&);
 };
 
 }

@@ -19,13 +19,16 @@ public:
 	virtual void eventloop() = 0;
 };
 
-class MultiplayerHost final : public Multiplayer {
+class MultiplayerHost final : public Multiplayer, protected ServerCallback {
 	ServerSocket sock;
 public:
 	MultiplayerHost(uint16_t port);
 	~MultiplayerHost() override;
 
 	void eventloop() override;
+	void incoming(WSAPOLLFD& ev) override;
+	void removepeer(sockfd fd) override;
+	void shutdown() override;
 };
 
 class MultiplayerClient final : public Multiplayer {

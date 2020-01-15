@@ -28,7 +28,19 @@ MultiplayerHost::~MultiplayerHost() {
 
 void MultiplayerHost::eventloop() {
 	printf("host started on 127.0.0.1:%" PRIu16 "\n", port);
-	sock.eventloop();
+	sock.eventloop(*this);
+}
+
+void MultiplayerHost::incoming(WSAPOLLFD &ev) {
+	printf("new slave: fd %" PRIu64 "\n", ev.fd);
+}
+
+void MultiplayerHost::removepeer(sockfd fd) {
+	printf("drop slave: fd %" PRIu64 "\n", fd);
+}
+
+void MultiplayerHost::shutdown() {
+	puts("host shutdown");
 }
 
 MultiplayerClient::MultiplayerClient(uint16_t port) : Multiplayer(port), sock(port), activated(false) {
@@ -38,10 +50,16 @@ MultiplayerClient::MultiplayerClient(uint16_t port) : Multiplayer(port), sock(po
 }
 
 MultiplayerClient::~MultiplayerClient() {
+	puts("closing client");
+	// NOTE sock.close() has to be in both bodies, because its behavior will be slightly different!
 	if (t_worker.joinable()) {
 		sock.close();
 		t_worker.join();
 	}
+	else {
+		sock.close();
+	}
+	puts("client stopped");
 }
 
 void MultiplayerClient::eventloop() {
@@ -73,6 +91,9 @@ void MultiplayerClient::eventloop() {
 	}
 
 	puts("connected");
+
+	// FIXME event loop
+	sock.send(Command::text("mah boi"));
 }
 
 }
