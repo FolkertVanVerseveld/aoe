@@ -16,8 +16,16 @@
 #include <WinSock2.h>
 
 typedef SOCKET sockfd;
+typedef WSAPOLLFD pollev;
 #else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/epoll.h>
+
+#include <set>
+
 typedef int sockfd;
+typedef epoll_event pollev;
 #endif
 
 namespace genie {
@@ -27,6 +35,8 @@ public:
 	Net();
 	~Net();
 };
+
+static constexpr unsigned MAX_USERS = 64;
 
 static constexpr unsigned TEXT_LIMIT = 256;
 
@@ -104,20 +114,33 @@ public:
 
 class ServerCallback {
 public:
-	virtual void incoming(WSAPOLLFD& ev) = 0;
+	virtual void incoming(pollev& ev) = 0;
 	virtual void removepeer(sockfd fd) = 0;
 	virtual void shutdown() = 0;
 };
 
 class ServerSocket final {
 	Socket sock;
-	std::vector<WSAPOLLFD> peers;
+#if linux
+	int efd;
+	std::set<int> peers;
+#elif windows
+	std::vector<pollev> peers;
+#endif
 	std::atomic<bool> activated;
 public:
 	ServerSocket(uint16_t port);
 	~ServerSocket();
 
 	void close();
+
+#if linux
+private:
+	void removepeer(ServerCallback&, int fd);
+	void incoming(ServerCallback&);
+	int event_process(ServerCallback&, pollev &ev);
+public:
+#endif
 
 	void eventloop(ServerCallback&);
 };

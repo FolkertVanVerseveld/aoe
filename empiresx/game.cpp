@@ -22,6 +22,9 @@ MultiplayerHost::MultiplayerHost(uint16_t port) : Multiplayer(port), sock(port) 
 MultiplayerHost::~MultiplayerHost() {
 	puts("closing host");
 	sock.close();
+#if linux
+	pthread_cancel(t_worker.native_handle());
+#endif
 	t_worker.join();
 	puts("host stopped");
 }
@@ -31,13 +34,23 @@ void MultiplayerHost::eventloop() {
 	sock.eventloop(*this);
 }
 
+#if windows
 void MultiplayerHost::incoming(WSAPOLLFD &ev) {
 	printf("new slave: fd %" PRIu64 "\n", ev.fd);
 }
 
-void MultiplayerHost::removepeer(sockfd fd) {
+void MultiplayerHost::removepeer(SOCKET fd) {
 	printf("drop slave: fd %" PRIu64 "\n", fd);
 }
+#else
+void MultiplayerHost::incoming(epoll_event &ev) {
+	printf("new slave: fd %d\n", ev.data.fd);
+}
+
+void MultiplayerHost::removepeer(int fd) {
+	printf("drop slave: fd %d\n", fd);
+}
+#endif
 
 void MultiplayerHost::shutdown() {
 	puts("host shutdown");

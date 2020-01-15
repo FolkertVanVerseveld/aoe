@@ -26,7 +26,7 @@ public:
 	~MultiplayerHost() override;
 
 	void eventloop() override;
-	void incoming(WSAPOLLFD& ev) override;
+	void incoming(pollev &ev) override;
 	void removepeer(sockfd fd) override;
 	void shutdown() override;
 };

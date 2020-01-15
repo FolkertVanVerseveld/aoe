@@ -351,11 +351,11 @@ int main(int argc, char **argv)
 		}
 
 		// run simple demo with SDL_Renderer
-		Window w(DEFAULT_TITLE, width, height);
+		genie::Window w(DEFAULT_TITLE, width, height);
 
 		SimpleRender& r = (SimpleRender&)w.render();
 
-		Font fnt(h_fnt);
+		genie::Font fnt(h_fnt);
 
 		nav.reset(new Navigator(r, fnt));
 
