@@ -28,6 +28,7 @@ public:
 	void eventloop() override;
 	void incoming(pollev &ev) override;
 	void removepeer(sockfd fd) override;
+	void event_process(sockfd fd, Command &cmd) override;
 	void shutdown() override;
 };
 

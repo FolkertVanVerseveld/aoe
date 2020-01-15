@@ -7,6 +7,7 @@
 #include <vector>
 #include <atomic>
 #include <string>
+#include <set>
 
 #if windows
 #ifndef WIN32_LEAN_AND_MEAN
@@ -21,8 +22,6 @@ typedef WSAPOLLFD pollev;
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/epoll.h>
-
-#include <set>
 
 typedef int sockfd;
 typedef epoll_event pollev;
@@ -47,18 +46,47 @@ union CmdData final {
 	void ntoh();
 };
 
+static constexpr unsigned CMD_HDRSZ = 4;
+
+class CmdBuf;
+
 class Command final {
+	friend CmdBuf;
+
 	uint16_t type, length;
 	union CmdData data;
 public:
 	std::string text();
 
-	unsigned size() const { return 4 + length; }
+	unsigned size() const { return CMD_HDRSZ + length; }
 
 	void hton();
 	void ntoh();
 
 	static Command text(const std::string &str);
+};
+
+class ServerCallback {
+public:
+	virtual void incoming(pollev& ev) = 0;
+	virtual void removepeer(sockfd fd) = 0;
+	virtual void shutdown() = 0;
+	virtual void event_process(sockfd fd, Command &cmd) = 0;
+};
+
+class CmdBuf final {
+	/** Total size in bytes and number of bytes read/written with the underlying socket. */
+	unsigned size, transmitted;
+	/** Communication device. */
+	sockfd endpoint;
+	/** The command to be read or sent in *network* byte endian order. */
+	Command cmd;
+public:
+	CmdBuf(sockfd fd);
+
+	int read(ServerCallback &cb, char *buf, unsigned len);
+
+	friend bool operator<(const CmdBuf &lhs, const CmdBuf &rhs);
 };
 
 class ServerSocket;
@@ -69,7 +97,7 @@ class Socket final {
 	sockfd fd;
 	uint16_t port;
 public:
-	/** Construct server accepted socket. If you want to specify the port, you have to use the second ctor. */
+	/** Construct server accepted socket. If you want to specify the port (for e.g. bind, connect), you have to use the second ctor. */
 	Socket();
 	Socket(uint16_t port);
 	~Socket();
@@ -112,13 +140,6 @@ public:
 	void send(Command& cmd, bool net_order=false);
 };
 
-class ServerCallback {
-public:
-	virtual void incoming(pollev& ev) = 0;
-	virtual void removepeer(sockfd fd) = 0;
-	virtual void shutdown() = 0;
-};
-
 class ServerSocket final {
 	Socket sock;
 #if linux
@@ -127,6 +148,9 @@ class ServerSocket final {
 #elif windows
 	std::vector<pollev> peers;
 #endif
+	/** Cache for any pending read operations. */
+	std::set<CmdBuf> rbuf; // FIXME probeer set want gare g++ errors
+	// TODO add sockfd modification detection
 	std::atomic<bool> activated;
 public:
 	ServerSocket(uint16_t port);

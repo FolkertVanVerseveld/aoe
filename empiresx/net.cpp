@@ -182,6 +182,8 @@ void ServerSocket::close() {
 #include <sys/socket.h>
 #include <unistd.h>
 
+#define INVALID_SOCKET ((int)-1)
+
 namespace genie {
 
 Net::Net() {}
@@ -356,6 +358,19 @@ int ServerSocket::event_process(ServerCallback &cb, pollev &ev) {
 
 		// TODO process data
 		printf("read %zd bytes from fd %d\n", n, fd);
+
+		auto search = rbuf.find(fd);
+
+		if (search == rbuf.end()) {
+			auto ins = rbuf.emplace(fd);
+			assert(ins.second);
+			search = ins.first;
+		}
+
+		if ((const_cast<CmdBuf&>(*search)).read(cb, buf, (unsigned)n)) {
+			fprintf(stderr, "event_process: read buffer error fd %d\n", fd);
+			return EPE_INVALID;
+		}
 	}
 
 	return 0;
@@ -436,7 +451,7 @@ Command Command::text(const std::string& str) {
 	Command cmd;
 
 	cmd.type = CmdType::TEXT;
-	cmd.length = sizeof cmd.data.text;
+	cmd.length = TEXT_LIMIT;
 
 	strncpy(cmd.data.text, str.c_str(), cmd.length);
 
@@ -526,7 +541,7 @@ ServerSocket::ServerSocket(uint16_t port)
 #if linux
 	, efd(-1)
 #endif
-	, peers(), activated(false)
+	, peers(), rbuf(), activated(false)
 {
 	sock.reuse();
 	sock.block(false);
@@ -549,6 +564,105 @@ ServerSocket::ServerSocket(uint16_t port)
 
 ServerSocket::~ServerSocket() {
 	close();
+}
+
+CmdBuf::CmdBuf(sockfd fd) : size(0), transmitted(0), endpoint(INVALID_SOCKET) {}
+
+int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
+	#if 0
+	unsigned processed = 0;
+	bool check_hdr = false;
+
+	// FIXME use while loop
+	// wait for complete header before processing any data
+	if (size < CMD_HDRSZ) {
+		unsigned need = CMD_HDRSZ - size;
+
+		if (need > len) {
+			memcpy((char*)&cmd + size, buf, len);
+			size += len;
+			return 0; // stop, we need more data
+		}
+
+		check_hdr = true;
+	}
+
+	// don't overflow the buffer
+	unsigned available = sizeof cmd - size;
+
+	processed = std::min(available, len);
+	memcpy((char*)&cmd + size, buf + size, processed);
+
+	size += processed;
+
+	return 0;
+	#else
+	while (len) {
+		unsigned need;
+
+		// wait for complete header before processing any data
+		if (transmitted < CMD_HDRSZ) {
+			puts("waiting for header data");
+			need = CMD_HDRSZ - transmitted;
+
+			if (need > len) {
+				memcpy((char*)&cmd + transmitted, buf, len);
+				transmitted += len;
+				return 0; // stop, we need more data
+			}
+
+			puts("got header");
+
+			memcpy((char*)&cmd + transmitted, buf, need);
+			transmitted += need;
+			len -= need;
+
+			// determine how big the complete packet is
+			assert(be16toh(cmd.length) == TEXT_LIMIT);
+			size = CMD_HDRSZ + be16toh(cmd.length);
+
+			printf("trans, len, size: %u, %u, %u\n", transmitted, len, size);
+		}
+
+		assert(size);
+
+		printf("need %u bytes, got %u\n", size, transmitted);
+
+		// only process full packets
+		if (transmitted >= size) {
+			cmd.ntoh();
+
+			printf("process: %d, %d\n", transmitted, size);
+
+			cb.event_process(endpoint, cmd);
+
+			// move pending data to front
+			memmove((char*)&cmd, (char*)&cmd + size, transmitted - size);
+
+			// update state
+			len -= size;
+			transmitted -= size;
+			size = 0;
+			continue; // process next packet
+		}
+
+		// packet incomplete, read only as much as we need
+		need = size - transmitted;
+		printf("need %u more bytes\n", need);
+		assert(need);
+
+		unsigned copy = std::min(need, len);
+
+		memcpy((char*)&cmd + transmitted, buf, need);
+		transmitted += copy;
+		len -= copy;
+		printf("read %u bytes: trans, len: %u, %u", need, transmitted, len);
+	}
+	#endif
+}
+
+bool operator<(const CmdBuf &lhs, const CmdBuf &rhs) {
+	return lhs.endpoint < rhs.endpoint;
 }
 
 }

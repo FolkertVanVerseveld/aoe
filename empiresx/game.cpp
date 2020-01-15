@@ -34,6 +34,10 @@ void MultiplayerHost::eventloop() {
 	sock.eventloop(*this);
 }
 
+void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
+	puts("host: TODO process event");
+}
+
 #if windows
 void MultiplayerHost::incoming(WSAPOLLFD &ev) {
 	printf("new slave: fd %" PRIu64 "\n", ev.fd);
@@ -106,7 +110,7 @@ void MultiplayerClient::eventloop() {
 	puts("connected");
 
 	// FIXME event loop
-	sock.send(Command::text("mah boi"));
+	sock.send(Command::text("mah boi"), false);
 }
 
 }
