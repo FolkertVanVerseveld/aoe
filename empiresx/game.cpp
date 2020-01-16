@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <inttypes.h>
+#include <unistd.h>
 
 namespace genie {
 
@@ -35,7 +36,11 @@ void MultiplayerHost::eventloop() {
 }
 
 void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
-	puts("host: TODO process event");
+	switch (cmd.type) {
+	case CmdType::TEXT:
+		printf("TEXT: \"%s\"\n", cmd.text().c_str());
+		break;
+	}
 }
 
 #if windows
@@ -110,7 +115,21 @@ void MultiplayerClient::eventloop() {
 	puts("connected");
 
 	// FIXME event loop
-	sock.send(Command::text("mah boi"), false);
+	//sock.send(Command::text("mah boi"), false);
+	puts("send text1");
+	Command cmd = Command::text("mah boi");
+	sock.send(cmd, false);
+	puts("send text2");
+	cmd = Command::text("you saved me!");
+	sock.send(cmd, false);
+
+	puts("wait");
+
+	sleep(2);
+
+	cmd = Command::text("whoah ship ship ship");
+	sock.send(cmd, false);
+	puts("sent text3");
 }
 
 }

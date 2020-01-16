@@ -37,7 +37,7 @@ public:
 
 static constexpr unsigned MAX_USERS = 64;
 
-static constexpr unsigned TEXT_LIMIT = 256;
+static constexpr unsigned TEXT_LIMIT = 32;
 
 union CmdData final {
 	char text[TEXT_LIMIT];
@@ -50,15 +50,18 @@ static constexpr unsigned CMD_HDRSZ = 4;
 
 class CmdBuf;
 
+enum CmdType {
+	TEXT,
+	MAX,
+};
+
 class Command final {
 	friend CmdBuf;
 
+public:
 	uint16_t type, length;
 	union CmdData data;
-public:
 	std::string text();
-
-	unsigned size() const { return CMD_HDRSZ + length; }
 
 	void hton();
 	void ntoh();
