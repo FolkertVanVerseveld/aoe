@@ -10,7 +10,21 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
+#elif linux
+#include <cstdlib>
 
+#include <sys/types.h>
+#include <pwd.h>
+#include <unistd.h>
+
+#include <memory>
+#endif
+
+namespace genie {
+
+OS os;
+
+#if windows
 OS::OS() : compname("DinnurBlaster"), username("King Harkinian") {
 	TCHAR buf[MAX_COMPUTERNAME_LENGTH + 1];
 	DWORD count = ARRAY_SIZE(buf);
@@ -36,14 +50,8 @@ OS::OS() : compname("DinnurBlaster"), username("King Harkinian") {
 		delete[] buf2;
 	}
 }
+
 #elif linux
-#include <cstdlib>
-
-#include <sys/types.h>
-#include <pwd.h>
-#include <unistd.h>
-
-#include <memory>
 
 OS::OS() : compname("DinnurBlaster"), username(getpwuid(getuid())->pw_name) {
 	char *buf = NULL;
@@ -68,3 +76,5 @@ OS::OS() : compname("DinnurBlaster"), username(getpwuid(getuid())->pw_name) {
 #else
 #error stub
 #endif
+
+}

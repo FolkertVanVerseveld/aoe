@@ -1,5 +1,9 @@
 #include "engine.hpp"
 
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
@@ -7,6 +11,9 @@
 
 #include <stdexcept>
 #include <string>
+
+#include "fs.hpp"
+#include "os.hpp"
 
 namespace genie {
 
@@ -54,7 +61,63 @@ TTF::~TTF() {
 	TTF_Quit();
 }
 
-Engine::Engine() {}
-Engine::~Engine() {}
+Engine* eng;
+
+Config::Config(int argc, char* argv[]) : scrmode(ConfigScreenMode::MODE_800_600) {
+	unsigned n;
+
+	for (int i = 1; i < argc; ++i) {
+		if (!strcmp(argv[i], "640")) {
+			scrmode = ConfigScreenMode::MODE_640_480;
+		} else if (!strcmp(argv[i], "800")) {
+			scrmode = ConfigScreenMode::MODE_800_600;
+		} else if (!strcmp(argv[i], "1024")) {
+			scrmode = ConfigScreenMode::MODE_1024_768;
+		} else if (i + 1 < argc && !strcmp(argv[i], "limit")) {
+			n = atoi(argv[i + 1]);
+			goto set_cap;
+		} else if (!strcmp(argv[i], "limit=")) {
+			n = atoi(argv[i] + strlen("limit="));
+		set_cap:
+			if (n < POP_MIN)
+				n = POP_MIN;
+			else if (n > POP_MAX)
+				n = POP_MAX;
+
+			poplimit = n;
+		}
+	}
+}
+
+Assets::Assets() : fnt_default(fs.open_ttf("arial.ttf", 12)) {}
+
+Engine::Engine(Config &cfg) : cfg(cfg) {
+	assert(!eng);
+	eng = this;
+
+	try {
+		fs.init(os);
+		assets.reset(new Assets());
+	} catch (const std::runtime_error &e) {
+		show_error(e.what());
+		throw;
+	}
+}
+
+Engine::~Engine() {
+	assert(eng);
+}
+
+void Engine::show_error(const std::string& title, const std::string &str) {
+#if windows
+	MessageBox(NULL, str.c_str(), title.c_str(), MB_ICONERROR | MB_OK);
+#else
+	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title.c_str(), str.c_str(), NULL);
+#endif
+}
+
+void Engine::show_error(const std::string& str) {
+	show_error("Error occurred", str);
+}
 
 }

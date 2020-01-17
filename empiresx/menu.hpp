@@ -28,10 +28,10 @@ public:
 
 class Navigator final {
 	SimpleRender& r;
-	Font& f_hdr;
+	Font &f_hdr;
 	// not using stack since we want to address menus in the middle as well
 	std::vector<std::unique_ptr<Menu>> trace;
-	Menu* top;
+	Menu *top;
 public:
 	Navigator(SimpleRender& r, Font& f_hdr);
 

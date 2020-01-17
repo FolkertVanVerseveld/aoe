@@ -20,10 +20,12 @@ Font::Font(const char* fname, int ptsize) : handle(NULL, &TTF_CloseFont), ptsize
 Font::Font(TTF_Font* handle, int ptsize) : handle(handle, &TTF_CloseFont), ptsize(ptsize) {}
 
 SDL_Surface* Font::surf(const char* text, SDL_Color fg) {
-	return TTF_RenderText_Blended(handle.get(), text, fg);
+	return text && *text ? TTF_RenderText_Blended(handle.get(), text, fg) : nullptr;
 }
 
 SDL_Texture* Font::tex(SimpleRender& r, const char* text, SDL_Color fg) {
+	if (!text || !*text)
+		return nullptr;
 	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> s(surf(text, fg), &SDL_FreeSurface);
 	return SDL_CreateTextureFromSurface(r.canvas(), s.get());
 }
@@ -75,7 +77,7 @@ const std::string& TextBuf::str() const {
 	return "";
 }
 
-void TextBuf::paint(SimpleRender& r, int x, int y) {
+void TextBuf::paint(int x, int y) {
 	if (txt.get())
 		txt->paint(r, x, y);
 }

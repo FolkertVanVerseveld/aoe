@@ -31,7 +31,6 @@ public:
 
 	SDL_Surface* surf(const char* text, SDL_Color fg);
 	SDL_Texture* tex(SimpleRender& r, const char* text, SDL_Color fg);
-	SDL_Texture* tex(SimpleRender& r, int& w, int& h, const char* text, SDL_Color fg);
 
 	TTF_Font* data() { return handle.get(); }
 };
@@ -62,7 +61,7 @@ public:
 	void str(const std::string& s, SDL_Color fg);
 	const std::string& str() const;
 
-	void paint(SimpleRender& r, int x, int y);
+	void paint(int x, int y);
 };
 
 class TTF final {

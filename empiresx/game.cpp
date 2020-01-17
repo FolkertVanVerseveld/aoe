@@ -41,8 +41,11 @@ void MultiplayerHost::eventloop() {
 void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 	switch (cmd.type) {
 	case CmdType::TEXT:
-		printf("TEXT: \"%s\"\n", cmd.text().c_str());
 		sock.broadcast(cmd);
+		{
+			std::lock_guard<std::mutex> lock(mut);
+			chats.emplace(cmd.text());
+		}
 		break;
 	}
 }
@@ -57,6 +60,14 @@ void MultiplayerHost::removepeer(sockfd fd) {
 
 void MultiplayerHost::shutdown() {
 	puts("host shutdown");
+}
+
+void MultiplayerHost::chat(const std::string& str) {
+	sock.broadcast(Command::text(str));
+	{
+		std::lock_guard<std::mutex> lock(mut);
+		chats.emplace(str);
+	}
 }
 
 MultiplayerClient::MultiplayerClient(uint16_t port) : Multiplayer(port), sock(port), activated(false) {
@@ -108,20 +119,6 @@ void MultiplayerClient::eventloop() {
 
 	puts("connected");
 
-	//sock.send(Command::text("mah boi"), false);
-	puts("send text1");
-	Command cmd = Command::text("mah boi");
-	sock.send(cmd, false);
-	puts("send text2");
-	cmd = Command::text("you saved me!");
-	sock.send(cmd, false);
-
-	puts("wait");
-
-	cmd = Command::text("whoah ship ship ship");
-	sock.send(cmd, false);
-	puts("sent text3");
-
 	for (activated.store(true); activated.load();) {
 		Command cmd;
 
@@ -132,7 +129,10 @@ void MultiplayerClient::eventloop() {
 
 		switch (cmd.type) {
 		case TEXT:
-			printf("TEXT: \"%s\"\n", cmd.text().c_str());
+			{
+				std::lock_guard<std::mutex> lock(mut);
+				chats.emplace(cmd.text().c_str());
+			}
 			break;
 		default:
 			fprintf(stderr, "communication error: unknown type %u\n", cmd.type);
@@ -140,6 +140,10 @@ void MultiplayerClient::eventloop() {
 			continue;
 		}
 	}
+}
+
+void MultiplayerClient::chat(const std::string& str) {
+	sock.send(Command::text(str), false);
 }
 
 }

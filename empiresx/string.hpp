@@ -45,6 +45,14 @@ static inline std::string trim_copy(std::string s) {
 	return s;
 }
 
+static inline void tolower(std::string& s) {
+	std::for_each(s.begin(), s.end(), [](char& ch) { ch = std::tolower((unsigned)ch); });
+}
+
+static inline void toupper(std::string& s) {
+	std::for_each(s.begin(), s.end(), [](char& ch) { ch = std::toupper((unsigned)ch); });
+}
+
 #if windows
 #include <codecvt>
 #include <string>

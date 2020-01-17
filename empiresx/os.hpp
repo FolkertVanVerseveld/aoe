@@ -2,7 +2,9 @@
 
 #include <string>
 
-class OS final {
+namespace genie {
+
+extern class OS final {
 public:
 	/**
 	 * The UTF-8 representations for computer system name and current logged in username.
@@ -11,4 +13,6 @@ public:
 	std::string compname, username;
 
 	OS();
-};
+} os;
+
+}

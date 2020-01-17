@@ -91,70 +91,63 @@ public:
 	Mix_Chunk *data() { return handle.get(); }
 };
 
-enum class ConfigScreenMode {
-	MODE_640_480,
-	MODE_800_600,
-	MODE_1024_768,
-	MODE_FULLSCREEN,
-	MODE_CUSTOM,
-};
-
-class Config final {
-public:
-	/** Startup configuration specified by program arguments. */
-	ConfigScreenMode scrmode;
-	unsigned poplimit = 50;
-
-	static constexpr unsigned POP_MIN = 25, POP_MAX = 200;
-
-	Config(int argc, char* argv[]);
-};
-
-Config::Config(int argc, char* argv[]) : scrmode(ConfigScreenMode::MODE_800_600) {
-	unsigned n;
-
-	for (int i = 1; i < argc; ++i) {
-		if (!strcmp(argv[i], "640")) {
-			scrmode = ConfigScreenMode::MODE_640_480;
-		}
-		else if (!strcmp(argv[i], "800")) {
-			scrmode = ConfigScreenMode::MODE_800_600;
-		}
-		else if (!strcmp(argv[i], "1024")) {
-			scrmode = ConfigScreenMode::MODE_1024_768;
-		}
-		else if (i + 1 < argc && !strcmp(argv[i], "limit")) {
-			n = atoi(argv[i + 1]);
-			goto set_cap;
-		}
-		else if (!strcmp(argv[i], "limit=")) {
-			n = atoi(argv[i] + strlen("limit="));
-		set_cap:
-			if (n < POP_MIN)
-				n = POP_MIN;
-			else if (n > POP_MAX)
-				n = POP_MAX;
-
-			poplimit = n;
-		}
-	}
-}
-
 class MenuLobby final : public Menu {
 	std::unique_ptr<Multiplayer> mp;
+	TextBuf line;
 	bool host;
+	std::deque<Text> chat;
 public:
 	MenuLobby(SimpleRender& r, Font& f, uint16_t port, bool host = true)
 		: Menu(r, f, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
-		, mp(host ? (Multiplayer*)new MultiplayerHost(port) : (Multiplayer*)new MultiplayerClient(port)), host(host) {}
+		, mp(host ? (Multiplayer*)new MultiplayerHost(port) : (Multiplayer*)new MultiplayerClient(port))
+		, line(r, f, "", SDL_Color{ 0xff, 0xff, 0 }), host(host) {}
+
+	void idle() override {
+		std::lock_guard<std::mutex> lock(mp->mut);
+		while (!mp->chats.empty()) {
+			chat.emplace_front(r, f, mp->chats.front().c_str(), SDL_Color{ 0xff, 0xff, 0 });
+			mp->chats.pop();
+		}
+	}
 
 	void keydown(int ch) override {
+		if (ch != '\n' && ch != '\r' && ch <= 0xff && isprint((unsigned char)ch)) {
+			line.append(ch);
+			return;
+		}
+
 		switch (ch) {
-		case 'q':
-		case 'Q':
+		case SDLK_BACKSPACE:
+			line.erase();
+			break;
+		case '\n':
+		case '\r':
+			{
+				auto s = line.str();
+				if (!s.empty()) {
+					if (s == "/clear")
+						chat.clear();
+					else
+						mp->chat(s);
+					line.clear();
+				}
+				break;
+			}
+		case SDLK_ESCAPE:
 			nav->quit(1);
 			break;
 		}
+	}
+
+	void paint() override {
+		Menu::paint();
+
+		unsigned i = 0;
+
+		for (auto& x : chat)
+			x.paint(r, 20, 380 - 20 * i++);
+
+		line.paint(20, 400);
 	}
 };
 
@@ -193,6 +186,7 @@ public:
 			break;
 		case 'q':
 		case 'Q':
+		case SDLK_ESCAPE:
 			nav->quit(1);
 			break;
 		}
@@ -205,10 +199,10 @@ public:
 		txt_join.paint(r, 40, 120);
 
 		txt_port.paint(r, 40, 160);
-		buf_port.paint(r, 40 + txt_port.tex().width, 160);
+		buf_port.paint(40 + txt_port.tex().width, 160);
 
 		txt_address.paint(r, 40, 200);
-		buf_address.paint(r, 40 + txt_address.tex().width, 200);
+		buf_address.paint(40 + txt_address.tex().width, 200);
 
 		txt_back.paint(r, 40, 240);
 	}
@@ -235,6 +229,7 @@ public:
 			break;
 		case 'q':
 		case 'Q':
+		case SDLK_ESCAPE:
 			nav->quit();
 			break;
 		}
@@ -311,33 +306,11 @@ using namespace genie;
 int main(int argc, char **argv)
 {
 	try {
-		OS os;
 		Config cfg(argc, argv);
 
 		std::cout << "hello " << os.username << " on " << os.compname << '!' << std::endl;
 
-		Engine eng;
-
-#if windows
-		char path_fnt[] = "D:\\SYSTEM\\FONTS\\ARIAL.TTF";
-		TTF_Font *h_fnt = NULL;
-
-		// find cdrom drive
-		for (char dl = 'D'; dl <= 'Z'; ++dl) {
-			path_fnt[0] = dl;
-
-			if ((h_fnt = TTF_OpenFont(path_fnt, 13)) != NULL)
-				break;
-		}
-#else
-		char path_fnt[] = "/media/cdrom/SYSTEM/FONTS/ARIAL.TTF";
-		TTF_Font *h_fnt = TTF_OpenFont(path_fnt, 13);
-#endif
-
-		if (!h_fnt) {
-			std::cerr << "default font not found" << std::endl;
-			return 1;
-		}
+		Engine eng(cfg);
 
 		// figure out window dimensions
 		int width, height;
@@ -355,9 +328,7 @@ int main(int argc, char **argv)
 
 		SimpleRender& r = (SimpleRender&)w.render();
 
-		genie::Font fnt(h_fnt);
-
-		nav.reset(new Navigator(r, fnt));
+		nav.reset(new Navigator(r, eng.assets->fnt_default));
 
 		nav->mainloop();
 	} catch (const std::exception &e) {
