@@ -8,6 +8,8 @@
 #include <atomic>
 #include <string>
 #include <set>
+#include <map>
+#include <queue>
 
 #if windows
 #ifndef WIN32_LEAN_AND_MEAN
@@ -18,6 +20,8 @@
 
 typedef SOCKET sockfd;
 typedef WSAPOLLFD pollev;
+
+static inline SOCKET pollfd(const pollev& ev) { return ev.fd; }
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -25,6 +29,8 @@ typedef WSAPOLLFD pollev;
 
 typedef int sockfd;
 typedef epoll_event pollev;
+
+static inline int pollfd(const epoll_event& ev) { return ev.data.fd; }
 #endif
 
 namespace genie {
@@ -77,6 +83,13 @@ public:
 	virtual void event_process(sockfd fd, Command &cmd) = 0;
 };
 
+enum class SSErr {
+	OK,
+	BADFD,
+	PENDING,
+	WRITE,
+};
+
 class CmdBuf final {
 	/** Total size in bytes and number of bytes read/written with the underlying socket. */
 	unsigned size, transmitted;
@@ -86,8 +99,11 @@ class CmdBuf final {
 	Command cmd;
 public:
 	CmdBuf(sockfd fd);
+	CmdBuf(sockfd fd, const Command& cmd, bool net_order=false);
 
 	int read(ServerCallback &cb, char *buf, unsigned len);
+	/** Try to send the command completely. Zero is returned if the all data has been sent. */
+	SSErr write();
 
 	friend bool operator<(const CmdBuf &lhs, const CmdBuf &rhs);
 };
@@ -128,32 +144,25 @@ public:
 		return send((const void*)&t, sizeof t);
 	}
 
-	template<typename T> int recv(T& t) {
-		return recv((void*)&t, sizeof t);
-	}
-
-	template<typename T> void sendFully(const T& t) {
-		sendFully(&t, sizeof t);
-	}
-
-	template<typename T> void recvFully(T& t) {
-		recvFully(&t, sizeof t);
-	}
+	int recv(Command& cmd);
 
 	void send(Command& cmd, bool net_order=false);
 };
 
+// XXX use locking to make it thread-safe
 class ServerSocket final {
 	Socket sock;
 #if linux
 	int efd;
 	std::set<int> peers;
 #elif windows
-	std::vector<pollev> peers;
+	std::vector<pollev> peers, keep;
+	bool poke_peers;
 #endif
 	/** Cache for any pending read operations. */
-	std::set<CmdBuf> rbuf; // FIXME probeer set want gare g++ errors
-	// TODO add sockfd modification detection
+	std::set<CmdBuf> rbuf;
+	/** Cache for any pending write operations. */
+	std::map<sockfd, std::queue<CmdBuf>> wbuf;
 	std::atomic<bool> activated;
 public:
 	ServerSocket(uint16_t port);
@@ -161,14 +170,16 @@ public:
 
 	void close();
 
-#if linux
+	SSErr push(sockfd fd, const Command& cmd, bool net_order=false);
+	void broadcast(Command& cmd, bool net_order=false);
+
 private:
-	void removepeer(ServerCallback&, int fd);
+	void removepeer(ServerCallback&, sockfd fd);
+#if linux
 	void incoming(ServerCallback&);
 	int event_process(ServerCallback&, pollev &ev);
-public:
 #endif
-
+public:
 	void eventloop(ServerCallback&);
 };
 

@@ -65,6 +65,18 @@ void Socket::close() {
 	fd = INVALID_SOCKET;
 }
 
+void ServerSocket::removepeer(ServerCallback& cb, SOCKET fd) {
+	// remove slave from caches
+	auto search = rbuf.find(fd);
+	if (search != rbuf.end())
+		rbuf.erase(search);
+	wbuf.erase(fd);
+	// purge connection
+	closesocket(fd);
+	// notify
+	cb.removepeer(fd);
+}
+
 void ServerSocket::eventloop(ServerCallback &cb) {
 	SOCKET sock;
 	sockaddr_in addr;
@@ -75,14 +87,16 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 	while (activated.load()) {
 		int err, incoming = 0;
 
+		// keep accepting any pending sockets
 		while ((sock = accept(this->sock.fd, (sockaddr*)&addr, &addrlen)) != INVALID_SOCKET) {
 			sock_block(sock, false);
 
 			WSAPOLLFD ev = { 0 };
 			ev.fd = sock;
-			ev.events = POLLRDNORM;
+			ev.events = POLLRDNORM | POLLWRNORM;
 
 			peers.push_back(ev);
+			wbuf.emplace(std::make_pair(sock, std::queue<CmdBuf>()));
 			cb.incoming(ev);
 			++incoming;
 		}
@@ -101,9 +115,18 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 			continue;
 		}
 
+		// grab pending events
 		int events;
 
-		if ((events = WSAPoll(peers.data(), peers.size(), 500)) < 0) {
+		// (re)enable any sockets that we may have to write to
+		if (poke_peers) {
+			poke_peers = false;
+
+			for (auto& x : peers)
+				x.events |= POLLWRNORM;
+		}
+
+		if ((events = WSAPoll(peers.data(), (ULONG)peers.size(), 500)) < 0) {
 			fprintf(stderr, "poll failed: code %d\n", WSAGetLastError());
 			activated.store(false);
 			continue;
@@ -115,7 +138,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 		printf("poll: got %d event%s\n", events, events == 1 ? "" : "s");
 
 		// choose which peers we want to keep
-		std::vector<WSAPOLLFD> keep;
+		keep.clear();
 
 		for (unsigned i = 0; i < peers.size() && events; ++i) {
 			auto ev = &peers[i];
@@ -124,29 +147,67 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 			if (ev->revents & (POLLERR | POLLHUP | POLLNVAL)) {
 				printf("drop event %u\n", i);
 				--events;
-				cb.removepeer(ev->fd);
+				removepeer(cb, ev->fd);
 				continue;
 			}
 
-			// TODO process pending data
+			// process pending data
 			if (ev->revents & POLLRDNORM) {
-				char dummy[TEXT_LIMIT];
+				char buf[TEXT_LIMIT];
 				int err, n;
 
-				// FIXME use while loop
-				if ((n = recv(ev->fd, dummy, sizeof dummy, 0)) == SOCKET_ERROR && (err = WSAGetLastError()) != WSAEWOULDBLOCK) {
+				// XXX use while loop
+				// not strictly necessary to use while loop, since events are level triggered
+				if ((n = recv(ev->fd, buf, sizeof buf, 0)) == SOCKET_ERROR && (err = WSAGetLastError()) != WSAEWOULDBLOCK) {
 					printf("drop event %u: code %d\n", i, err);
 					--events;
-					cb.removepeer(ev->fd);
+					removepeer(cb, ev->fd);
 					continue;
 				}
 
 				printf("read %d bytes from event %u\n", n, i);
+
+				auto search = rbuf.find(ev->fd);
+
+				if (search == rbuf.end()) {
+					auto ins = rbuf.emplace(ev->fd);
+					assert(ins.second);
+					search = ins.first;
+				}
+
+				if ((const_cast<CmdBuf&>(*search)).read(cb, buf, (unsigned)n)) {
+					fprintf(stderr, "event_process: read buffer error fd %I64u\n", ev->fd);
+					printf("drop event %u\n", i);
+					--events;
+					removepeer(cb, ev->fd);
+					continue;
+				}
+			}
+			else if (ev->revents & POLLWRNORM) {
+				auto search = wbuf.find(ev->fd);
+				assert(search != wbuf.end());
+
+				if (!search->second.empty()) {
+					switch (const_cast<CmdBuf&>(search->second.front()).write()) {
+					case SSErr::PENDING: break;
+					case SSErr::OK: search->second.pop(); break;
+					default:
+						fprintf(stderr, "event_process: write buffer error fd %I64u\n", ev->fd);
+						printf("drop event %u\n", i);
+						--events;
+						removepeer(cb, ev->fd);
+						continue;
+					}
+				}
+
+				// disable write events if nothing to write (note that events are level triggered)
+				if (search->second.empty())
+					ev->events &= ~POLLWRNORM;
 			}
 			else if (ev->revents) {
 				printf("drop event %u: bogus state %d\n", i, ev->revents);
 				--events;
-				cb.removepeer(ev->fd);
+				removepeer(cb, ev->fd);
 				continue;
 			}
 
@@ -306,13 +367,20 @@ reject:
 			continue;
 		}
 
+		wbuf.emplace(std::make_pair(infd, std::queue<CmdBuf>()));
 		cb.incoming(ev);
 	}
 }
 
 void ServerSocket::removepeer(ServerCallback &cb, int fd) {
+	auto search = rbuf.find(fd);
+	if (search != rbuf.end())
+		rbuf.erase(search);
+	wbuf.erase(fd);
+	// purge connection
 	peers.erase(fd);
 	::close(fd);
+	// notify
 	cb.removepeer(fd);
 }
 
@@ -358,7 +426,6 @@ int ServerSocket::event_process(ServerCallback &cb, pollev &ev) {
 			return EPE_READ;
 		}
 
-		// TODO process data
 		printf("read %zd bytes from fd %d\n", n, fd);
 
 		auto search = rbuf.find(fd);
@@ -430,7 +497,7 @@ static inline void dump(const void *buf, unsigned len) {
 }
 
 const unsigned cmd_sizes[] = {
-	[TEXT] = TEXT_LIMIT,
+	TEXT_LIMIT,
 };
 
 void CmdData::hton() {}
@@ -540,6 +607,24 @@ void Socket::recvFully(void* buf, unsigned len) {
 	}
 }
 
+int Socket::recv(Command& cmd) {
+	try {
+		recvFully((void*)&cmd, CMD_HDRSZ);
+
+		uint16_t type = be16toh(cmd.type), length = be16toh(cmd.length);
+
+		if (type >= CmdType::MAX || length != cmd_sizes[type])
+			return 2;
+
+		recvFully((char*)&cmd + CMD_HDRSZ, length);
+		cmd.ntoh();
+		return 0;
+	}
+	catch (const std::runtime_error&) {
+		return 1;
+	}
+}
+
 void Socket::send(Command& cmd, bool net_order) {
 	if (!net_order)
 		cmd.hton();
@@ -550,8 +635,13 @@ ServerSocket::ServerSocket(uint16_t port)
 	: sock(port)
 #if linux
 	, efd(-1)
+	, peers()
+#elif windows
+	, peers()
+	, keep()
+	, poke_peers(false)
 #endif
-	, peers(), rbuf(), activated(false)
+	, rbuf(), wbuf(), activated(false)
 {
 	sock.reuse();
 	sock.block(false);
@@ -576,7 +666,14 @@ ServerSocket::~ServerSocket() {
 	close();
 }
 
-CmdBuf::CmdBuf(sockfd fd) : size(0), transmitted(0), endpoint(INVALID_SOCKET) {}
+CmdBuf::CmdBuf(sockfd fd) : size(0), transmitted(0), endpoint(fd) {}
+
+CmdBuf::CmdBuf(sockfd fd, const Command& cmd, bool net_order) : size(0), transmitted(0), endpoint(fd), cmd(cmd) {
+	if (!net_order)
+		this->cmd.hton();
+
+	size = CMD_HDRSZ + be16toh(this->cmd.length);
+}
 
 int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 	unsigned processed = 0;
@@ -617,17 +714,14 @@ int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 		}
 
 		assert(transmitted >= CMD_HDRSZ);
-
 		size = CMD_HDRSZ + length;
-
-		printf("need %u bytes, got %u\n", size, transmitted);
 
 		if (transmitted < size) {
 			// packet incomplete, read only as much as we need
 			need = size - transmitted;
 			printf("need %u more bytes (%u available)\n", need, len);
 
-			unsigned copy = std::min(need, len);
+			unsigned copy = need < len ? need : len;
 
 			memcpy(((char*)&cmd) + transmitted, buf + processed, copy);
 			transmitted += copy;
@@ -657,6 +751,40 @@ int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 			printf("trans, size: %d, %d\n", transmitted, size);
 		}
 	}
+
+	return 0;
+}
+
+SSErr CmdBuf::write() {
+	if (transmitted == size)
+		return SSErr::OK;
+
+	int n = ::send(endpoint, (char*)&cmd + transmitted, size - transmitted, 0);
+	if (n <= 0)
+		return SSErr::WRITE;
+
+	transmitted += (unsigned)n;
+	return transmitted == size ? SSErr::OK : SSErr::PENDING;
+}
+
+SSErr ServerSocket::push(sockfd fd, const Command& cmd, bool net_order) {
+	auto search = wbuf.find(fd);
+	if (search == wbuf.end())
+		return SSErr::BADFD;
+
+	search->second.emplace(fd, cmd, net_order);
+	poke_peers = true;
+
+	return SSErr::OK;
+}
+
+void ServerSocket::broadcast(Command& cmd, bool net_order) {
+	if (!net_order)
+		cmd.hton();
+
+	for (auto& x : peers)
+		if (push(pollfd(x), cmd, true) != SSErr::OK)
+			throw std::runtime_error(std::string("broadcast failed for fd ") + std::to_string(pollfd(x)));
 }
 
 bool operator<(const CmdBuf &lhs, const CmdBuf &rhs) {

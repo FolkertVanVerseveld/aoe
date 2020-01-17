@@ -2,7 +2,6 @@
 
 #include <cstdio>
 #include <inttypes.h>
-#include <unistd.h>
 
 namespace genie {
 
@@ -15,7 +14,11 @@ void client_start(MultiplayerClient& client) {
 	client.eventloop();
 }
 
-MultiplayerHost::MultiplayerHost(uint16_t port) : Multiplayer(port), sock(port) {
+bool operator<(const Slave& lhs, const Slave& rhs) {
+	return lhs.fd < rhs.fd;
+}
+
+MultiplayerHost::MultiplayerHost(uint16_t port) : Multiplayer(port), sock(port), slaves() {
 	puts("start host");
 	t_worker = std::thread(host_start, std::ref(*this));
 }
@@ -39,27 +42,18 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 	switch (cmd.type) {
 	case CmdType::TEXT:
 		printf("TEXT: \"%s\"\n", cmd.text().c_str());
+		sock.broadcast(cmd);
 		break;
 	}
 }
 
-#if windows
-void MultiplayerHost::incoming(WSAPOLLFD &ev) {
-	printf("new slave: fd %" PRIu64 "\n", ev.fd);
+void MultiplayerHost::incoming(pollev& ev) {
+	slaves.emplace(pollfd(ev));
 }
 
-void MultiplayerHost::removepeer(SOCKET fd) {
-	printf("drop slave: fd %" PRIu64 "\n", fd);
+void MultiplayerHost::removepeer(sockfd fd) {
+	slaves.erase(fd);
 }
-#else
-void MultiplayerHost::incoming(epoll_event &ev) {
-	printf("new slave: fd %d\n", ev.data.fd);
-}
-
-void MultiplayerHost::removepeer(int fd) {
-	printf("drop slave: fd %d\n", fd);
-}
-#endif
 
 void MultiplayerHost::shutdown() {
 	puts("host shutdown");
@@ -114,7 +108,6 @@ void MultiplayerClient::eventloop() {
 
 	puts("connected");
 
-	// FIXME event loop
 	//sock.send(Command::text("mah boi"), false);
 	puts("send text1");
 	Command cmd = Command::text("mah boi");
@@ -125,11 +118,28 @@ void MultiplayerClient::eventloop() {
 
 	puts("wait");
 
-	sleep(2);
-
 	cmd = Command::text("whoah ship ship ship");
 	sock.send(cmd, false);
 	puts("sent text3");
+
+	for (activated.store(true); activated.load();) {
+		Command cmd;
+
+		if (sock.recv(cmd)) {
+			activated.store(false);
+			continue;
+		}
+
+		switch (cmd.type) {
+		case TEXT:
+			printf("TEXT: \"%s\"\n", cmd.text().c_str());
+			break;
+		default:
+			fprintf(stderr, "communication error: unknown type %u\n", cmd.type);
+			activated.store(false);
+			continue;
+		}
+	}
 }
 
 }

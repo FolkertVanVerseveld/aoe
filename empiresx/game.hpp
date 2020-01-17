@@ -4,6 +4,7 @@
 
 #include <thread>
 #include <atomic>
+#include <set>
 
 namespace genie {
 
@@ -19,8 +20,17 @@ public:
 	virtual void eventloop() = 0;
 };
 
+class Slave final {
+	sockfd fd;
+public:
+	Slave(sockfd fd) : fd(fd) {}
+
+	friend bool operator<(const Slave& lhs, const Slave& rhs);
+};
+
 class MultiplayerHost final : public Multiplayer, protected ServerCallback {
 	ServerSocket sock;
+	std::set<Slave> slaves;
 public:
 	MultiplayerHost(uint16_t port);
 	~MultiplayerHost() override;
