@@ -2,7 +2,7 @@
 
 namespace genie {
 
-Menu::Menu(SimpleRender& r, Font& f, const std::string& s, SDL_Color fg) : r(r), f(f), title(r, f, s, fg) {}
+Menu::Menu(SimpleRender& r, Font& f, const std::string& s, SDL_Color fg) : r(r), title(r, f, s, fg) {}
 
 void Menu::paint() {
 	r.clear();

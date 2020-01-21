@@ -89,7 +89,20 @@ Config::Config(int argc, char* argv[]) : scrmode(ConfigScreenMode::MODE_800_600)
 	}
 }
 
-Assets::Assets() : fnt_default(fs.open_ttf("arial.ttf", 12)) {}
+Assets::Assets()
+	: fnt_default(fs.open_ttf("Arial.ttf", 12))
+	, fnt_title(fs.open_ttf("CoprGtl.ttf", 28))
+	, fnt_button(fs.open_ttf("CoprGtl.ttf", 16))
+	, drs_border(fs.open_drs("Border.drs"))
+	, drs_gfx(fs.open_drs("graphics.drs"))
+	, drs_ui(fs.open_drs("Interfac.drs"))
+	, drs_sfx(fs.open_drs("sounds.drs", false))
+	, drs_terrain(fs.open_drs("Terrain.drs"))
+	, pal_default(open_pal(PAL_DEFAULT)) {}
+
+Palette Assets::open_pal(uint32_t id) {
+	return drs_ui.open_pal(id);
+}
 
 Engine::Engine(Config &cfg) : cfg(cfg) {
 	assert(!eng);
@@ -112,6 +125,7 @@ void Engine::show_error(const std::string& title, const std::string &str) {
 #if windows
 	MessageBox(NULL, str.c_str(), title.c_str(), MB_ICONERROR | MB_OK);
 #else
+	// yeah i know, sdl message boxes are ugly but linux does not have a standard way to do this that is guaranteed to work...
 	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title.c_str(), str.c_str(), NULL);
 #endif
 }

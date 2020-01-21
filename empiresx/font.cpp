@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "engine.hpp"
+
 namespace genie {
 
 Font::Font(const char* fname, int ptsize) : handle(NULL, &TTF_CloseFont), ptsize(ptsize) {
@@ -35,6 +37,8 @@ Text::Text(SimpleRender& r, Font& f, const std::string& s, SDL_Color fg) : m_tex
 	m_tex.reset(r, surf.data());
 }
 
+Text::Text(SimpleRender &r, const std::string &s, SDL_Color fg) : Text(r, eng->assets->fnt_default, s, fg) {}
+
 void Text::paint(SimpleRender& r, int x, int y) {
 	m_tex.paint(r, x, y);
 }
@@ -43,6 +47,8 @@ TextBuf::TextBuf(SimpleRender& r, Font& f, const std::string& s, SDL_Color fg) :
 	if (s.size())
 		txt.reset(new Text(r, f, s, fg));
 }
+
+TextBuf::TextBuf(SimpleRender& r, const std::string& s, SDL_Color fg) : TextBuf(r, eng->assets->fnt_default, s, fg) {}
 
 void TextBuf::append(int ch) {
 	if (!txt.get())

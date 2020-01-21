@@ -13,7 +13,6 @@ namespace genie {
 class Menu {
 protected:
 	SimpleRender& r;
-	Font& f;
 public:
 	Text title;
 
@@ -28,12 +27,11 @@ public:
 
 class Navigator final {
 	SimpleRender& r;
-	Font &f_hdr;
 	// not using stack since we want to address menus in the middle as well
 	std::vector<std::unique_ptr<Menu>> trace;
 	Menu *top;
 public:
-	Navigator(SimpleRender& r, Font& f_hdr);
+	Navigator(SimpleRender& r);
 
 	void mainloop();
 	void go_to(Menu *m);

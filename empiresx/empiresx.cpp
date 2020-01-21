@@ -97,15 +97,15 @@ class MenuLobby final : public Menu {
 	bool host;
 	std::deque<Text> chat;
 public:
-	MenuLobby(SimpleRender& r, Font& f, uint16_t port, bool host = true)
-		: Menu(r, f, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
+	MenuLobby(SimpleRender& r, uint16_t port, bool host = true)
+		: Menu(r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
 		, mp(host ? (Multiplayer*)new MultiplayerHost(port) : (Multiplayer*)new MultiplayerClient(port))
-		, line(r, f, "", SDL_Color{ 0xff, 0xff, 0 }), host(host) {}
+		, line(r, eng->assets->fnt_default, "", SDL_Color{ 0xff, 0xff, 0 }), host(host) {}
 
 	void idle() override {
 		std::lock_guard<std::mutex> lock(mp->mut);
 		while (!mp->chats.empty()) {
-			chat.emplace_front(r, f, mp->chats.front().c_str(), SDL_Color{ 0xff, 0xff, 0 });
+			chat.emplace_front(r, eng->assets->fnt_default, mp->chats.front().c_str(), SDL_Color{ 0xff, 0xff, 0 });
 			mp->chats.pop();
 		}
 	}
@@ -155,15 +155,15 @@ class MenuMultiplayer final : public Menu {
 	Text txt_host, txt_join, txt_back, txt_port, txt_address;
 	TextBuf buf_port, buf_address;
 public:
-	MenuMultiplayer(SimpleRender& r, Font& f)
-		: Menu(r, f, "Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_host(r, f, "(H) Host Game", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_join(r, f, "(J) Join Game", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_back(r, f, "(Q) Back", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_port(r, f, "Port: ", SDL_Color{ 0xff, 0xff, 0xff })
-		, buf_port(r, f, "25659", SDL_Color{ 0xff, 0xff, 0 })
-		, txt_address(r, f, "Server IP: ", SDL_Color{ 0xff, 0xff, 0xff })
-		, buf_address(r, f, "127.0.0.1", SDL_Color{ 0xff, 0xff, 0 }) {}
+	MenuMultiplayer(SimpleRender &r)
+		: Menu(r, eng->assets->fnt_title, "Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_host(r, "(H) Host Game", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_join(r, "(J) Join Game", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_back(r, "(Q) Back", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_port(r, "Port: ", SDL_Color{ 0xff, 0xff, 0xff })
+		, buf_port(r, "25659", SDL_Color{ 0xff, 0xff, 0 })
+		, txt_address(r, "Server IP: ", SDL_Color{ 0xff, 0xff, 0xff })
+		, buf_address(r, "127.0.0.1", SDL_Color{ 0xff, 0xff, 0 }) {}
 
 	void keydown(int ch) override {
 		if (ch >= '0' && ch <= '9') {
@@ -178,11 +178,11 @@ public:
 			break;
 		case 'h':
 		case 'H':
-			nav->go_to(new MenuLobby(r, f, atoi(buf_port.str().c_str()), true));
+			nav->go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), true));
 			break;
 		case 'j':
 		case 'J':
-			nav->go_to(new MenuLobby(r, f, atoi(buf_port.str().c_str()), false));
+			nav->go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), false));
 			break;
 		case 'q':
 		case 'Q':
@@ -212,11 +212,11 @@ class MenuStart final : public Menu {
 public:
 	Text txt_single, txt_multi, txt_quit;
 
-	MenuStart(SimpleRender& r, Font& f)
-		: Menu(r, f, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_single(r, f, "(S) Single Player", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_multi(r, f, "(M) Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_quit(r, f, "(Q) Quit", SDL_Color{ 0xff, 0xff, 0xff }) {}
+	MenuStart(SimpleRender& r)
+		: Menu(r, eng->assets->fnt_title, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_single(r, "(S) Single Player", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_multi(r, "(M) Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_quit(r, "(Q) Quit", SDL_Color{ 0xff, 0xff, 0xff }) {}
 
 	void keydown(int ch) override {
 		switch (ch) {
@@ -225,7 +225,7 @@ public:
 			break;
 		case 'm':
 		case 'M':
-			nav->go_to(new MenuMultiplayer(r, f));
+			nav->go_to(new MenuMultiplayer(r));
 			break;
 		case 'q':
 		case 'Q':
@@ -244,8 +244,8 @@ public:
 	}
 };
 
-Navigator::Navigator(SimpleRender& r, Font& f_hdr) : r(r), f_hdr(f_hdr), trace(), top() {
-	trace.emplace_back(top = new MenuStart(r, f_hdr));
+Navigator::Navigator(SimpleRender& r) : r(r), trace(), top() {
+	trace.emplace_back(top = new MenuStart(r));
 }
 
 void Navigator::mainloop() {
@@ -328,7 +328,7 @@ int main(int argc, char **argv)
 
 		SimpleRender& r = (SimpleRender&)w.render();
 
-		nav.reset(new Navigator(r, eng.assets->fnt_default));
+		nav.reset(new Navigator(r));
 
 		nav->mainloop();
 	} catch (const std::exception &e) {

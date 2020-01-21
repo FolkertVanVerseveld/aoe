@@ -1,6 +1,7 @@
 #pragma once
 
 #include "font.hpp"
+#include "drs.hpp"
 
 namespace genie {
 
@@ -46,18 +47,24 @@ public:
 
 	static constexpr unsigned POP_MIN = 25, POP_MAX = 200;
 
-	Config(int argc, char* argv[]);
+	Config(int argc, char *argv[]);
 };
+
+#define PAL_DEFAULT 50500
 
 class Assets final {
 public:
-	Font fnt_default;
+	Font fnt_default, fnt_title, fnt_button;
+	DRS drs_border, drs_gfx, drs_ui, drs_sfx, drs_terrain;
+	Palette pal_default;
 
 	Assets();
+
+	Palette open_pal(uint32_t id);
 };
 
 class Engine final {
-	Config& cfg;
+	Config &cfg;
 	SDL sdl;
 	IMG img;
 	MIX mix;
@@ -68,8 +75,8 @@ public:
 	Engine(Config &cfg);
 	~Engine();
 
-	void show_error(const std::string &title, const std::string& str);
-	void show_error(const std::string& str);
+	void show_error(const std::string &title, const std::string &str);
+	void show_error(const std::string &str);
 };
 
 }

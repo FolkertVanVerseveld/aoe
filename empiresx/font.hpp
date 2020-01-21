@@ -41,6 +41,7 @@ public:
 	const std::string str;
 
 	Text(SimpleRender& r, Font &f, const std::string& s, SDL_Color fg);
+	Text(SimpleRender& r, const std::string& s, SDL_Color fg);
 
 	const Texture& tex() const { return m_tex; }
 
@@ -54,6 +55,7 @@ class TextBuf final {
 	std::unique_ptr<Text> txt;
 public:
 	TextBuf(SimpleRender& r, Font& f, const std::string& s, SDL_Color fg);
+	TextBuf(SimpleRender& r, const std::string& s, SDL_Color fg);
 
 	void append(int ch);
 	void erase();
