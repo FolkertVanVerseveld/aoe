@@ -16,7 +16,7 @@ namespace genie {
 FS fs;
 
 #if windows
-Blob::Blob(const std::string& name, iofd fd, bool map) : name(name), fd(fd), map(map) {
+Blob::Blob(const std::string &name, iofd fd, bool map) : name(name), fd(fd), map(map) {
 	LARGE_INTEGER size;
 
 	if (!GetFileSizeEx(fd, &size)) {
@@ -35,8 +35,7 @@ Blob::Blob(const std::string& name, iofd fd, bool map) : name(name), fd(fd), map
 			CloseHandle(fd);
 			throw std::runtime_error(std::string("Could not read \"") + name + "\": code " + std::to_string(GetLastError()));
 		}
-	}
-	else {
+	} else {
 		DWORD read;
 
 		if (size.HighPart) {
@@ -62,7 +61,7 @@ Blob::~Blob() {
 	CloseHandle(fd);
 }
 
-iofd iofd_open(const std::string& name) {
+iofd iofd_open(const std::string &name) {
 	iofd fd;
 
 	if ((fd = CreateFile(name.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
@@ -73,7 +72,7 @@ iofd iofd_open(const std::string& name) {
 #else
 #error stub
 
-int iofd_open(const std::string& name) {
+int iofd_open(const std::string &name) {
 	return ::open(name.c_str(), O_RDONLY);
 }
 #endif
@@ -111,10 +110,10 @@ void FS::init(OS &os) {
 		throw std::runtime_error("Could not find CD-ROM");
 }
 
-Font FS::open_ttf(const std::string& name, int ptsize) {
+Font FS::open_ttf(const std::string &name, int ptsize) {
 	std::string base(name);
 	std::string path(path_cdrom + "system/fonts/" + base), orig(path);
-	TTF_Font* f;
+	TTF_Font *f;
 
 	if ((f = TTF_OpenFont(path.c_str(), ptsize)) != NULL)
 		return Font(f, ptsize);
@@ -134,7 +133,7 @@ Font FS::open_ttf(const std::string& name, int ptsize) {
 	throw std::runtime_error(std::string("Could not find font: ") + orig);
 }
 
-DRS FS::open_drs(const std::string& name, bool map) {
+DRS FS::open_drs(const std::string &name, bool map) {
 	std::string base(name);
 	std::string path(path_cdrom + "game/data/" + base), orig(path);
 	iofd fd;

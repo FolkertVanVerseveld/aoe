@@ -10,6 +10,8 @@
 
 namespace genie {
 
+typedef uint16_t res_id; /**< symbolic alias for win32 rc resource stuff */
+
 struct IO_DrsHdr final {
 	char copyright[40];
 	char version[16];
@@ -38,6 +40,20 @@ struct Palette final {
 	SDL_Color tbl[256];
 };
 
+struct Background final {
+	res_id bmp[3]; /**< background_files (e.g. 640x480, 800x600 and 1024x768 resources) */
+	res_id pal; /**< palette_file (e.g. what color palette to use for bmp */
+	res_id cursor; /**< mouse image table */
+	int shade;
+	res_id btn;
+	res_id popup;
+	int pos, col;
+	uint8_t bevel[6];
+	uint8_t text[6];
+	uint8_t focus[6];
+	uint8_t state[6];
+};
+
 class DRS final {
 	Blob blob;
 	const IO_DrsHdr *hdr;
@@ -45,9 +61,10 @@ public:
 	DRS(const std::string &name, iofd fd, bool map);
 
 	/** Try to load the specified game asset using the specified type and unique identifier */
-	bool open_item(IO_DrsItem &item, uint32_t id, uint32_t type);
+	bool open_item(IO_DrsItem &item, res_id id, uint32_t type);
 
-	Palette open_pal(uint32_t id);
+	Palette open_pal(res_id id);
+	Background open_bkg(res_id id);
 };
 
 }

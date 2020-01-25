@@ -2,6 +2,8 @@
 
 #include "render.hpp"
 #include "font.hpp"
+#include "drs.hpp"
+#include "ui.hpp"
 
 #include <memory>
 #include <string>
@@ -12,11 +14,14 @@ namespace genie {
 
 class Menu {
 protected:
-	SimpleRender& r;
+	SimpleRender &r;
 public:
 	Text title;
+	Background bkg;
+	Palette pal;
+	ui::Border border;
 
-	Menu(SimpleRender& r, Font& f, const std::string& s, SDL_Color fg);
+	Menu(res_id dlgid, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg);
 	virtual ~Menu() {}
 
 	virtual void keydown(int ch) {}
@@ -26,12 +31,12 @@ public:
 };
 
 class Navigator final {
-	SimpleRender& r;
+	SimpleRender &r;
 	// not using stack since we want to address menus in the middle as well
 	std::vector<std::unique_ptr<Menu>> trace;
 	Menu *top;
 public:
-	Navigator(SimpleRender& r);
+	Navigator(SimpleRender &r);
 
 	void mainloop();
 	void go_to(Menu *m);

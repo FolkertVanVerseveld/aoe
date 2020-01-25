@@ -11,60 +11,60 @@ struct SDL_Window;
 
 namespace genie {
 
+class Window;
+
 class Render {
 protected:
-	SDL_Window* handle;
+	Window &w;
+public:
+	SDL_Rect abs_bnds, rel_bnds;
 
-	Render(SDL_Window* handle) : handle() {}
+	Render(Window &w);
 public:
 	virtual void clear() = 0;
 	virtual void paint() = 0;
 };
 
-class SimpleRender : public Render {
+class SimpleRender final : public Render {
 	std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> handle;
 public:
-	SimpleRender(SDL_Window* handle, Uint32 flags, int index = -1);
+	SimpleRender(Window &w, Uint32 flags, int index = -1);
 
-	SDL_Renderer* canvas() { return handle.get(); }
+	SDL_Renderer *canvas() { return handle.get(); }
 
 	void clear() override {
 		SDL_RenderClear(handle.get());
 	}
 
+	void border(const SDL_Rect &pos, const SDL_Color cols[6]);
+	void line(int x0, int y0, int x1, int y1);
+
 	void color(SDL_Color c) {
 		SDL_SetRenderDrawColor(handle.get(), c.r, c.g, c.b, c.a);
 	}
 
-	void paint() override {
-		SDL_RenderPresent(handle.get());
-	}
+	void paint() override;
 };
 
-class GLRender : public Render {
+class GLRender final : public Render {
 	SDL_GLContext ctx;
 public:
-	GLRender(SDL_Window* handle, Uint32 flags);
+	GLRender(Window &w, Uint32 flags);
 	~GLRender();
 
 	SDL_GLContext context() { return ctx; }
 
-	void clear() override {
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
-
-	void paint() override {
-		SDL_GL_SwapWindow(handle);
-	}
+	void clear() override;
+	void paint() override;
 };
 
 class Surface final {
 	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> handle;
 public:
-	Surface(const char* fname);
-	Surface(SDL_Surface* handle) : handle(handle, &SDL_FreeSurface) {}
+	Surface(const char *fname);
+	Surface(SDL_Surface *handle) : handle(handle, &SDL_FreeSurface) {}
 
-	SDL_Surface* data() { return handle.get(); }
+	SDL_Surface *data() { return handle.get(); }
 };
 
 class Text;
@@ -76,18 +76,18 @@ class Texture final {
 public:
 	int width, height;
 
-	Texture(SimpleRender& r, Surface& s) : handle(NULL, &SDL_DestroyTexture) {
+	Texture(SimpleRender &r, Surface &s) : handle(NULL, &SDL_DestroyTexture) {
 		reset(r, s.data());
 	}
 
-	Texture(SimpleRender& r, SDL_Surface* s, bool close = false);
-	Texture(int width, int height, SDL_Texture* handle);
+	Texture(SimpleRender &r, SDL_Surface *s, bool close = false);
+	Texture(int width, int height, SDL_Texture *handle);
 
 	SDL_Texture* data() { return handle.get(); }
 
-	void paint(SimpleRender& r, int x, int y);
+	void paint(SimpleRender &r, int x, int y);
 private:
-	void reset(SimpleRender& r, SDL_Surface* surf);
+	void reset(SimpleRender &r, SDL_Surface *surf);
 };
 
 }

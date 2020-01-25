@@ -71,11 +71,11 @@ void TextBuf::clear() {
 	txt.reset(nullptr);
 }
 
-void TextBuf::str(const std::string& s, SDL_Color fg) {
+void TextBuf::str(const std::string &s, SDL_Color fg) {
 	txt.reset(new Text(r, f, s, fg));
 }
 
-const std::string& TextBuf::str() const {
+const std::string &TextBuf::str() const {
 	if (txt.get()) {
 		assert(txt->str.size());
 		return txt->str;

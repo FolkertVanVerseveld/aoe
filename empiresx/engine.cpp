@@ -14,6 +14,7 @@
 
 #include "fs.hpp"
 #include "os.hpp"
+#include "render.hpp"
 
 namespace genie {
 
@@ -104,6 +105,28 @@ Palette Assets::open_pal(uint32_t id) {
 	return drs_ui.open_pal(id);
 }
 
+Background Assets::open_bkg(uint32_t id) {
+	return drs_ui.open_bkg(id);
+}
+
+Window::Window(const char* title, int width, int height, Uint32 flags) : Window(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags) {}
+
+Window::Window(const char* title, int x, int y, int width, int height, Uint32 flags, Uint32 rflags) : handle(NULL, &SDL_DestroyWindow), flags(flags) {
+	SDL_Window* w;
+
+	if (!(w = SDL_CreateWindow(title, x, y, width, height, flags)))
+		throw std::runtime_error(std::string("Unable to create SDL window: ") + SDL_GetError());
+
+	handle.reset(w);
+
+	if (flags & SDL_WINDOW_OPENGL)
+		renderer.reset(new GLRender(*this, rflags));
+	else
+		renderer.reset(new SimpleRender(*this, rflags));
+}
+
+#define DEFAULT_TITLE "dummy window"
+
 Engine::Engine(Config &cfg) : cfg(cfg) {
 	assert(!eng);
 	eng = this;
@@ -111,6 +134,19 @@ Engine::Engine(Config &cfg) : cfg(cfg) {
 	try {
 		fs.init(os);
 		assets.reset(new Assets());
+
+		// figure out window dimensions
+		int width, height;
+
+		switch (cfg.scrmode) {
+		case ConfigScreenMode::MODE_640_480: width = 640; height = 480; break;
+		case ConfigScreenMode::MODE_1024_768: width = 1024; height = 768; break;
+		case ConfigScreenMode::MODE_800_600:
+		default:
+			width = 800; height = 600; break;
+		}
+
+		w.reset(new Window(DEFAULT_TITLE, width, height));
 	} catch (const std::runtime_error &e) {
 		show_error(e.what());
 		throw;

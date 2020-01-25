@@ -37,38 +37,7 @@
 #pragma comment(lib, "opengl32")
 #endif
 
-#define DEFAULT_TITLE "dummy window"
-
-// FIXME move to engine
-
 namespace genie {
-
-class Window final {
-	std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> handle;
-	std::unique_ptr<Render> renderer;
-	Uint32 flags;
-public:
-	Window(const char *title, int width, int height, Uint32 flags=SDL_WINDOW_SHOWN) : Window(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags) {}
-
-	Window(const char *title, int x, int y, int width, int height, Uint32 flags=SDL_WINDOW_SHOWN, Uint32 rflags=SDL_RENDERER_PRESENTVSYNC) : handle(NULL, &SDL_DestroyWindow), flags(flags) {
-		SDL_Window *w;
-
-		if (!(w = SDL_CreateWindow(title, x, y, width, height, flags)))
-			throw std::runtime_error(std::string("Unable to create SDL window: ") + SDL_GetError());
-
-		handle.reset(w);
-
-		if (flags & SDL_WINDOW_OPENGL) {
-			renderer.reset(new GLRender(w, rflags));
-		} else {
-			renderer.reset(new SimpleRender(w, rflags));
-		}
-	}
-
-	SDL_Window* data() { return handle.get(); }
-
-	Render &render() { return *(renderer.get()); }
-};
 
 // FIXME move to separate file
 
@@ -97,8 +66,8 @@ class MenuLobby final : public Menu {
 	bool host;
 	std::deque<Text> chat;
 public:
-	MenuLobby(SimpleRender& r, uint16_t port, bool host = true)
-		: Menu(r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
+	MenuLobby(SimpleRender &r, uint16_t port, bool host = true)
+		: Menu(50053, r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
 		, mp(host ? (Multiplayer*)new MultiplayerHost(port) : (Multiplayer*)new MultiplayerClient(port))
 		, line(r, eng->assets->fnt_default, "", SDL_Color{ 0xff, 0xff, 0 }), host(host) {}
 
@@ -144,7 +113,7 @@ public:
 
 		unsigned i = 0;
 
-		for (auto& x : chat)
+		for (auto &x : chat)
 			x.paint(r, 20, 380 - 20 * i++);
 
 		line.paint(20, 400);
@@ -156,7 +125,7 @@ class MenuMultiplayer final : public Menu {
 	TextBuf buf_port, buf_address;
 public:
 	MenuMultiplayer(SimpleRender &r)
-		: Menu(r, eng->assets->fnt_title, "Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
+		: Menu(50053, r, eng->assets->fnt_title, "Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_host(r, "(H) Host Game", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_join(r, "(J) Join Game", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_back(r, "(Q) Back", SDL_Color{ 0xff, 0xff, 0xff })
@@ -213,7 +182,7 @@ public:
 	Text txt_single, txt_multi, txt_quit;
 
 	MenuStart(SimpleRender& r)
-		: Menu(r, eng->assets->fnt_title, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
+		: Menu(50051, r, eng->assets->fnt_title, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_single(r, "(S) Single Player", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_multi(r, "(M) Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_quit(r, "(Q) Quit", SDL_Color{ 0xff, 0xff, 0xff }) {}
@@ -312,22 +281,7 @@ int main(int argc, char **argv)
 
 		Engine eng(cfg);
 
-		// figure out window dimensions
-		int width, height;
-
-		switch (cfg.scrmode) {
-		case ConfigScreenMode::MODE_640_480: width = 640; height = 480; break;
-		case ConfigScreenMode::MODE_1024_768: width = 1024; height = 768; break;
-		case ConfigScreenMode::MODE_800_600:
-		default:
-			width = 800; height = 600; break;
-		}
-
-		// run simple demo with SDL_Renderer
-		genie::Window w(DEFAULT_TITLE, width, height);
-
-		SimpleRender& r = (SimpleRender&)w.render();
-
+		SimpleRender &r = (SimpleRender&)eng.w->render();
 		nav.reset(new Navigator(r));
 
 		nav->mainloop();
