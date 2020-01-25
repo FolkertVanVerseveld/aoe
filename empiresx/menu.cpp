@@ -1,5 +1,7 @@
 #include "menu.hpp"
 
+#include <cassert>
+
 #include "engine.hpp"
 
 namespace genie {
@@ -15,6 +17,79 @@ void Menu::paint() {
 	title.paint(r, 40, 40);
 }
 
+void Menu::resize(const SDL_Rect &old_abs, const SDL_Rect &cur_abs, const SDL_Rect &old_rel, const SDL_Rect &cur_rel) {
+	border.resize(cur_rel);
+}
+
 std::unique_ptr<Navigator> nav;
+
+void Navigator::mainloop() {
+	while (1) {
+		SDL_Event ev;
+
+		while (SDL_PollEvent(&ev)) {
+			switch (ev.type) {
+			case SDL_QUIT:
+				return;
+			case SDL_KEYDOWN:
+				if (!top) {
+					quit();
+					return;
+				}
+
+				switch (ev.key.keysym.sym) {
+				case SDLK_F4:
+					break;
+				default:
+					top->keydown(ev.key.keysym.sym);
+					break;
+				}
+				break;
+			case SDL_KEYUP:
+				switch (ev.key.keysym.sym) {
+				case SDLK_F4:
+					eng->nextmode();
+					break;
+				}
+				break;
+			}
+		}
+
+		if (!top) {
+			quit();
+			return;
+		}
+		top->idle();
+
+		if (!top) {
+			quit();
+			return;
+		}
+		top->paint();
+
+		r.paint();
+	}
+}
+
+void Navigator::resize(const SDL_Rect &old_abs, const SDL_Rect &cur_abs, const SDL_Rect &old_rel, const SDL_Rect &cur_rel) {
+	for (auto &x : trace)
+		x->resize(old_abs, cur_abs, old_rel, cur_rel);
+}
+
+void Navigator::go_to(Menu *m) {
+	assert(m);
+	trace.emplace_back(top = m);
+}
+
+void Navigator::quit(unsigned count) {
+	if (!count || count >= trace.size()) {
+		trace.clear();
+		top = nullptr;
+		return;
+	}
+
+	trace.erase(trace.end() - count);
+	top = trace[trace.size() - 1].get();
+}
 
 }

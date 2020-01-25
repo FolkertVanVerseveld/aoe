@@ -6,6 +6,8 @@
 
 #include <stdexcept>
 
+#include <SDL2/SDL_surface.h>
+
 namespace genie {
 
 /** Array of resource items. */
@@ -19,7 +21,7 @@ bool IO_DrsHdr::good() const {
 	return strncmp(version, "1.00tribe", strlen("1.00tribe")) == 0;
 }
 
-DRS::DRS(const std::string& name, iofd fd, bool map) : blob(name, fd, map), hdr((IO_DrsHdr*)blob.get()) {
+DRS::DRS(const std::string &name, iofd fd, bool map) : blob(name, fd, map), hdr((IO_DrsHdr*)blob.get()) {
 	// verify header
 	if (!hdr->good())
 		throw std::runtime_error(std::string("Bad DRS file \"") + name + "\": invalid header");

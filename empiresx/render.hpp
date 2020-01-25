@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cfg.hpp"
+
 #include <memory>
 
 struct SDL_Window;
@@ -21,6 +23,8 @@ public:
 
 	Render(Window &w);
 public:
+	virtual void chmode(ConfigScreenMode mode) = 0;
+
 	virtual void clear() = 0;
 	virtual void paint() = 0;
 };
@@ -31,6 +35,8 @@ public:
 	SimpleRender(Window &w, Uint32 flags, int index = -1);
 
 	SDL_Renderer *canvas() { return handle.get(); }
+
+	void chmode(ConfigScreenMode mode) override;
 
 	void clear() override {
 		SDL_RenderClear(handle.get());
@@ -53,6 +59,8 @@ public:
 	~GLRender();
 
 	SDL_GLContext context() { return ctx; }
+
+	void chmode(ConfigScreenMode mode) override;
 
 	void clear() override;
 	void paint() override;

@@ -3,7 +3,7 @@
 namespace genie {
 namespace ui {
 
-Border::Border(const SDL_Rect &bnds, const Palette &pal, const Background &bkg) : UI(bnds) {
+Border::Border(const SDL_Rect &bnds, const Palette &pal, const Background &bkg) : DynamicUI(bnds) {
 	for (unsigned i = 0; i < 6; ++i)
 		cols[i] = pal.tbl[bkg.bevel[i]];
 }

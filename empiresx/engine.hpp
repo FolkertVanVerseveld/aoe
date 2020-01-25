@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cfg.hpp"
 #include "font.hpp"
 #include "drs.hpp"
 
@@ -31,25 +32,6 @@ class Engine;
 
 extern Engine *eng;
 
-enum class ConfigScreenMode {
-	MODE_640_480,
-	MODE_800_600,
-	MODE_1024_768,
-	MODE_FULLSCREEN,
-	MODE_CUSTOM,
-};
-
-class Config final {
-public:
-	/** Startup configuration specified by program arguments. */
-	ConfigScreenMode scrmode;
-	unsigned poplimit = 50;
-
-	static constexpr unsigned POP_MIN = 25, POP_MAX = 200;
-
-	Config(int argc, char *argv[]);
-};
-
 #define PAL_DEFAULT 50500
 
 class Assets final {
@@ -69,12 +51,14 @@ class Window final {
 	std::unique_ptr<Render> renderer;
 	Uint32 flags;
 public:
-	Window(const char *title, int width, int height, Uint32 flags = SDL_WINDOW_SHOWN);
-	Window(const char *title, int x, int y, int width, int height, Uint32 flags = SDL_WINDOW_SHOWN, Uint32 rflags = SDL_RENDERER_PRESENTVSYNC);
+	Window(const char *title, Config &cfg, Uint32 flags = SDL_WINDOW_SHOWN);
+	Window(const char *title, int x, int y, Config &cfg, Uint32 flags = SDL_WINDOW_SHOWN, Uint32 rflags = SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_Window *data() { return handle.get(); }
 
 	Render &render() { return *(renderer.get()); }
+	/** Change window resolution. */
+	void chmode(ConfigScreenMode mode);
 };
 
 class Engine final {
@@ -89,6 +73,8 @@ public:
 
 	Engine(Config &cfg);
 	~Engine();
+
+	void nextmode();
 
 	void show_error(const std::string &title, const std::string &str);
 	void show_error(const std::string &str);

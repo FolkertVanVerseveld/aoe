@@ -62,9 +62,9 @@ TTF::~TTF() {
 	TTF_Quit();
 }
 
-Engine* eng;
+Engine *eng;
 
-Config::Config(int argc, char* argv[]) : scrmode(ConfigScreenMode::MODE_800_600) {
+Config::Config(int argc, char *argv[]) : scrmode(ConfigScreenMode::MODE_800_600) {
 	unsigned n;
 
 	for (int i = 1; i < argc; ++i) {
@@ -109,10 +109,21 @@ Background Assets::open_bkg(uint32_t id) {
 	return drs_ui.open_bkg(id);
 }
 
-Window::Window(const char* title, int width, int height, Uint32 flags) : Window(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags) {}
+Window::Window(const char *title, Config &cfg, Uint32 flags) : Window(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cfg, flags) {}
 
-Window::Window(const char* title, int x, int y, int width, int height, Uint32 flags, Uint32 rflags) : handle(NULL, &SDL_DestroyWindow), flags(flags) {
-	SDL_Window* w;
+Window::Window(const char *title, int x, int y, Config &cfg, Uint32 flags, Uint32 rflags) : handle(NULL, &SDL_DestroyWindow), flags(flags) {
+	SDL_Window *w;
+
+	// figure out window dimensions
+	int width, height;
+
+	switch (cfg.scrmode) {
+	case ConfigScreenMode::MODE_640_480: width = 640; height = 480; break;
+	case ConfigScreenMode::MODE_1024_768: width = 1024; height = 768; break;
+	case ConfigScreenMode::MODE_800_600:
+	default:
+		width = 800; height = 600; break;
+	}
 
 	if (!(w = SDL_CreateWindow(title, x, y, width, height, flags)))
 		throw std::runtime_error(std::string("Unable to create SDL window: ") + SDL_GetError());
@@ -125,7 +136,22 @@ Window::Window(const char* title, int x, int y, int width, int height, Uint32 fl
 		renderer.reset(new SimpleRender(*this, rflags));
 }
 
-#define DEFAULT_TITLE "dummy window"
+void Window::chmode(ConfigScreenMode mode) {
+	int width, height;
+
+	switch (mode) {
+	case ConfigScreenMode::MODE_640_480: width = 640; height = 480; break;
+	case ConfigScreenMode::MODE_1024_768: width = 1024; height = 768; break;
+	case ConfigScreenMode::MODE_800_600:
+	default:
+		width = 800; height = 600; break;
+	}
+
+	SDL_SetWindowSize(handle.get(), width, height);
+	renderer->chmode(mode);
+}
+
+#define DEFAULT_TITLE "Age of Empires"
 
 Engine::Engine(Config &cfg) : cfg(cfg) {
 	assert(!eng);
@@ -135,18 +161,7 @@ Engine::Engine(Config &cfg) : cfg(cfg) {
 		fs.init(os);
 		assets.reset(new Assets());
 
-		// figure out window dimensions
-		int width, height;
-
-		switch (cfg.scrmode) {
-		case ConfigScreenMode::MODE_640_480: width = 640; height = 480; break;
-		case ConfigScreenMode::MODE_1024_768: width = 1024; height = 768; break;
-		case ConfigScreenMode::MODE_800_600:
-		default:
-			width = 800; height = 600; break;
-		}
-
-		w.reset(new Window(DEFAULT_TITLE, width, height));
+		w.reset(new Window(DEFAULT_TITLE, cfg));
 	} catch (const std::runtime_error &e) {
 		show_error(e.what());
 		throw;
@@ -157,7 +172,7 @@ Engine::~Engine() {
 	assert(eng);
 }
 
-void Engine::show_error(const std::string& title, const std::string &str) {
+void Engine::show_error(const std::string &title, const std::string &str) {
 #if windows
 	MessageBox(NULL, str.c_str(), title.c_str(), MB_ICONERROR | MB_OK);
 #else
@@ -166,8 +181,22 @@ void Engine::show_error(const std::string& title, const std::string &str) {
 #endif
 }
 
-void Engine::show_error(const std::string& str) {
+void Engine::show_error(const std::string &str) {
 	show_error("Error occurred", str);
+}
+
+void Engine::nextmode() {
+	ConfigScreenMode next;
+
+	switch (cfg.scrmode) {
+	case ConfigScreenMode::MODE_640_480: next = ConfigScreenMode::MODE_800_600; break;
+	case ConfigScreenMode::MODE_800_600: next = ConfigScreenMode::MODE_1024_768; break;
+	case ConfigScreenMode::MODE_1024_768:
+	default:
+		next = ConfigScreenMode::MODE_640_480; break;
+	}
+
+	w->chmode(cfg.scrmode = next);
 }
 
 }

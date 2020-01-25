@@ -24,6 +24,8 @@ public:
 	Menu(res_id dlgid, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg);
 	virtual ~Menu() {}
 
+	void resize(const SDL_Rect &old_abs, const SDL_Rect &cur_abs, const SDL_Rect &old_rel, const SDL_Rect &cur_rel);
+
 	virtual void keydown(int ch) {}
 
 	virtual void idle() {};
@@ -39,6 +41,7 @@ public:
 	Navigator(SimpleRender &r);
 
 	void mainloop();
+	void resize(const SDL_Rect &old_abs, const SDL_Rect &cur_abs, const SDL_Rect &old_rel, const SDL_Rect &cur_rel);
 	void go_to(Menu *m);
 	void quit(unsigned count = 0);
 };

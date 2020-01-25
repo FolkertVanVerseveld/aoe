@@ -213,59 +213,8 @@ public:
 	}
 };
 
-Navigator::Navigator(SimpleRender& r) : r(r), trace(), top() {
+Navigator::Navigator(SimpleRender &r) : r(r), trace(), top() {
 	trace.emplace_back(top = new MenuStart(r));
-}
-
-void Navigator::mainloop() {
-	while (1) {
-		SDL_Event ev;
-
-		while (SDL_PollEvent(&ev)) {
-			switch (ev.type) {
-			case SDL_QUIT:
-				return;
-			case SDL_KEYDOWN:
-				if (!top) {
-					quit();
-					return;
-				}
-
-				top->keydown(ev.key.keysym.sym);
-				break;
-			}
-		}
-
-		if (!top) {
-			quit();
-			return;
-		}
-		top->idle();
-
-		if (!top) {
-			quit();
-			return;
-		}
-		top->paint();
-
-		r.paint();
-	}
-}
-
-void Navigator::go_to(Menu *m) {
-	assert(m);
-	trace.emplace_back(top = m);
-}
-
-void Navigator::quit(unsigned count) {
-	if (!count || count >= trace.size()) {
-		trace.clear();
-		top = nullptr;
-		return;
-	}
-
-	trace.erase(trace.end() - count);
-	top = trace[trace.size() - 1].get();
 }
 
 }

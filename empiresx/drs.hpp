@@ -8,6 +8,8 @@
 
 #include <SDL2/SDL_pixels.h>
 
+struct SDL_Surface;
+
 namespace genie {
 
 typedef uint16_t res_id; /**< symbolic alias for win32 rc resource stuff */
@@ -28,6 +30,48 @@ struct IO_DrsItem final {
 	uint32_t size;   /**< Size in bytes. */
 };
 
+namespace io {
+
+/** Game specific image file format header. */
+struct SlpHdr final {
+	char version[4];
+	int32_t frame_count;
+	char comment[24];
+};
+
+/** Game specific image file format subimage properties. */
+struct SlpFrameInfo final {
+	uint32_t cmd_table_offset;
+	uint32_t outline_table_offset;
+	uint32_t palette_offset;
+	uint32_t properties;
+	int32_t width;
+	int32_t height;
+	int32_t hotspot_x;
+	int32_t hotspot_y;
+};
+
+/** Game specific image file format subimage boundaries. */
+struct SlpFrameRowEdge final {
+	uint16_t left_space;
+	uint16_t right_space;
+};
+
+}
+
+/** Raw game specific image file wrapper. */
+struct Slp final {
+	io::SlpHdr *hdr;
+	io::SlpFrameInfo *info;
+
+	Slp() : hdr(NULL), info(NULL) {}
+
+	Slp(void *data) {
+		hdr = (io::SlpHdr*)data;
+		info = (io::SlpFrameInfo*)((char*)data + sizeof(io::SlpHdr));
+	}
+};
+
 enum DrsType {
 	binary = 0x62696e61,
 	shape  = 0x73687020,
@@ -36,6 +80,7 @@ enum DrsType {
 };
 
 /** Graphics indexed color lookup table. */
+// XXX consider refactoring to SDL_Palette
 struct Palette final {
 	SDL_Color tbl[256];
 };

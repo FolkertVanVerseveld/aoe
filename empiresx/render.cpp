@@ -1,5 +1,7 @@
 #include "render.hpp"
 
+#include <cassert>
+
 #include <stdexcept>
 #include <string>
 
@@ -8,6 +10,7 @@
 #include <SDL2/SDL_image.h>
 
 #include "engine.hpp"
+#include "menu.hpp"
 
 namespace genie {
 
@@ -29,6 +32,23 @@ SimpleRender::SimpleRender(Window &w, Uint32 flags, int index) : Render(w), hand
 		throw std::runtime_error(std::string("Could not initialize SDL renderer: ") + SDL_GetError());
 
 	this->handle.reset(r);
+}
+
+void SimpleRender::chmode(ConfigScreenMode mode) {
+	(void)mode;
+
+	SDL_Window *win = w.data();
+	SDL_Rect old_abs = abs_bnds, old_rel = rel_bnds;
+
+	SDL_GetWindowPosition(win, &abs_bnds.x, &abs_bnds.y);
+	SDL_GetWindowSize(win, &abs_bnds.w, &abs_bnds.h);
+
+	// TODO keep aspect ratio
+	rel_bnds.x = rel_bnds.y = 0;
+	rel_bnds.w = abs_bnds.w;
+	rel_bnds.h = abs_bnds.h;
+
+	nav->resize(old_abs, abs_bnds, old_rel, rel_bnds);
 }
 
 void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6]) {
@@ -79,6 +99,10 @@ GLRender::GLRender(Window &w, Uint32 flags) : Render(w) {
 
 GLRender::~GLRender() {
 	SDL_GL_DeleteContext(ctx);
+}
+
+void GLRender::chmode(ConfigScreenMode mode) {
+	assert("stub" == 0);
 }
 
 void GLRender::clear() {
