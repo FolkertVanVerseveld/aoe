@@ -147,4 +147,22 @@ void Texture::paint(SimpleRender &r, int x, int y) {
 	SDL_RenderCopy(r.canvas(), data(), NULL, &dst);
 }
 
+#ifndef min(a, b)
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+void Texture::paint(SimpleRender &r, int x, int y, int w, int h, int sx, int sy) {
+	SDL_Rect src, dest;
+
+	for (src.y = sy, dest.y = y; dest.y < y + h; src.y = 0, dest.y += dest.h) {
+		src.h = dest.h = min(height, y + h - dest.y);
+
+		for (src.x = sx, dest.x = x; dest.x < x + w; src.x = 0, dest.x += dest.w) {
+			src.w = dest.w = min(width, x + w - dest.x);
+
+			SDL_RenderCopy(r.canvas(), data(), &src, &dest);
+		}
+	}
+}
+
 }

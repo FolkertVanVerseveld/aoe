@@ -73,13 +73,12 @@ public:
 	Surface(SDL_Surface *handle) : handle(handle, &SDL_FreeSurface) {}
 
 	SDL_Surface *data() { return handle.get(); }
+	void reset(SDL_Surface *surf) { handle.reset(surf); }
 };
 
 class Text;
 
 class Texture final {
-	friend Text;
-
 	std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)> handle;
 public:
 	int width, height;
@@ -91,10 +90,10 @@ public:
 	Texture(SimpleRender &r, SDL_Surface *s, bool close = false);
 	Texture(int width, int height, SDL_Texture *handle);
 
-	SDL_Texture* data() { return handle.get(); }
+	SDL_Texture *data() { return handle.get(); }
 
 	void paint(SimpleRender &r, int x, int y);
-private:
+	void paint(SimpleRender &r, int x, int y, int w, int h, int sx=0, int sy=0);
 	void reset(SimpleRender &r, SDL_Surface *surf);
 };
 
