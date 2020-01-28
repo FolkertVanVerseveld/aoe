@@ -6,11 +6,27 @@
 
 namespace genie {
 
-Menu::Menu(res_id dlgid, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg) : r(r), title(r, f, s, fg), bkg(eng->assets->open_bkg(dlgid)), pal(eng->assets->open_pal(bkg.pal)), border(r.rel_bnds, pal, bkg) {}
+Menu::Menu(res_id dlgid, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg)
+	: r(r), title(r, f, s, fg)
+	, bkg(eng->assets->open_bkg(dlgid)), pal(eng->assets->open_pal(bkg.pal))
+	, border(r.rel_bnds, pal, bkg)
+	, anim_bkg{eng->assets->open_slp(pal, bkg.bmp[0]), eng->assets->open_slp(pal, bkg.bmp[1]), eng->assets->open_slp(pal, bkg.bmp[2])} {}
 
 void Menu::paint() {
 	r.color({0, 0, 0, SDL_ALPHA_OPAQUE});
 	r.clear();
+
+	switch (r.rel_bnds.w) {
+	case 640:
+		anim_bkg[0].subimage(0).draw(r, 0, 0);
+		break;
+	case 800:
+		anim_bkg[1].subimage(0).draw(r, 0, 0);
+		break;
+	default:
+		anim_bkg[2].subimage(0).draw(r, 0, 0);
+		break;
+	}
 
 	border.paint(r);
 

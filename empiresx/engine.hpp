@@ -42,8 +42,9 @@ public:
 
 	Assets();
 
-	Palette open_pal(uint32_t id);
-	Background open_bkg(uint32_t id);
+	Palette open_pal(res_id id);
+	Background open_bkg(res_id id);
+	Animation open_slp(const Palette &pal, res_id id);
 };
 
 class Window final {

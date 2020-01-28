@@ -362,6 +362,38 @@ void Image::draw(SimpleRender &r, int x, int y, int w, int h) {
 	texture.paint(r, x - hotspot_x, y - hotspot_y, w, h);
 }
 
+Animation::Animation(SimpleRender &r, const Palette &pal, const Slp &slp) : slp(slp), images(), image_count(0), dynamic(false) {
+	if (memcmp(slp.hdr->version, "2.0N", 4))
+		throw std::runtime_error("Could not load animation: bad header");
+
+	images.reset(new Image[image_count = slp.hdr->frame_count]);
+
+	for (size_t i = 0, n = slp.hdr->frame_count; i < n; ++i) {
+		const io::SlpFrameInfo *frame = &slp.info[i];
+
+		if (images[i].load(r, pal, slp)) {
+			dynamic = true;
+			break;
+		}
+	}
+
+	// use custom parsing if dynamic
+	if (!dynamic)
+		return;
+
+	images.reset(new Image[slp.hdr->frame_count * io::max_players]);
+
+	for (unsigned p = 0; p < io::max_players; ++p)
+		for (size_t i = 0, n = slp.hdr->frame_count; i < n; ++i) {
+			const io::SlpFrameInfo *info = &slp.info[i];
+			images[p * n + i].load(r, pal, slp, p);
+		}
+}
+
+Image &Animation::subimage(unsigned index, unsigned player) {
+	return images[player * image_count + index];
+}
+
 Palette DRS::open_pal(res_id id) {
 	io::DrsItem item;
 
@@ -387,7 +419,7 @@ Palette DRS::open_pal(res_id id) {
 		pal.tbl[i].r = rgb[0];
 		pal.tbl[i].g = rgb[1];
 		pal.tbl[i].b = rgb[2];
-		pal.tbl[i].a = 255;
+		pal.tbl[i].a = SDL_ALPHA_OPAQUE;
 
 		ptr += nl - ptr + 1;
 	}
@@ -485,6 +517,17 @@ Background DRS::open_bkg(res_id id) {
 	}
 
 	return bkg;
+}
+
+bool DRS::open_slp(Slp &slp, res_id id) {
+	io::DrsItem item;
+
+	if (!open_item(item, id, DrsType::slp))
+		return false;
+
+
+	slp.reset((char*)hdr + item.offset);
+	return true;
 }
 
 }

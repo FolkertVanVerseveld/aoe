@@ -21,6 +21,8 @@ typedef uint16_t res_id; /**< symbolic alias for win32 rc resource stuff */
 
 namespace io {
 
+static constexpr unsigned max_players = 9; // 8 + gaia
+
 struct DrsHdr final {
 	char copyright[40];
 	char version[16];
@@ -73,7 +75,9 @@ struct Slp final {
 
 	Slp() : hdr(NULL), info(NULL) {}
 
-	Slp(void *data) {
+	Slp(void *data) { reset(data); }
+	
+	void reset(void *data) {
 		hdr = (io::SlpHdr*)data;
 		info = (io::SlpFrameInfo*)((char*)data + sizeof(io::SlpHdr));
 	}
@@ -97,6 +101,18 @@ public:
 
 	bool load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned player=0);
 	void draw(SimpleRender &r, int x, int y, int w=0, int h=0);
+};
+
+class Animation final {
+	const Slp slp;
+public:
+	std::unique_ptr<Image[]> images;
+	unsigned image_count;
+	bool dynamic;
+
+	Animation(SimpleRender &r, const Palette &pal, const Slp &slp);
+
+	Image &subimage(unsigned index, unsigned player=0);
 };
 
 enum DrsType {
@@ -131,6 +147,7 @@ public:
 
 	Palette open_pal(res_id id);
 	Background open_bkg(res_id id);
+	bool open_slp(Slp &slp, res_id id);
 };
 
 }

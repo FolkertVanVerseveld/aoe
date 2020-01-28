@@ -101,12 +101,21 @@ Assets::Assets()
 	, drs_terrain(fs.open_drs("Terrain.drs"))
 	, pal_default(open_pal(PAL_DEFAULT)) {}
 
-Palette Assets::open_pal(uint32_t id) {
+Palette Assets::open_pal(res_id id) {
 	return drs_ui.open_pal(id);
 }
 
-Background Assets::open_bkg(uint32_t id) {
+Background Assets::open_bkg(res_id id) {
 	return drs_ui.open_bkg(id);
+}
+
+Animation Assets::open_slp(const Palette &pal, res_id id) {
+	Slp slp;
+
+	if (drs_border.open_slp(slp, id) || drs_gfx.open_slp(slp, id) || drs_ui.open_slp(slp, id) || drs_terrain.open_slp(slp, id))
+		return Animation((SimpleRender&)eng->w->render(), pal, slp);
+
+	throw std::runtime_error(std::string("Could not load animation ") + std::to_string(id) + ": bad id");
 }
 
 Window::Window(const char *title, Config &cfg, Uint32 flags) : Window(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cfg, flags) {}

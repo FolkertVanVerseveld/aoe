@@ -20,6 +20,7 @@ public:
 	Background bkg;
 	Palette pal;
 	ui::Border border;
+	Animation anim_bkg[3];
 
 	Menu(res_id dlgid, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg);
 	virtual ~Menu() {}

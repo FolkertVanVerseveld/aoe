@@ -181,7 +181,7 @@ class MenuStart final : public Menu {
 public:
 	Text txt_single, txt_multi, txt_quit;
 
-	MenuStart(SimpleRender& r)
+	MenuStart(SimpleRender &r)
 		: Menu(50051, r, eng->assets->fnt_title, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_single(r, "(S) Single Player", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_multi(r, "(M) Multi Player", SDL_Color{ 0xff, 0xff, 0xff })

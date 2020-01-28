@@ -154,6 +154,9 @@ void Texture::paint(SimpleRender &r, int x, int y) {
 void Texture::paint(SimpleRender &r, int x, int y, int w, int h, int sx, int sy) {
 	SDL_Rect src, dest;
 
+	if (!w) w = width;
+	if (!h) h = height;
+
 	for (src.y = sy, dest.y = y; dest.y < y + h; src.y = 0, dest.y += dest.h) {
 		src.h = dest.h = min(height, y + h - dest.y);
 
