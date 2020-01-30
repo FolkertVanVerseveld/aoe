@@ -122,7 +122,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 		if (poke_peers) {
 			poke_peers = false;
 
-			for (auto& x : peers)
+			for (auto &x : peers)
 				x.events |= POLLWRNORM;
 		}
 
@@ -182,8 +182,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 					removepeer(cb, ev->fd);
 					continue;
 				}
-			}
-			else if (ev->revents & POLLWRNORM) {
+			} else if (ev->revents & POLLWRNORM) {
 				auto search = wbuf.find(ev->fd);
 				assert(search != wbuf.end());
 
@@ -203,8 +202,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 				// disable write events if nothing to write (note that events are level triggered)
 				if (search->second.empty())
 					ev->events &= ~POLLWRNORM;
-			}
-			else if (ev->revents) {
+			} else if (ev->revents) {
 				printf("drop event %u: bogus state %d\n", i, ev->revents);
 				--events;
 				removepeer(cb, ev->fd);
@@ -521,7 +519,7 @@ std::string Command::text() {
 	return data.text;
 }
 
-Command Command::text(const std::string& str) {
+Command Command::text(const std::string &str) {
 	Command cmd;
 
 	cmd.length = cmd_sizes[cmd.type = CmdType::TEXT];
@@ -571,11 +569,11 @@ void Socket::block(bool enabled) {
 	sock_block(fd, enabled);
 }
 
-int Socket::send(const void* buf, unsigned len) {
+int Socket::send(const void *buf, unsigned len) {
 	return ::send(fd, (const char*)buf, len, 0);
 }
 
-int Socket::recv(void* buf, unsigned len) {
+int Socket::recv(void *buf, unsigned len) {
 	return ::recv(fd, (char*)buf, len, 0);
 }
 
@@ -595,7 +593,7 @@ void Socket::sendFully(const void *buf, unsigned len) {
 	putchar('\n');
 }
 
-void Socket::recvFully(void* buf, unsigned len) {
+void Socket::recvFully(void *buf, unsigned len) {
 	for (unsigned got = 0, rem = len; rem;) {
 		int in;
 
@@ -607,7 +605,7 @@ void Socket::recvFully(void* buf, unsigned len) {
 	}
 }
 
-int Socket::recv(Command& cmd) {
+int Socket::recv(Command &cmd) {
 	try {
 		recvFully((void*)&cmd, CMD_HDRSZ);
 
@@ -625,7 +623,7 @@ int Socket::recv(Command& cmd) {
 	}
 }
 
-void Socket::send(Command& cmd, bool net_order) {
+void Socket::send(Command &cmd, bool net_order) {
 	if (!net_order)
 		cmd.hton();
 	sendFully((const void*)&cmd, CMD_HDRSZ + cmd_sizes[be16toh(cmd.type)]);
@@ -668,7 +666,7 @@ ServerSocket::~ServerSocket() {
 
 CmdBuf::CmdBuf(sockfd fd) : size(0), transmitted(0), endpoint(fd) {}
 
-CmdBuf::CmdBuf(sockfd fd, const Command& cmd, bool net_order) : size(0), transmitted(0), endpoint(fd), cmd(cmd) {
+CmdBuf::CmdBuf(sockfd fd, const Command &cmd, bool net_order) : size(0), transmitted(0), endpoint(fd), cmd(cmd) {
 	if (!net_order)
 		this->cmd.hton();
 
@@ -767,7 +765,7 @@ SSErr CmdBuf::write() {
 	return transmitted == size ? SSErr::OK : SSErr::PENDING;
 }
 
-SSErr ServerSocket::push(sockfd fd, const Command& cmd, bool net_order) {
+SSErr ServerSocket::push(sockfd fd, const Command &cmd, bool net_order) {
 	auto search = wbuf.find(fd);
 	if (search == wbuf.end())
 		return SSErr::BADFD;
@@ -778,11 +776,11 @@ SSErr ServerSocket::push(sockfd fd, const Command& cmd, bool net_order) {
 	return SSErr::OK;
 }
 
-void ServerSocket::broadcast(Command& cmd, bool net_order) {
+void ServerSocket::broadcast(Command &cmd, bool net_order) {
 	if (!net_order)
 		cmd.hton();
 
-	for (auto& x : peers)
+	for (auto &x : peers)
 		if (push(pollfd(x), cmd, true) != SSErr::OK)
 			throw std::runtime_error(std::string("broadcast failed for fd ") + std::to_string(pollfd(x)));
 }

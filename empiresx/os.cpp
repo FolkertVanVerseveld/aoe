@@ -72,6 +72,7 @@ OS::OS() : compname("DinnurBlaster"), username(getpwuid(getuid())->pw_name) {
 
 	buf[count - 1] = '\0';
 	this->compname = buf;
+	delete[] buf;
 }
 #else
 #error stub
