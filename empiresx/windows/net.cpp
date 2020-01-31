@@ -1,6 +1,6 @@
 #include "../net.hpp"
 
-#include "os_macros.hpp"
+#include "../os_macros.hpp"
 
 #include <cassert>
 #include <cstring>
@@ -64,8 +64,6 @@ void Socket::close() {
 
 ServerSocket::ServerSocket(uint16_t port)
 	: sock(port)
-	, efd(-1)
-	, peers()
 	, peers()
 	, keep()
 	, poke_peers(false)

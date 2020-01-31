@@ -19,7 +19,7 @@
 
 namespace genie {
 
-extern void sock_block(int fd, bool enabled);
+extern void sock_block(sockfd fd, bool enabled);
 
 static inline void dump(const void *buf, unsigned len) {
 	for (unsigned i = 0; i < len; ++i)
@@ -60,7 +60,9 @@ Command Command::text(const std::string &str) {
 	return cmd;
 }
 
-Socket::Socket(uint16_t port) : Socket(), port(port) {}
+Socket::Socket(uint16_t port) : Socket() {
+	this->port = port;
+}
 
 void Socket::reuse(bool enabled) {
 	int val = enabled;
