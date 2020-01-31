@@ -4,6 +4,9 @@
 // be "dual licensed" under the BSD, MIT and Apache licenses, if you want to. This code is trivial anyway. Consider it
 // an example on how to get the endian conversion functions on different platforms.
 
+// Addenda et corrigenda:
+//   Folkert van Verseveld 2020-01-15 08:57:45 +0100    purge bogus windows include headers
+
 #ifndef PORTABLE_ENDIAN_H__
 #define PORTABLE_ENDIAN_H__
 
@@ -13,7 +16,7 @@
 
 #endif
 
-#if defined(__linux__) || defined(__CYGWIN__)
+#if defined(__linux__) || defined(__CYGWIN__) || defined(linux)
 
 #	include <endian.h>
 

@@ -21,7 +21,7 @@
 typedef SOCKET sockfd;
 typedef WSAPOLLFD pollev;
 
-static inline SOCKET pollfd(const pollev& ev) { return ev.fd; }
+static inline SOCKET pollfd(const pollev &ev) { return ev.fd; }
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -30,10 +30,12 @@ static inline SOCKET pollfd(const pollev& ev) { return ev.fd; }
 typedef int sockfd;
 typedef epoll_event pollev;
 
-static inline int pollfd(const epoll_event& ev) { return ev.data.fd; }
+static inline int pollfd(const epoll_event &ev) { return ev.data.fd; }
 #endif
 
 namespace genie {
+
+int net_get_error();
 
 class Net final {
 public:
@@ -130,23 +132,23 @@ public:
 
 	void close();
 
-	int send(const void* buf, unsigned size);
-	int recv(void* buf, unsigned size);
+	int send(const void *buf, unsigned size);
+	int recv(void *buf, unsigned size);
 
 	/**
 	 * Block until all data has been fully send.
 	 * It is UB to call this if the socket is in non-blocking mode.
 	 */
-	void sendFully(const void* buf, unsigned len);
-	void recvFully(void* buf, unsigned len);
+	void sendFully(const void *buf, unsigned len);
+	void recvFully(void *buf, unsigned len);
 
 	template<typename T> int send(const T& t) {
 		return send((const void*)&t, sizeof t);
 	}
 
-	int recv(Command& cmd);
+	int recv(Command &cmd);
 
-	void send(Command& cmd, bool net_order=false);
+	void send(Command &cmd, bool net_order=false);
 };
 
 // XXX use locking to make it thread-safe
@@ -171,7 +173,7 @@ public:
 	void close();
 
 	SSErr push(sockfd fd, const Command& cmd, bool net_order=false);
-	void broadcast(Command& cmd, bool net_order=false);
+	void broadcast(Command &cmd, bool net_order=false);
 
 private:
 	void removepeer(ServerCallback&, sockfd fd);

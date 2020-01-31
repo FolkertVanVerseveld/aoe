@@ -11,6 +11,10 @@
 #include <string>
 #include <memory>
 
+#if linux
+#include <fcntl.h>
+#endif
+
 namespace genie {
 
 FS fs;
@@ -70,8 +74,6 @@ iofd iofd_open(const std::string &name) {
 		return fd;
 }
 #else
-#error stub
-
 int iofd_open(const std::string &name) {
 	return ::open(name.c_str(), O_RDONLY);
 }
@@ -138,19 +140,19 @@ DRS FS::open_drs(const std::string &name, bool map) {
 	std::string path(path_cdrom + "game/data/" + base), orig(path);
 	iofd fd;
 
-	if ((fd = iofd_open(path)) != NULL)
+	if ((fd = iofd_open(path)) != 0)
 		return DRS(path, fd, map);
 
 	tolower(base);
 	path = path_cdrom + "game/data/" + base;
 
-	if ((fd = iofd_open(path)) != NULL)
+	if ((fd = iofd_open(path)) != 0)
 		return DRS(path, fd, map);
 
 	toupper(base);
 	path = path_cdrom + "GAME/DATA/" + base;
 
-	if ((fd = iofd_open(path)) != NULL)
+	if ((fd = iofd_open(path)) != 0)
 		return DRS(path, fd, map);
 
 	throw std::runtime_error(std::string("Could not find DRS: ") + orig);

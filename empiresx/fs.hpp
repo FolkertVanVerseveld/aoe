@@ -35,7 +35,7 @@ class Blob final {
 #if windows
 	HANDLE fm;
 #else
-	stat st;
+	struct stat st;
 #endif
 	void* data;
 	size_t size;

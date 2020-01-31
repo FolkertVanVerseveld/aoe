@@ -62,8 +62,9 @@ void MultiplayerHost::shutdown() {
 	puts("host shutdown");
 }
 
-void MultiplayerHost::chat(const std::string& str) {
-	sock.broadcast(Command::text(str));
+void MultiplayerHost::chat(const std::string &str) {
+	Command txt = Command::text(str);
+	sock.broadcast(txt);
 	{
 		std::lock_guard<std::mutex> lock(mut);
 		chats.emplace(str);
@@ -143,7 +144,8 @@ void MultiplayerClient::eventloop() {
 }
 
 void MultiplayerClient::chat(const std::string& str) {
-	sock.send(Command::text(str), false);
+	Command cmd = Command::text(str);
+	sock.send(cmd, false);
 }
 
 }
