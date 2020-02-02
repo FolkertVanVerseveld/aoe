@@ -122,6 +122,11 @@ enum DrsType {
 	wave   = 0x77617620,
 };
 
+enum class MenuId {
+	start = 50051, // main is defined by SDL...
+	multiplayer = 50053,
+};
+
 struct Background final {
 	res_id bmp[3]; /**< background_files (e.g. 640x480, 800x600 and 1024x768 resources) */
 	res_id pal; /**< palette_file (e.g. what color palette to use for bmp */

@@ -67,7 +67,7 @@ class MenuLobby final : public Menu {
 	std::deque<Text> chat;
 public:
 	MenuLobby(SimpleRender &r, uint16_t port, bool host = true)
-		: Menu(50053, r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
+		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
 		, mp(host ? (Multiplayer*)new MultiplayerHost(port) : (Multiplayer*)new MultiplayerClient(port))
 		, line(r, eng->assets->fnt_default, "", SDL_Color{ 0xff, 0xff, 0 }), host(host) {}
 
@@ -125,7 +125,7 @@ class MenuMultiplayer final : public Menu {
 	TextBuf buf_port, buf_address;
 public:
 	MenuMultiplayer(SimpleRender &r)
-		: Menu(50053, r, eng->assets->fnt_title, "Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
+		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, "Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_host(r, "(H) Host Game", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_join(r, "(J) Join Game", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_back(r, "(Q) Back", SDL_Color{ 0xff, 0xff, 0xff })
@@ -182,7 +182,7 @@ public:
 	Text txt_single, txt_multi, txt_quit;
 
 	MenuStart(SimpleRender &r)
-		: Menu(50051, r, eng->assets->fnt_title, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
+		: Menu(MenuId::start, r, eng->assets->fnt_title, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_single(r, "(S) Single Player", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_multi(r, "(M) Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_quit(r, "(Q) Quit", SDL_Color{ 0xff, 0xff, 0xff }) {}

@@ -22,7 +22,7 @@ public:
 	ui::Border border;
 	Animation anim_bkg[3];
 
-	Menu(res_id dlgid, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg);
+	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg);
 	virtual ~Menu() {}
 
 	void resize(const SDL_Rect &old_abs, const SDL_Rect &cur_abs, const SDL_Rect &old_rel, const SDL_Rect &cur_rel);

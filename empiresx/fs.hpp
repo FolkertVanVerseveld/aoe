@@ -25,6 +25,7 @@ typedef int iofd;
 class FS;
 class Font;
 class DRS;
+class PE;
 
 extern FS fs;
 
@@ -37,15 +38,15 @@ class Blob final {
 #else
 	struct stat st;
 #endif
-	void* data;
+	void *data;
 	size_t size;
 public:
 	const bool map;
 
-	Blob(const std::string& name, iofd fd, bool map);
+	Blob(const std::string &name, iofd fd, bool map);
 	~Blob();
 
-	const void* get() const { return data; }
+	const void *get() const { return data; }
 	size_t length() const { return size; }
 };
 
@@ -64,6 +65,8 @@ public:
 	Font open_ttf(const std::string &name, int ptsize);
 	/** Open data resources set using same naming technique as above. */
 	DRS open_drs(const std::string &name, bool map=true);
+
+	PE open_pe(const std::string &name);
 };
 
 }

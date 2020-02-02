@@ -6,9 +6,9 @@
 
 namespace genie {
 
-Menu::Menu(res_id dlgid, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg)
+Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg)
 	: r(r), title(r, f, s, fg)
-	, bkg(eng->assets->open_bkg(dlgid)), pal(eng->assets->open_pal(bkg.pal))
+	, bkg(eng->assets->open_bkg((res_id)id)), pal(eng->assets->open_pal(bkg.pal))
 	, border(r.rel_bnds, pal, bkg)
 	, anim_bkg{eng->assets->open_slp(pal, bkg.bmp[0]), eng->assets->open_slp(pal, bkg.bmp[1]), eng->assets->open_slp(pal, bkg.bmp[2])} {}
 
