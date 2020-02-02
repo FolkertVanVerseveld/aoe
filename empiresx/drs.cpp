@@ -362,6 +362,18 @@ void Image::draw(SimpleRender &r, int x, int y, int w, int h) {
 	texture.paint(r, x - hotspot_x, y - hotspot_y, w, h);
 }
 
+void Image::draw(SimpleRender &r, const SDL_Rect &bnds) {
+	draw(r, bnds.x, bnds.y, bnds.w, bnds.h);
+}
+
+void Image::draw_stretch(SimpleRender &r, const SDL_Rect &to) {
+	texture.paint_stretch(r, to);
+}
+
+void Image::draw_stretch(SimpleRender &r, const SDL_Rect &from, const SDL_Rect &to) {
+	texture.paint_stretch(r, from, to);
+}
+
 Animation::Animation(SimpleRender &r, const Palette &pal, const Slp &slp) : slp(slp), images(), image_count(0), dynamic(false) {
 	if (memcmp(slp.hdr->version, "2.0N", 4))
 		throw std::runtime_error("Could not load animation: bad header");
@@ -427,13 +439,13 @@ Palette DRS::open_pal(res_id id) {
 	return pal;
 }
 
-Background DRS::open_bkg(res_id id) {
+BackgroundSettings DRS::open_bkg(res_id id) {
 	io::DrsItem item;
 
 	if (!open_item(item, id, DrsType::binary))
 		throw std::runtime_error(std::string("Could not load background ") + std::to_string(id));
 
-	Background bkg = { 0 };
+	BackgroundSettings bkg = { 0 };
 
 	char bkg_name1[16], bkg_name2[16], bkg_name3[16];
 	int bkg_id[3];

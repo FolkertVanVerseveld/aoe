@@ -101,6 +101,9 @@ public:
 
 	bool load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned player=0);
 	void draw(SimpleRender &r, int x, int y, int w=0, int h=0);
+	void draw(SimpleRender &r, const SDL_Rect &bnds);
+	void draw_stretch(SimpleRender &r, const SDL_Rect &to);
+	void draw_stretch(SimpleRender &r, const SDL_Rect &from, const SDL_Rect &to);
 };
 
 class Animation final {
@@ -123,11 +126,18 @@ enum DrsType {
 };
 
 enum class MenuId {
+	score = 50061,
+	mission = 50060,
+	lost = 50058,
+	won = 50057,
+	selectnav = 50055,
 	start = 50051, // main is defined by SDL...
+	singleplayer = 50052,
 	multiplayer = 50053,
+	editor = 50054,
 };
 
-struct Background final {
+struct BackgroundSettings final {
 	res_id bmp[3]; /**< background_files (e.g. 640x480, 800x600 and 1024x768 resources) */
 	res_id pal; /**< palette_file (e.g. what color palette to use for bmp */
 	res_id cursor; /**< mouse image table */
@@ -151,7 +161,7 @@ public:
 	bool open_item(io::DrsItem &item, res_id id, uint32_t type);
 
 	Palette open_pal(res_id id);
-	Background open_bkg(res_id id);
+	BackgroundSettings open_bkg(res_id id);
 	bool open_slp(Slp &slp, res_id id);
 };
 

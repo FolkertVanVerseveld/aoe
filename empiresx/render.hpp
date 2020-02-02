@@ -15,11 +15,27 @@ namespace genie {
 
 class Window;
 
+/** Legacy dimensions for drs graphics tied to the 4:3 aspect ratio. */
+const SDL_Rect lgy_dim[3] = {
+	{0, 0, 640, 480},
+	{0, 0, 800, 600},
+	{0, 0, 1024, 768},
+};
+
+struct Dimensions final {
+	SDL_Rect abs_bnds; /**< Absolute dimensions relative to the attached display. */
+	SDL_Rect rel_bnds; /**< Relative dimensions within the attached display. */
+	SDL_Rect lgy_bnds; /**< Legacy dimensions for graphics tied to the 4:3 aspect ratio. */
+	SDL_Rect lgy_orig;
+
+	void resize(const SDL_Rect &abs_bnds);
+};
+
 class Render {
 protected:
 	Window &w;
 public:
-	SDL_Rect abs_bnds, rel_bnds;
+	Dimensions dim;
 
 	Render(Window &w);
 public:
@@ -32,9 +48,13 @@ public:
 class SimpleRender final : public Render {
 	std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> handle;
 public:
+	SDL_Rect offset;
+
 	SimpleRender(Window &w, Uint32 flags, int index = -1);
 
 	SDL_Renderer *canvas() { return handle.get(); }
+
+	void legvp();
 
 	void chmode(ConfigScreenMode mode) override;
 
@@ -94,6 +114,8 @@ public:
 
 	void paint(SimpleRender &r, int x, int y);
 	void paint(SimpleRender &r, int x, int y, int w, int h, int sx=0, int sy=0);
+	void paint_stretch(SimpleRender &r, const SDL_Rect &to);
+	void paint_stretch(SimpleRender &r, const SDL_Rect &from, const SDL_Rect &to);
 	void reset(SimpleRender &r, SDL_Surface *surf);
 };
 

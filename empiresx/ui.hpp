@@ -35,7 +35,7 @@ class Border final : public DynamicUI {
 public:
 	SDL_Color cols[6];
 
-	Border(const SDL_Rect &bnds, const Palette &pal, const Background &bkg);
+	Border(const SDL_Rect &bnds, const Palette &pal, const BackgroundSettings &bkg);
 
 	void paint(SimpleRender &r) override;
 };

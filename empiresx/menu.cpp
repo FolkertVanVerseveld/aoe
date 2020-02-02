@@ -6,35 +6,45 @@
 
 namespace genie {
 
-Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg)
+Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced)
 	: r(r), title(r, f, s, fg)
 	, bkg(eng->assets->open_bkg((res_id)id)), pal(eng->assets->open_pal(bkg.pal))
-	, border(r.rel_bnds, pal, bkg)
-	, anim_bkg{eng->assets->open_slp(pal, bkg.bmp[0]), eng->assets->open_slp(pal, bkg.bmp[1]), eng->assets->open_slp(pal, bkg.bmp[2])} {}
+	, border(r.dim.rel_bnds, pal, bkg)
+	, anim_bkg{eng->assets->open_slp(pal, bkg.bmp[0]), eng->assets->open_slp(pal, bkg.bmp[1]), eng->assets->open_slp(pal, bkg.bmp[2])}
+	, enhanced(enhanced)
+{
+	resize(r.dim, r.dim);
+}
 
 void Menu::paint() {
 	r.color({0, 0, 0, SDL_ALPHA_OPAQUE});
 	r.clear();
 
-	switch (r.rel_bnds.w) {
-	case 640:
-		anim_bkg[0].subimage(0).draw(r, 0, 0);
-		break;
-	case 800:
-		anim_bkg[1].subimage(0).draw(r, 0, 0);
-		break;
-	default:
-		anim_bkg[2].subimage(0).draw(r, 0, 0);
-		break;
+	int index = 0;
+	SDL_Rect to(enhanced ? r.dim.rel_bnds : r.dim.lgy_orig);
+
+	if (enhanced) {
+		if (r.dim.rel_bnds.w > lgy_dim[1].w)
+			index = 2;
+		else if (r.dim.rel_bnds.w > lgy_dim[0].w)
+			index = 1;
+	} else {
+		r.legvp();
+
+		if (r.dim.lgy_bnds.w > lgy_dim[1].w)
+			index = 2;
+		else if (r.dim.lgy_bnds.w > lgy_dim[0].w)
+			index = 1;
 	}
 
-	border.paint(r);
+	anim_bkg[index].subimage(0).draw_stretch(r, to);
 
+	border.paint(r);
 	title.paint(r, 40, 40);
 }
 
-void Menu::resize(const SDL_Rect &old_abs, const SDL_Rect &cur_abs, const SDL_Rect &old_rel, const SDL_Rect &cur_rel) {
-	border.resize(cur_rel);
+void Menu::resize(const Dimensions &old_dim, const Dimensions &dim) {
+	border.resize(enhanced ? dim.rel_bnds : dim.lgy_orig);
 }
 
 std::unique_ptr<Navigator> nav;
@@ -54,7 +64,7 @@ void Navigator::mainloop() {
 				}
 
 				switch (ev.key.keysym.sym) {
-				case SDLK_F4:
+				case SDLK_F11:
 					break;
 				default:
 					top->keydown(ev.key.keysym.sym);
@@ -63,8 +73,8 @@ void Navigator::mainloop() {
 				break;
 			case SDL_KEYUP:
 				switch (ev.key.keysym.sym) {
-				case SDLK_F4:
-					eng->nextmode();
+				case SDLK_F11:
+					eng->w->toggleFullscreen();
 					break;
 				}
 				break;
@@ -87,9 +97,9 @@ void Navigator::mainloop() {
 	}
 }
 
-void Navigator::resize(const SDL_Rect &old_abs, const SDL_Rect &cur_abs, const SDL_Rect &old_rel, const SDL_Rect &cur_rel) {
+void Navigator::resize(const Dimensions &old_dim, const Dimensions &dim) {
 	for (auto &x : trace)
-		x->resize(old_abs, cur_abs, old_rel, cur_rel);
+		x->resize(old_dim, dim);
 }
 
 void Navigator::go_to(Menu *m) {

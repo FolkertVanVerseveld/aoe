@@ -9,6 +9,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -18,6 +19,29 @@
 
 namespace genie {
 
+Timer::Timer(Uint32 timeout) : ticks(SDL_GetTicks()), remaining(timeout) {}
+
+bool Timer::finished() {
+	Uint32 diff, next = SDL_GetTicks();
+
+	if (next < ticks) {
+		fputs("timer: overflow\n", stderr);
+		diff = 10;
+	} else {
+		diff = next - ticks;
+	}
+
+	ticks = next;
+	remaining = diff < remaining ? remaining - diff : 0;
+
+	return remaining == 0;
+}
+
+Display::Display(int index) : index(index) {
+	if (SDL_GetDisplayBounds(index, &bnds))
+		throw std::runtime_error(std::string("Bad default display bounds: ") + SDL_GetError());
+}
+
 SDL::SDL() {
 	if (SDL_Init(SDL_INIT_VIDEO))
 		throw std::runtime_error(std::string("Unable to initialize SDL: ") + SDL_GetError());
@@ -26,6 +50,40 @@ SDL::SDL() {
 SDL::~SDL() {
 	SDL_Quit();
 };
+
+int SDL::display_count() {
+	return SDL_GetNumVideoDisplays();
+}
+
+void SDL::get_displays(std::vector<Display> &displays) {
+	int oldcount = -1, count = -1;
+	std::runtime_error last("Bad window manager: unable to determine display count");
+
+	// Since we cannot lock the number of attached displays and we cannot determine if SDL allows devices to be hotswapped, we have to ensure the information we retrieve is consistent
+	for (unsigned tries = 3; tries; --tries) {
+		count = display_count();
+		displays.clear();
+
+		try {
+			for (int i = 0; i < count; ++i)
+				displays.emplace_back(i);
+		} catch (std::runtime_error &e) {
+			last = e;
+			continue;
+		}
+
+		oldcount = count;
+		if ((count = display_count()) == oldcount) {
+			// prefer displays with higher resolution
+			std::sort(displays.begin(), displays.end(), [](const Display &lhs, const Display &rhs) {
+				return lhs.bnds.w * lhs.bnds.h > rhs.bnds.w * rhs.bnds.h;
+			});
+			return;
+		}
+	}
+
+	throw last;
+}
 
 IMG::IMG() {
 	if (IMG_Init(0) == -1)
@@ -105,7 +163,7 @@ Palette Assets::open_pal(res_id id) {
 	return drs_ui.open_pal(id);
 }
 
-Background Assets::open_bkg(res_id id) {
+BackgroundSettings Assets::open_bkg(res_id id) {
 	return drs_ui.open_bkg(id);
 }
 
@@ -120,7 +178,7 @@ Animation Assets::open_slp(const Palette &pal, res_id id) {
 
 Window::Window(const char *title, Config &cfg, Uint32 flags) : Window(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cfg, flags) {}
 
-Window::Window(const char *title, int x, int y, Config &cfg, Uint32 flags, Uint32 rflags) : handle(NULL, &SDL_DestroyWindow), flags(flags) {
+Window::Window(const char *title, int x, int y, Config &cfg, Uint32 flags, Uint32 rflags) : handle(NULL, &SDL_DestroyWindow), flags(flags), oldbnds(lgy_dim[0]) {
 	SDL_Window *w;
 
 	// figure out window dimensions
@@ -134,6 +192,8 @@ Window::Window(const char *title, int x, int y, Config &cfg, Uint32 flags, Uint3
 		width = 800; height = 600; break;
 	}
 
+	lastmode = scrmode = cfg.scrmode;
+
 	if (!(w = SDL_CreateWindow(title, x, y, width, height, flags)))
 		throw std::runtime_error(std::string("Unable to create SDL window: ") + SDL_GetError());
 
@@ -146,18 +206,81 @@ Window::Window(const char *title, int x, int y, Config &cfg, Uint32 flags, Uint3
 }
 
 void Window::chmode(ConfigScreenMode mode) {
-	int width, height;
+	if (scrmode == mode)
+		return;
+
+	int index = SDL_GetWindowDisplayIndex(handle.get()), width = 0, height = 0;
+	bool was_windowed, go_windowed = true;
+	std::vector<Display> displays;
+	int d_index = 0;
 
 	switch (mode) {
 	case ConfigScreenMode::MODE_640_480: width = 640; height = 480; break;
 	case ConfigScreenMode::MODE_1024_768: width = 1024; height = 768; break;
-	case ConfigScreenMode::MODE_800_600:
-	default:
-		width = 800; height = 600; break;
+	case ConfigScreenMode::MODE_800_600: width = 800; height = 600; break;
+	case ConfigScreenMode::MODE_FULLSCREEN:
+		eng->sdl.get_displays(displays);
+		assert(!displays.empty());
+
+		// mind you, that the window does not care about aspect ratio: the renderer takes care of that
+		go_windowed = false;
+
+		// prefer the currently attached display
+		for (int i = 1; i < displays.size(); ++i) {
+			if (displays[i].bnds.w != displays[0].bnds.w || displays[i].bnds.h != displays[1].bnds.h)
+				break;
+
+			if (index == i) {
+				d_index = i;
+				break;
+			}
+		}
+
+		width = displays[d_index].bnds.w;
+		height = displays[d_index].bnds.h;
+		break;
 	}
 
-	SDL_SetWindowSize(handle.get(), width, height);
-	renderer->chmode(mode);
+	assert(height);
+	was_windowed = !(SDL_GetWindowFlags(handle.get()) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP));
+
+	if (go_windowed) {
+		if (!was_windowed) {
+			SDL_SetWindowFullscreen(handle.get(), 0);
+			// apparently, we have to force a repaint (at least on windows) to ensure it properly restores the window state
+			renderer->paint();
+			SDL_SetWindowPosition(handle.get(), oldbnds.x, oldbnds.y);
+		}
+		SDL_SetWindowSize(handle.get(), width, height);
+
+		renderer->chmode(mode);
+	} else if (was_windowed) {
+		SDL_GetWindowPosition(handle.get(), &oldbnds.x, &oldbnds.y);
+		SDL_GetWindowSize(handle.get(), &oldbnds.w, &oldbnds.h);
+
+		SDL_SetWindowPosition(handle.get(), displays[d_index].bnds.x, displays[d_index].bnds.y);
+		SDL_SetWindowSize(handle.get(), displays[d_index].bnds.w, displays[d_index].bnds.h);
+		// NOTE _DESKTOP is needed for non-primary displays!
+		SDL_SetWindowFullscreen(handle.get(), SDL_WINDOW_FULLSCREEN_DESKTOP);
+
+		renderer->chmode(mode);
+	}
+
+	lastmode = scrmode;
+	scrmode = mode;
+	// force another repaint to make sure the graphical delay is minimal
+	renderer->paint();
+}
+
+bool Window::toggleFullscreen() {
+	switch (scrmode) {
+	case ConfigScreenMode::MODE_FULLSCREEN:
+		chmode(lastmode == ConfigScreenMode::MODE_FULLSCREEN ? ConfigScreenMode::MODE_800_600 : lastmode);
+		return false;
+	default:
+		chmode(ConfigScreenMode::MODE_FULLSCREEN);
+		return true;
+	}
 }
 
 #define DEFAULT_TITLE "Age of Empires"
@@ -192,20 +315,6 @@ void Engine::show_error(const std::string &title, const std::string &str) {
 
 void Engine::show_error(const std::string &str) {
 	show_error("Error occurred", str);
-}
-
-void Engine::nextmode() {
-	ConfigScreenMode next;
-
-	switch (cfg.scrmode) {
-	case ConfigScreenMode::MODE_640_480: next = ConfigScreenMode::MODE_800_600; break;
-	case ConfigScreenMode::MODE_800_600: next = ConfigScreenMode::MODE_1024_768; break;
-	case ConfigScreenMode::MODE_1024_768:
-	default:
-		next = ConfigScreenMode::MODE_640_480; break;
-	}
-
-	w->chmode(cfg.scrmode = next);
 }
 
 }

@@ -17,19 +17,20 @@ protected:
 	SimpleRender &r;
 public:
 	Text title;
-	Background bkg;
+	BackgroundSettings bkg;
 	Palette pal;
 	ui::Border border;
 	Animation anim_bkg[3];
+	bool enhanced;
 
-	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg);
+	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced=false);
 	virtual ~Menu() {}
 
-	void resize(const SDL_Rect &old_abs, const SDL_Rect &cur_abs, const SDL_Rect &old_rel, const SDL_Rect &cur_rel);
+	void resize(const Dimensions &old_dim, const Dimensions &dim);
 
 	virtual void keydown(int ch) {}
 
-	virtual void idle() {};
+	virtual void idle() {}
 	virtual void paint();
 };
 
@@ -42,7 +43,7 @@ public:
 	Navigator(SimpleRender &r);
 
 	void mainloop();
-	void resize(const SDL_Rect &old_abs, const SDL_Rect &cur_abs, const SDL_Rect &old_rel, const SDL_Rect &cur_rel);
+	void resize(const Dimensions &old_dim, const Dimensions &dim);
 	void go_to(Menu *m);
 	void quit(unsigned count = 0);
 };

@@ -177,14 +177,63 @@ public:
 	}
 };
 
+/** Custom help and game settings menu. */
+class MenuExtSettings final : public Menu {
+public:
+	Text txt_winsize, txt_small, txt_default, txt_medium, txt_fullscreen, txt_back;
+
+	MenuExtSettings(SimpleRender &r)
+		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Help and Global game settings", SDL_Color{0xff, 0xff,0xff}, true)
+		, txt_winsize(r, "Video resolution:", SDL_Color{0xff, 0xff, 0xff})
+		, txt_small(r, "(1) 640x480", SDL_Color{0xff, 0xff, 0xff})
+		, txt_default(r, "(2) 800x600", SDL_Color{0xff, 0xff, 0xff})
+		, txt_medium(r, "(3) 1024x768", SDL_Color{0xff, 0xff, 0xff})
+		, txt_fullscreen(r, "(4) Fullscreen", SDL_Color{0xff, 0xff, 0xff})
+		, txt_back(r, "(Q) Return to main menu", SDL_Color{0xff, 0xff, 0xff})
+		{}
+
+	void keydown(int ch) override {
+		switch (ch) {
+		case '1':
+			eng->w->chmode(ConfigScreenMode::MODE_640_480);
+			break;
+		case '2':
+			eng->w->chmode(ConfigScreenMode::MODE_800_600);
+			break;
+		case '3':
+			eng->w->chmode(ConfigScreenMode::MODE_1024_768);
+			break;
+		case '4':
+			eng->w->chmode(ConfigScreenMode::MODE_FULLSCREEN);
+			break;
+		case 'q':
+		case 'Q':
+			nav->quit(1);
+			break;
+		}
+	}
+
+	void paint() override {
+		Menu::paint();
+
+		txt_winsize.paint(r, 40, 80);
+		txt_small.paint(r, 40, 100);
+		txt_default.paint(r, 40, 120);
+		txt_medium.paint(r, 40, 140);
+		txt_fullscreen.paint(r, 40, 160);
+		txt_back.paint(r, 40, 200);
+	}
+};
+
 class MenuStart final : public Menu {
 public:
-	Text txt_single, txt_multi, txt_quit;
+	Text txt_single, txt_multi, txt_help, txt_quit;
 
 	MenuStart(SimpleRender &r)
 		: Menu(MenuId::start, r, eng->assets->fnt_title, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_single(r, "(S) Single Player", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_multi(r, "(M) Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_help(r, "(H) Help and settings", SDL_Color{0xff, 0xff, 0xff})
 		, txt_quit(r, "(Q) Quit", SDL_Color{ 0xff, 0xff, 0xff }) {}
 
 	void keydown(int ch) override {
@@ -195,6 +244,10 @@ public:
 		case 'm':
 		case 'M':
 			nav->go_to(new MenuMultiplayer(r));
+			break;
+		case 'h':
+		case 'H':
+			nav->go_to(new MenuExtSettings(r));
 			break;
 		case 'q':
 		case 'Q':
@@ -209,7 +262,8 @@ public:
 
 		txt_single.paint(r, 40, 80);
 		txt_multi.paint(r, 40, 120);
-		txt_quit.paint(r, 40, 160);
+		txt_help.paint(r, 40, 160);
+		txt_quit.paint(r, 40, 200);
 	}
 };
 

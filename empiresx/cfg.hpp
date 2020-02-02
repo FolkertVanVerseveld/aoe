@@ -7,7 +7,7 @@ enum class ConfigScreenMode {
 	MODE_800_600,
 	MODE_1024_768,
 	MODE_FULLSCREEN,
-	MODE_CUSTOM,
+	MODE_CUSTOM, // FIXME use this
 };
 
 class Config final {

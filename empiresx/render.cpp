@@ -14,15 +14,42 @@
 
 namespace genie {
 
-Render::Render(Window &w) : w(w), abs_bnds(), rel_bnds() {
-	SDL_Window *win = w.data();
+void Dimensions::resize(const SDL_Rect &abs) {
+	abs_bnds = abs;
 
-	SDL_GetWindowPosition(win, &abs_bnds.x, &abs_bnds.y);
-	SDL_GetWindowSize(win, &abs_bnds.w, &abs_bnds.h);
-
-	rel_bnds.x = rel_bnds.y = 0;
+	lgy_orig.x = lgy_orig.y = rel_bnds.x = rel_bnds.y = 0;
 	rel_bnds.w = abs_bnds.w;
 	rel_bnds.h = abs_bnds.h;
+
+	long long need_w, need_h;
+
+	// project height onto aspect ratio of width
+	need_w = abs_bnds.w;
+	need_h = need_w * 480 / 640;
+
+	// if too big, project width onto aspect ratio of height
+	if (need_h > abs_bnds.h) {
+		need_h = abs_bnds.h;
+		need_w = need_h * 640 / 480;
+	}
+
+	assert(need_w <= abs_bnds.w && need_h <= abs_bnds.h);
+
+	lgy_orig.w = lgy_bnds.w = need_w;
+	lgy_orig.h = lgy_bnds.h = need_h;
+	lgy_bnds.x = (rel_bnds.w - need_w) / 2;
+	lgy_bnds.y = (rel_bnds.h - need_h) / 2;
+}
+
+Render::Render(Window &w) : w(w), dim() {
+	SDL_Window *win = w.data();
+
+	SDL_Rect bnds;
+
+	SDL_GetWindowPosition(win, &bnds.x, &bnds.y);
+	SDL_GetWindowSize(win, &bnds.w, &bnds.h);
+
+	dim.resize(bnds);
 }
 
 SimpleRender::SimpleRender(Window &w, Uint32 flags, int index) : Render(w), handle(NULL, &SDL_DestroyRenderer) {
@@ -32,23 +59,27 @@ SimpleRender::SimpleRender(Window &w, Uint32 flags, int index) : Render(w), hand
 		throw std::runtime_error(std::string("Could not initialize SDL renderer: ") + SDL_GetError());
 
 	this->handle.reset(r);
+
+	offset.x = offset.y = 0;
+	SDL_GetWindowSize(w.data(), &offset.w, &offset.h);
+}
+
+void SimpleRender::legvp() {
+	offset = dim.lgy_bnds;
 }
 
 void SimpleRender::chmode(ConfigScreenMode mode) {
-	(void)mode;
+	(void)mode; // SDL_Renderer does not need mode
 
 	SDL_Window *win = w.data();
-	SDL_Rect old_abs = abs_bnds, old_rel = rel_bnds;
+	Dimensions old_dim = dim;
+	SDL_Rect bnds;
 
-	SDL_GetWindowPosition(win, &abs_bnds.x, &abs_bnds.y);
-	SDL_GetWindowSize(win, &abs_bnds.w, &abs_bnds.h);
+	SDL_GetWindowPosition(win, &bnds.x, &bnds.y);
+	SDL_GetWindowSize(win, &bnds.w, &bnds.h);
 
-	// TODO keep aspect ratio
-	rel_bnds.x = rel_bnds.y = 0;
-	rel_bnds.w = abs_bnds.w;
-	rel_bnds.h = abs_bnds.h;
-
-	nav->resize(old_abs, abs_bnds, old_rel, rel_bnds);
+	dim.resize(bnds);
+	nav->resize(old_dim, dim);
 }
 
 void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6]) {
@@ -82,11 +113,12 @@ void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6]) {
 }
 
 void SimpleRender::line(int x0, int y0, int x1, int y1) {
-	SDL_RenderDrawLine(canvas(), x0, y0, x1, y1);
+	SDL_RenderDrawLine(canvas(), x0 + offset.x, y0 + offset.y, x1 + offset.x, y1 + offset.y);
 }
 
 void SimpleRender::paint() {
 	SDL_RenderPresent(handle.get());
+	offset = dim.rel_bnds;
 }
 
 GLRender::GLRender(Window &w, Uint32 flags) : Render(w) {
@@ -114,7 +146,7 @@ void GLRender::paint() {
 }
 
 Surface::Surface(const char *fname) : handle(NULL, &SDL_FreeSurface) {
-	SDL_Surface* surf;
+	SDL_Surface *surf;
 
 	if (!(surf = IMG_Load(fname)))
 		throw std::runtime_error(std::string("Could not load image \"") + fname + "\": " + IMG_GetError());
@@ -143,7 +175,7 @@ void Texture::reset(SimpleRender &r, SDL_Surface *surf) {
 }
 
 void Texture::paint(SimpleRender &r, int x, int y) {
-	SDL_Rect dst{x, y, width, height};
+	SDL_Rect dst{x + r.offset.x, y + r.offset.y, width, height};
 	SDL_RenderCopy(r.canvas(), data(), NULL, &dst);
 }
 
@@ -151,16 +183,30 @@ void Texture::paint(SimpleRender &r, int x, int y) {
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
+void Texture::paint_stretch(SimpleRender &r, const SDL_Rect &to) {
+	SDL_Rect dst(to);
+	dst.x = r.offset.x;
+	dst.y = r.offset.y;
+	SDL_RenderCopy(r.canvas(), data(), NULL, &dst);
+}
+
+void Texture::paint_stretch(SimpleRender &r, const SDL_Rect &from, const SDL_Rect &to) {
+	SDL_Rect dst(to);
+	dst.x = r.offset.x;
+	dst.y = r.offset.y;
+	SDL_RenderCopy(r.canvas(), data(), &from, &dst);
+}
+
 void Texture::paint(SimpleRender &r, int x, int y, int w, int h, int sx, int sy) {
 	SDL_Rect src, dest;
 
 	if (!w) w = width;
 	if (!h) h = height;
 
-	for (src.y = sy, dest.y = y; dest.y < y + h; src.y = 0, dest.y += dest.h) {
+	for (src.y = sy, dest.y = y; dest.y < y + h; src.y = r.offset.y, dest.y += dest.h) {
 		src.h = dest.h = min(height, y + h - dest.y);
 
-		for (src.x = sx, dest.x = x; dest.x < x + w; src.x = 0, dest.x += dest.w) {
+		for (src.x = sx, dest.x = x; dest.x < x + w; src.x = r.offset.x, dest.x += dest.w) {
 			src.w = dest.w = min(width, x + w - dest.x);
 
 			SDL_RenderCopy(r.canvas(), data(), &src, &dest);
