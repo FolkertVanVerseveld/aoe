@@ -35,10 +35,10 @@ void Dimensions::resize(const SDL_Rect &abs) {
 
 	assert(need_w <= abs_bnds.w && need_h <= abs_bnds.h);
 
-	lgy_orig.w = lgy_bnds.w = need_w;
-	lgy_orig.h = lgy_bnds.h = need_h;
-	lgy_bnds.x = (rel_bnds.w - need_w) / 2;
-	lgy_bnds.y = (rel_bnds.h - need_h) / 2;
+	lgy_orig.w = lgy_bnds.w = (int)need_w;
+	lgy_orig.h = lgy_bnds.h = (int)need_h;
+	lgy_bnds.x = (rel_bnds.w - (int)need_w) / 2;
+	lgy_bnds.y = (rel_bnds.h - (int)need_h) / 2;
 }
 
 Render::Render(Window &w) : w(w), dim() {

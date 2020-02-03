@@ -3,6 +3,7 @@
 #include "cfg.hpp"
 #include "font.hpp"
 #include "drs.hpp"
+#include "pe.hpp"
 
 #include <vector>
 
@@ -63,6 +64,7 @@ public:
 	Font fnt_default, fnt_title, fnt_button;
 	DRS drs_border, drs_gfx, drs_ui, drs_sfx, drs_terrain;
 	Palette pal_default;
+	PE pe_lang;
 
 	Assets();
 

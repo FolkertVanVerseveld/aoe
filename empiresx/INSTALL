@@ -1,6 +1,6 @@
 Ubuntu setup (18.04 LTS):
 
-        sudo apt install libsdl2-{,image,mixer,ttf}-dev
+        sudo apt install libsdl2{,-image,-mixer,-ttf}-dev
         cmake .
         make
 

@@ -4,6 +4,7 @@
 #include "string.hpp"
 #include "font.hpp"
 #include "drs.hpp"
+#include "pe.hpp"
 
 #include <cstdlib>
 #include <fstream>
@@ -156,6 +157,29 @@ DRS FS::open_drs(const std::string &name, bool map) {
 		return DRS(path, fd, map);
 
 	throw std::runtime_error(std::string("Could not find DRS: ") + orig);
+}
+
+PE FS::open_pe(const std::string &name) {
+	std::string base(name);
+	std::string path(path_cdrom + "game/" + base), orig(path);
+	iofd fd;
+
+	if ((fd = iofd_open(path)) != 0)
+		return PE(path, fd);
+
+	tolower(base);
+	path = path_cdrom + "game/" + base;
+
+	if ((fd = iofd_open(path)) != 0)
+		return PE(path, fd);
+
+	toupper(base);
+	path = path_cdrom + "GAME/" + base;
+
+	if ((fd = iofd_open(path)) != 0)
+		return PE(path, fd);
+
+	throw std::runtime_error(std::string("Could not find dll: ") + orig);
 }
 
 }

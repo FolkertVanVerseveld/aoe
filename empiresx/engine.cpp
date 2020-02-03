@@ -157,7 +157,8 @@ Assets::Assets()
 	, drs_ui(fs.open_drs("Interfac.drs"))
 	, drs_sfx(fs.open_drs("sounds.drs", false))
 	, drs_terrain(fs.open_drs("Terrain.drs"))
-	, pal_default(open_pal(PAL_DEFAULT)) {}
+	, pal_default(open_pal(PAL_DEFAULT))
+	, pe_lang(fs.open_pe("language.dll")) {}
 
 Palette Assets::open_pal(res_id id) {
 	return drs_ui.open_pal(id);
