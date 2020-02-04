@@ -7,6 +7,8 @@
 
 namespace genie {
 
+#define RSRC_DIR 0x80000000
+
 size_t io::peopthdr::size() const {
 	return hdr32.coff.o_magic == 0x10b ? sizeof hdr32 : sizeof hdr64;
 }
@@ -15,7 +17,7 @@ size_t io::penthdr::hdrsz() const {
 	return sizeof *this - sizeof(io::peopthdr) + this->OptionalHeader.size();
 }
 
-PE::PE(const std::string &name, iofd fd) : blob(name, fd, true) {
+PE::PE(const std::string &name, iofd fd) : blob(name, fd, true), sec_rsrc(nullptr), rsrc(nullptr) {
 	// FIXME stub
 	size_t size = blob.length();
 
@@ -95,6 +97,189 @@ PE::PE(const std::string &name, iofd fd) : blob(name, fd, true) {
 	ddir = (io::peddir*)(nt + nt->hdrsz());
 	size_t sec_start = pe_start + sizeof *pe + pe->f_opthdr;
 	sec = (io::sechdr*)((char*)blob.get() + sec_start);
+}
+
+bool PE::load_res(io::RsrcType type, res_id id, void **ptr, size_t &count) {
+	const void *data = blob.get();
+	size_t size = blob.length();
+	unsigned language_id = 0; // TODO support multiple languages
+
+	// ensure resource section is loaded
+	if (!rsrc) {
+		for (unsigned i = 0, n = pe->f_nsect; i < n; ++i) {
+			char name[9];
+			memcpy(name, sec[i].s_name, sizeof name - 1);
+			name[sizeof name - 1] = '\0';
+
+			if (!strcmp(name, ".rsrc")) {
+				const io::rsrctbl *rsrc = (io::rsrctbl*)((char*)data + sec[i].s_scnptr);
+				if ((char*)&rsrc[1] > (char*)data + size) {
+					fprintf(stderr, "%s: bad rsrc: too small\n", __func__);
+					return false;
+				}
+
+				this->rsrc = rsrc;
+				sec_rsrc = &sec[i];
+				break;
+			}
+		}
+
+		if (!this->rsrc) {
+			fprintf(stderr, "%s: rsrc not found\n", __func__);
+			return false;
+		}
+	}
+
+	time_t time = rsrc->r_time;
+	const io::rsrcditem *item = (io::rsrcditem*)&rsrc[1];
+
+	if (rsrc->r_nname) {
+		fprintf(stderr, "%s: skipping %u\n", __func__, rsrc->r_nname);
+		item += rsrc->r_nname;
+	}
+
+	uint32_t t_id = rsrc->r_nid;
+
+	for (uint32_t i = 0; i < rsrc->r_nid; ++i, ++item)
+		// traverse types (level one)
+		if (item->r_id == (uint32_t)type) {
+			t_id = i;
+			break;
+		}
+
+	if (t_id == rsrc->r_nid) {
+		fprintf(stderr, "%s: res %u not found\n", __func__, id);
+		return false;
+	}
+
+	if (!(item->r_rva & RSRC_DIR)) {
+		fprintf(stderr, "%s: unexpected type leaf: %X\n", __func__, item->r_rva);
+		return false;
+	}
+
+	uint32_t rva = item->r_rva & ~RSRC_DIR;
+
+	// level two
+	const io::rsrctbl *dirtbl = (io::rsrctbl*)((char*)rsrc + rva);
+
+	// skip named items
+	const io::rsrcditem *diritem = (io::rsrcditem*)&dirtbl[1];
+
+	if (dirtbl->r_nname) {
+		fprintf(stderr, "%s: skipping %u named dirs\n", __func__, dirtbl->r_nname);
+		diritem += dirtbl->r_nname;
+	}
+
+	// find directory
+	unsigned dirid = dirtbl->r_nid;
+
+	for (unsigned i = 0; i < dirtbl->r_nid; ++i, ++diritem) {
+		if (!(diritem->r_rva & RSRC_DIR)) {
+			fprintf(stderr, "%s: unexpected identifier leaf: %X\n", __func__, diritem->r_rva);
+			return false;
+		}
+
+		if (diritem->r_id == id || (type == io::RsrcType::string && diritem->r_id - 1 == id / 16)) {
+			dirid = i;
+			break;
+		}
+	}
+
+	if (dirid == dirtbl->r_nid) {
+		fprintf(stderr, "%s: res %u not found\n", __func__, id);
+		return false;
+	}
+
+	rva = diritem->r_rva & ~RSRC_DIR;
+
+	const io::rsrctbl *langtbl = (io::rsrctbl*)((char*)rsrc + rva);
+	const io::rsrcditem *langitem = (io::rsrcditem*)&langtbl[1];
+	unsigned langid = langtbl->r_nid;
+
+	for (unsigned i = 0; i < langtbl->r_nid; ++i, ++langitem) {
+		if (langitem->r_rva & RSRC_DIR) {
+			fprintf(stderr, "%s: unexpected language id dir\n", __func__);
+			return 1;
+		}
+
+		if (!language_id || langitem->r_id == language_id) {
+			langid = i;
+			break;
+		}
+	}
+
+	if (langid == langtbl->r_nid) {
+		fprintf(stderr, "%s: res %u not found\n", __func__, id);
+		return false;
+	}
+
+	const io::rsrcentry *entry = (io::rsrcentry*)((char*)rsrc + langitem->r_rva);
+	off_t e_addr = sec_rsrc->s_scnptr + entry->e_addr - sec_rsrc->s_vaddr;
+
+	if (type != io::RsrcType::string) {
+		*ptr = (char*)data + e_addr;
+		count = entry->e_size;
+		return true;
+	}
+
+	// special case for string table, don't ask me why it is designed like this...
+	uint16_t strid = (diritem->r_id - 1) * 16;
+	const uint16_t *strptr = (uint16_t*)((char*)data + e_addr), *end = (uint16_t*)((char*)data + size - 2);
+
+	for (unsigned i = 0; i < 16; ++i, ++strid) {
+		const io::pestr *str = (io::pestr*)strptr;
+
+		if (strptr > end || strptr + str->length > end) {
+			fprintf(stderr, "%s: bad string table: unexpected EOF\n", __func__);
+			return false;
+		}
+
+		++strptr;
+
+		if (strid == id) {
+			*ptr = (void*)strptr;
+			count = str->length * 2;
+			return true;
+		} else {
+			strptr += str->length;
+		}
+	}
+
+	fprintf(stderr, "%s: string %u not found\n", __func__, id);
+	return false;
+}
+
+void PE::load_string(std::string &s, res_id id) {
+	int err;
+	void *ptr;
+	size_t count;
+
+	if (!load_res(io::RsrcType::string, id, &ptr, count))
+		throw std::runtime_error(std::string("Could not load text id ") + std::to_string(id));
+
+	s.clear();
+
+	if (!count)
+		return;
+
+	count /= 2;
+
+	const uint16_t *data = (uint16_t*)ptr;
+	s.resize(count);
+
+	for (size_t i = 0; i < count; ++i) {
+		unsigned ch = data[i];
+
+		if (ch > UINT8_MAX) {
+			// try to convert character
+			switch (ch) {
+			case 0x2122: ch = 0x99; break;
+			default: fprintf(stderr, "%s: truncate ch %X\n", __func__, ch); break;
+			}
+		}
+
+		s[i] = ch;
+	}
 }
 
 }

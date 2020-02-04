@@ -251,6 +251,34 @@ enum class PE_Type {
 	peopt = 4
 };
 
+enum class RsrcType {
+	unknown = 0,
+	cursor = 1,
+	bitmap = 2,
+	icon = 3,
+	menu = 4,
+	dialog = 5,
+	string = 6,
+	fontdir = 7,
+	font = 8,
+	accelerator = 9,
+	rcdata = 10,
+	messagetable = 11,
+	group_cursor = 12,
+	group_icon = 14,
+	version = 16,
+	dlginclude = 17,
+	plugplay = 19,
+	vxd = 20,
+	anicursor = 21,
+	aniicon = 22,
+};
+
+struct pestr final {
+	uint16_t length;
+	char data[];
+};
+
 }
 
 /**
@@ -272,8 +300,8 @@ class PE {
 	const io::rsrctbl *rsrc;
 public:
 	PE(const std::string &name, iofd fd);
-
-	int load_res(unsigned type, res_id id, void **data, size_t &count);
+	/** Fetch the specified resource item associated with the specified type and id. */
+	bool load_res(io::RsrcType type, res_id id, void **data, size_t &count);
 	void load_string(std::string &s, res_id id);
 };
 

@@ -177,6 +177,12 @@ Animation Assets::open_slp(const Palette &pal, res_id id) {
 	throw std::runtime_error(std::string("Could not load animation ") + std::to_string(id) + ": bad id");
 }
 
+std::string Assets::open_str(LangId id) {
+	std::string tmp;
+	pe_lang.load_string(tmp, (res_id)id);
+	return tmp;
+}
+
 Window::Window(const char *title, Config &cfg, Uint32 flags) : Window(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cfg, flags) {}
 
 Window::Window(const char *title, int x, int y, Config &cfg, Uint32 flags, Uint32 rflags) : handle(NULL, &SDL_DestroyWindow), flags(flags), oldbnds(lgy_dim[0]) {

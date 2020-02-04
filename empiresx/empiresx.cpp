@@ -125,7 +125,7 @@ class MenuMultiplayer final : public Menu {
 	TextBuf buf_port, buf_address;
 public:
 	MenuMultiplayer(SimpleRender &r)
-		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, "Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
+		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_multiplayer), SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_host(r, "(H) Host Game", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_join(r, "(J) Join Game", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_back(r, "(Q) Back", SDL_Color{ 0xff, 0xff, 0xff })
@@ -231,10 +231,10 @@ public:
 
 	MenuStart(SimpleRender &r)
 		: Menu(MenuId::start, r, eng->assets->fnt_title, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_single(r, "(S) Single Player", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_multi(r, "(M) Multi Player", SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_single(r, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), SDL_Color{ 0xff, 0xff, 0xff })
+		, txt_multi(r, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_help(r, "(H) Help and settings", SDL_Color{0xff, 0xff, 0xff})
-		, txt_quit(r, "(Q) Quit", SDL_Color{ 0xff, 0xff, 0xff }) {}
+		, txt_quit(r, "(Q) " + eng->assets->open_str(LangId::btn_exit), SDL_Color{ 0xff, 0xff, 0xff }) {}
 
 	void keydown(int ch) override {
 		switch (ch) {

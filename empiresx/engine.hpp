@@ -4,8 +4,10 @@
 #include "font.hpp"
 #include "drs.hpp"
 #include "pe.hpp"
+#include "lang.hpp"
 
 #include <vector>
+#include <string>
 
 namespace genie {
 
@@ -71,6 +73,7 @@ public:
 	Palette open_pal(res_id id);
 	BackgroundSettings open_bkg(res_id id);
 	Animation open_slp(const Palette &pal, res_id id);
+	std::string open_str(LangId id);
 };
 
 class Window final {
