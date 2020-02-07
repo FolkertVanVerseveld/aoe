@@ -16,17 +16,16 @@ namespace genie {
 class Window;
 
 /** Legacy dimensions for drs graphics tied to the 4:3 aspect ratio. */
-const SDL_Rect lgy_dim[3] = {
-	{0, 0, 640, 480},
-	{0, 0, 800, 600},
-	{0, 0, 1024, 768},
-};
+extern const SDL_Rect lgy_dim[lgy_screen_modes];
+
+/** Enhanced screen dimensions including legacy ones */
+extern SDL_Rect scr_dim[screen_modes];
 
 struct Dimensions final {
 	SDL_Rect abs_bnds; /**< Absolute dimensions relative to the attached display. */
 	SDL_Rect rel_bnds; /**< Relative dimensions within the attached display. */
 	SDL_Rect lgy_bnds; /**< Legacy dimensions for graphics tied to the 4:3 aspect ratio. */
-	SDL_Rect lgy_orig;
+	SDL_Rect lgy_orig; /**< Real drawing area starting at (0,0) */
 
 	void resize(const SDL_Rect &abs_bnds);
 };
@@ -62,7 +61,7 @@ public:
 		SDL_RenderClear(handle.get());
 	}
 
-	void border(const SDL_Rect &pos, const SDL_Color cols[6]);
+	void border(const SDL_Rect &pos, const SDL_Color cols[6], int shade=0);
 	void line(int x0, int y0, int x1, int y1);
 
 	void color(SDL_Color c) {

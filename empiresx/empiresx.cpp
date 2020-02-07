@@ -230,7 +230,7 @@ public:
 	Text txt_single, txt_multi, txt_help, txt_quit;
 
 	MenuStart(SimpleRender &r)
-		: Menu(MenuId::start, r, eng->assets->fnt_title, "Age of Empires", SDL_Color{ 0xff, 0xff, 0xff })
+		: Menu(MenuId::start, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_main), SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_single(r, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_multi(r, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_help(r, "(H) Help and settings", SDL_Color{0xff, 0xff, 0xff})

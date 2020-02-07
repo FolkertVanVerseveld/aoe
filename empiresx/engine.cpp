@@ -277,6 +277,13 @@ void Window::chmode(ConfigScreenMode mode) {
 	scrmode = mode;
 	// force another repaint to make sure the graphical delay is minimal
 	renderer->paint();
+
+	if (!go_windowed) {
+		// update render fullscreen dimension
+		SDL_Rect &bnds = renderer->dim.lgy_orig;
+		scr_dim[(unsigned)ConfigScreenMode::MODE_FULLSCREEN].w = bnds.w;
+		scr_dim[(unsigned)ConfigScreenMode::MODE_FULLSCREEN].h = bnds.h;
+	}
 }
 
 bool Window::toggleFullscreen() {

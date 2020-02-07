@@ -89,6 +89,7 @@ public:
 	SDL_Window *data() { return handle.get(); }
 
 	Render &render() { return *(renderer.get()); }
+	ConfigScreenMode mode() const { return scrmode; }
 	/** Change window resolution. */
 	void chmode(ConfigScreenMode mode);
 	/** Alternate between windowed and fullscreen mode and return true if new mode is fullscreen. */

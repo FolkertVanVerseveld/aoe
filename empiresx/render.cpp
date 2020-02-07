@@ -14,6 +14,20 @@
 
 namespace genie {
 
+const SDL_Rect lgy_dim[lgy_screen_modes] = {
+	{0, 0, 640, 480},
+	{0, 0, 800, 600},
+	{0, 0, 1024, 768},
+};
+
+SDL_Rect scr_dim[screen_modes] = {
+	{0, 0, 640, 480},
+	{0, 0, 800, 600},
+	{0, 0, 1024, 768},
+	{0, 0, 1024, 768}, // fullscreen mode is based on 1024x768 windowed mode
+	{0, 0, 1024, 768}, // custom mode is based on 1024x768 windowed mode
+};
+
 void Dimensions::resize(const SDL_Rect &abs) {
 	abs_bnds = abs;
 
@@ -82,7 +96,7 @@ void SimpleRender::chmode(ConfigScreenMode mode) {
 	nav->resize(old_dim, dim);
 }
 
-void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6]) {
+void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6], int shade) {
 	int x0 = pos.x, y0 = pos.y, x1 = pos.x + pos.w - 1, y1 = pos.y + pos.h - 1; 
 
 	// draw lines from top-left to top-right and top-right to top-bottom
@@ -110,6 +124,12 @@ void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6]) {
 	color(cols[5]);
 	line(x0, y0, x0, y1);
 	line(x0, y1, x1, y1);
+
+	if (shade) {
+		color({0, 0, 0, (uint8_t)shade});
+		SDL_Rect box{x0 + 2, y0 + 2, x1 - x0 - 2, y1 - y0 - 2};
+		SDL_RenderFillRect(canvas(), &box);
+	}
 }
 
 void SimpleRender::line(int x0, int y0, int x1, int y1) {

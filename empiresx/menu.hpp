@@ -20,7 +20,7 @@ public:
 	BackgroundSettings bkg;
 	Palette pal;
 	ui::Border border;
-	Animation anim_bkg[3];
+	Animation anim_bkg[lgy_screen_modes];
 	bool enhanced;
 
 	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced=false);

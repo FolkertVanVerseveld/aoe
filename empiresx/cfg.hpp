@@ -10,6 +10,9 @@ enum class ConfigScreenMode {
 	MODE_CUSTOM, // FIXME use this
 };
 
+constexpr unsigned lgy_screen_modes = (unsigned)ConfigScreenMode::MODE_1024_768 + 1;
+constexpr unsigned screen_modes = (unsigned)ConfigScreenMode::MODE_CUSTOM + 1;
+
 class Config final {
 public:
 	/** Startup configuration specified by program arguments. */

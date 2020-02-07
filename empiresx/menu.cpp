@@ -9,7 +9,7 @@ namespace genie {
 Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced)
 	: r(r), title(r, f, s, fg)
 	, bkg(eng->assets->open_bkg((res_id)id)), pal(eng->assets->open_pal(bkg.pal))
-	, border(r.dim.rel_bnds, pal, bkg)
+	, border(scr_dim, eng->w->mode(), pal, bkg, ui::BorderType::background)
 	, anim_bkg{eng->assets->open_slp(pal, bkg.bmp[0]), eng->assets->open_slp(pal, bkg.bmp[1]), eng->assets->open_slp(pal, bkg.bmp[2])}
 	, enhanced(enhanced)
 {
@@ -52,6 +52,8 @@ std::unique_ptr<Navigator> nav;
 void Navigator::mainloop() {
 	while (1) {
 		SDL_Event ev;
+
+		// FIXME display events are instantly completed in fullscreen alt-tabbed mode, maxing CPU usage
 
 		while (SDL_PollEvent(&ev)) {
 			switch (ev.type) {
