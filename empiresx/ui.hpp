@@ -9,6 +9,15 @@
 namespace genie {
 namespace ui {
 
+class Interactable {
+protected:
+	bool has_focus;
+	bool is_pressed;
+public:
+	virtual void focus(bool on) = 0;
+	virtual void press(bool on) = 0;
+};
+
 class UI {
 protected:
 	SDL_Rect bnds;
@@ -21,6 +30,22 @@ protected:
 	UI(const SDL_Rect &bnds) : bnds(bnds) {}
 public:
 	virtual ~UI() {}
+
+	/** Rough estimation if it probably collides. */
+	bool contains(const SDL_Point &pt) const {
+		return contains(pt.x, pt.y);
+	}
+
+	bool contains(int x, int y) const;
+
+	virtual bool collides(const SDL_Point &pt) const {
+		return contains(pt);
+	}
+
+	virtual bool collides(int x, int y) const {
+		SDL_Point pt{x, y};
+		return collides(pt);
+	}
 
 	virtual void paint(SimpleRender &r) = 0;
 };
@@ -45,12 +70,13 @@ enum class BorderType {
 };
 
 /** Raw border that only draws a simple rectangular box using background settings binary info. */
-class Border final : public DynamicUI {
+class Border : public DynamicUI {
 public:
 	SDL_Color cols[6];
 	BorderType type;
 	/** Optional background transparency (0=transparent, 255=opaque) */
 	int shade;
+	bool flip;
 
 	Border(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, BorderType type, bool enhanced=false);
 
@@ -88,8 +114,7 @@ public:
 
 /* High level UI elements */
 
-class Button final : public ui::DynamicUI {
-	ui::Border border;
+class Button final : public Border, public ui::Interactable {
 	/** Identifiable element (e.g. icon, text, ...) */
 	std::unique_ptr<DynamicUI> decorator;
 public:
@@ -98,6 +123,9 @@ public:
 
 	void resize(ConfigScreenMode old_mode, ConfigScreenMode mode) override;
 	void paint(SimpleRender &r) override;
+
+	void focus(bool) override;
+	void press(bool) override;
 };
 
 }

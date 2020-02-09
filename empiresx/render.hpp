@@ -39,9 +39,12 @@ protected:
 public:
 	Dimensions old_dim, dim;
 	ConfigScreenMode mode;
+	SDL_Rect offset;
 
 	Render(Window &w);
 public:
+	virtual void legvp(bool legacy=true);
+
 	virtual void chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) = 0;
 
 	virtual void clear() = 0;
@@ -51,13 +54,11 @@ public:
 class SimpleRender final : public Render {
 	std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> handle;
 public:
-	SDL_Rect offset;
-
 	SimpleRender(Window &w, Uint32 flags, int index = -1);
 
 	SDL_Renderer *canvas() { return handle.get(); }
 
-	void legvp(bool legacy=true);
+	virtual void legvp(bool) override;
 
 	void chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) override;
 
@@ -65,7 +66,7 @@ public:
 		SDL_RenderClear(handle.get());
 	}
 
-	void border(const SDL_Rect &pos, const SDL_Color cols[6], int shade=0);
+	void border(const SDL_Rect &pos, const SDL_Color cols[6], int shade=0, bool flip=false);
 	void line(int x0, int y0, int x1, int y1);
 
 	void color(SDL_Color c) {

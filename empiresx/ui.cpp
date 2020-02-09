@@ -7,6 +7,11 @@
 namespace genie {
 namespace ui {
 
+bool UI::contains(int x, int y) const {
+	SDL_Point pt{x, y};
+	return SDL_PointInRect(&pt, &bnds);
+}
+
 DynamicUI::DynamicUI(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, bool enhanced) : UI(bnds[(unsigned)mode]), scr_bnds(), enhanced(enhanced) {
 	for (unsigned i = 0; i < screen_modes; ++i)
 		scr_bnds[i] = bnds[i];
@@ -65,7 +70,7 @@ void DynamicUI::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
 	this->bnds = resized;
 }
 
-Border::Border(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, BorderType type, bool enhanced) : DynamicUI(bnds, mode, enhanced), cols(), type(type) {
+Border::Border(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, BorderType type, bool enhanced) : DynamicUI(bnds, mode, enhanced), cols(), type(type), shade(0), flip(false) {
 	for (unsigned i = 0; i < 6; ++i)
 		cols[i] = pal.tbl[bkg.bevel[i]];
 
@@ -80,7 +85,7 @@ Border::Border(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const P
 }
 
 void Border::paint(SimpleRender &r) {
-	r.border(bnds, cols, shade);
+	r.border(bnds, cols, shade, flip);
 }
 
 Label::Label(SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, SDL_Color bg, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, HAlign halign, VAlign valign, bool adjust_anchors, bool enhanced)
@@ -194,21 +199,34 @@ void Label::paint(SimpleRender &r) {
 }
 
 Button::Button(SimpleRender &r, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, DynamicUI *decorator, bool enhanced)
-	: DynamicUI(bnds, mode, enhanced)
-	, border(bnds, mode, pal, bkg, BorderType::button, enhanced)
+	: Border(bnds, mode, pal, bkg, BorderType::button, enhanced), Interactable()
 	, decorator(decorator) {}
 
 Button::Button(SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, SDL_Color bg, const SDL_Rect txt_bnds[screen_modes], const SDL_Rect bnds[screen_modes], const Palette &pal, const BackgroundSettings &bkg, ConfigScreenMode mode, HAlign halign, VAlign valign, bool adjust_anchors, bool enhanced)
 : Button(r, bnds, mode, pal, bkg, new Label(r, f, s, fg, bg, txt_bnds, mode, halign, valign, adjust_anchors, enhanced)) {}
 
 void Button::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
-	border.resize(old_mode, mode);
+	Border::resize(old_mode, mode);
 	decorator->resize(old_mode, mode);
 }
 
 void Button::paint(SimpleRender &r) {
-	border.paint(r);
+	Border::paint(r);
 	decorator->paint(r);
+}
+
+void Button::focus(bool on) {
+	has_focus = on;
+}
+
+void Button::press(bool on) {
+	flip = on;
+
+	if (is_pressed && !on) {
+		puts("todo: press");
+	}
+
+	is_pressed = on;
 }
 
 }

@@ -71,6 +71,8 @@ void Dimensions::resize(const SDL_Rect &abs) {
 	lgy_bnds.y = (rel_bnds.h - (int)need_h) / 2;
 }
 
+void Render::legvp(bool) {}
+
 Render::Render(Window &w) : w(w), old_dim(), dim(), mode(w.mode()) {
 	SDL_Window *win = w.data();
 
@@ -111,34 +113,62 @@ void SimpleRender::chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) {
 	nav->resize(old_mode, mode);
 }
 
-void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6], int shade) {
+void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6], int shade, bool flip) {
 	int x0 = pos.x, y0 = pos.y, x1 = pos.x + pos.w - 1, y1 = pos.y + pos.h - 1; 
 
-	// draw lines from top-left to top-right and top-right to top-bottom
-	color(cols[0]);
-	line(x0, y0, x1, y0);
-	line(x1, y0, x1, y1);
+	if (flip) {
+		// draw lines from top-left to top-right and top-right to top-bottom
+		color(cols[3]);
+		line(x0, y0, x1, y0);
+		line(x1, y0, x1, y1);
 
-	color(cols[1]);
-	line(x0, y0 + 1, x1 - 1, y0 + 1);
-	line(x1 - 1, y0 + 1, x1 - 1, y1);
+		color(cols[4]);
+		line(x0, y0 + 1, x1 - 1, y0 + 1);
+		line(x1 - 1, y0 + 1, x1 - 1, y1);
 
-	color(cols[2]);
-	line(x0, y0 + 2, x1 - 2, y0 + 2);
-	line(x1 - 2, y0 + 2, x1 - 2, y1);
+		color(cols[5]);
+		line(x0, y0 + 2, x1 - 2, y0 + 2);
+		line(x1 - 2, y0 + 2, x1 - 2, y1);
 
-	// draw lines from top-left to bottom-left and bottom-left to bottom-right
-	color(cols[3]);
-	line(x0 + 2, y0 + 2, x0 + 2, y1 - 2);
-	line(x0 + 2, y1 - 2, x1 - 2, y1 - 2);
+		// draw lines from top-left to bottom-left and bottom-left to bottom-right
+		color(cols[0]);
+		line(x0 + 2, y0 + 2, x0 + 2, y1 - 2);
+		line(x0 + 2, y1 - 2, x1 - 2, y1 - 2);
 
-	color(cols[4]);
-	line(x0 + 1, y0 + 1, x0 + 1, y1 - 1);
-	line(x0 + 1, y1 - 1, x1 - 1, y1 - 1);
+		color(cols[1]);
+		line(x0 + 1, y0 + 1, x0 + 1, y1 - 1);
+		line(x0 + 1, y1 - 1, x1 - 1, y1 - 1);
 
-	color(cols[5]);
-	line(x0, y0, x0, y1);
-	line(x0, y1, x1, y1);
+		color(cols[2]);
+		line(x0, y0, x0, y1);
+		line(x0, y1, x1, y1);
+	} else {
+		// draw lines from top-left to top-right and top-right to top-bottom
+		color(cols[0]);
+		line(x0, y0, x1, y0);
+		line(x1, y0, x1, y1);
+
+		color(cols[1]);
+		line(x0, y0 + 1, x1 - 1, y0 + 1);
+		line(x1 - 1, y0 + 1, x1 - 1, y1);
+
+		color(cols[2]);
+		line(x0, y0 + 2, x1 - 2, y0 + 2);
+		line(x1 - 2, y0 + 2, x1 - 2, y1);
+
+		// draw lines from top-left to bottom-left and bottom-left to bottom-right
+		color(cols[3]);
+		line(x0 + 2, y0 + 2, x0 + 2, y1 - 2);
+		line(x0 + 2, y1 - 2, x1 - 2, y1 - 2);
+
+		color(cols[4]);
+		line(x0 + 1, y0 + 1, x0 + 1, y1 - 1);
+		line(x0 + 1, y1 - 1, x1 - 1, y1 - 1);
+
+		color(cols[5]);
+		line(x0, y0, x0, y1);
+		line(x0, y1, x1, y1);
+	}
 
 	if (shade) {
 		color({0, 0, 0, (uint8_t)shade});

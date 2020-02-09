@@ -16,6 +16,7 @@ class Menu {
 protected:
 	SimpleRender &r;
 	std::vector<std::unique_ptr<ui::DynamicUI>> ui_objs;
+	std::vector<ui::Button*> ui_focus;
 public:
 	Text title;
 	BackgroundSettings bkg;
@@ -27,7 +28,13 @@ public:
 	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced=false);
 	virtual ~Menu() {}
 
+	void add_btn(ui::Button *btn);
+	void go_to(Menu *menu);
+
 	virtual void resize(ConfigScreenMode old_mode, ConfigScreenMode mode);
+
+	virtual void mousedown(SDL_MouseButtonEvent &ev);
+	virtual void mouseup(SDL_MouseButtonEvent &ev);
 
 	virtual void keydown(int ch) {}
 	virtual void keyup(int ch) {}

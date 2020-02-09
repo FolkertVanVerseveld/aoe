@@ -7,7 +7,7 @@
 namespace genie {
 
 Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced)
-	: r(r), title(r, f, s, fg)
+	: r(r), ui_objs(), ui_focus(), title(r, f, s, fg)
 	, bkg(eng->assets->open_bkg((res_id)id)), pal(eng->assets->open_pal(bkg.pal))
 	, border(scr_dim, eng->w->mode(), pal, bkg, ui::BorderType::background, enhanced)
 	, anim_bkg{eng->assets->open_slp(pal, bkg.bmp[0]), eng->assets->open_slp(pal, bkg.bmp[1]), eng->assets->open_slp(pal, bkg.bmp[2])}
@@ -15,6 +15,11 @@ Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color 
 {
 	r.legvp(!enhanced);
 	resize(r.mode, r.mode);
+}
+
+void Menu::add_btn(ui::Button *btn) {
+	ui_objs.emplace_back(btn);
+	ui_focus.emplace_back(btn);
 }
 
 void Menu::paint() {
@@ -40,7 +45,39 @@ void Menu::paint() {
 		x->paint(r);
 }
 
+void Menu::mousedown(SDL_MouseButtonEvent &ev) {
+	r.legvp(!enhanced);
+
+	if (!enhanced && eng->w->mode() == ConfigScreenMode::MODE_FULLSCREEN) {
+		ev.x -= r.offset.x;
+		ev.y -= r.offset.y;
+	}
+
+	for (auto &x : ui_focus)
+		x->press(x->collides(ev.x, ev.y));
+}
+
+void Menu::mouseup(SDL_MouseButtonEvent &ev) {
+	r.legvp(!enhanced);
+
+	if (!enhanced && eng->w->mode() == ConfigScreenMode::MODE_FULLSCREEN) {
+		ev.x -= r.offset.x;
+		ev.y -= r.offset.y;
+	}
+
+	for (auto &x : ui_focus)
+		x->press(false);
+}
+
+void Menu::go_to(Menu *menu) {
+	for (auto &x : ui_focus)
+		x->press(false);
+
+	nav->go_to(menu);
+}
+
 void Menu::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
+	r.legvp(!enhanced);
 	border.resize(old_mode, mode);
 
 	for (auto &x : ui_objs)
@@ -87,6 +124,22 @@ void Navigator::mainloop() {
 					top->keyup(ev.key.keysym.sym);
 					break;
 				}
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+				if (!top) {
+					quit();
+					return;
+				}
+
+				top->mousedown(ev.button);
+				break;
+			case SDL_MOUSEBUTTONUP:
+				if (!top) {
+					quit();
+					return;
+				}
+
+				top->mouseup(ev.button);
 				break;
 			}
 		}

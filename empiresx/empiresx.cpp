@@ -152,11 +152,11 @@ public:
 			break;
 		case 'h':
 		case 'H':
-			nav->go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), true));
+			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), true));
 			break;
 		case 'j':
 		case 'J':
-			nav->go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), false));
+			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), false));
 			break;
 		}
 	}
@@ -324,11 +324,11 @@ public:
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
 		ConfigScreenMode mode = eng->w->render().mode;
 
-		ui_objs.emplace_back(new ui::Button(r, fnt, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), fg, bg, menu_start_btn_txt_start, menu_start_btn_border_start, pal, bkg, mode));
-		ui_objs.emplace_back(new ui::Button(r, fnt, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), fg, bg, menu_start_btn_txt_multi, menu_start_btn_border_multi, pal, bkg, mode));
-		ui_objs.emplace_back(new ui::Button(r, fnt, "(H) Help and settings", fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode));
-		ui_objs.emplace_back(new ui::Button(r, fnt, "(E) " + eng->assets->open_str(LangId::btn_edit), fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode));
-		ui_objs.emplace_back(new ui::Button(r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_exit), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode));
+		add_btn(new ui::Button(r, fnt, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), fg, bg, menu_start_btn_txt_start, menu_start_btn_border_start, pal, bkg, mode));
+		add_btn(new ui::Button(r, fnt, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), fg, bg, menu_start_btn_txt_multi, menu_start_btn_border_multi, pal, bkg, mode));
+		add_btn(new ui::Button(r, fnt, "(H) Help and settings", fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode));
+		add_btn(new ui::Button(r, fnt, "(E) " + eng->assets->open_str(LangId::btn_edit), fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode));
+		add_btn(new ui::Button(r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_exit), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode));
 	}
 
 	void keyup(int ch) override {
@@ -338,11 +338,11 @@ public:
 			break;
 		case 'm':
 		case 'M':
-			nav->go_to(new MenuMultiplayer(r));
+			go_to(new MenuMultiplayer(r));
 			break;
 		case 'h':
 		case 'H':
-			nav->go_to(new MenuExtSettings(r));
+			go_to(new MenuExtSettings(r));
 			break;
 		case 'q':
 		case 'Q':
