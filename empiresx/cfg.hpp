@@ -13,6 +13,10 @@ enum class ConfigScreenMode {
 constexpr unsigned lgy_screen_modes = (unsigned)ConfigScreenMode::MODE_1024_768 + 1;
 constexpr unsigned screen_modes = (unsigned)ConfigScreenMode::MODE_CUSTOM + 1;
 
+static constexpr bool mode_is_legacy(ConfigScreenMode mode) {
+	return (unsigned)mode <= (unsigned)ConfigScreenMode::MODE_1024_768;
+}
+
 class Config final {
 public:
 	/** Startup configuration specified by program arguments. */

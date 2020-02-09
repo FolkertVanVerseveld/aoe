@@ -9,11 +9,12 @@ namespace genie {
 Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced)
 	: r(r), title(r, f, s, fg)
 	, bkg(eng->assets->open_bkg((res_id)id)), pal(eng->assets->open_pal(bkg.pal))
-	, border(scr_dim, eng->w->mode(), pal, bkg, ui::BorderType::background)
+	, border(scr_dim, eng->w->mode(), pal, bkg, ui::BorderType::background, enhanced)
 	, anim_bkg{eng->assets->open_slp(pal, bkg.bmp[0]), eng->assets->open_slp(pal, bkg.bmp[1]), eng->assets->open_slp(pal, bkg.bmp[2])}
 	, enhanced(enhanced)
 {
-	resize(r.dim, r.dim);
+	r.legvp(!enhanced);
+	resize(r.mode, r.mode);
 }
 
 void Menu::paint() {
@@ -21,30 +22,29 @@ void Menu::paint() {
 	r.clear();
 
 	int index = 0;
-	SDL_Rect to(enhanced ? r.dim.rel_bnds : r.dim.lgy_orig);
+	SDL_Rect to(enhanced ? r.dim.rel_bnds : r.dim.lgy_orig), ref(enhanced ? r.dim.rel_bnds : r.dim.lgy_bnds);
 
-	if (enhanced) {
-		if (r.dim.rel_bnds.w > lgy_dim[1].w)
-			index = 2;
-		else if (r.dim.rel_bnds.w > lgy_dim[0].w)
-			index = 1;
-	} else {
-		r.legvp();
+	r.legvp(!enhanced);
 
-		if (r.dim.lgy_bnds.w > lgy_dim[1].w)
-			index = 2;
-		else if (r.dim.lgy_bnds.w > lgy_dim[0].w)
-			index = 1;
-	}
+	if (ref.w > lgy_dim[1].w)
+		index = 2;
+	else if (ref.w > lgy_dim[0].w)
+		index = 1;
 
 	anim_bkg[index].subimage(0).draw_stretch(r, to);
 
 	border.paint(r);
 	title.paint(r, 40, 40);
+
+	for (auto &x : ui_objs)
+		x->paint(r);
 }
 
-void Menu::resize(const Dimensions &old_dim, const Dimensions &dim) {
-	border.resize(enhanced ? dim.rel_bnds : dim.lgy_orig);
+void Menu::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
+	border.resize(old_mode, mode);
+
+	for (auto &x : ui_objs)
+		x->resize(old_mode, mode);
 }
 
 std::unique_ptr<Navigator> nav;
@@ -74,9 +74,17 @@ void Navigator::mainloop() {
 				}
 				break;
 			case SDL_KEYUP:
+				if (!top) {
+					quit();
+					return;
+				}
+
 				switch (ev.key.keysym.sym) {
 				case SDLK_F11:
 					eng->w->toggleFullscreen();
+					break;
+				default:
+					top->keyup(ev.key.keysym.sym);
 					break;
 				}
 				break;
@@ -99,9 +107,9 @@ void Navigator::mainloop() {
 	}
 }
 
-void Navigator::resize(const Dimensions &old_dim, const Dimensions &dim) {
+void Navigator::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
 	for (auto &x : trace)
-		x->resize(old_dim, dim);
+		x->resize(old_mode, mode);
 }
 
 void Navigator::go_to(Menu *m) {

@@ -15,6 +15,7 @@ namespace genie {
 class Menu {
 protected:
 	SimpleRender &r;
+	std::vector<std::unique_ptr<ui::DynamicUI>> ui_objs;
 public:
 	Text title;
 	BackgroundSettings bkg;
@@ -26,9 +27,10 @@ public:
 	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced=false);
 	virtual ~Menu() {}
 
-	void resize(const Dimensions &old_dim, const Dimensions &dim);
+	virtual void resize(ConfigScreenMode old_mode, ConfigScreenMode mode);
 
 	virtual void keydown(int ch) {}
+	virtual void keyup(int ch) {}
 
 	virtual void idle() {}
 	virtual void paint();
@@ -43,7 +45,7 @@ public:
 	Navigator(SimpleRender &r);
 
 	void mainloop();
-	void resize(const Dimensions &old_dim, const Dimensions &dim);
+	void resize(ConfigScreenMode old_mode, ConfigScreenMode mode);
 	void go_to(Menu *m);
 	void quit(unsigned count = 0);
 };

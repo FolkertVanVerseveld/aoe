@@ -21,6 +21,9 @@ extern const SDL_Rect lgy_dim[lgy_screen_modes];
 /** Enhanced screen dimensions including legacy ones */
 extern SDL_Rect scr_dim[screen_modes];
 
+int cmp_lgy_dim(int w, int h, int def=-1);
+int cmp_dim(int w, int h, int def=-1);
+
 struct Dimensions final {
 	SDL_Rect abs_bnds; /**< Absolute dimensions relative to the attached display. */
 	SDL_Rect rel_bnds; /**< Relative dimensions within the attached display. */
@@ -34,11 +37,12 @@ class Render {
 protected:
 	Window &w;
 public:
-	Dimensions dim;
+	Dimensions old_dim, dim;
+	ConfigScreenMode mode;
 
 	Render(Window &w);
 public:
-	virtual void chmode(ConfigScreenMode mode) = 0;
+	virtual void chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) = 0;
 
 	virtual void clear() = 0;
 	virtual void paint() = 0;
@@ -53,9 +57,9 @@ public:
 
 	SDL_Renderer *canvas() { return handle.get(); }
 
-	void legvp();
+	void legvp(bool legacy=true);
 
-	void chmode(ConfigScreenMode mode) override;
+	void chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) override;
 
 	void clear() override {
 		SDL_RenderClear(handle.get());
@@ -79,7 +83,7 @@ public:
 
 	SDL_GLContext context() { return ctx; }
 
-	void chmode(ConfigScreenMode mode) override;
+	void chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) override;
 
 	void clear() override;
 	void paint() override;

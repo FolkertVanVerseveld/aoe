@@ -102,6 +102,11 @@ public:
 				}
 				break;
 			}
+		}
+	}
+
+	void keyup(int ch) override {
+		switch (ch) {
 		case SDLK_ESCAPE:
 			nav->quit(1);
 			break;
@@ -153,6 +158,11 @@ public:
 		case 'J':
 			nav->go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), false));
 			break;
+		}
+	}
+
+	void keyup(int ch) override {
+		switch (ch) {
 		case 'q':
 		case 'Q':
 		case SDLK_ESCAPE:
@@ -192,7 +202,7 @@ public:
 		, txt_back(r, "(Q) Return to main menu", SDL_Color{0xff, 0xff, 0xff})
 		{}
 
-	void keydown(int ch) override {
+	void keyup(int ch) override {
 		switch (ch) {
 		case '1':
 			eng->w->chmode(ConfigScreenMode::MODE_640_480);
@@ -225,18 +235,103 @@ public:
 	}
 };
 
+const SDL_Rect menu_start_btn_txt_start[screen_modes] = {
+	{320, 198, 133, 13},
+	{400, 248, 133, 13},
+	{512, 316, 133, 13},
+	{512, 316, 133, 13},
+	{512, 316, 133, 13},
+};
+
+const SDL_Rect menu_start_btn_border_start[screen_modes] = {
+	{170, 178, 470 - 170, 218 - 178},
+	{212, 222, 587 - 212, 272 - 222},
+	{272, 284, 752 - 272, 348 - 284},
+	{272, 284, 752 - 272, 348 - 284},
+	{272, 284, 752 - 272, 348 - 284},
+};
+
+const SDL_Rect menu_start_btn_txt_multi[screen_modes] = {
+	{320, 249, 114, 13},
+	{400, 311, 114, 13},
+	{512, 396, 114, 13},
+	{512, 396, 114, 13},
+	{512, 396, 114, 13},
+};
+
+const SDL_Rect menu_start_btn_border_multi[screen_modes] = {
+	{170, 228, 470 - 170, 268 - 228},
+	{212, 285, 587 - 212, 335 - 285},
+	{272, 364, 752 - 272, 428 - 364},
+	{272, 364, 752 - 272, 428 - 364},
+	{272, 364, 752 - 272, 428 - 364},
+};
+
+const SDL_Rect menu_start_btn_txt_help[screen_modes] = {
+	{320, 299, 44, 13},
+	{400, 374, 44, 13},
+	{512, 478, 44, 13},
+	{512, 478, 44, 13},
+	{512, 478, 44, 13},
+};
+
+const SDL_Rect menu_start_btn_border_help[screen_modes] = {
+	{170, 278, 470 - 170, 318 - 278},
+	{212, 347, 587 - 212, 397 - 347},
+	{272, 444, 752 - 272, 508 - 444},
+	{272, 444, 752 - 272, 508 - 444},
+	{272, 444, 752 - 272, 508 - 444},
+};
+
+const SDL_Rect menu_start_btn_txt_editor[screen_modes] = {
+	{320, 350, 163, 13},
+	{400, 437, 163, 13},
+	{512, 558, 163, 13},
+	{512, 558, 163, 13},
+	{512, 558, 163, 13},
+};
+
+const SDL_Rect menu_start_btn_border_editor[screen_modes] = {
+	{170, 328, 470 - 170, 368 - 328},
+	{212, 410, 587 - 212, 460 - 410},
+	{272, 524, 752 - 272, 588 - 524},
+	{272, 524, 752 - 272, 588 - 524},
+	{272, 524, 752 - 272, 588 - 524},
+};
+
+const SDL_Rect menu_start_btn_txt_quit[screen_modes] = {
+	{320, 399, 37, 13},
+	{400, 498, 37, 13},
+	{512, 637, 37, 13},
+	{512, 637, 37, 13},
+	{512, 637, 37, 13},
+};
+
+const SDL_Rect menu_start_btn_border_quit[screen_modes] = {
+	{170, 378, 470 - 170, 418 - 378},
+	{212, 472, 587 - 212, 522 - 472},
+	{272, 604, 752 - 272, 668 - 604},
+	{272, 604, 752 - 272, 668 - 604},
+	{272, 604, 752 - 272, 668 - 604},
+};
+
 class MenuStart final : public Menu {
 public:
-	Text txt_single, txt_multi, txt_help, txt_quit;
-
 	MenuStart(SimpleRender &r)
 		: Menu(MenuId::start, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_main), SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_single(r, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_multi(r, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_help(r, "(H) Help and settings", SDL_Color{0xff, 0xff, 0xff})
-		, txt_quit(r, "(Q) " + eng->assets->open_str(LangId::btn_exit), SDL_Color{ 0xff, 0xff, 0xff }) {}
+	{
+		Font &fnt = eng->assets->fnt_button;
+		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
+		ConfigScreenMode mode = eng->w->render().mode;
 
-	void keydown(int ch) override {
+		ui_objs.emplace_back(new ui::Button(r, fnt, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), fg, bg, menu_start_btn_txt_start, menu_start_btn_border_start, pal, bkg, mode));
+		ui_objs.emplace_back(new ui::Button(r, fnt, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), fg, bg, menu_start_btn_txt_multi, menu_start_btn_border_multi, pal, bkg, mode));
+		ui_objs.emplace_back(new ui::Button(r, fnt, "(H) Help and settings", fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode));
+		ui_objs.emplace_back(new ui::Button(r, fnt, "(E) " + eng->assets->open_str(LangId::btn_edit), fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode));
+		ui_objs.emplace_back(new ui::Button(r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_exit), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode));
+	}
+
+	void keyup(int ch) override {
 		switch (ch) {
 		case 's':
 		case 'S':
@@ -256,15 +351,6 @@ public:
 			break;
 		}
 	}
-
-	void paint() override {
-		Menu::paint();
-
-		txt_single.paint(r, 40, 80);
-		txt_multi.paint(r, 40, 120);
-		txt_help.paint(r, 40, 160);
-		txt_quit.paint(r, 40, 200);
-	}
 };
 
 Navigator::Navigator(SimpleRender &r) : r(r), trace(), top() {
@@ -273,21 +359,19 @@ Navigator::Navigator(SimpleRender &r) : r(r), trace(), top() {
 
 }
 
-using namespace genie;
-
 int main(int argc, char **argv)
 {
 	try {
-		Config cfg(argc, argv);
+		genie::Config cfg(argc, argv);
 
-		std::cout << "hello " << os.username << " on " << os.compname << '!' << std::endl;
+		std::cout << "hello " << genie::os.username << " on " << genie::os.compname << '!' << std::endl;
 
-		Engine eng(cfg);
+		genie::Engine eng(cfg);
 
-		SimpleRender &r = (SimpleRender&)eng.w->render();
-		nav.reset(new Navigator(r));
+		genie::SimpleRender &r = (genie::SimpleRender&)eng.w->render();
+		genie::nav.reset(new genie::Navigator(r));
 
-		nav->mainloop();
+		genie::nav->mainloop();
 	} catch (const std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;

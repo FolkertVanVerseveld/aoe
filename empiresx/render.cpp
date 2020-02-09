@@ -28,6 +28,22 @@ SDL_Rect scr_dim[screen_modes] = {
 	{0, 0, 1024, 768}, // custom mode is based on 1024x768 windowed mode
 };
 
+int cmp_lgy_dim(int w, int h, int def) {
+	for (unsigned i = 0; i < lgy_screen_modes; ++i)
+		if (lgy_dim[i].w == w && lgy_dim[i].h == h)
+			return i;
+
+	return def;
+}
+
+int cmp_dim(int w, int h, int def) {
+	for (unsigned i = 0; i < screen_modes; ++i)
+		if (scr_dim[i].w == w && scr_dim[i].h == h)
+			return i;
+
+	return def;
+}
+
 void Dimensions::resize(const SDL_Rect &abs) {
 	abs_bnds = abs;
 
@@ -55,7 +71,7 @@ void Dimensions::resize(const SDL_Rect &abs) {
 	lgy_bnds.y = (rel_bnds.h - (int)need_h) / 2;
 }
 
-Render::Render(Window &w) : w(w), dim() {
+Render::Render(Window &w) : w(w), old_dim(), dim(), mode(w.mode()) {
 	SDL_Window *win = w.data();
 
 	SDL_Rect bnds;
@@ -78,22 +94,21 @@ SimpleRender::SimpleRender(Window &w, Uint32 flags, int index) : Render(w), hand
 	SDL_GetWindowSize(w.data(), &offset.w, &offset.h);
 }
 
-void SimpleRender::legvp() {
-	offset = dim.lgy_bnds;
+void SimpleRender::legvp(bool legacy) {
+	offset = legacy ? dim.lgy_bnds : dim.rel_bnds;
 }
 
-void SimpleRender::chmode(ConfigScreenMode mode) {
-	(void)mode; // SDL_Renderer does not need mode
-
+void SimpleRender::chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) {
 	SDL_Window *win = w.data();
-	Dimensions old_dim = dim;
+	old_dim = dim;
 	SDL_Rect bnds;
 
 	SDL_GetWindowPosition(win, &bnds.x, &bnds.y);
 	SDL_GetWindowSize(win, &bnds.w, &bnds.h);
 
 	dim.resize(bnds);
-	nav->resize(old_dim, dim);
+	this->mode = mode;
+	nav->resize(old_mode, mode);
 }
 
 void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6], int shade) {
@@ -127,8 +142,14 @@ void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6], int shad
 
 	if (shade) {
 		color({0, 0, 0, (uint8_t)shade});
-		SDL_Rect box{x0 + 2, y0 + 2, x1 - x0 - 2, y1 - y0 - 2};
+		SDL_Rect box{x0 + offset.x + 2, y0 + offset.y + 2, x1 - x0 - 2, y1 - y0 - 2};
+
+		SDL_BlendMode mode;
+		SDL_GetRenderDrawBlendMode(canvas(), &mode);
+
+		SDL_SetRenderDrawBlendMode(canvas(), SDL_BLENDMODE_BLEND);
 		SDL_RenderFillRect(canvas(), &box);
+		SDL_SetRenderDrawBlendMode(canvas(), mode);
 	}
 }
 
@@ -153,7 +174,16 @@ GLRender::~GLRender() {
 	SDL_GL_DeleteContext(ctx);
 }
 
-void GLRender::chmode(ConfigScreenMode mode) {
+void GLRender::chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) {
+	SDL_Window *win = w.data();
+	old_dim = dim;
+	SDL_Rect bnds;
+
+	SDL_GetWindowPosition(win, &bnds.x, &bnds.y);
+	SDL_GetWindowSize(win, &bnds.w, &bnds.h);
+	this->mode = mode;
+	dim.resize(bnds);
+
 	assert("stub" == 0);
 }
 

@@ -26,13 +26,13 @@ class Font final {
 public:
 	const int ptsize;
 
-	Font(const char* fname, int ptsize);
-	Font(TTF_Font* handle, int ptsize = 12);
+	Font(const char *fname, int ptsize);
+	Font(TTF_Font *handle, int ptsize = 12);
 
-	SDL_Surface* surf(const char* text, SDL_Color fg);
-	SDL_Texture* tex(SimpleRender& r, const char* text, SDL_Color fg);
+	SDL_Surface *surf(const char* text, SDL_Color fg);
+	SDL_Texture *tex(SimpleRender& r, const char* text, SDL_Color fg);
 
-	TTF_Font* data() { return handle.get(); }
+	TTF_Font *data() { return handle.get(); }
 };
 
 class Text final {
@@ -40,28 +40,28 @@ class Text final {
 public:
 	const std::string str;
 
-	Text(SimpleRender& r, Font &f, const std::string& s, SDL_Color fg);
-	Text(SimpleRender& r, const std::string& s, SDL_Color fg);
+	Text(SimpleRender &r, Font &f, const std::string &s, SDL_Color fg);
+	Text(SimpleRender &r, const std::string &s, SDL_Color fg);
 
-	const Texture& tex() const { return m_tex; }
+	const Texture &tex() const { return m_tex; }
 
-	void paint(SimpleRender& r, int x, int y);
+	void paint(SimpleRender &r, int x, int y);
 };
 
 class TextBuf final {
-	SimpleRender& r;
-	Font& f;
+	SimpleRender &r;
+	Font &f;
 	SDL_Color fg;
 	std::unique_ptr<Text> txt;
 public:
-	TextBuf(SimpleRender& r, Font& f, const std::string& s, SDL_Color fg);
-	TextBuf(SimpleRender& r, const std::string& s, SDL_Color fg);
+	TextBuf(SimpleRender &r, Font &f, const std::string &s, SDL_Color fg);
+	TextBuf(SimpleRender &r, const std::string &s, SDL_Color fg);
 
 	void append(int ch);
 	void erase();
 	void clear();
-	void str(const std::string& s, SDL_Color fg);
-	const std::string& str() const;
+	void str(const std::string &s, SDL_Color fg);
+	const std::string &str() const;
 
 	void paint(int x, int y);
 };

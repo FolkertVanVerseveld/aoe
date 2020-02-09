@@ -151,7 +151,7 @@ Config::Config(int argc, char *argv[]) : scrmode(ConfigScreenMode::MODE_800_600)
 Assets::Assets()
 	: fnt_default(fs.open_ttf("Arial.ttf", 12))
 	, fnt_title(fs.open_ttf("CoprGtl.ttf", 28))
-	, fnt_button(fs.open_ttf("CoprGtl.ttf", 16))
+	, fnt_button(fs.open_ttf("CoprGtb.ttf", 16))
 	, drs_border(fs.open_drs("Border.drs"))
 	, drs_gfx(fs.open_drs("graphics.drs"))
 	, drs_ui(fs.open_drs("Interfac.drs"))
@@ -260,7 +260,7 @@ void Window::chmode(ConfigScreenMode mode) {
 		}
 		SDL_SetWindowSize(handle.get(), width, height);
 
-		renderer->chmode(mode);
+		renderer->chmode(scrmode, mode);
 	} else if (was_windowed) {
 		SDL_GetWindowPosition(handle.get(), &oldbnds.x, &oldbnds.y);
 		SDL_GetWindowSize(handle.get(), &oldbnds.w, &oldbnds.h);
@@ -270,7 +270,7 @@ void Window::chmode(ConfigScreenMode mode) {
 		// NOTE _DESKTOP is needed for non-primary displays!
 		SDL_SetWindowFullscreen(handle.get(), SDL_WINDOW_FULLSCREEN_DESKTOP);
 
-		renderer->chmode(mode);
+		renderer->chmode(scrmode, mode);
 	}
 
 	lastmode = scrmode;
