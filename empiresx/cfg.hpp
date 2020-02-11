@@ -22,7 +22,7 @@ public:
 	/** Startup configuration specified by program arguments. */
 	ConfigScreenMode scrmode;
 	unsigned poplimit = 50;
-	bool music;
+	bool music, sound;
 
 	static constexpr unsigned POP_MIN = 25, POP_MAX = 200;
 

@@ -17,6 +17,7 @@
 #include <memory>
 #include <vector>
 #include <stack>
+#include <map>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -33,6 +34,7 @@
 #include "menu.hpp"
 #include "game.hpp"
 #include "audio.hpp"
+#include "string.hpp"
 
 #if windows
 #pragma comment(lib, "opengl32")
@@ -105,19 +107,60 @@ public:
 	}
 };
 
-class MenuMultiplayer final : public Menu {
-	Text txt_host, txt_join, txt_back, txt_port, txt_address;
+const SDL_Rect menu_multi_lbl_name[screen_modes] = {
+	{26, 78, 0, 0},
+	{31, 96, 0, 0},
+	{38, 123, 0, 0},
+	{38, 123, 0, 0},
+	{38, 123, 0, 0},
+};
+
+const SDL_Rect menu_multi_lbl_port[screen_modes] = {
+	{480, 78, 0, 0},
+	{600, 78, 0, 0},
+	{768, 78, 0, 0},
+	{768, 78, 0, 0},
+	{768, 78, 0, 0},
+};
+
+const SDL_Rect menu_multi_btn_txt_ok[screen_modes] = {
+	{192, 456, 0, 0},
+	{240, 568, 0, 0},
+	{306, 728, 0, 0},
+	{306, 728, 0, 0},
+	{306, 728, 0, 0},
+};
+
+const SDL_Rect menu_multi_btn_border_ok[screen_modes] = {
+	{70, 440, 310 - 70, 470 - 440},
+	{87, 550, 387 - 87, 587 - 550},
+	{112, 704, 496 - 112, 752 - 704},
+	{112, 704, 496 - 112, 752 - 704},
+	{112, 704, 496 - 112, 752 - 704},
+};
+
+class MenuMultiplayer final : public Menu, public ui::InteractableCallback {
+	Text txt_join, txt_back, txt_port, txt_address;
 	TextBuf buf_port, buf_address;
 public:
 	MenuMultiplayer(SimpleRender &r)
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_multiplayer), SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_host(r, "(H) Host Game", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_join(r, "(J) Join Game", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_back(r, "(Q) Back", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_port(r, "Port: ", SDL_Color{ 0xff, 0xff, 0xff })
 		, buf_port(r, "25659", SDL_Color{ 0xff, 0xff, 0 })
 		, txt_address(r, "Server IP: ", SDL_Color{ 0xff, 0xff, 0xff })
-		, buf_address(r, "127.0.0.1", SDL_Color{ 0xff, 0xff, 0 }) {}
+		, buf_address(r, "127.0.0.1", SDL_Color{ 0xff, 0xff, 0 })
+	{
+		Font &fnt = eng->assets->fnt_button;
+		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
+		ConfigScreenMode mode = eng->w->render().mode;
+
+		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Name", menu_multi_lbl_name, eng->w->render().mode, pal, bkg));
+		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Port", menu_multi_lbl_port, eng->w->render().mode, pal, bkg));
+
+		add_btn(new ui::Button(0, *this, r, fnt, "(H) Host", fg, bg, menu_multi_btn_txt_ok, menu_multi_btn_border_ok, pal, bkg, mode));
+	}
 
 	void keydown(int ch) override {
 		if (ch >= '0' && ch <= '9') {
@@ -130,22 +173,36 @@ public:
 		case SDLK_BACKSPACE:
 			buf_port.erase();
 			break;
-		case 'h':
-		case 'H':
-			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), true));
-			break;
-		case 'j':
-		case 'J':
-			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), false));
-			break;
 		}
 	}
 
 	void keyup(int ch) override {
 		switch (ch) {
+		case 'h':
+		case 'H':
+			interacted(0);
+			break;
+		case 'j':
+		case 'J':
+			interacted(1);
+			break;
 		case 'q':
 		case 'Q':
 		case SDLK_ESCAPE:
+			interacted(2);
+			break;
+		}
+	}
+
+	void interacted(unsigned id) override {
+		switch (id) {
+		case 0:
+			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), true));
+			break;
+		case 1:
+			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), false));
+			break;
+		case 2:
 			nav->quit(1);
 			break;
 		}
@@ -154,7 +211,6 @@ public:
 	void paint() override {
 		Menu::paint();
 
-		txt_host.paint(r, 40, 80);
 		txt_join.paint(r, 40, 120);
 
 		txt_port.paint(r, 40, 160);

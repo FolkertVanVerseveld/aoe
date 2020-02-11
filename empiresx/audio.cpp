@@ -35,12 +35,41 @@ static void music_stop() {
 }
 
 Sfx::Sfx(SfxId id) : Sfx(id, NULL) {
-	// FIXME
+	void *data;
+	size_t count;
+	Mix_Chunk *clip;
+
+	// special case for multiplayer auto-messages
+	if (id >= SfxId::taunt1 && id <= SfxId::taunt25) {
+		std::lock_guard<std::recursive_mutex> lock(sfx_mut);
+
+		char buf[32];
+		sprintf(buf, "taunt%03u.wav", (unsigned)id - (unsigned)SfxId::taunt1 + 1);
+
+		if (!(clip = fs.open_wav(buf)))
+			throw std::runtime_error(std::string("Could not load ") + buf);
+
+		this->clip.reset(clip);
+		return;
+	}
+
+	if (!(data = eng->assets->open_wav((res_id)id, count)))
+		throw std::runtime_error(std::string("Could not load sound ") + std::to_string((unsigned)id));
+
+	std::lock_guard<std::recursive_mutex> lock(sfx_mut);
+
+	if (!(clip = Mix_LoadWAV_RW(SDL_RWFromMem(data, count), 1)))
+		throw std::runtime_error(std::string("Could not load sound ") + std::to_string((unsigned)id) + ": " + Mix_GetError());
+
+	this->clip.reset(clip);
 }
 
 Sfx::Sfx(SfxId id, Mix_Chunk *clip) : id(id), clip(clip, &Mix_FreeChunk), loops(0), channel(-1) {}
 
 void Sfx::play(int loops, int channel) {
+	if (!eng->config().sound)
+		return;
+
 	std::lock_guard<std::recursive_mutex> lock(sfx_mut);
 	Mix_PlayChannel(channel, clip.get(), loops);
 }

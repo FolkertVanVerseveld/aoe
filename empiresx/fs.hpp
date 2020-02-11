@@ -71,6 +71,7 @@ public:
 	PE open_pe(const std::string &name);
 
 	Mix_Music *open_msc(const std::string &name);
+	Mix_Chunk *open_wav(const std::string &name);
 };
 
 }

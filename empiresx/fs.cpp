@@ -190,16 +190,24 @@ Mix_Music *FS::open_msc(const std::string &name) {
 	if ((msc = Mix_LoadMUS(path.c_str())) != 0)
 		return msc;
 
-	tolower(base);
-	path = path_cdrom + "game/sound/" + base;
-
-	if ((msc = Mix_LoadMUS(path.c_str())) != 0)
-		return msc;
-
 	toupper(base);
 	path = path_cdrom + "GAME/SOUND/" + base;
 
 	return Mix_LoadMUS(path.c_str());
+}
+
+Mix_Chunk *FS::open_wav(const std::string &name) {
+	std::string base(name);
+	std::string path(path_cdrom + "game/sound/" + base);
+	Mix_Chunk *sfx;
+
+	if ((sfx = Mix_LoadWAV(path.c_str())) != 0)
+		return sfx;
+
+	toupper(base);
+	path = path_cdrom + "GAME/SOUND/" + base;
+
+	return Mix_LoadWAV(path.c_str());
 }
 
 }

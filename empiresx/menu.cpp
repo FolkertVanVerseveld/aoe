@@ -41,7 +41,7 @@ void Menu::paint_details(unsigned options) {
 	if (options & show_border)
 		border.paint(r);
 	if (options & show_title)
-		title.paint(r, 40, 40);
+		title.paint(r, (ref.w - title.tex().width) / 2, 40);
 
 	for (auto &x : ui_objs)
 		x->paint(r);

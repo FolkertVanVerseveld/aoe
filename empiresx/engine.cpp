@@ -126,7 +126,7 @@ Engine *eng;
 
 #define hasopt(x,a,b) (!SDL_strcasecmp(x[i], a b) || !SDL_strcasecmp(x[i], a "_" b) || !SDL_strcasecmp(x[i], a " " b) || (i + 1 < argc && !SDL_strcasecmp(x[i], a) && !SDL_strcasecmp(x[i+1], b)))
 
-Config::Config(int argc, char *argv[]) : scrmode(ConfigScreenMode::MODE_800_600), music(true) {
+Config::Config(int argc, char *argv[]) : scrmode(ConfigScreenMode::MODE_800_600), music(true), sound(true) {
 	unsigned n;
 
 	for (int i = 1; i < argc; ++i) {
@@ -150,6 +150,8 @@ Config::Config(int argc, char *argv[]) : scrmode(ConfigScreenMode::MODE_800_600)
 			poplimit = n;
 		} else if (hasopt(argv, "no", "music")) {
 			music = false;
+		} else if (hasopt(argv, "no", "sound")) {
+			sound = false;
 		}
 	}
 }
@@ -187,6 +189,15 @@ std::string Assets::open_str(LangId id) {
 	std::string tmp;
 	pe_lang.load_string(tmp, (res_id)id);
 	return tmp;
+}
+
+void *Assets::open_wav(res_id id, size_t &count) {
+	void *data;
+
+	if ((data = drs_ui.open_wav(id, count)) != NULL)
+		return data;
+
+	return drs_sfx.open_wav(id, count);
 }
 
 Window::Window(const char *title, Config &cfg, Uint32 flags) : Window(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, cfg, flags) {}

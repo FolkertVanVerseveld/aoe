@@ -74,6 +74,7 @@ public:
 	BackgroundSettings open_bkg(res_id id);
 	Animation open_slp(const Palette &pal, res_id id);
 	std::string open_str(LangId id);
+	void *open_wav(res_id id, size_t &count);
 };
 
 class Window final {

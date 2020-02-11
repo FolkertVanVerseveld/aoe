@@ -1,6 +1,7 @@
 #include "ui.hpp"
 
 #include "engine.hpp"
+#include "audio.hpp"
 
 #include <cassert>
 
@@ -224,6 +225,7 @@ void Button::press(bool on) {
 
 	if (is_pressed && !on) {
 		is_pressed = false;
+		jukebox.sfx(SfxId::button4);
 		cb.interacted(int_id);
 	}
 

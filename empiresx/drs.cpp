@@ -406,6 +406,16 @@ Image &Animation::subimage(unsigned index, unsigned player) {
 	return images[player * image_count + index];
 }
 
+void *DRS::open_wav(res_id id, size_t &count) {
+	io::DrsItem item;
+
+	if (!open_item(item, id, DrsType::wave))
+		return NULL;
+
+	count = item.size;
+	return (char*)hdr + item.offset;
+}
+
 Palette DRS::open_pal(res_id id) {
 	io::DrsItem item;
 

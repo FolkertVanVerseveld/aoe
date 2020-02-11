@@ -163,6 +163,7 @@ public:
 	Palette open_pal(res_id id);
 	BackgroundSettings open_bkg(res_id id);
 	bool open_slp(Slp &slp, res_id id);
+	void *open_wav(res_id id, size_t &count);
 };
 
 }
