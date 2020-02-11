@@ -25,6 +25,9 @@ public:
 	Animation anim_bkg[lgy_screen_modes];
 	bool enhanced;
 
+	static constexpr unsigned show_border = 0x01;
+	static constexpr unsigned show_title = 0x02;
+
 	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced=false);
 	virtual ~Menu() {}
 
@@ -41,6 +44,8 @@ public:
 
 	virtual void idle() {}
 	virtual void paint();
+
+	void paint_details(unsigned options);
 };
 
 class Navigator final {

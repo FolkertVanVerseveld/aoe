@@ -22,7 +22,7 @@ void Menu::add_btn(ui::Button *btn) {
 	ui_focus.emplace_back(btn);
 }
 
-void Menu::paint() {
+void Menu::paint_details(unsigned options) {
 	r.color({0, 0, 0, SDL_ALPHA_OPAQUE});
 	r.clear();
 
@@ -38,11 +38,17 @@ void Menu::paint() {
 
 	anim_bkg[index].subimage(0).draw_stretch(r, to);
 
-	border.paint(r);
-	title.paint(r, 40, 40);
+	if (options & show_border)
+		border.paint(r);
+	if (options & show_title)
+		title.paint(r, 40, 40);
 
 	for (auto &x : ui_objs)
 		x->paint(r);
+}
+
+void Menu::paint() {
+	paint_details(Menu::show_border | Menu::show_title);
 }
 
 void Menu::mousedown(SDL_MouseButtonEvent &ev) {

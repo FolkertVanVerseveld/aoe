@@ -16,6 +16,7 @@
 #include "fs.hpp"
 #include "os.hpp"
 #include "render.hpp"
+#include "audio.hpp"
 
 namespace genie {
 
@@ -108,6 +109,7 @@ MIX::MIX() {
 }
 
 MIX::~MIX() {
+	jukebox.close();
 	Mix_Quit();
 }
 
@@ -122,7 +124,9 @@ TTF::~TTF() {
 
 Engine *eng;
 
-Config::Config(int argc, char *argv[]) : scrmode(ConfigScreenMode::MODE_800_600) {
+#define hasopt(x,a,b) (!SDL_strcasecmp(x[i], a b) || !SDL_strcasecmp(x[i], a "_" b) || !SDL_strcasecmp(x[i], a " " b) || (i + 1 < argc && !SDL_strcasecmp(x[i], a) && !SDL_strcasecmp(x[i+1], b)))
+
+Config::Config(int argc, char *argv[]) : scrmode(ConfigScreenMode::MODE_800_600), music(true) {
 	unsigned n;
 
 	for (int i = 1; i < argc; ++i) {
@@ -144,6 +148,8 @@ Config::Config(int argc, char *argv[]) : scrmode(ConfigScreenMode::MODE_800_600)
 				n = POP_MAX;
 
 			poplimit = n;
+		} else if (hasopt(argv, "no", "music")) {
+			music = false;
 		}
 	}
 }

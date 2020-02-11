@@ -198,12 +198,12 @@ void Label::paint(SimpleRender &r) {
 	txt_fg.paint(r, bnds.x, bnds.y);
 }
 
-Button::Button(SimpleRender &r, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, DynamicUI *decorator, bool enhanced)
-	: Border(bnds, mode, pal, bkg, BorderType::button, enhanced), Interactable()
+Button::Button(unsigned id, InteractableCallback &cb, SimpleRender &r, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, DynamicUI *decorator, bool enhanced)
+	: Border(bnds, mode, pal, bkg, BorderType::button, enhanced), Interactable(id, cb)
 	, decorator(decorator) {}
 
-Button::Button(SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, SDL_Color bg, const SDL_Rect txt_bnds[screen_modes], const SDL_Rect bnds[screen_modes], const Palette &pal, const BackgroundSettings &bkg, ConfigScreenMode mode, HAlign halign, VAlign valign, bool adjust_anchors, bool enhanced)
-: Button(r, bnds, mode, pal, bkg, new Label(r, f, s, fg, bg, txt_bnds, mode, halign, valign, adjust_anchors, enhanced)) {}
+Button::Button(unsigned id, InteractableCallback &cb, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, SDL_Color bg, const SDL_Rect txt_bnds[screen_modes], const SDL_Rect bnds[screen_modes], const Palette &pal, const BackgroundSettings &bkg, ConfigScreenMode mode, HAlign halign, VAlign valign, bool adjust_anchors, bool enhanced)
+: Button(id, cb, r, bnds, mode, pal, bkg, new Label(r, f, s, fg, bg, txt_bnds, mode, halign, valign, adjust_anchors, enhanced)) {}
 
 void Button::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
 	Border::resize(old_mode, mode);
@@ -223,7 +223,8 @@ void Button::press(bool on) {
 	flip = on;
 
 	if (is_pressed && !on) {
-		puts("todo: press");
+		is_pressed = false;
+		cb.interacted(int_id);
 	}
 
 	is_pressed = on;

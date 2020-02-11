@@ -182,4 +182,24 @@ PE FS::open_pe(const std::string &name) {
 	throw std::runtime_error(std::string("Could not find dll: ") + orig);
 }
 
+Mix_Music *FS::open_msc(const std::string &name) {
+	std::string base(name);
+	std::string path(path_cdrom + "game/sound/" + base);
+	Mix_Music *msc;
+
+	if ((msc = Mix_LoadMUS(path.c_str())) != 0)
+		return msc;
+
+	tolower(base);
+	path = path_cdrom + "game/sound/" + base;
+
+	if ((msc = Mix_LoadMUS(path.c_str())) != 0)
+		return msc;
+
+	toupper(base);
+	path = path_cdrom + "GAME/SOUND/" + base;
+
+	return Mix_LoadMUS(path.c_str());
+}
+
 }

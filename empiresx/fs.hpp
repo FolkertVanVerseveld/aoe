@@ -14,6 +14,8 @@
 #include <sys/stat.h>
 #endif
 
+#include <SDL2/SDL_mixer.h>
+
 namespace genie {
 
 #if windows
@@ -67,6 +69,8 @@ public:
 	DRS open_drs(const std::string &name, bool map=true);
 
 	PE open_pe(const std::string &name);
+
+	Mix_Music *open_msc(const std::string &name);
 };
 
 }

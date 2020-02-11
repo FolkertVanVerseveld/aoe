@@ -32,33 +32,13 @@
 #include "font.hpp"
 #include "menu.hpp"
 #include "game.hpp"
+#include "audio.hpp"
 
 #if windows
 #pragma comment(lib, "opengl32")
 #endif
 
 namespace genie {
-
-// FIXME move to separate file
-
-class Sfx final {
-	std::unique_ptr<Mix_Chunk, decltype(&Mix_FreeChunk)> handle;
-public:
-	Sfx(const char *name) : handle(NULL, &Mix_FreeChunk) {
-		Mix_Chunk *c;
-
-		if (!(c = Mix_LoadWAV(name)))
-			throw std::runtime_error(std::string("Unable to load sound effect \"") + name + "\" : " + Mix_GetError());
-
-		handle.reset(c);
-	}
-
-	int play(int loops=0, int channel=-1) {
-		return Mix_PlayChannel(channel, handle.get(), loops);
-	}
-
-	Mix_Chunk *data() { return handle.get(); }
-};
 
 class MenuLobby final : public Menu {
 	std::unique_ptr<Multiplayer> mp;
@@ -315,7 +295,7 @@ const SDL_Rect menu_start_btn_border_quit[screen_modes] = {
 	{272, 604, 752 - 272, 668 - 604},
 };
 
-class MenuStart final : public Menu {
+class MenuStart final : public Menu, public ui::InteractableCallback {
 public:
 	MenuStart(SimpleRender &r)
 		: Menu(MenuId::start, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_main), SDL_Color{ 0xff, 0xff, 0xff })
@@ -324,32 +304,61 @@ public:
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
 		ConfigScreenMode mode = eng->w->render().mode;
 
-		add_btn(new ui::Button(r, fnt, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), fg, bg, menu_start_btn_txt_start, menu_start_btn_border_start, pal, bkg, mode));
-		add_btn(new ui::Button(r, fnt, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), fg, bg, menu_start_btn_txt_multi, menu_start_btn_border_multi, pal, bkg, mode));
-		add_btn(new ui::Button(r, fnt, "(H) Help and settings", fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode));
-		add_btn(new ui::Button(r, fnt, "(E) " + eng->assets->open_str(LangId::btn_edit), fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode));
-		add_btn(new ui::Button(r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_exit), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode));
+		add_btn(new ui::Button(0, *this, r, fnt, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), fg, bg, menu_start_btn_txt_start, menu_start_btn_border_start, pal, bkg, mode));
+		add_btn(new ui::Button(1, *this, r, fnt, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), fg, bg, menu_start_btn_txt_multi, menu_start_btn_border_multi, pal, bkg, mode));
+		add_btn(new ui::Button(2, *this, r, fnt, "(H) Help and settings", fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode));
+		add_btn(new ui::Button(3, *this, r, fnt, "(E) " + eng->assets->open_str(LangId::btn_edit), fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode));
+		add_btn(new ui::Button(4, *this, r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_exit), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode));
+
+		jukebox.play(MusicId::start);
 	}
 
 	void keyup(int ch) override {
 		switch (ch) {
 		case 's':
 		case 'S':
+			interacted(0);
 			break;
 		case 'm':
 		case 'M':
-			go_to(new MenuMultiplayer(r));
+			interacted(1);
 			break;
 		case 'h':
 		case 'H':
-			go_to(new MenuExtSettings(r));
+			interacted(2);
+			break;
+		case 'e':
+		case 'E':
+			interacted(3);
 			break;
 		case 'q':
 		case 'Q':
 		case SDLK_ESCAPE:
+			interacted(4);
+			break;
+		}
+	}
+
+	void interacted(unsigned id) override {
+		switch (id) {
+		case 0:
+			break;
+		case 1:
+			go_to(new MenuMultiplayer(r));
+			break;
+		case 2:
+			go_to(new MenuExtSettings(r));
+			break;
+		case 3:
+			break;
+		case 4:
 			nav->quit();
 			break;
 		}
+	}
+
+	void paint() override {
+		paint_details(Menu::show_border);
 	}
 };
 

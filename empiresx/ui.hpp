@@ -9,11 +9,20 @@
 namespace genie {
 namespace ui {
 
+class InteractableCallback {
+public:
+	virtual void interacted(unsigned index) = 0;
+};
+
 class Interactable {
 protected:
+	unsigned int_id;
 	bool has_focus;
 	bool is_pressed;
+	InteractableCallback &cb;
 public:
+	Interactable(unsigned id, InteractableCallback &cb) : int_id(id), has_focus(false), is_pressed(false), cb(cb) {}
+
 	virtual void focus(bool on) = 0;
 	virtual void press(bool on) = 0;
 };
@@ -118,8 +127,8 @@ class Button final : public Border, public ui::Interactable {
 	/** Identifiable element (e.g. icon, text, ...) */
 	std::unique_ptr<DynamicUI> decorator;
 public:
-	Button(SimpleRender &r, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, DynamicUI *decorator, bool enhanced=false);
-	Button(SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, SDL_Color bg, const SDL_Rect txt_bnds[screen_modes], const SDL_Rect bnds[screen_modes], const Palette &pal, const BackgroundSettings &bkg, ConfigScreenMode mode, HAlign=HAlign::center, VAlign=VAlign::middle, bool adjust_anchors=true, bool enhanced=false);
+	Button(unsigned id, InteractableCallback &cb, SimpleRender &r, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, DynamicUI *decorator, bool enhanced=false);
+	Button(unsigned id, InteractableCallback &cb, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, SDL_Color bg, const SDL_Rect txt_bnds[screen_modes], const SDL_Rect bnds[screen_modes], const Palette &pal, const BackgroundSettings &bkg, ConfigScreenMode mode, HAlign=HAlign::center, VAlign=VAlign::middle, bool adjust_anchors=true, bool enhanced=false);
 
 	void resize(ConfigScreenMode old_mode, ConfigScreenMode mode) override;
 	void paint(SimpleRender &r) override;
