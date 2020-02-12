@@ -160,6 +160,8 @@ enum class LangId {
 	multiplayer_name = 9612,
 	multiplayer_type = 9613,
 	multiplayer_gaming_zone = 9614,
+	multiplayer_join = 9632,
+	multiplayer_host = 9634,
 
 	/* Extended help and game settings menu */
 	mode_640_480 = 9447,

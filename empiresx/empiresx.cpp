@@ -42,7 +42,23 @@
 
 namespace genie {
 
-class MenuLobby final : public Menu {
+const SDL_Rect menu_lobby_txt_cancel[screen_modes] = {
+	{405 + (585 - 405) / 2, 440 + (470 - 440) / 2, 0, 0},
+	{506 + (731 - 506) / 2, 550 + (587 - 550) / 2, 0, 0},
+	{648 + (936 - 648) / 2, 704 + (752 - 704) / 2, 0, 0},
+	{648 + (936 - 648) / 2, 704 + (752 - 704) / 2, 0, 0},
+	{648 + (936 - 648) / 2, 704 + (752 - 704) / 2, 0, 0},
+};
+
+const SDL_Rect menu_lobby_border_cancel[screen_modes] = {
+	{405, 440, 585 - 405, 470 - 440},
+	{506, 550, 731 - 506, 587 - 550},
+	{648, 704, 936 - 648, 752 - 704},
+	{648, 704, 936 - 648, 752 - 704},
+	{648, 704, 936 - 648, 752 - 704},
+};
+
+class MenuLobby final : public Menu, public ui::InteractableCallback {
 	std::unique_ptr<Multiplayer> mp;
 	TextBuf line;
 	bool host;
@@ -51,7 +67,16 @@ public:
 	MenuLobby(SimpleRender &r, uint16_t port, bool host = true)
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
 		, mp(host ? (Multiplayer*)new MultiplayerHost(port) : (Multiplayer*)new MultiplayerClient(port))
-		, line(r, eng->assets->fnt_default, "", SDL_Color{ 0xff, 0xff, 0 }), host(host) {}
+		, line(r, eng->assets->fnt_default, "", SDL_Color{ 0xff, 0xff, 0 }), host(host)
+	{
+		Font &fnt = eng->assets->fnt_button;
+		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
+		ConfigScreenMode mode = eng->w->render().mode;
+
+		//ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Name", menu_multi_lbl_name, eng->w->render().mode, pal, bkg));
+
+		add_btn(new ui::Button(0, *this, r, fnt, eng->assets->open_str(LangId::btn_cancel), fg, bg, menu_lobby_txt_cancel, menu_lobby_border_cancel, pal, bkg, mode));
+	}
 
 	void idle() override {
 		std::lock_guard<std::mutex> lock(mp->mut);
@@ -90,6 +115,16 @@ public:
 	void keyup(int ch) override {
 		switch (ch) {
 		case SDLK_ESCAPE:
+			interacted(1);
+			break;
+		}
+	}
+
+	void interacted(unsigned id) override {
+		jukebox.sfx(SfxId::button4);
+
+		switch (id) {
+		case 0:
 			nav->quit(1);
 			break;
 		}
@@ -123,31 +158,61 @@ const SDL_Rect menu_multi_lbl_port[screen_modes] = {
 	{768, 123, 0, 0},
 };
 
-const SDL_Rect menu_multi_btn_txt_ok[screen_modes] = {
-	{192, 456, 0, 0},
-	{240, 568, 0, 0},
-	{306, 728, 0, 0},
-	{306, 728, 0, 0},
-	{306, 728, 0, 0},
+const SDL_Rect menu_multi_btn_txt_host[screen_modes] = {
+	{220 + (420 - 220) / 2, 440 + (470 - 440) / 2, 0, 0},
+	{275 + (525 - 275) / 2, 550 + (587 - 550) / 2, 0, 0},
+	{352 + (672 - 352) / 2, 704 + (752 - 704) / 2, 0, 0},
+	{352 + (672 - 352) / 2, 704 + (752 - 704) / 2, 0, 0},
+	{352 + (672 - 352) / 2, 704 + (752 - 704) / 2, 0, 0},
 };
 
-const SDL_Rect menu_multi_btn_border_ok[screen_modes] = {
-	{70, 440, 310 - 70, 470 - 440},
-	{87, 550, 387 - 87, 587 - 550},
-	{112, 704, 496 - 112, 752 - 704},
-	{112, 704, 496 - 112, 752 - 704},
-	{112, 704, 496 - 112, 752 - 704},
+const SDL_Rect menu_multi_btn_border_host[screen_modes] = {
+	{220, 440, 420 - 220, 470 - 440},
+	{275, 550, 525 - 275, 587 - 550},
+	{352, 704, 672 - 352, 752 - 704},
+	{352, 704, 672 - 352, 752 - 704},
+	{352, 704, 672 - 352, 752 - 704},
+};
+
+const SDL_Rect menu_multi_btn_txt_join[screen_modes] = {
+	{10 + (210 - 10) / 2, 440 + (470 - 440) / 2, 0, 0},
+	{12 + (262 - 12) / 2, 550 + (587 - 550) / 2, 0, 0},
+	{16 + (336 - 16) / 2, 704 + (752 - 704) / 2, 0, 0},
+	{16 + (336 - 16) / 2, 704 + (752 - 704) / 2, 0, 0},
+	{16 + (336 - 16) / 2, 704 + (752 - 704) / 2, 0, 0},
+};
+
+const SDL_Rect menu_multi_btn_border_join[screen_modes] = {
+	{10, 440, 210 - 10, 470 - 440},
+	{12, 550, 262 - 12, 587 - 550},
+	{16, 704, 336 - 16, 752 - 704},
+	{16, 704, 336 - 16, 752 - 704},
+	{16, 704, 336 - 16, 752 - 704},
+};
+
+const SDL_Rect menu_multi_btn_txt_cancel[screen_modes] = {
+	{529, 456, 0, 0},
+	{658, 569, 0, 0},
+	{846, 729, 0, 0},
+	{846, 729, 0, 0},
+	{846, 729, 0, 0},
+};
+
+const SDL_Rect menu_multi_btn_border_cancel[screen_modes] = {
+	{430, 440, 630 - 430, 470 - 440},
+	{537, 550, 787 - 537, 587 - 550},
+	{688, 704, 1008 - 688, 752 - 704},
+	{688, 704, 1008 - 688, 752 - 704},
+	{688, 704, 1008 - 688, 752 - 704},
 };
 
 class MenuMultiplayer final : public Menu, public ui::InteractableCallback {
-	Text txt_join, txt_back, txt_port, txt_address;
+	Text txt_port, txt_address;
 	TextBuf buf_port, buf_address;
 public:
 	MenuMultiplayer(SimpleRender &r)
 		// we skip the connection type menu 9611, because we don't support serial connection or microsoft game zone anyway
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_multiplayer_servers), SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_join(r, "(J) Join Game", SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_back(r, "(Q) Back", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_port(r, "Port: ", SDL_Color{ 0xff, 0xff, 0xff })
 		, buf_port(r, "25659", SDL_Color{ 0xff, 0xff, 0 })
 		, txt_address(r, "Server IP: ", SDL_Color{ 0xff, 0xff, 0xff })
@@ -160,7 +225,9 @@ public:
 		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Name", menu_multi_lbl_name, eng->w->render().mode, pal, bkg));
 		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Port", menu_multi_lbl_port, eng->w->render().mode, pal, bkg));
 
-		add_btn(new ui::Button(0, *this, r, fnt, "(H) Host", fg, bg, menu_multi_btn_txt_ok, menu_multi_btn_border_ok, pal, bkg, mode));
+		add_btn(new ui::Button(1, *this, r, fnt, "(H) " + eng->assets->open_str(LangId::multiplayer_host), fg, bg, menu_multi_btn_txt_host, menu_multi_btn_border_host, pal, bkg, mode));
+		add_btn(new ui::Button(2, *this, r, fnt, "(J) " + eng->assets->open_str(LangId::multiplayer_join), fg, bg, menu_multi_btn_txt_join, menu_multi_btn_border_join, pal, bkg, mode));
+		add_btn(new ui::Button(0, *this, r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_cancel), fg, bg, menu_multi_btn_txt_cancel, menu_multi_btn_border_cancel, pal, bkg, mode));
 	}
 
 	void keydown(int ch) override {
@@ -181,16 +248,16 @@ public:
 		switch (ch) {
 		case 'h':
 		case 'H':
-			interacted(0);
+			interacted(1);
 			break;
 		case 'j':
 		case 'J':
-			interacted(1);
+			interacted(2);
 			break;
 		case 'q':
 		case 'Q':
 		case SDLK_ESCAPE:
-			interacted(2);
+			interacted(0);
 			break;
 		}
 	}
@@ -200,13 +267,13 @@ public:
 
 		switch (id) {
 		case 0:
-			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), true));
+			nav->quit(1);
 			break;
 		case 1:
-			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), false));
+			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), true));
 			break;
 		case 2:
-			nav->quit(1);
+			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), false));
 			break;
 		}
 	}
@@ -214,15 +281,11 @@ public:
 	void paint() override {
 		Menu::paint();
 
-		txt_join.paint(r, 40, 120);
-
 		txt_port.paint(r, 40, 160);
 		buf_port.paint(40 + txt_port.tex().width, 160);
 
 		txt_address.paint(r, 40, 200);
 		buf_address.paint(40 + txt_address.tex().width, 200);
-
-		txt_back.paint(r, 40, 240);
 	}
 };
 
@@ -351,6 +414,7 @@ public:
 			break;
 		case 'q':
 		case 'Q':
+		case SDLK_ESCAPE:
 			interacted(0);
 			break;
 		}
@@ -379,6 +443,14 @@ public:
 	}
 };
 
+const SDL_Rect menu_start_lbl_copy3[screen_modes] = {
+	{320, 480 - 10, 133, 13},
+	{400, 600 - 10, 133, 13},
+	{512, 800 - 10, 133, 13},
+	{512, 800 - 10, 133, 13},
+	{512, 800 - 10, 133, 13},
+};
+
 class MenuStart final : public Menu, public ui::InteractableCallback {
 public:
 	MenuStart(SimpleRender &r)
@@ -394,6 +466,8 @@ public:
 		add_btn(new ui::Button(2, *this, r, fnt, "(H) Help and settings", fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode));
 		//add_btn(new ui::Button(3, *this, r, fnt, "(E) " + eng->assets->open_str(LangId::btn_edit), fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode));
 		add_btn(new ui::Button(4, *this, r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_exit), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode));
+
+		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_default, "© 1997 Microsoft & © 2016-2020 Folkert van Verseveld. Some rights reserved", menu_start_lbl_copy3, eng->w->render().mode, pal, bkg, ui::HAlign::center, ui::VAlign::bottom, true, true));
 
 		jukebox.play(MusicId::start);
 	}

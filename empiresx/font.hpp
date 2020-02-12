@@ -3,9 +3,8 @@
 /**
  * True Type Font rendering subsystem
  *
- * This is more complicated than one would expect...
- * Since libfreetype does not properly render any TTF type I throw at it,
- * we will use windows native GDI rendering instead to improve font quality.
+ * NOTE libfreetype cannot render non-antialiased text properly for any TTF I throw at it,
+ * as long as we use antialiased textures, we should be fine.
  */
 
 #include "os_macros.hpp"
@@ -29,8 +28,8 @@ public:
 	Font(const char *fname, int ptsize);
 	Font(TTF_Font *handle, int ptsize = 12);
 
-	SDL_Surface *surf(const char* text, SDL_Color fg);
-	SDL_Texture *tex(SimpleRender& r, const char* text, SDL_Color fg);
+	SDL_Surface *surf(const char *text, SDL_Color fg);
+	SDL_Texture *tex(SimpleRender &r, const char *text, SDL_Color fg);
 
 	TTF_Font *data() { return handle.get(); }
 };
@@ -48,7 +47,7 @@ public:
 	void paint(SimpleRender &r, int x, int y);
 };
 
-class TextBuf final {
+class TextBuf {
 	SimpleRender &r;
 	Font &f;
 	SDL_Color fg;

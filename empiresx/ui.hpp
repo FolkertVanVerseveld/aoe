@@ -76,6 +76,7 @@ public:
 enum class BorderType {
 	background = 0,
 	button = 1,
+	field = 2
 };
 
 /** Raw border that only draws a simple rectangular box using background settings binary info. */

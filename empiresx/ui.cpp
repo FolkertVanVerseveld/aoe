@@ -79,6 +79,7 @@ Border::Border(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const P
 		shade = 0;
 		break;
 	case BorderType::button:
+	case BorderType::field:
 		shade = bkg.shade;
 		break;
 	}

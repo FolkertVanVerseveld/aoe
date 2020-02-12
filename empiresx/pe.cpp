@@ -238,7 +238,7 @@ bool PE::load_res(io::RsrcType type, res_id id, void **ptr, size_t &count) {
 
 		if (strid == id) {
 			*ptr = (void*)strptr;
-			count = str->length * 2;
+			count = str->length;
 			return true;
 		} else {
 			strptr += str->length;
@@ -261,8 +261,6 @@ void PE::load_string(std::string &s, res_id id) {
 
 	if (!count)
 		return;
-
-	count /= 2;
 
 	const uint16_t *data = (uint16_t*)ptr;
 	s.resize(count);
