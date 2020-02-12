@@ -31,6 +31,7 @@ typedef int sockfd;
 typedef epoll_event pollev;
 
 static inline int pollfd(const epoll_event &ev) { return ev.data.fd; }
+static inline int pollfd(int fd) { return fd; }
 #endif
 
 namespace genie {

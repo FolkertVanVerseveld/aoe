@@ -14,6 +14,15 @@
 
 #if linux
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+#define FD_INVALID (-1)
+
+#elif windows
+#define FD_INVALID 0
 #endif
 
 namespace genie {
@@ -78,6 +87,38 @@ iofd iofd_open(const std::string &name) {
 int iofd_open(const std::string &name) {
 	return ::open(name.c_str(), O_RDONLY);
 }
+
+Blob::Blob(const std::string &name, iofd fd, bool map) : name(name), fd(fd), map(map) {
+	if (fstat(fd, &st)) {
+		::close(fd);
+		throw std::runtime_error(std::string("Could not retrieve filesize for \"") + name + "\": " + std::string(strerror(errno)));
+	}
+
+	size = st.st_size;
+
+	if (map) {
+		if ((data = mmap(NULL, size, PROT_READ, MAP_SHARED | MAP_FILE, fd, 0)) == MAP_FAILED) {
+			::close(fd);
+			throw std::runtime_error(std::string("Could not map \"") + name + "\": " + std::string(strerror(errno)));
+		}
+	} else {
+		ssize_t n;
+
+		if (!(data = malloc(size)) || (n = read(fd, data, size)) < 0 || (size_t)n != size) {
+			free(data);
+			::close(fd);
+			throw std::runtime_error(std::string("Could not read \"") + name + "\": " + std::string(strerror(errno)));
+		}
+	}
+}
+
+Blob::~Blob() {
+	if (map)
+		munmap(data, size);
+	else
+		free(data);
+	::close(fd);
+}
 #endif
 
 bool FS::find_cdrom(OS &os) {
@@ -141,19 +182,19 @@ DRS FS::open_drs(const std::string &name, bool map) {
 	std::string path(path_cdrom + "game/data/" + base), orig(path);
 	iofd fd;
 
-	if ((fd = iofd_open(path)) != 0)
+	if ((fd = iofd_open(path)) != FD_INVALID)
 		return DRS(path, fd, map);
 
 	tolower(base);
 	path = path_cdrom + "game/data/" + base;
 
-	if ((fd = iofd_open(path)) != 0)
+	if ((fd = iofd_open(path)) != FD_INVALID)
 		return DRS(path, fd, map);
 
 	toupper(base);
 	path = path_cdrom + "GAME/DATA/" + base;
 
-	if ((fd = iofd_open(path)) != 0)
+	if ((fd = iofd_open(path)) != FD_INVALID)
 		return DRS(path, fd, map);
 
 	throw std::runtime_error(std::string("Could not find DRS: ") + orig);
@@ -164,19 +205,19 @@ PE FS::open_pe(const std::string &name) {
 	std::string path(path_cdrom + "game/" + base), orig(path);
 	iofd fd;
 
-	if ((fd = iofd_open(path)) != 0)
+	if ((fd = iofd_open(path)) != FD_INVALID)
 		return PE(path, fd);
 
 	tolower(base);
 	path = path_cdrom + "game/" + base;
 
-	if ((fd = iofd_open(path)) != 0)
+	if ((fd = iofd_open(path)) != FD_INVALID)
 		return PE(path, fd);
 
 	toupper(base);
 	path = path_cdrom + "GAME/" + base;
 
-	if ((fd = iofd_open(path)) != 0)
+	if ((fd = iofd_open(path)) != FD_INVALID)
 		return PE(path, fd);
 
 	throw std::runtime_error(std::string("Could not find dll: ") + orig);

@@ -41,7 +41,7 @@ struct mz final {
 };
 
 struct dos final {
-	mz mz;
+	struct mz mz;
 	uint16_t e_res[4];
 	uint16_t e_oemid;
 	uint16_t e_oeminfo;
