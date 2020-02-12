@@ -259,7 +259,7 @@ void Texture::paint(SimpleRender &r, int x, int y) {
 	SDL_RenderCopy(r.canvas(), data(), NULL, &dst);
 }
 
-#ifndef min(a, b)
+#ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 

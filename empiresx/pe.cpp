@@ -21,7 +21,7 @@ PE::PE(const std::string &name, iofd fd) : blob(name, fd, true), sec_rsrc(nullpt
 	// FIXME stub
 	size_t size = blob.length();
 
-	if (size < sizeof io::mz)
+	if (size < sizeof(io::mz))
 		throw std::runtime_error("PE: bad dos header: file too small");
 
 	// probably a COM file or newer
