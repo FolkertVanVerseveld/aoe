@@ -117,10 +117,10 @@ const SDL_Rect menu_multi_lbl_name[screen_modes] = {
 
 const SDL_Rect menu_multi_lbl_port[screen_modes] = {
 	{480, 78, 0, 0},
-	{600, 78, 0, 0},
-	{768, 78, 0, 0},
-	{768, 78, 0, 0},
-	{768, 78, 0, 0},
+	{600, 96, 0, 0},
+	{768, 123, 0, 0},
+	{768, 123, 0, 0},
+	{768, 123, 0, 0},
 };
 
 const SDL_Rect menu_multi_btn_txt_ok[screen_modes] = {
@@ -144,7 +144,8 @@ class MenuMultiplayer final : public Menu, public ui::InteractableCallback {
 	TextBuf buf_port, buf_address;
 public:
 	MenuMultiplayer(SimpleRender &r)
-		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_multiplayer), SDL_Color{ 0xff, 0xff, 0xff })
+		// we skip the connection type menu 9611, because we don't support serial connection or microsoft game zone anyway
+		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_multiplayer_servers), SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_join(r, "(J) Join Game", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_back(r, "(Q) Back", SDL_Color{ 0xff, 0xff, 0xff })
 		, txt_port(r, "Port: ", SDL_Color{ 0xff, 0xff, 0xff })
@@ -195,6 +196,8 @@ public:
 	}
 
 	void interacted(unsigned id) override {
+		jukebox.sfx(SfxId::button4);
+
 		switch (id) {
 		case 0:
 			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), true));
@@ -223,52 +226,12 @@ public:
 	}
 };
 
-/** Custom help and game settings menu. */
-class MenuExtSettings final : public Menu {
-public:
-	Text txt_winsize, txt_small, txt_default, txt_medium, txt_fullscreen, txt_back;
-
-	MenuExtSettings(SimpleRender &r)
-		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Help and Global game settings", SDL_Color{0xff, 0xff,0xff}, true)
-		, txt_winsize(r, "Video resolution:", SDL_Color{0xff, 0xff, 0xff})
-		, txt_small(r, "(1) 640x480", SDL_Color{0xff, 0xff, 0xff})
-		, txt_default(r, "(2) 800x600", SDL_Color{0xff, 0xff, 0xff})
-		, txt_medium(r, "(3) 1024x768", SDL_Color{0xff, 0xff, 0xff})
-		, txt_fullscreen(r, "(4) Fullscreen", SDL_Color{0xff, 0xff, 0xff})
-		, txt_back(r, "(Q) Return to main menu", SDL_Color{0xff, 0xff, 0xff})
-		{}
-
-	void keyup(int ch) override {
-		switch (ch) {
-		case '1':
-			eng->w->chmode(ConfigScreenMode::MODE_640_480);
-			break;
-		case '2':
-			eng->w->chmode(ConfigScreenMode::MODE_800_600);
-			break;
-		case '3':
-			eng->w->chmode(ConfigScreenMode::MODE_1024_768);
-			break;
-		case '4':
-			eng->w->chmode(ConfigScreenMode::MODE_FULLSCREEN);
-			break;
-		case 'q':
-		case 'Q':
-			nav->quit(1);
-			break;
-		}
-	}
-
-	void paint() override {
-		Menu::paint();
-
-		txt_winsize.paint(r, 40, 80);
-		txt_small.paint(r, 40, 100);
-		txt_default.paint(r, 40, 120);
-		txt_medium.paint(r, 40, 140);
-		txt_fullscreen.paint(r, 40, 160);
-		txt_back.paint(r, 40, 200);
-	}
+const SDL_Rect menu_ext_settings_lbl_mode[screen_modes] = {
+	{320, 198 - 30, 133, 13},
+	{400, 248 - 40, 133, 13},
+	{512, 316 - 50, 133, 13},
+	{512, 316 - 50, 133, 13},
+	{512, 316 - 50, 133, 13},
 };
 
 const SDL_Rect menu_start_btn_txt_start[screen_modes] = {
@@ -351,6 +314,71 @@ const SDL_Rect menu_start_btn_border_quit[screen_modes] = {
 	{272, 604, 752 - 272, 668 - 604},
 };
 
+/** Custom help and game settings menu. */
+class MenuExtSettings final : public Menu, public ui::InteractableCallback {
+public:
+	MenuExtSettings(SimpleRender &r)
+		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Help and Global game settings", SDL_Color{0xff, 0xff,0xff}, true)
+	{
+		Font &fnt = eng->assets->fnt_button;
+		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
+		ConfigScreenMode mode = eng->w->render().mode;
+
+		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Video resolution", menu_ext_settings_lbl_mode, eng->w->render().mode, pal, bkg, ui::HAlign::center, ui::VAlign::bottom, true, true));
+
+		add_btn(new ui::Button(1, *this, r, fnt, "(1) " + eng->assets->open_str(LangId::mode_640_480), fg, bg, menu_start_btn_txt_start, menu_start_btn_border_start, pal, bkg, mode, ui::HAlign::center, ui::VAlign::middle, true, true));
+		add_btn(new ui::Button(2, *this, r, fnt, "(2) " + eng->assets->open_str(LangId::mode_800_600), fg, bg, menu_start_btn_txt_multi, menu_start_btn_border_multi, pal, bkg, mode, ui::HAlign::center, ui::VAlign::middle, true, true));
+		add_btn(new ui::Button(3, *this, r, fnt, "(3) " + eng->assets->open_str(LangId::mode_1024_768), fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode, ui::HAlign::center, ui::VAlign::middle, true, true));
+		add_btn(new ui::Button(4, *this, r, fnt, "(4/F) Fullscreen", fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode, ui::HAlign::center, ui::VAlign::middle, true, true));
+		add_btn(new ui::Button(0, *this, r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_back), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode, ui::HAlign::center, ui::VAlign::middle, true, true));
+	}
+
+	void keyup(int ch) override {
+		switch (ch) {
+		case '1':
+			interacted(1);
+			break;
+		case '2':
+			interacted(2);
+			break;
+		case '3':
+			interacted(3);
+			break;
+		case '4':
+		case 'f':
+		case 'F':
+			interacted(4);
+			break;
+		case 'q':
+		case 'Q':
+			interacted(0);
+			break;
+		}
+	}
+
+	void interacted(unsigned id) override {
+		jukebox.sfx(SfxId::button4);
+
+		switch (id) {
+		case 0:
+			nav->quit(1);
+			break;
+		case 1:
+			eng->w->chmode(ConfigScreenMode::MODE_640_480);
+			break;
+		case 2:
+			eng->w->chmode(ConfigScreenMode::MODE_800_600);
+			break;
+		case 3:
+			eng->w->chmode(ConfigScreenMode::MODE_1024_768);
+			break;
+		case 4:
+			eng->w->chmode(ConfigScreenMode::MODE_FULLSCREEN);
+			break;
+		}
+	}
+};
+
 class MenuStart final : public Menu, public ui::InteractableCallback {
 public:
 	MenuStart(SimpleRender &r)
@@ -360,10 +388,11 @@ public:
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
 		ConfigScreenMode mode = eng->w->render().mode;
 
-		add_btn(new ui::Button(0, *this, r, fnt, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), fg, bg, menu_start_btn_txt_start, menu_start_btn_border_start, pal, bkg, mode));
+		// TODO add single player and scenario editor menus
+		//add_btn(new ui::Button(0, *this, r, fnt, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), fg, bg, menu_start_btn_txt_start, menu_start_btn_border_start, pal, bkg, mode));
 		add_btn(new ui::Button(1, *this, r, fnt, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), fg, bg, menu_start_btn_txt_multi, menu_start_btn_border_multi, pal, bkg, mode));
 		add_btn(new ui::Button(2, *this, r, fnt, "(H) Help and settings", fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode));
-		add_btn(new ui::Button(3, *this, r, fnt, "(E) " + eng->assets->open_str(LangId::btn_edit), fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode));
+		//add_btn(new ui::Button(3, *this, r, fnt, "(E) " + eng->assets->open_str(LangId::btn_edit), fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode));
 		add_btn(new ui::Button(4, *this, r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_exit), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode));
 
 		jukebox.play(MusicId::start);
@@ -396,6 +425,8 @@ public:
 	}
 
 	void interacted(unsigned id) override {
+		jukebox.sfx(SfxId::button4);
+
 		switch (id) {
 		case 0:
 			break;

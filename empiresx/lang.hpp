@@ -156,9 +156,15 @@ enum class LangId {
 	title_multiplayer_host = 9678,
 
 	title_multiplayer = 9611,
+	title_multiplayer_servers = 9631,
 	multiplayer_name = 9612,
 	multiplayer_type = 9613,
 	multiplayer_gaming_zone = 9614,
+
+	/* Extended help and game settings menu */
+	mode_640_480 = 9447,
+	mode_800_600 = 9448,
+	mode_1024_768 = 9449,
 
 	/* Secnario builder menu */
 	title_scenario_editor = 9261,
