@@ -7,7 +7,7 @@
 namespace genie {
 
 Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced)
-	: r(r), ui_objs(), ui_focus(), title(r, f, s, fg)
+	: r(r), ui_objs(), ui_focus(), ui_inputs(), title(r, f, s, fg)
 	, bkg(eng->assets->open_bkg((res_id)id)), pal(eng->assets->open_pal(bkg.pal))
 	, border(scr_dim, eng->w->mode(), pal, bkg, ui::BorderType::background, enhanced)
 	, anim_bkg{eng->assets->open_slp(pal, bkg.bmp[0]), eng->assets->open_slp(pal, bkg.bmp[1]), eng->assets->open_slp(pal, bkg.bmp[2])}
@@ -20,6 +20,11 @@ Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color 
 void Menu::add_btn(ui::Button *btn) {
 	ui_objs.emplace_back(btn);
 	ui_focus.emplace_back(btn);
+}
+
+void Menu::add_field(ui::InputField *field) {
+	ui_objs.emplace_back(field);
+	ui_inputs.emplace_back(field);
 }
 
 void Menu::paint_details(unsigned options) {
@@ -73,6 +78,9 @@ void Menu::mouseup(SDL_MouseButtonEvent &ev) {
 
 	for (auto &x : ui_focus)
 		x->press(false);
+
+	for (auto &x : ui_inputs)
+		x->focus(x->collides(ev.x, ev.y));
 }
 
 void Menu::go_to(Menu *menu) {
@@ -88,6 +96,22 @@ void Menu::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
 
 	for (auto &x : ui_objs)
 		x->resize(old_mode, mode);
+}
+
+bool Menu::keydown(int ch) {
+	for (auto &x : ui_inputs)
+		if (x->keydown(ch))
+			return true;
+
+	return false;
+}
+
+bool Menu::keyup(int ch) {
+	for (auto &x : ui_inputs)
+		if (x->keyup(ch))
+			return true;
+
+	return false;
 }
 
 std::unique_ptr<Navigator> nav;

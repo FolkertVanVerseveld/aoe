@@ -17,6 +17,7 @@ protected:
 	SimpleRender &r;
 	std::vector<std::unique_ptr<ui::DynamicUI>> ui_objs;
 	std::vector<ui::Button*> ui_focus;
+	std::vector<ui::InputField*> ui_inputs;
 public:
 	Text title;
 	BackgroundSettings bkg;
@@ -32,6 +33,7 @@ public:
 	virtual ~Menu() {}
 
 	void add_btn(ui::Button *btn);
+	void add_field(ui::InputField *field);
 	void go_to(Menu *menu);
 
 	virtual void resize(ConfigScreenMode old_mode, ConfigScreenMode mode);
@@ -39,8 +41,8 @@ public:
 	virtual void mousedown(SDL_MouseButtonEvent &ev);
 	virtual void mouseup(SDL_MouseButtonEvent &ev);
 
-	virtual void keydown(int ch) {}
-	virtual void keyup(int ch) {}
+	virtual bool keydown(int ch);
+	virtual bool keyup(int ch);
 
 	virtual void idle() {}
 	virtual void paint();

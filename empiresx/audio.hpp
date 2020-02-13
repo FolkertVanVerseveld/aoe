@@ -11,6 +11,7 @@ enum class SfxId {
 	/* User interface */
 	button4 = 50300,
 	chat = 50302,
+	error = 50303,
 	win = 50320,
 	lost = 50321,
 	priest_converted = 50313,

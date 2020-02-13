@@ -86,10 +86,10 @@ public:
 		}
 	}
 
-	void keydown(int ch) override {
+	bool keydown(int ch) override {
 		if (ch != '\n' && ch != '\r' && ch <= 0xff && isprint((unsigned char)ch)) {
 			line.append(ch);
-			return;
+			return true;
 		}
 
 		switch (ch) {
@@ -110,14 +110,16 @@ public:
 				break;
 			}
 		}
+		return true;
 	}
 
-	void keyup(int ch) override {
+	bool keyup(int ch) override {
 		switch (ch) {
 		case SDLK_ESCAPE:
-			interacted(1);
+			interacted(0);
 			break;
 		}
+		return true;
 	}
 
 	void interacted(unsigned id) override {
@@ -150,12 +152,44 @@ const SDL_Rect menu_multi_lbl_name[screen_modes] = {
 	{38, 123, 0, 0},
 };
 
+const SDL_Rect menu_multi_field_name[screen_modes] = {
+	{26, 78 + 20, 200 - 26, 20},
+	{31, 96 + 30, 250 - 31, 30},
+	{38, 123 + 40, 320 - 38, 40},
+	{38, 123 + 40, 320 - 38, 40},
+	{38, 123 + 40, 320 - 38, 40},
+};
+
 const SDL_Rect menu_multi_lbl_port[screen_modes] = {
 	{480, 78, 0, 0},
 	{600, 96, 0, 0},
 	{768, 123, 0, 0},
 	{768, 123, 0, 0},
 	{768, 123, 0, 0},
+};
+
+const SDL_Rect menu_multi_field_port[screen_modes] = {
+	{480, 78 + 20, 580 - 480, 20},
+	{600, 96 + 30, 725 - 600, 30},
+	{768, 123 + 40, 928 - 768, 40},
+	{768, 123 + 40, 928 - 768, 40},
+	{768, 123 + 40, 928 - 768, 40},
+};
+
+const SDL_Rect menu_multi_lbl_ip[screen_modes] = {
+	{288, 78, 0, 0},
+	{360, 96, 0, 0},
+	{460, 123, 0, 0},
+	{460, 123, 0, 0},
+	{460, 123, 0, 0},
+};
+
+const SDL_Rect menu_multi_field_ip[screen_modes] = {
+	{288, 78 + 20, 448 - 288, 20},
+	{360, 96 + 30, 560 - 360, 30},
+	{460, 123 + 40, 716 - 460, 40},
+	{460, 123 + 40, 716 - 460, 40},
+	{460, 123 + 40, 716 - 460, 40},
 };
 
 const SDL_Rect menu_multi_btn_txt_host[screen_modes] = {
@@ -206,17 +240,14 @@ const SDL_Rect menu_multi_btn_border_cancel[screen_modes] = {
 	{688, 704, 1008 - 688, 752 - 704},
 };
 
-class MenuMultiplayer final : public Menu, public ui::InteractableCallback {
-	Text txt_port, txt_address;
-	TextBuf buf_port, buf_address;
+class MenuMultiplayer final : public Menu, public ui::InteractableCallback, public ui::InputCallback {
+	uint16_t port;
+	ui::InputField *f_name, *f_port;
 public:
 	MenuMultiplayer(SimpleRender &r)
 		// we skip the connection type menu 9611, because we don't support serial connection or microsoft game zone anyway
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_multiplayer_servers), SDL_Color{ 0xff, 0xff, 0xff })
-		, txt_port(r, "Port: ", SDL_Color{ 0xff, 0xff, 0xff })
-		, buf_port(r, "25659", SDL_Color{ 0xff, 0xff, 0 })
-		, txt_address(r, "Server IP: ", SDL_Color{ 0xff, 0xff, 0xff })
-		, buf_address(r, "127.0.0.1", SDL_Color{ 0xff, 0xff, 0 })
+		, port(25659)
 	{
 		Font &fnt = eng->assets->fnt_button;
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
@@ -224,30 +255,24 @@ public:
 
 		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Name", menu_multi_lbl_name, eng->w->render().mode, pal, bkg));
 		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Port", menu_multi_lbl_port, eng->w->render().mode, pal, bkg));
+		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Address", menu_multi_lbl_ip, eng->w->render().mode, pal, bkg));
 
-		add_btn(new ui::Button(1, *this, r, fnt, "(H) " + eng->assets->open_str(LangId::multiplayer_host), fg, bg, menu_multi_btn_txt_host, menu_multi_btn_border_host, pal, bkg, mode));
+		add_btn(new ui::Button(1, *this, r, fnt, "(C) " + eng->assets->open_str(LangId::multiplayer_host), fg, bg, menu_multi_btn_txt_host, menu_multi_btn_border_host, pal, bkg, mode));
 		add_btn(new ui::Button(2, *this, r, fnt, "(J) " + eng->assets->open_str(LangId::multiplayer_join), fg, bg, menu_multi_btn_txt_join, menu_multi_btn_border_join, pal, bkg, mode));
 		add_btn(new ui::Button(0, *this, r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_cancel), fg, bg, menu_multi_btn_txt_cancel, menu_multi_btn_border_cancel, pal, bkg, mode));
+
+		add_field(f_port = new ui::InputField(0, *this, ui::InputType::port, std::to_string(port), r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_multi_field_port, mode, pal, bkg));
+		add_field(f_name = new ui::InputField(1, *this, ui::InputType::text, "you", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_multi_field_name, mode, pal, bkg));
+		add_field(f_name = new ui::InputField(2, *this, ui::InputType::text, "127.0.0.1", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_multi_field_ip, mode, pal, bkg));
 	}
 
-	void keydown(int ch) override {
-		if (ch >= '0' && ch <= '9') {
-			if (buf_port.str().size() < 5)
-				buf_port.append(ch);
-			return;
-		}
+	bool keyup(int ch) override {
+		if (Menu::keyup(ch))
+			return true;
 
 		switch (ch) {
-		case SDLK_BACKSPACE:
-			buf_port.erase();
-			break;
-		}
-	}
-
-	void keyup(int ch) override {
-		switch (ch) {
-		case 'h':
-		case 'H':
+		case 'c':
+		case 'C':
 			interacted(1);
 			break;
 		case 'j':
@@ -260,32 +285,45 @@ public:
 			interacted(0);
 			break;
 		}
+		return true;
 	}
 
-	void interacted(unsigned id) override {
-		jukebox.sfx(SfxId::button4);
+private:
+	bool valid() {
+		port = f_port->port();
 
+		if (port < 1 || port > 65535 || f_name->str().empty()) {
+			jukebox.sfx(SfxId::error);
+			return false;
+		}
+
+		return true;
+	}
+public:
+	void interacted(unsigned id) override {
 		switch (id) {
 		case 0:
+			jukebox.sfx(SfxId::button4);
 			nav->quit(1);
 			break;
 		case 1:
-			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), true));
-			break;
 		case 2:
-			go_to(new MenuLobby(r, atoi(buf_port.str().c_str()), false));
+			if (valid()) {
+				jukebox.sfx(SfxId::button4);
+				go_to(new MenuLobby(r, port, id == 1));
+			}
 			break;
 		}
 	}
 
-	void paint() override {
-		Menu::paint();
+	bool input(unsigned id, ui::InputField &f) {
+		switch (id) {
+		case 0:
+			port = f.port();
+			return true;
+		}
 
-		txt_port.paint(r, 40, 160);
-		buf_port.paint(40 + txt_port.tex().width, 160);
-
-		txt_address.paint(r, 40, 200);
-		buf_address.paint(40 + txt_address.tex().width, 200);
+		return false;
 	}
 };
 
@@ -396,7 +434,7 @@ public:
 		add_btn(new ui::Button(0, *this, r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_back), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode, ui::HAlign::center, ui::VAlign::middle, true, true));
 	}
 
-	void keyup(int ch) override {
+	bool keyup(int ch) override {
 		switch (ch) {
 		case '1':
 			interacted(1);
@@ -418,6 +456,7 @@ public:
 			interacted(0);
 			break;
 		}
+		return true;
 	}
 
 	void interacted(unsigned id) override {
@@ -472,7 +511,7 @@ public:
 		jukebox.play(MusicId::start);
 	}
 
-	void keyup(int ch) override {
+	bool keyup(int ch) override {
 		switch (ch) {
 		case 's':
 		case 'S':
@@ -496,6 +535,7 @@ public:
 			interacted(4);
 			break;
 		}
+		return true;
 	}
 
 	void interacted(unsigned id) override {

@@ -138,5 +138,39 @@ public:
 	void press(bool) override;
 };
 
+class InputField;
+
+class InputCallback {
+public:
+	virtual bool input(unsigned id, InputField &field) = 0;
+};
+
+enum class InputType {
+	text,
+	number,
+	port, // stricter than number
+};
+
+class InputField final : public Border, public TextBuf {
+	unsigned index;
+	InputType type;
+	InputCallback &cb;
+	bool hasfocus;
+public:
+	InputField(unsigned id, InputCallback &cb, InputType type, const std::string &init, SimpleRender &r, Font &f, SDL_Color fg, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, bool enhanced=false);
+
+	bool keydown(int ch);
+	bool keyup(int ch);
+
+	void focus(bool on);
+
+	long long number() const;
+	uint16_t port() const;
+	const std::string &str() const;
+	const std::string &text() const;
+
+	void paint(SimpleRender &r) override;
+};
+
 }
 }

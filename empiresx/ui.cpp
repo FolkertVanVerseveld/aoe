@@ -3,6 +3,8 @@
 #include "engine.hpp"
 
 #include <cassert>
+#include <cstdlib>
+#include <cctype>
 
 namespace genie {
 namespace ui {
@@ -235,6 +237,99 @@ void Button::press(bool on) {
 	}
 
 	is_pressed = on;
+}
+
+InputField::InputField(unsigned id, InputCallback &cb, InputType type, const std::string &init, SimpleRender &r, Font &f, SDL_Color fg, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, bool enhanced)
+	: Border(bnds, mode, pal, bkg, BorderType::field, enhanced)
+	, TextBuf(r, f, init, fg)
+	, index(id), type(type), cb(cb), hasfocus(false) {}
+
+bool InputField::keydown(int ch) {
+	if (!hasfocus)
+		return false;
+
+	if (ch == '\b' || ch == SDLK_BACKSPACE) {
+		TextBuf::erase();
+		return true;
+	}
+
+	if (ch == '\n' || ch == '\r')
+		return true;
+
+	switch (type) {
+	case InputType::number:
+	case InputType::port:
+		if (ch >= '0' && ch <= '9') {
+			if (type == InputType::port && TextBuf::str().length() < 5)
+				TextBuf::append(ch);
+		} else {
+			return false;
+		}
+		break;
+	case InputType::text:
+		if (ch >= 0 && ch < 0xff && isprint(ch))
+			TextBuf::append(ch);
+		else
+			return false;
+		break;
+	}
+
+	return true;
+}
+
+bool InputField::keyup(int ch) {
+	if (!hasfocus)
+		return false;
+
+	if (ch == '\n' || ch == '\r') {
+		if (cb.input(index, *this))
+			TextBuf::clear();
+		return true;
+	}
+
+	switch (type) {
+	case InputType::number:
+	case InputType::port:
+		if (ch >= '0' && ch <= '9')
+			return true;
+		break;
+	case InputType::text:
+		if (ch >= 0 && ch < 0xff && isprint(ch))
+			return true;
+		break;
+	}
+
+	return false;
+}
+
+void InputField::focus(bool on) {
+	hasfocus = on;
+}
+
+std::intmax_t InputField::number() const {
+	assert(type == InputType::number);
+	return atoll(str().c_str());
+}
+
+uint16_t InputField::port() const {
+	assert(type == InputType::port);
+	return atoi(str().c_str());
+}
+
+const std::string &InputField::str() const {
+	return TextBuf::str();
+}
+
+const std::string &InputField::text() const {
+	assert(type == InputType::text);
+	return str();
+}
+
+void InputField::paint(SimpleRender& r) {
+	Border::paint(r);
+	auto *t = TextBuf::txt.get();
+	int h = t ? t->tex().height : 0;
+	TextBuf::paint(Border::bnds.x + 5, Border::bnds.y + (Border::bnds.h - h) / 2);
 }
 
 }

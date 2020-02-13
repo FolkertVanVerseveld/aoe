@@ -47,11 +47,18 @@ public:
 	void paint(SimpleRender &r, int x, int y);
 };
 
+namespace ui {
+
+class InputField;
+
+}
+
 class TextBuf {
 	SimpleRender &r;
 	Font &f;
 	SDL_Color fg;
 	std::unique_ptr<Text> txt;
+	friend ui::InputField;
 public:
 	TextBuf(SimpleRender &r, Font &f, const std::string &s, SDL_Color fg);
 	TextBuf(SimpleRender &r, const std::string &s, SDL_Color fg);
