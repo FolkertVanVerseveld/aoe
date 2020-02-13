@@ -54,6 +54,8 @@ class Navigator final {
 	SimpleRender &r;
 	// not using stack since we want to address menus in the middle as well
 	std::vector<std::unique_ptr<Menu>> trace;
+	// remembers old menus that have to be removed the next game tick
+	std::vector<std::unique_ptr<Menu>> to_purge;
 	Menu *top;
 public:
 	Navigator(SimpleRender &r);

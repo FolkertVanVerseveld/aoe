@@ -242,7 +242,10 @@ void Button::press(bool on) {
 InputField::InputField(unsigned id, InputCallback &cb, InputType type, const std::string &init, SimpleRender &r, Font &f, SDL_Color fg, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, bool enhanced)
 	: Border(bnds, mode, pal, bkg, BorderType::field, enhanced)
 	, TextBuf(r, f, init, fg)
-	, index(id), type(type), cb(cb), hasfocus(false) {}
+	, index(id), type(type), cb(cb), hasfocus(false)
+{
+	resize(mode, mode);
+}
 
 bool InputField::keydown(int ch) {
 	if (!hasfocus)
@@ -306,7 +309,7 @@ void InputField::focus(bool on) {
 	hasfocus = on;
 }
 
-std::intmax_t InputField::number() const {
+long long InputField::number() const {
 	assert(type == InputType::number);
 	return atoll(str().c_str());
 }

@@ -64,6 +64,9 @@ void Menu::mousedown(SDL_MouseButtonEvent &ev) {
 		ev.y -= r.offset.y;
 	}
 
+	if (ui_objs.empty())
+		return;
+
 	for (auto &x : ui_focus)
 		x->press(x->collides(ev.x, ev.y));
 }
@@ -75,6 +78,9 @@ void Menu::mouseup(SDL_MouseButtonEvent &ev) {
 		ev.x -= r.offset.x;
 		ev.y -= r.offset.y;
 	}
+
+	if (ui_objs.empty())
+		return;
 
 	for (auto &x : ui_focus)
 		x->press(false);
@@ -120,6 +126,14 @@ void Navigator::mainloop() {
 	while (1) {
 		SDL_Event ev;
 
+		if (to_purge.size()) {
+			to_purge.clear();
+			top = trace.size() ? trace[trace.size() - 1].get() : nullptr;
+		}
+
+		if (!top)
+			return;
+
 		// FIXME display events are instantly completed in fullscreen alt-tabbed mode, maxing CPU usage
 
 		while (SDL_PollEvent(&ev)) {
@@ -127,11 +141,6 @@ void Navigator::mainloop() {
 			case SDL_QUIT:
 				return;
 			case SDL_KEYDOWN:
-				if (!top) {
-					quit();
-					return;
-				}
-
 				switch (ev.key.keysym.sym) {
 				case SDLK_F11:
 					break;
@@ -141,11 +150,6 @@ void Navigator::mainloop() {
 				}
 				break;
 			case SDL_KEYUP:
-				if (!top) {
-					quit();
-					return;
-				}
-
 				switch (ev.key.keysym.sym) {
 				case SDLK_F11:
 					eng->w->toggleFullscreen();
@@ -156,34 +160,15 @@ void Navigator::mainloop() {
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-				if (!top) {
-					quit();
-					return;
-				}
-
 				top->mousedown(ev.button);
 				break;
 			case SDL_MOUSEBUTTONUP:
-				if (!top) {
-					quit();
-					return;
-				}
-
 				top->mouseup(ev.button);
 				break;
 			}
 		}
 
-		if (!top) {
-			quit();
-			return;
-		}
 		top->idle();
-
-		if (!top) {
-			quit();
-			return;
-		}
 		top->paint();
 
 		r.paint();
@@ -200,15 +185,20 @@ void Navigator::go_to(Menu *m) {
 	trace.emplace_back(top = m);
 }
 
+// forward popped menus to list to keep one event loop tick
 void Navigator::quit(unsigned count) {
 	if (!count || count >= trace.size()) {
-		trace.clear();
-		top = nullptr;
+		for (auto &x : trace) {
+			to_purge.emplace_back(x.release());
+			trace.pop_back();
+		}
 		return;
 	}
 
-	trace.erase(trace.end() - count);
-	top = trace[trace.size() - 1].get();
+	for (unsigned i = 0; i < count; ++i) {
+		to_purge.emplace_back(trace[trace.size() - 1].release());
+		trace.pop_back();
+	}
 }
 
 }
