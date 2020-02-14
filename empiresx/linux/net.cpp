@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
@@ -280,5 +281,8 @@ ServerSocket::ServerSocket(uint16_t port)
 		throw std::runtime_error(std::string("Could not activate epoll interface: ") + strerror(errno));
 }
 
+bool str_to_ip(const std::string &str, in_addr &addr) {
+	return inet_aton(str().c_str(), &addr) == 1;
+}
 
 }

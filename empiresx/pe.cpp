@@ -250,7 +250,6 @@ bool PE::load_res(io::RsrcType type, res_id id, void **ptr, size_t &count) {
 }
 
 void PE::load_string(std::string &s, res_id id) {
-	int err;
 	void *ptr;
 	size_t count;
 

@@ -45,15 +45,18 @@ static inline std::string trim_copy(std::string s) {
 	return s;
 }
 
-static inline void tolower(std::string& s) {
-	std::for_each(s.begin(), s.end(), [](char& ch) { ch = std::tolower((unsigned)ch); });
+static inline void tolower(std::string &s) {
+	std::for_each(s.begin(), s.end(), [](char &ch) { ch = std::tolower((unsigned)ch); });
 }
 
-static inline void toupper(std::string& s) {
-	std::for_each(s.begin(), s.end(), [](char& ch) { ch = std::toupper((unsigned)ch); });
+static inline void toupper(std::string &s) {
+	std::for_each(s.begin(), s.end(), [](char &ch) { ch = std::toupper((unsigned)ch); });
 }
 
 #if windows
+#pragma warning(push)
+#pragma warning(disable: 4996)
+
 #include <codecvt>
 #include <string>
 
@@ -66,4 +69,6 @@ static inline std::string wstring_to_utf8(const std::wstring &str) {
 	std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
 	return myconv.to_bytes(str);
 }
+
+#pragma warning(pop)
 #endif

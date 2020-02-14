@@ -274,10 +274,15 @@ enum class RsrcType {
 	aniicon = 22,
 };
 
+#pragma warning(push)
+#pragma warning(disable: 4200)
+
 struct pestr final {
 	uint16_t length;
 	char data[];
 };
+
+#pragma warning(pop)
 
 }
 

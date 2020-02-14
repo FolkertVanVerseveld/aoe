@@ -6,7 +6,12 @@
 #include <cstdlib>
 #include <cctype>
 
+struct in_addr;
+
 namespace genie {
+
+bool str_to_ip(const std::string&, in_addr&);
+
 namespace ui {
 
 bool UI::contains(int x, int y) const {
@@ -55,10 +60,15 @@ static void ui_scale(const SDL_Rect scr_bnds[screen_modes], const SDL_Rect &this
 	y0 += bnds.h * 0.5;
 	y1 += bnds.h * 0.5;
 
+#pragma warning(push)
+#pragma warning(disable: 4244)
+
 	resized.x = x0;
 	resized.y = y0;
 	resized.w = x1 - x0;
 	resized.h = y1 - y0;
+
+#pragma warning(pop)
 }
 
 void DynamicUI::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
@@ -89,6 +99,10 @@ Border::Border(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const P
 
 void Border::paint(SimpleRender &r) {
 	r.border(bnds, cols, shade, flip);
+}
+
+void Border::paint(SimpleRender &r, const SDL_Color &bg) {
+	r.border(bnds, cols, bg, flip);
 }
 
 Label::Label(SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, SDL_Color bg, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, HAlign halign, VAlign valign, bool adjust_anchors, bool enhanced)
@@ -242,7 +256,7 @@ void Button::press(bool on) {
 InputField::InputField(unsigned id, InputCallback &cb, InputType type, const std::string &init, SimpleRender &r, Font &f, SDL_Color fg, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, bool enhanced)
 	: Border(bnds, mode, pal, bkg, BorderType::field, enhanced)
 	, TextBuf(r, f, init, fg)
-	, index(id), type(type), cb(cb), hasfocus(false)
+	, index(id), type(type), cb(cb), hasfocus(false), error(false)
 {
 	resize(mode, mode);
 }
@@ -262,9 +276,17 @@ bool InputField::keydown(int ch) {
 	switch (type) {
 	case InputType::number:
 	case InputType::port:
+	case InputType::ip:
 		if (ch >= '0' && ch <= '9') {
-			if (type == InputType::port && TextBuf::str().length() < 5)
-				TextBuf::append(ch);
+			if (type == InputType::port)
+				if (TextBuf::str().length() >= 5)
+					return true;
+
+			TextBuf::append(ch);
+		} else if (type == InputType::number && (ch == '+' || ch == '-')) {
+			TextBuf::append(ch);
+		} else if (type == InputType::ip && ch == '.') {
+			TextBuf::append(ch);
 		} else {
 			return false;
 		}
@@ -293,7 +315,12 @@ bool InputField::keyup(int ch) {
 	switch (type) {
 	case InputType::number:
 	case InputType::port:
+	case InputType::ip:
 		if (ch >= '0' && ch <= '9')
+			return true;
+		if (type == InputType::number && (ch == '+' || ch == '-'))
+			return true;
+		if (type == InputType::ip && ch == '.')
 			return true;
 		break;
 	case InputType::text:
@@ -319,6 +346,11 @@ uint16_t InputField::port() const {
 	return atoi(str().c_str());
 }
 
+bool InputField::ip(in_addr &addr) const {
+	assert(type == InputType::ip);
+	return str_to_ip(str(), addr);
+}
+
 const std::string &InputField::str() const {
 	return TextBuf::str();
 }
@@ -329,7 +361,13 @@ const std::string &InputField::text() const {
 }
 
 void InputField::paint(SimpleRender& r) {
-	Border::paint(r);
+	if (hasfocus)
+		Border::paint(r, {0xff, 0xff, 0xff, (uint8_t)shade});
+	else if (error)
+		Border::paint(r, {0xff, 0, 0, (uint8_t)shade});
+	else
+		Border::paint(r);
+
 	auto *t = TextBuf::txt.get();
 	int h = t ? t->tex().height : 0;
 	TextBuf::paint(Border::bnds.x + 5, Border::bnds.y + (Border::bnds.h - h) / 2);

@@ -1,6 +1,7 @@
 #include "../net.hpp"
 
 #include "../os_macros.hpp"
+#include "../string.hpp"
 
 #include <cassert>
 #include <cstring>
@@ -236,6 +237,10 @@ void ServerSocket::close() {
 		activated.store(false);
 		WSACancelBlockingCall(); // the calls we are using are probably non-blocking, but just be safe
 	}
+}
+
+bool str_to_ip(const std::string &str, in_addr &addr) {
+	return InetPtonW(AF_INET, utf8_to_wstring(str).c_str(), &addr) == 1;
 }
 
 }

@@ -114,6 +114,10 @@ void SimpleRender::chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) {
 }
 
 void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6], int shade, bool flip) {
+	border(pos, cols, {0, 0, 0, (uint8_t)shade}, flip);
+}
+
+void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6], const SDL_Color &bg, bool flip) {
 	int x0 = pos.x, y0 = pos.y, x1 = pos.x + pos.w - 1, y1 = pos.y + pos.h - 1; 
 
 	if (flip) {
@@ -170,17 +174,15 @@ void SimpleRender::border(const SDL_Rect &pos, const SDL_Color cols[6], int shad
 		line(x0, y1, x1, y1);
 	}
 
-	if (shade) {
-		color({0, 0, 0, (uint8_t)shade});
-		SDL_Rect box{x0 + offset.x + 2, y0 + offset.y + 2, x1 - x0 - 2, y1 - y0 - 2};
+	color(bg);
+	SDL_Rect box{x0 + offset.x + 2, y0 + offset.y + 2, x1 - x0 - 2, y1 - y0 - 2};
 
-		SDL_BlendMode mode;
-		SDL_GetRenderDrawBlendMode(canvas(), &mode);
+	SDL_BlendMode mode;
+	SDL_GetRenderDrawBlendMode(canvas(), &mode);
 
-		SDL_SetRenderDrawBlendMode(canvas(), SDL_BLENDMODE_BLEND);
-		SDL_RenderFillRect(canvas(), &box);
-		SDL_SetRenderDrawBlendMode(canvas(), mode);
-	}
+	SDL_SetRenderDrawBlendMode(canvas(), SDL_BLENDMODE_BLEND);
+	SDL_RenderFillRect(canvas(), &box);
+	SDL_SetRenderDrawBlendMode(canvas(), mode);
 }
 
 void SimpleRender::line(int x0, int y0, int x1, int y1) {

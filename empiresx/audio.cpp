@@ -43,8 +43,13 @@ Sfx::Sfx(SfxId id) : Sfx(id, NULL) {
 	if (id >= SfxId::taunt1 && id <= SfxId::taunt25) {
 		std::lock_guard<std::recursive_mutex> lock(sfx_mut);
 
+#pragma warning(push)
+#pragma warning(disable: 4996)
+
 		char buf[32];
 		sprintf(buf, "taunt%03u.wav", (unsigned)id - (unsigned)SfxId::taunt1 + 1);
+
+#pragma warning(pop)
 
 		if (!(clip = fs.open_wav(buf)))
 			throw std::runtime_error(std::string("Could not load ") + buf);
@@ -58,7 +63,8 @@ Sfx::Sfx(SfxId id) : Sfx(id, NULL) {
 
 	std::lock_guard<std::recursive_mutex> lock(sfx_mut);
 
-	if (!(clip = Mix_LoadWAV_RW(SDL_RWFromMem(data, count), 1)))
+	assert(count >= 0 && count <= INT_MAX);
+	if (!(clip = Mix_LoadWAV_RW(SDL_RWFromMem(data, (int)count), 1)))
 		throw std::runtime_error(std::string("Could not load sound ") + std::to_string((unsigned)id) + ": " + Mix_GetError());
 
 	this->clip.reset(clip);

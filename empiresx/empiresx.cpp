@@ -242,7 +242,9 @@ const SDL_Rect menu_multi_btn_border_cancel[screen_modes] = {
 
 class MenuMultiplayer final : public Menu, public ui::InteractableCallback, public ui::InputCallback {
 	uint16_t port;
-	ui::InputField *f_name, *f_port;
+	std::string name;
+	in_addr ip;
+	ui::InputField *f_name, *f_port, *f_ip;
 public:
 	MenuMultiplayer(SimpleRender &r)
 		// we skip the connection type menu 9611, because we don't support serial connection or microsoft game zone anyway
@@ -263,7 +265,7 @@ public:
 
 		add_field(f_port = new ui::InputField(0, *this, ui::InputType::port, std::to_string(port), r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_multi_field_port, mode, pal, bkg));
 		add_field(f_name = new ui::InputField(1, *this, ui::InputType::text, "you", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_multi_field_name, mode, pal, bkg));
-		add_field(f_name = new ui::InputField(2, *this, ui::InputType::text, "127.0.0.1", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_multi_field_ip, mode, pal, bkg));
+		add_field(f_ip = new ui::InputField(2, *this, ui::InputType::ip, "127.0.0.1", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_multi_field_ip, mode, pal, bkg));
 	}
 
 	bool keyup(int ch) override {
@@ -290,9 +292,28 @@ public:
 
 private:
 	bool valid() {
+		name = f_name->text();
 		port = f_port->port();
 
-		if (port < 1 || port > 65535 || f_name->str().empty()) {
+		bool good = true;
+		f_name->error = f_ip->error = f_port->error = false;
+
+		if (!f_ip->ip(ip)) {
+			good = false;
+			f_ip->error = true;
+		}
+
+		if (port < 1 || port > 65535) {
+			good = false;
+			f_port->error = true;
+		}
+
+		if (name.empty()) {
+			good = false;
+			f_name->error = true;
+		}
+
+		if (!good) {
 			jukebox.sfx(SfxId::error);
 			return false;
 		}
@@ -317,12 +338,6 @@ public:
 	}
 
 	bool input(unsigned id, ui::InputField &f) {
-		switch (id) {
-		case 0:
-			port = f.port();
-			return true;
-		}
-
 		return false;
 	}
 };

@@ -67,6 +67,7 @@ public:
 	}
 
 	void border(const SDL_Rect &pos, const SDL_Color cols[6], int shade=0, bool flip=false);
+	void border(const SDL_Rect &pos, const SDL_Color cols[6], const SDL_Color &bg, bool flip=false);
 	void line(int x0, int y0, int x1, int y1);
 
 	void color(SDL_Color c) {

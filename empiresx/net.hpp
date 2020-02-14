@@ -11,12 +11,12 @@
 #include <map>
 #include <queue>
 
+struct in_addr;
+
 #if windows
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <Windows.h>
 #include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <Windows.h>
 
 typedef SOCKET sockfd;
 typedef WSAPOLLFD pollev;
@@ -37,6 +37,7 @@ static inline int pollfd(int fd) { return fd; }
 namespace genie {
 
 int net_get_error();
+bool str_to_ip(const std::string &str, in_addr &addr);
 
 class Net final {
 public:
@@ -45,7 +46,6 @@ public:
 };
 
 static constexpr unsigned MAX_USERS = 64;
-
 static constexpr unsigned TEXT_LIMIT = 32;
 
 union CmdData final {
@@ -173,7 +173,7 @@ public:
 
 	void close();
 
-	SSErr push(sockfd fd, const Command& cmd, bool net_order=false);
+	SSErr push(sockfd fd, const Command &cmd, bool net_order=false);
 	void broadcast(Command &cmd, bool net_order=false);
 
 private:

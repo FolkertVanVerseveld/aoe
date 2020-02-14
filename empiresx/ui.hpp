@@ -6,6 +6,8 @@
 
 #include <memory>
 
+struct in_addr;
+
 namespace genie {
 namespace ui {
 
@@ -91,6 +93,7 @@ public:
 	Border(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, BorderType type, bool enhanced=false);
 
 	void paint(SimpleRender &r) override;
+	void paint(SimpleRender &r, const SDL_Color &bg);
 };
 
 /** User interface horizontal anchor point. */
@@ -149,6 +152,7 @@ enum class InputType {
 	text,
 	number,
 	port, // stricter than number
+	ip,
 };
 
 class InputField final : public Border, public TextBuf {
@@ -157,6 +161,8 @@ class InputField final : public Border, public TextBuf {
 	InputCallback &cb;
 	bool hasfocus;
 public:
+	bool error;
+
 	InputField(unsigned id, InputCallback &cb, InputType type, const std::string &init, SimpleRender &r, Font &f, SDL_Color fg, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, bool enhanced=false);
 
 	bool keydown(int ch);
@@ -166,6 +172,7 @@ public:
 
 	long long number() const;
 	uint16_t port() const;
+	bool ip(in_addr &addr) const;
 	const std::string &str() const;
 	const std::string &text() const;
 
