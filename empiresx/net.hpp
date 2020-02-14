@@ -27,6 +27,9 @@ static inline SOCKET pollfd(const pollev &ev) { return ev.fd; }
 #include <sys/socket.h>
 #include <sys/epoll.h>
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
 typedef int sockfd;
 typedef epoll_event pollev;
 

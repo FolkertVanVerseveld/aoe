@@ -282,7 +282,7 @@ ServerSocket::ServerSocket(uint16_t port)
 }
 
 bool str_to_ip(const std::string &str, in_addr &addr) {
-	return inet_aton(str().c_str(), &addr) == 1;
+	return inet_aton(str.c_str(), &addr) == 1;
 }
 
 }

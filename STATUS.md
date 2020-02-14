@@ -28,7 +28,8 @@ Cross-platform | Windows and Linux        |
 Unfortunately, the audio tracks mounting issue is related to the particular
 Linux distribution the game is running on and we do not know if this is possible
 to fix at all. Also, depending on the method you have backed up/converted the
-real CD-ROM to ISO, it may play garbled audio data.
+real CD-ROM to ISO, it may play garbled audio data. We have no way to check if
+the CD-ROM has no bad sectors.
 
 ## In progress
 
@@ -36,6 +37,7 @@ These items are being worked on:
 
 Subsystem       | Task / Purpose        | Notes
 ----------------|-----------------------|-------------------------------------
+Multiplayer     | Networking            | For multiplayer games etc.
 User Interface  | Missing menu's etc.   |
 Game logic      | Dynamic Unit logic    | Movement stub
 
@@ -59,7 +61,6 @@ require more investigation or the scope of the issue has to be clarified.
 
 Subsystem      | Task / Purpose             | Notes
 ---------------|----------------------------|----------------------------------------------
-Multiplayer    | Networking                 | For multiplayer games etc.
 Engine         | MIDI playback              | Old launcher is being migrated to the new one
 Other stuff    | Configuration              | Either on compile time (./configure) or runtime (~/.aoerc)
 Video          | Refactor graphics renderer | Provide plain SDL renderer and OpenGL

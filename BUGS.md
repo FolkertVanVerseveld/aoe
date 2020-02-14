@@ -12,12 +12,10 @@ make clean && make
 ## Known issues
 
 All issues have varying degrees of badness. An issue may have a workaround, but
-depends on the symptoms and the source of the issue.
+it depends on the symptoms and the source of the issue.
 
 Symptom                  | Cause                                     | Solution
 -------------------------|-------------------------------------------|-------------------------------------------------------
-Ugly user interface font | The original game font could not be found | No workaround at the moment
-"                        | Or: rendered font looks misplaced         | "
 No music                 | The CD-ROM audio partition is not mounted | Open the directory in your filebrowser to automount it
 Cannot patch DRS bitmap  | The bitmap header is also included        | Strip the header manually
 
@@ -38,7 +36,7 @@ problem is reproducable.
 ### Bug description
 Provide a description of the bug and how it is triggered. If it is not
 reproducable on your site, it probably is not on our side either. You have to
-provide all output that is printed when running `./empires'
+provide all output that is printed when running the program.
 
 ### Unique bug
 Duplicates or similar bugs that are already reported are ignored. If you are
