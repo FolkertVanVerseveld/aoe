@@ -56,6 +56,19 @@ bool operator<(const Slave& lhs, const Slave& rhs) {
 	return lhs.fd < rhs.fd;
 }
 
+static void check_taunt(const std::string &str) {
+	auto s = trim_copy(str);
+	tolower(s);
+
+	// check if a taunt has been sent
+	trim(s);
+	tolower(s);
+
+	auto search = taunts.find(s);
+	if (search != taunts.end())
+		jukebox.sfx(search->second);
+}
+
 MultiplayerHost::MultiplayerHost(uint16_t port) : Multiplayer(port), sock(port), slaves() {
 	puts("start host");
 	t_worker = std::thread(host_start, std::ref(*this));
@@ -81,8 +94,10 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 	case CmdType::TEXT:
 		sock.broadcast(cmd);
 		{
+			auto str = cmd.text();
 			std::lock_guard<std::mutex> lock(mut);
-			chats.emplace(cmd.text());
+			chats.emplace(str);
+			check_taunt(str);
 		}
 		break;
 	}
@@ -100,27 +115,13 @@ void MultiplayerHost::shutdown() {
 	puts("host shutdown");
 }
 
-static void check_taunt(const std::string &str) {
-	auto s = trim_copy(str);
-	tolower(s);
-
-	// check if a taunt has been sent
-	trim(s);
-	tolower(s);
-
-	auto search = taunts.find(s);
-	if (search != taunts.end())
-		jukebox.sfx(search->second);
-}
-
 void MultiplayerHost::chat(const std::string &str) {
 	Command txt = Command::text(str);
 	sock.broadcast(txt);
-	{
-		std::lock_guard<std::mutex> lock(mut);
-		chats.emplace(str);
-		check_taunt(str);
-	}
+
+	std::lock_guard<std::mutex> lock(mut);
+	chats.emplace(str);
+	check_taunt(str);
 }
 
 MultiplayerClient::MultiplayerClient(uint16_t port) : Multiplayer(port), sock(port), activated(false) {
@@ -135,8 +136,7 @@ MultiplayerClient::~MultiplayerClient() {
 	if (t_worker.joinable()) {
 		sock.close();
 		t_worker.join();
-	}
-	else {
+	} else {
 		sock.close();
 	}
 	puts("client stopped");

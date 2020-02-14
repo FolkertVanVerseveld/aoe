@@ -58,6 +58,8 @@ public:
 		return collides(pt);
 	}
 
+	SDL_Rect bounds() const { return bnds; }
+
 	virtual void paint(SimpleRender &r) = 0;
 };
 

@@ -46,6 +46,8 @@ enum class LangId {
 	btn_start_game = 9472,
 	btn_settings = 9682,
 
+	lbl_chat = 9687,
+
 	player_list = 10340,
 	player_1 = 10341,
 	player_2 = 10342,

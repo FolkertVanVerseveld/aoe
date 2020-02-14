@@ -58,24 +58,52 @@ const SDL_Rect menu_lobby_border_cancel[screen_modes] = {
 	{648, 704, 936 - 648, 752 - 704},
 };
 
-class MenuLobby final : public Menu, public ui::InteractableCallback {
+const SDL_Rect menu_lobby_lbl_chat[screen_modes] = {
+	{16, 295, 0, 0},
+	{18, 367, 0, 0},
+	{22, 469, 0, 0},
+	{22, 469, 0, 0},
+	{22, 469, 0, 0},
+};
+
+const SDL_Rect menu_lobby_border_chat[screen_modes] = {
+	{10, 300, 410 - 10, 396 - 300},
+	{12, 375, 512 - 12, 495 - 375},
+	{16, 480, 656 - 16, 633 - 480},
+	{16, 480, 656 - 16, 633 - 480},
+	{16, 480, 656 - 16, 633 - 480},
+};
+
+const SDL_Rect menu_lobby_field_chat[screen_modes] = {
+	{10, 402, 410 - 10, 425 - 402},
+	{12, 502, 512 - 12, 525 - 502},
+	{16, 643, 656 - 16, 666 - 643},
+	{16, 643, 656 - 16, 666 - 643},
+	{16, 643, 656 - 16, 666 - 643},
+};
+
+class MenuLobby final : public Menu, public ui::InteractableCallback, public ui::InputCallback {
 	std::unique_ptr<Multiplayer> mp;
-	TextBuf line;
 	bool host;
 	std::deque<Text> chat;
+	ui::Border *bkg_chat;
+	ui::InputField *f_chat;
 public:
 	MenuLobby(SimpleRender &r, uint16_t port, bool host = true)
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
 		, mp(host ? (Multiplayer*)new MultiplayerHost(port) : (Multiplayer*)new MultiplayerClient(port))
-		, line(r, eng->assets->fnt_default, "", SDL_Color{ 0xff, 0xff, 0 }), host(host)
 	{
 		Font &fnt = eng->assets->fnt_button;
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
 		ConfigScreenMode mode = eng->w->render().mode;
 
-		//ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, "Name", menu_multi_lbl_name, eng->w->render().mode, pal, bkg));
+		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, eng->assets->open_str(LangId::lbl_chat), menu_lobby_lbl_chat, eng->w->render().mode, pal, bkg, ui::HAlign::left, ui::VAlign::bottom, true, false));
+		ui_objs.emplace_back(bkg_chat = new ui::Border(menu_lobby_border_chat, mode, pal, bkg, ui::BorderType::field, false));
 
 		add_btn(new ui::Button(0, *this, r, fnt, eng->assets->open_str(LangId::btn_cancel), fg, bg, menu_lobby_txt_cancel, menu_lobby_border_cancel, pal, bkg, mode));
+
+		add_field(f_chat = new ui::InputField(0, *this, ui::InputType::text, "", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0}, menu_lobby_field_chat, mode, pal, bkg));
+		resize(mode, mode);
 	}
 
 	void idle() override {
@@ -86,40 +114,14 @@ public:
 		}
 	}
 
-	bool keydown(int ch) override {
-		if (ch != '\n' && ch != '\r' && ch <= 0xff && isprint((unsigned char)ch)) {
-			line.append(ch);
-			return true;
-		}
-
-		switch (ch) {
-		case SDLK_BACKSPACE:
-			line.erase();
-			break;
-		case '\n':
-		case '\r':
-			{
-				auto s = line.str();
-				if (!s.empty()) {
-					if (s == "/clear")
-						chat.clear();
-					else
-						mp->chat(s);
-					line.clear();
-				}
-				break;
-			}
-		}
-		return true;
-	}
-
 	bool keyup(int ch) override {
 		switch (ch) {
 		case SDLK_ESCAPE:
 			interacted(0);
-			break;
+			return true;
 		}
-		return true;
+
+		return Menu::keyup(ch);
 	}
 
 	void interacted(unsigned id) override {
@@ -132,15 +134,36 @@ public:
 		}
 	}
 
+	bool input(unsigned id, ui::InputField &f) override {
+		switch (id) {
+		case 0:
+			{
+				//std::lock_guard<std::mutex> lock(mp->mut); // XXX consider recursive_mutex
+				auto s = f.text();
+				if (!s.empty()) {
+					if (s == "/clear")
+						chat.clear();
+					else
+						mp->chat(s);
+				}
+			}
+			break;
+		}
+		return true;
+	}
+
 	void paint() override {
 		Menu::paint();
 
 		unsigned i = 0;
+		SDL_Rect bnds(bkg_chat->bounds());
 
-		for (auto &x : chat)
-			x.paint(r, 20, 380 - 20 * i++);
-
-		line.paint(20, 400);
+		for (auto &x : chat) {
+			int y = bnds.y + bnds.h - 18 - 20 * i++;
+			if (y <= bnds.y + 4)
+				break;
+			x.paint(r, bnds.x + 8, y);
+		}
 	}
 };
 
@@ -447,6 +470,8 @@ public:
 		add_btn(new ui::Button(3, *this, r, fnt, "(3) " + eng->assets->open_str(LangId::mode_1024_768), fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode, ui::HAlign::center, ui::VAlign::middle, true, true));
 		add_btn(new ui::Button(4, *this, r, fnt, "(4/F) Fullscreen", fg, bg, menu_start_btn_txt_editor, menu_start_btn_border_editor, pal, bkg, mode, ui::HAlign::center, ui::VAlign::middle, true, true));
 		add_btn(new ui::Button(0, *this, r, fnt, "(Q) " + eng->assets->open_str(LangId::btn_back), fg, bg, menu_start_btn_txt_quit, menu_start_btn_border_quit, pal, bkg, mode, ui::HAlign::center, ui::VAlign::middle, true, true));
+
+		resize(mode, mode);
 	}
 
 	bool keyup(int ch) override {
@@ -523,6 +548,7 @@ public:
 
 		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_default, "© 1997 Microsoft & © 2016-2020 Folkert van Verseveld. Some rights reserved", menu_start_lbl_copy3, eng->w->render().mode, pal, bkg, ui::HAlign::center, ui::VAlign::bottom, true, true));
 
+		resize(mode, mode);
 		jukebox.play(MusicId::start);
 	}
 

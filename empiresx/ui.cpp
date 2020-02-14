@@ -92,7 +92,7 @@ Border::Border(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const P
 		break;
 	case BorderType::button:
 	case BorderType::field:
-		shade = bkg.shade;
+		shade = 2 * bkg.shade;
 		break;
 	}
 }
@@ -370,7 +370,7 @@ void InputField::paint(SimpleRender& r) {
 
 	auto *t = TextBuf::txt.get();
 	int h = t ? t->tex().height : 0;
-	TextBuf::paint(Border::bnds.x + 5, Border::bnds.y + (Border::bnds.h - h) / 2);
+	TextBuf::paint(Border::bnds.x + 8, Border::bnds.y + (Border::bnds.h - h) / 2);
 }
 
 }
