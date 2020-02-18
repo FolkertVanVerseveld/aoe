@@ -89,6 +89,9 @@ MultiplayerClient::~MultiplayerClient() {
 	// NOTE sock.close() has to be in both bodies, because its behavior will be slightly different!
 	if (t_worker.joinable()) {
 		sock.close();
+#if linux
+		pthread_cancel(t_worker.native_handle());
+#endif
 		t_worker.join();
 	} else {
 		sock.close();

@@ -128,7 +128,7 @@ reject:
 		struct epoll_event ev = {0};
 
 		ev.data.fd = infd;
-		ev.events = EPOLLIN;
+		ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
 
 		bool ins;
 
@@ -170,7 +170,7 @@ static const char *epetbl[] = {
 
 int ServerSocket::event_process(ServerCallback &cb, pollev &ev) {
 	// Filter invalid/error events
-	if ((ev.events & (EPOLLERR | EPOLLHUP)) && !(ev.events & EPOLLIN))
+	if ((ev.events & (EPOLLERR | EPOLLHUP)) && !(ev.events & (EPOLLIN | EPOLLOUT)))
 		return EPE_INVALID;
 
 	// Process incoming events
@@ -180,40 +180,56 @@ int ServerSocket::event_process(ServerCallback &cb, pollev &ev) {
 		return 0;
 	}
 
-	while (1) {
-		int err;
-		ssize_t n;
-		char buf[TEXT_LIMIT];
+	if (ev.events & EPOLLIN)
+		while (1) {
+			int err;
+			ssize_t n;
+			char buf[TEXT_LIMIT];
 
-		printf("reading from fd %d...\n", fd);
+			printf("reading from fd %d...\n", fd);
 
-		if ((n = read(fd, buf, sizeof buf)) < 0) {
-			if (errno != EAGAIN && errno != EWOULDBLOCK) {
-				fprintf(stderr,
-					"event_process: read error fd %d: %s\n",
-					fd, strerror(errno)
-				);
+			if ((n = read(fd, buf, sizeof buf)) < 0) {
+				if (errno != EAGAIN && errno != EWOULDBLOCK) {
+					fprintf(stderr,
+							"event_process: read error fd %d: %s\n",
+							fd, strerror(errno)
+					       );
+					return EPE_READ;
+				}
+				break;
+			} else if (!n) {
+				printf("event_process: remote closed fd %d\n", fd);
 				return EPE_READ;
 			}
-			break;
-		} else if (!n) {
-			printf("event_process: remote closed fd %d\n", fd);
-			return EPE_READ;
+
+			printf("read %zd bytes from fd %d\n", n, fd);
+
+			auto search = rbuf.find(fd);
+
+			if (search == rbuf.end()) {
+				auto ins = rbuf.emplace(fd);
+				assert(ins.second);
+				search = ins.first;
+			}
+
+			if ((const_cast<CmdBuf&>(*search)).read(cb, buf, (unsigned)n)) {
+				fprintf(stderr, "event_process: read buffer error fd %d\n", fd);
+				return EPE_INVALID;
+			}
 		}
 
-		printf("read %zd bytes from fd %d\n", n, fd);
+	if (ev.events & EPOLLOUT) {
+		auto search = wbuf.find(fd);
+		assert(search != wbuf.end());
 
-		auto search = rbuf.find(fd);
-
-		if (search == rbuf.end()) {
-			auto ins = rbuf.emplace(fd);
-			assert(ins.second);
-			search = ins.first;
-		}
-
-		if ((const_cast<CmdBuf&>(*search)).read(cb, buf, (unsigned)n)) {
-			fprintf(stderr, "event_process: read buffer error fd %d\n", fd);
-			return EPE_INVALID;
+		while (!search->second.empty()) {
+			switch (const_cast<CmdBuf&>(search->second.front()).write()) {
+			case SSErr::PENDING: break;
+			case SSErr::OK: search->second.pop(); break;
+			default:
+				fprintf(stderr, "event_process: write buffer error fd %d\n", fd);
+				return EPE_INVALID;
+			}
 		}
 	}
 
@@ -275,7 +291,7 @@ ServerSocket::ServerSocket(uint16_t port)
 	struct epoll_event ev = {0};
 
 	ev.data.fd = sock.fd;
-	ev.events = EPOLLIN;
+	ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
 
 	if (epoll_ctl(efd, EPOLL_CTL_ADD, sock.fd, &ev))
 		throw std::runtime_error(std::string("Could not activate epoll interface: ") + strerror(errno));

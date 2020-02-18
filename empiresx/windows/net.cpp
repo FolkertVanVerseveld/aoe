@@ -76,7 +76,7 @@ ServerSocket::ServerSocket(uint16_t port)
 	sock.listen();
 }
 
-void ServerSocket::removepeer(ServerCallback& cb, SOCKET fd) {
+void ServerSocket::removepeer(ServerCallback &cb, SOCKET fd) {
 	// remove slave from caches
 	auto search = rbuf.find(fd);
 	if (search != rbuf.end())
