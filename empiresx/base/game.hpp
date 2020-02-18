@@ -28,7 +28,7 @@ public:
 
 	virtual void eventloop() = 0;
 
-	virtual void chat(const std::string& str) = 0;
+	virtual void chat(const std::string &str) = 0;
 };
 
 class Slave final {
@@ -36,7 +36,7 @@ class Slave final {
 public:
 	Slave(sockfd fd) : fd(fd) {}
 
-	friend bool operator<(const Slave& lhs, const Slave& rhs);
+	friend bool operator<(const Slave &lhs, const Slave &rhs);
 };
 
 class MultiplayerHost final : public Multiplayer, protected ServerCallback {
@@ -64,7 +64,7 @@ public:
 	~MultiplayerClient() override;
 
 	void eventloop() override;
-	void chat(const std::string& str) override;
+	void chat(const std::string &str) override;
 };
 
 }

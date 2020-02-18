@@ -57,7 +57,7 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 	}
 }
 
-void MultiplayerHost::incoming(pollev& ev) {
+void MultiplayerHost::incoming(pollev &ev) {
 	slaves.emplace(pollfd(ev));
 }
 

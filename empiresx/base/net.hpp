@@ -10,6 +10,7 @@
 #include <set>
 #include <map>
 #include <queue>
+#include <mutex>
 
 #if windows
 #include <WinSock2.h>
@@ -169,6 +170,7 @@ class ServerSocket final {
 	/** Cache for any pending write operations. */
 	std::map<sockfd, std::queue<CmdBuf>> wbuf;
 	std::atomic<bool> activated;
+	std::recursive_mutex mut; /**< Makes all sockets manipulations thread safe. */
 public:
 	ServerSocket(uint16_t port);
 	~ServerSocket();

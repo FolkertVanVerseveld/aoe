@@ -68,7 +68,7 @@ ServerSocket::ServerSocket(uint16_t port)
 	, peers()
 	, keep()
 	, poke_peers(false)
-	, rbuf(), wbuf(), activated(false)
+	, rbuf(), wbuf(), activated(false), mut()
 {
 	sock.reuse();
 	sock.block(false);
@@ -77,11 +77,14 @@ ServerSocket::ServerSocket(uint16_t port)
 }
 
 void ServerSocket::removepeer(ServerCallback &cb, SOCKET fd) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+
 	// remove slave from caches
 	auto search = rbuf.find(fd);
 	if (search != rbuf.end())
 		rbuf.erase(search);
 	wbuf.erase(fd);
+
 	// purge connection
 	closesocket(fd);
 	// notify
@@ -99,25 +102,29 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 		int err, incoming = 0;
 
 		// keep accepting any pending sockets
-		while ((sock = accept(this->sock.fd, (sockaddr*)&addr, &addrlen)) != INVALID_SOCKET) {
-			sock_block(sock, false);
+		{
+			std::lock_guard<std::recursive_mutex> lock(mut);
 
-			WSAPOLLFD ev = { 0 };
-			ev.fd = sock;
-			ev.events = POLLRDNORM | POLLWRNORM;
+			while ((sock = accept(this->sock.fd, (sockaddr*)&addr, &addrlen)) != INVALID_SOCKET) {
+				sock_block(sock, false);
 
-			peers.push_back(ev);
-			wbuf.emplace(std::make_pair(sock, std::queue<CmdBuf>()));
-			cb.incoming(ev);
-			++incoming;
-		}
-		if (incoming)
-			printf("accepted %d socket%s\n", incoming, incoming == 1 ? "" : "s");
+				WSAPOLLFD ev = {0};
+				ev.fd = sock;
+				ev.events = POLLRDNORM | POLLWRNORM;
 
-		if ((err = WSAGetLastError()) != WSAEWOULDBLOCK) {
-			fprintf(stderr, "accept: %d\n", err);
-			activated.store(false);
-			continue;
+				peers.push_back(ev);
+				wbuf.emplace(std::make_pair(sock, std::queue<CmdBuf>()));
+				cb.incoming(ev);
+				++incoming;
+			}
+			if (incoming)
+				printf("accepted %d socket%s\n", incoming, incoming == 1 ? "" : "s");
+
+			if ((err = WSAGetLastError()) != WSAEWOULDBLOCK) {
+				fprintf(stderr, "accept: %d\n", err);
+				activated.store(false);
+				continue;
+			}
 		}
 
 		// WSAPoll does not work properly if there are no peers, so check if we have to wait for any connections to arrive
@@ -178,6 +185,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 
 				printf("read %d bytes from event %u\n", n, i);
 
+				std::lock_guard<std::recursive_mutex> lock(mut);
 				auto search = rbuf.find(ev->fd);
 
 				if (search == rbuf.end()) {
@@ -194,6 +202,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 					continue;
 				}
 			} else if (ev->revents & POLLWRNORM) {
+				std::lock_guard<std::recursive_mutex> lock(mut);
 				auto search = wbuf.find(ev->fd);
 				assert(search != wbuf.end());
 
@@ -226,6 +235,9 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 		peers.swap(keep);
 	}
 
+	// XXX do we need to lock here?
+	std::lock_guard<std::recursive_mutex> lock(mut);
+
 	for (unsigned i = 0; i < peers.size(); ++i)
 		closesocket(peers[i].fd);
 
@@ -240,6 +252,10 @@ void ServerSocket::close() {
 }
 
 SSErr ServerSocket::push(sockfd fd, const Command &cmd, bool net_order) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+
+	// XXX consider creating push_unsafe
+
 	auto search = wbuf.find(fd);
 	if (search == wbuf.end())
 		return SSErr::BADFD;
@@ -250,8 +266,11 @@ SSErr ServerSocket::push(sockfd fd, const Command &cmd, bool net_order) {
 	return SSErr::OK;
 }
 
-bool str_to_ip(const std::string &str, in_addr &addr) {
-	return InetPtonW(AF_INET, utf8_to_wstring(str).c_str(), &addr) == 1;
+bool str_to_ip(const std::string &str, uint32_t &ip) {
+	in_addr addr;
+	bool b = InetPtonW(AF_INET, utf8_to_wstring(str).c_str(), &addr) == 1;
+	ip = addr.S_un.S_addr;
+	return b;
 }
 
 }

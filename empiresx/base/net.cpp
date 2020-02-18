@@ -274,6 +274,8 @@ void ServerSocket::broadcast(Command &cmd, bool net_order) {
 
 	printf("broadcast to %u peers\n", (unsigned)peers.size());
 
+	std::lock_guard<std::recursive_mutex> lock(mut);
+
 	for (auto &x : peers)
 		if (push(pollfd(x), cmd, true) != SSErr::OK)
 			throw std::runtime_error(std::string("broadcast failed for fd ") + std::to_string(pollfd(x)));
