@@ -1,4 +1,4 @@
-#include "../net.hpp"
+#include "../base/net.hpp"
 
 #include <cerrno>
 #include <cstring>
@@ -12,7 +12,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "endian.h"
+#include "../endian.h"
 
 #include <cassert>
 #include <stdexcept>

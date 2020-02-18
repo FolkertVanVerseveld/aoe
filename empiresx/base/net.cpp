@@ -1,6 +1,6 @@
 #include "net.hpp"
 
-#include "os_macros.hpp"
+#include "../os_macros.hpp"
 
 #include <cassert>
 #include <cstring>
@@ -15,7 +15,7 @@
 #include <arpa/inet.h>
 #endif
 
-#include "endian.h"
+#include "../endian.h"
 
 namespace genie {
 

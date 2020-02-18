@@ -28,11 +28,11 @@
 
 #include "os_macros.hpp"
 #include "os.hpp"
-#include "net.hpp"
+#include "base/net.hpp"
 #include "engine.hpp"
 #include "font.hpp"
 #include "menu.hpp"
-#include "game.hpp"
+#include "base/game.hpp"
 #include "audio.hpp"
 #include "string.hpp"
 

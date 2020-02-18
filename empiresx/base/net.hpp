@@ -1,6 +1,6 @@
 #pragma once
 
-#include "os_macros.hpp"
+#include "../os_macros.hpp"
 
 #include <cstdint>
 
@@ -146,7 +146,7 @@ public:
 	void sendFully(const void *buf, unsigned len);
 	void recvFully(void *buf, unsigned len);
 
-	template<typename T> int send(const T& t) {
+	template<typename T> int send(const T &t) {
 		return send((const void*)&t, sizeof t);
 	}
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "net.hpp"
+#include "../base/net.hpp"
 
 #include <thread>
 #include <atomic>
@@ -11,6 +11,8 @@
 #include <stack>
 
 namespace genie {
+
+extern void check_taunt(const std::string &str);
 
 class Multiplayer {
 protected:
