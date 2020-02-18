@@ -281,8 +281,11 @@ ServerSocket::ServerSocket(uint16_t port)
 		throw std::runtime_error(std::string("Could not activate epoll interface: ") + strerror(errno));
 }
 
-bool str_to_ip(const std::string &str, in_addr &addr) {
-	return inet_aton(str.c_str(), &addr) == 1;
+bool str_to_ip(const std::string &str, uint32_t &ip) {
+	in_addr addr;
+	bool b = inet_aton(str.c_str(), &addr) == 1;
+	ip = addr.s_addr;
+	return b;
 }
 
 }

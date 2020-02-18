@@ -78,7 +78,7 @@ void MultiplayerHost::chat(const std::string &str) {
 	check_taunt(str);
 }
 
-MultiplayerClient::MultiplayerClient(uint16_t port) : Multiplayer(port), sock(port), activated(false) {
+MultiplayerClient::MultiplayerClient(uint32_t addr, uint16_t port) : Multiplayer(port), sock(port), addr(addr), activated(false) {
 	sock.reuse();
 
 	t_worker = std::thread(client_start, std::ref(*this));
@@ -111,7 +111,7 @@ void MultiplayerClient::eventloop() {
 	for (unsigned tries = 3; tries && !connected; --tries) {
 		int err;
 
-		if (!(err = sock.connect())) {
+		if (!(err = sock.connect(addr, true))) {
 			connected = true;
 			break;
 		}

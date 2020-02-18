@@ -57,9 +57,10 @@ public:
 
 class MultiplayerClient final : public Multiplayer {
 	Socket sock;
+	uint32_t addr;
 	std::atomic<bool> activated;
 public:
-	MultiplayerClient(uint16_t port);
+	MultiplayerClient(uint32_t addr, uint16_t port);
 	~MultiplayerClient() override;
 
 	void eventloop() override;

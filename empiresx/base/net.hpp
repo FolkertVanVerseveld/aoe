@@ -11,8 +11,6 @@
 #include <map>
 #include <queue>
 
-struct in_addr;
-
 #if windows
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -40,7 +38,7 @@ static inline int pollfd(int fd) { return fd; }
 namespace genie {
 
 int net_get_error();
-bool str_to_ip(const std::string &str, in_addr &addr);
+bool str_to_ip(const std::string &str, uint32_t &addr);
 
 class Net final {
 public:
@@ -133,6 +131,7 @@ public:
 	void bind();
 	void listen();
 	int connect();
+	int connect(uint32_t addr, bool netorder=false);
 
 	void close();
 

@@ -6,9 +6,10 @@
 
 #include <memory>
 
-struct in_addr;
-
 namespace genie {
+
+bool str_to_ip(const std::string&, uint32_t&);
+
 namespace ui {
 
 class InteractableCallback {
@@ -174,7 +175,7 @@ public:
 
 	long long number() const;
 	uint16_t port() const;
-	bool ip(in_addr &addr) const;
+	bool ip(uint32_t &addr) const;
 	const std::string &str() const;
 	const std::string &text() const;
 

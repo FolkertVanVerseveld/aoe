@@ -82,10 +82,14 @@ void Socket::bind() {
 }
 
 int Socket::connect() {
+	return connect(INADDR_LOOPBACK);
+}
+
+int Socket::connect(uint32_t addr, bool netorder) {
 	struct sockaddr_in sa;
 
 	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	sa.sin_addr.s_addr = netorder ? addr : htonl(addr);
 	sa.sin_port = htons(port);
 
 	return ::connect(fd, (struct sockaddr*)&sa, sizeof sa);
@@ -280,6 +284,8 @@ SSErr ServerSocket::push(sockfd fd, const Command &cmd, bool net_order) {
 void ServerSocket::broadcast(Command &cmd, bool net_order) {
 	if (!net_order)
 		cmd.hton();
+
+	printf("broadcast to %u peers\n", (unsigned)peers.size());
 
 	for (auto &x : peers)
 		if (push(pollfd(x), cmd, true) != SSErr::OK)

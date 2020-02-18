@@ -10,8 +10,6 @@ struct in_addr;
 
 namespace genie {
 
-bool str_to_ip(const std::string&, in_addr&);
-
 namespace ui {
 
 bool UI::contains(int x, int y) const {
@@ -346,9 +344,9 @@ uint16_t InputField::port() const {
 	return atoi(str().c_str());
 }
 
-bool InputField::ip(in_addr &addr) const {
+bool InputField::ip(uint32_t &ip) const {
 	assert(type == InputType::ip);
-	return str_to_ip(str(), addr);
+	return str_to_ip(str(), ip);
 }
 
 const std::string &InputField::str() const {
