@@ -81,7 +81,7 @@ public:
 
 class ServerCallback {
 public:
-	virtual void incoming(pollev& ev) = 0;
+	virtual void incoming(pollev &ev) = 0;
 	virtual void removepeer(sockfd fd) = 0;
 	virtual void shutdown() = 0;
 	virtual void event_process(sockfd fd, Command &cmd) = 0;

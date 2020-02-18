@@ -268,19 +268,6 @@ SSErr CmdBuf::write() {
 	return transmitted == size ? SSErr::OK : SSErr::PENDING;
 }
 
-SSErr ServerSocket::push(sockfd fd, const Command &cmd, bool net_order) {
-	auto search = wbuf.find(fd);
-	if (search == wbuf.end())
-		return SSErr::BADFD;
-
-	search->second.emplace(fd, cmd, net_order);
-#if windows
-	poke_peers = true;
-#endif
-
-	return SSErr::OK;
-}
-
 void ServerSocket::broadcast(Command &cmd, bool net_order) {
 	if (!net_order)
 		cmd.hton();

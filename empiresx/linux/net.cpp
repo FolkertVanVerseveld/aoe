@@ -297,6 +297,27 @@ ServerSocket::ServerSocket(uint16_t port)
 		throw std::runtime_error(std::string("Could not activate epoll interface: ") + strerror(errno));
 }
 
+SSErr ServerSocket::push(sockfd fd, const Command &cmd, bool net_order) {
+	auto search = wbuf.find(fd);
+	if (search == wbuf.end())
+		return SSErr::BADFD;
+
+	search->second.emplace(fd, cmd, net_order);
+
+	// try to directly send the command, since our sockets are edge triggered and we don't know if we already tried sending data
+	while (!search->second.empty()) {
+		switch (const_cast<CmdBuf&>(search->second.front()).write()) {
+		case SSErr::PENDING: break;
+		case SSErr::OK: search->second.pop(); break;
+		default:
+			fprintf(stderr, "event_process: write buffer error fd %d\n", fd);
+			return SSErr::WRITE;
+		}
+	}
+
+	return SSErr::OK;
+}
+
 bool str_to_ip(const std::string &str, uint32_t &ip) {
 	in_addr addr;
 	bool b = inet_aton(str.c_str(), &addr) == 1;

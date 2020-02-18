@@ -239,6 +239,17 @@ void ServerSocket::close() {
 	}
 }
 
+SSErr ServerSocket::push(sockfd fd, const Command &cmd, bool net_order) {
+	auto search = wbuf.find(fd);
+	if (search == wbuf.end())
+		return SSErr::BADFD;
+
+	search->second.emplace(fd, cmd, net_order);
+	poke_peers = true;
+
+	return SSErr::OK;
+}
+
 bool str_to_ip(const std::string &str, in_addr &addr) {
 	return InetPtonW(AF_INET, utf8_to_wstring(str).c_str(), &addr) == 1;
 }
