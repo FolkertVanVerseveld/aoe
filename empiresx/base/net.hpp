@@ -12,6 +12,8 @@
 #include <queue>
 #include <mutex>
 
+typedef uint32_t user_id;
+
 #if windows
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -28,9 +30,10 @@ static inline SOCKET pollfd(const pollev &ev) { return ev.fd; }
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-
 typedef int sockfd;
 typedef epoll_event pollev;
+
+#define INVALID_SOCKET ((int)-1)
 
 static inline int pollfd(const epoll_event &ev) { return ev.data.fd; }
 static inline int pollfd(int fd) { return fd; }
@@ -48,13 +51,23 @@ public:
 };
 
 static constexpr unsigned MAX_USERS = 64;
+static constexpr unsigned NAME_LIMIT = 18;
 static constexpr unsigned TEXT_LIMIT = 32;
+
+struct JoinUser final {
+	user_id id;
+	char name[NAME_LIMIT];
+
+	std::string nick();
+};
 
 union CmdData final {
 	char text[TEXT_LIMIT];
+	JoinUser join;
+	user_id leave;
 
-	void hton();
-	void ntoh();
+	void hton(uint16_t type);
+	void ntoh(uint16_t type);
 };
 
 static constexpr unsigned CMD_HDRSZ = 4;
@@ -75,11 +88,13 @@ public:
 	uint16_t type, length;
 	union CmdData data;
 	std::string text();
+	JoinUser join();
 
 	void hton();
 	void ntoh();
 
 	static Command text(const std::string &str);
+	static Command join(user_id id, const std::string &str);
 };
 
 class ServerCallback {

@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
 	}
 
 	try {
-		genie::MultiplayerHost mp(port);
+		genie::MultiplayerHost mp("", port);
 		std::string input;
 
 		while (std::getline(std::cin, input)) {

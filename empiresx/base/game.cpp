@@ -23,8 +23,15 @@ bool operator<(const Slave& lhs, const Slave& rhs) {
 	return lhs.fd < rhs.fd;
 }
 
-MultiplayerHost::MultiplayerHost(uint16_t port) : Multiplayer(port), sock(port), slaves() {
+Slave::Slave(const std::string &name) : fd(INVALID_SOCKET), id(0), name(name) {}
+
+Multiplayer::Multiplayer(const std::string &name, uint16_t port)
+	: net(), name(name), port(port), t_worker(), mut(), chats() {}
+
+MultiplayerHost::MultiplayerHost(const std::string &name, uint16_t port) : Multiplayer(name, port), sock(port), slaves() {
 	puts("start host");
+	// claim slot for server itself: id == 0 is used for that purpose
+	slaves.emplace(name);
 	t_worker = std::thread(host_start, std::ref(*this));
 }
 
@@ -36,6 +43,14 @@ MultiplayerHost::~MultiplayerHost() {
 #endif
 	t_worker.join();
 	puts("host stopped");
+}
+
+Slave &MultiplayerHost::slave(sockfd fd) {
+	auto search = slaves.find(fd);
+	if (search == slaves.end())
+		throw std::runtime_error(std::string("bad slave fd: ") + std::to_string(fd));
+
+	return const_cast<Slave&>(*search);
 }
 
 void MultiplayerHost::eventloop() {
@@ -54,19 +69,35 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 			check_taunt(str);
 		}
 		break;
+	case CmdType::JOIN:
+		{
+			auto join = cmd.join();
+			printf("%d joins as %s\n", fd, join.nick().c_str());
+
+			Slave &s = slave(fd);
+			s.name = join.nick().c_str();
+		}
+		break;
 	}
 }
 
 void MultiplayerHost::incoming(pollev &ev) {
-	slaves.emplace(pollfd(ev));
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	// disallow id 0 as slave, because this is always the host itself
+	if (idmod == 0)
+		++idmod;
+	slaves.emplace(pollfd(ev), idmod++);
 }
 
 void MultiplayerHost::removepeer(sockfd fd) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
 	slaves.erase(fd);
 }
 
 void MultiplayerHost::shutdown() {
 	puts("host shutdown");
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	slaves.clear();
 }
 
 bool MultiplayerHost::chat(const std::string &str, bool send) {
@@ -81,7 +112,7 @@ bool MultiplayerHost::chat(const std::string &str, bool send) {
 	return true;
 }
 
-MultiplayerClient::MultiplayerClient(uint32_t addr, uint16_t port) : Multiplayer(port), sock(port), addr(addr), activated(false) {
+MultiplayerClient::MultiplayerClient(const std::string &name, uint32_t addr, uint16_t port) : Multiplayer(name, port), sock(port), addr(addr), activated(false) {
 	sock.reuse();
 
 	t_worker = std::thread(client_start, std::ref(*this));
@@ -133,6 +164,11 @@ void MultiplayerClient::eventloop() {
 
 	chat("Connected to server", false);
 
+	// send desired nickname
+	Command cmd = Command::join(0, name);
+	sock.send(cmd, false);
+
+	// main loop
 	for (activated.store(true); activated.load();) {
 		Command cmd;
 

@@ -17,13 +17,15 @@ extern void check_taunt(const std::string &str);
 class Multiplayer {
 protected:
 	Net net;
+	std::string name;
 	uint16_t port;
 	std::thread t_worker;
 public:
 	std::recursive_mutex mut; // lock for all following variables
+	user_id id;
 	std::queue<std::string> chats;
 
-	Multiplayer(uint16_t port) : net(), port(port), t_worker(), mut(), chats() {}
+	Multiplayer(const std::string &name, uint16_t port);
 	virtual ~Multiplayer() {}
 
 	virtual void eventloop() = 0;
@@ -34,7 +36,13 @@ public:
 class Slave final {
 	sockfd fd;
 public:
-	Slave(sockfd fd) : fd(fd) {}
+	user_id id;
+	std::string name;
+
+	Slave(sockfd fd) : fd(fd), id(0), name() {}
+	Slave(sockfd fd, user_id id) : fd(fd), id(id), name() {}
+	// serversocket only: for id == 0
+	Slave(const std::string &name);
 
 	friend bool operator<(const Slave &lhs, const Slave &rhs);
 };
@@ -42,10 +50,17 @@ public:
 class MultiplayerHost final : public Multiplayer, protected ServerCallback {
 	ServerSocket sock;
 	std::set<Slave> slaves;
+	std::map<user_id, sockfd> idmap;
+	user_id idmod;
 public:
-	MultiplayerHost(uint16_t port);
+	MultiplayerHost(const std::string &name, uint16_t port);
 	~MultiplayerHost() override;
 
+private:
+	Slave &slave(sockfd fd);
+
+	sockfd findfd(user_id id);
+public:
 	void eventloop() override;
 	void incoming(pollev &ev) override;
 	void removepeer(sockfd fd) override;
@@ -60,7 +75,7 @@ class MultiplayerClient final : public Multiplayer {
 	uint32_t addr;
 	std::atomic<bool> activated;
 public:
-	MultiplayerClient(uint32_t addr, uint16_t port);
+	MultiplayerClient(const std::string &name, uint32_t addr, uint16_t port);
 	~MultiplayerClient() override;
 
 	void eventloop() override;

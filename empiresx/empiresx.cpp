@@ -89,9 +89,9 @@ class MenuLobby final : public Menu, public ui::InteractableCallback, public ui:
 	ui::Border *bkg_chat;
 	ui::InputField *f_chat;
 public:
-	MenuLobby(SimpleRender &r, uint32_t addr, uint16_t port, bool host = true)
+	MenuLobby(SimpleRender &r, const std::string &name, uint32_t addr, uint16_t port, bool host = true)
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
-		, mp(host ? (Multiplayer*)new MultiplayerHost(port) : (Multiplayer*)new MultiplayerClient(addr, port))
+		, mp(host ? (Multiplayer*)new MultiplayerHost(name, port) : (Multiplayer*)new MultiplayerClient(name, addr, port))
 	{
 		Font &fnt = eng->assets->fnt_button;
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
@@ -356,7 +356,7 @@ public:
 		case 2:
 			if (valid()) {
 				jukebox.sfx(SfxId::button4);
-				go_to(new MenuLobby(r, ip, port, id == 1));
+				go_to(new MenuLobby(r, name, ip, port, id == 1));
 			}
 			break;
 		}

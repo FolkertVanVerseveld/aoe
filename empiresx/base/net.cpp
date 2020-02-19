@@ -28,27 +28,69 @@ static inline void dump(const void *buf, unsigned len) {
 
 const unsigned cmd_sizes[] = {
 	TEXT_LIMIT,
+	sizeof(JoinUser),
 };
 
-void CmdData::hton() {}
-void CmdData::ntoh() {}
+void CmdData::hton(uint16_t type) {
+	switch ((CmdType)type) {
+	case CmdType::TEXT: break;
+	case CmdType::JOIN:
+		join.id = htobe32(join.id);
+		break;
+	case CmdType::LEAVE:
+		leave = htobe32(leave);
+		break;
+	}
+}
+
+void CmdData::ntoh(uint16_t type) {
+	switch ((CmdType)type) {
+	case CmdType::TEXT: break;
+	case CmdType::JOIN:
+		join.id = be32toh(join.id);
+		break;
+	case CmdType::LEAVE:
+		leave = be32toh(leave);
+		break;
+	}
+}
 
 void Command::hton() {
 	type = htobe16(type);
 	length = htobe16(length);
-	data.hton();
+	data.hton(type);
 }
 
 void Command::ntoh() {
 	type = be16toh(type);
 	length = be16toh(length);
-	data.ntoh();
+	data.ntoh(type);
 }
 
 std::string Command::text() {
 	assert((CmdType)type == CmdType::TEXT);
 	data.text[TEXT_LIMIT - 1] = '\0';
 	return data.text;
+}
+
+std::string JoinUser::nick() {
+	name[NAME_LIMIT - 1] = '\0';
+	return name;
+}
+
+JoinUser Command::join() {
+	assert(type == (uint16_t)CmdType::JOIN);
+	return data.join;
+}
+
+Command Command::join(user_id id, const std::string &str) {
+	Command cmd;
+
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::JOIN];
+	cmd.data.join.id = id;
+	strncpy(cmd.data.join.name, str.c_str(), NAME_LIMIT);
+
+	return cmd;
 }
 
 Command Command::text(const std::string &str) {

@@ -18,8 +18,6 @@
 #include <stdexcept>
 #include <string>
 
-#define INVALID_SOCKET ((int)-1)
-
 namespace genie {
 
 Net::Net() {}
