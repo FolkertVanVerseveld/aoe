@@ -44,7 +44,7 @@ void MultiplayerHost::eventloop() {
 }
 
 void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
-	switch (cmd.type) {
+	switch ((CmdType)cmd.type) {
 	case CmdType::TEXT:
 		sock.broadcast(*this, cmd);
 		{
@@ -142,8 +142,8 @@ void MultiplayerClient::eventloop() {
 			continue;
 		}
 
-		switch (cmd.type) {
-		case TEXT:
+		switch ((CmdType)cmd.type) {
+		case CmdType::TEXT:
 			{
 				std::lock_guard<std::recursive_mutex> lock(mut);
 				auto str = cmd.text();

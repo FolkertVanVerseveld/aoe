@@ -46,7 +46,7 @@ void Command::ntoh() {
 }
 
 std::string Command::text() {
-	assert(type == CmdType::TEXT);
+	assert((CmdType)type == CmdType::TEXT);
 	data.text[TEXT_LIMIT - 1] = '\0';
 	return data.text;
 }
@@ -54,7 +54,7 @@ std::string Command::text() {
 Command Command::text(const std::string &str) {
 	Command cmd;
 
-	cmd.length = cmd_sizes[cmd.type = CmdType::TEXT];
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::TEXT];
 	strncpy(cmd.data.text, str.c_str(), cmd.length);
 
 	return cmd;
@@ -146,7 +146,7 @@ int Socket::recv(Command &cmd) {
 
 		uint16_t type = be16toh(cmd.type), length = be16toh(cmd.length);
 
-		if (type >= CmdType::MAX || length != cmd_sizes[type])
+		if (type >= (uint16_t)CmdType::MAX || length != cmd_sizes[type])
 			return 2;
 
 		recvFully((char*)&cmd + CMD_HDRSZ, length);
@@ -206,8 +206,8 @@ int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 		// validate header
 		unsigned type = be16toh(cmd.type), length = be16toh(cmd.length);
 
-		if (type >= CmdType::MAX || length != cmd_sizes[type]) {
-			if (type < CmdType::MAX)
+		if (type >= (uint16_t)CmdType::MAX || length != cmd_sizes[type]) {
+			if (type < (uint16_t)CmdType::MAX)
 				fprintf(stderr, "bad header: type %u, size %u (expected %u)\n", type, length, cmd_sizes[type]);
 			else
 				fprintf(stderr, "bad header: type %u, size %u\n", type, length);

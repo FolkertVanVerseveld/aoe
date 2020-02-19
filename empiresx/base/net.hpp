@@ -61,8 +61,10 @@ static constexpr unsigned CMD_HDRSZ = 4;
 
 class CmdBuf;
 
-enum CmdType {
+enum class CmdType {
 	TEXT,
+	JOIN,
+	LEAVE,
 	MAX,
 };
 
