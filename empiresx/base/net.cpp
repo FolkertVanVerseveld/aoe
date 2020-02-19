@@ -268,17 +268,18 @@ SSErr CmdBuf::write() {
 	return transmitted == size ? SSErr::OK : SSErr::PENDING;
 }
 
-void ServerSocket::broadcast(Command &cmd, bool net_order) {
+void ServerSocket::broadcast(ServerCallback &cb, Command &cmd, bool net_order) {
 	if (!net_order)
 		cmd.hton();
 
-	printf("broadcast to %u peers\n", (unsigned)peers.size());
-
 	std::lock_guard<std::recursive_mutex> lock(mut);
 
-	for (auto &x : peers)
-		if (push(pollfd(x), cmd, true) != SSErr::OK)
-			throw std::runtime_error(std::string("broadcast failed for fd ") + std::to_string(pollfd(x)));
+	for (auto &x : peers) {
+		sockfd fd = pollfd(x);
+
+		if (push_unsafe(fd, cmd, true) != SSErr::OK)
+			removepeer(cb, fd);
+	}
 }
 
 bool operator<(const CmdBuf &lhs, const CmdBuf &rhs) {

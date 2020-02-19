@@ -144,7 +144,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 				x.events |= POLLWRNORM;
 		}
 
-		if ((events = WSAPoll(peers.data(), (ULONG)peers.size(), 500)) < 0) {
+		if ((events = WSAPoll(peers.data(), (ULONG)peers.size(), 50)) < 0) {
 			fprintf(stderr, "poll failed: code %d\n", WSAGetLastError());
 			activated.store(false);
 			continue;
@@ -253,9 +253,10 @@ void ServerSocket::close() {
 
 SSErr ServerSocket::push(sockfd fd, const Command &cmd, bool net_order) {
 	std::lock_guard<std::recursive_mutex> lock(mut);
+	return push_unsafe(fd, cmd, net_order);
+}
 
-	// XXX consider creating push_unsafe
-
+SSErr ServerSocket::push_unsafe(sockfd fd, const Command &cmd, bool net_order) {
 	auto search = wbuf.find(fd);
 	if (search == wbuf.end())
 		return SSErr::BADFD;

@@ -46,7 +46,7 @@ void MultiplayerHost::eventloop() {
 void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 	switch (cmd.type) {
 	case CmdType::TEXT:
-		sock.broadcast(cmd);
+		sock.broadcast(*this, cmd);
 		{
 			auto str = cmd.text();
 			std::lock_guard<std::mutex> lock(mut);
@@ -71,7 +71,7 @@ void MultiplayerHost::shutdown() {
 
 void MultiplayerHost::chat(const std::string &str) {
 	Command txt = Command::text(str);
-	sock.broadcast(txt);
+	sock.broadcast(*this, txt);
 
 	std::lock_guard<std::mutex> lock(mut);
 	chats.emplace(str);

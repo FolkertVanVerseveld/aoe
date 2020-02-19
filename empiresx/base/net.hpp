@@ -178,9 +178,10 @@ public:
 	void close();
 
 	SSErr push(sockfd fd, const Command &cmd, bool net_order=false);
-	void broadcast(Command &cmd, bool net_order=false);
+	void broadcast(ServerCallback &cb, Command &cmd, bool net_order=false);
 
 private:
+	SSErr push_unsafe(sockfd fd, const Command &cmd, bool net_order=false);
 	void removepeer(ServerCallback&, sockfd fd);
 #if linux
 	void incoming(ServerCallback&);

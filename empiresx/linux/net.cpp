@@ -72,6 +72,8 @@ void ServerSocket::close() {
 static constexpr unsigned MAX_EVENTS = 2 * MAX_USERS;
 
 void ServerSocket::incoming(ServerCallback &cb) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+
 	while (1) {
 		struct sockaddr in_addr;
 		int err = 0, infd;
@@ -148,10 +150,13 @@ reject:
 }
 
 void ServerSocket::removepeer(ServerCallback &cb, int fd) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+
 	auto search = rbuf.find(fd);
 	if (search != rbuf.end())
 		rbuf.erase(search);
 	wbuf.erase(fd);
+
 	// purge connection
 	peers.erase(fd);
 	::close(fd);
@@ -204,6 +209,8 @@ int ServerSocket::event_process(ServerCallback &cb, pollev &ev) {
 
 			printf("read %zd bytes from fd %d\n", n, fd);
 
+			std::lock_guard<std::recursive_mutex> lock(mut);
+
 			auto search = rbuf.find(fd);
 
 			if (search == rbuf.end()) {
@@ -219,6 +226,8 @@ int ServerSocket::event_process(ServerCallback &cb, pollev &ev) {
 		}
 
 	if (ev.events & EPOLLOUT) {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+
 		auto search = wbuf.find(fd);
 		assert(search != wbuf.end());
 
@@ -237,7 +246,6 @@ int ServerSocket::event_process(ServerCallback &cb, pollev &ev) {
 }
 
 void ServerSocket::eventloop(ServerCallback &cb) {
-	int dt = -1;
 	epoll_event events[MAX_EVENTS];
 
 	activated.store(true);
@@ -246,7 +254,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 		int err, n;
 
 		// wait for new events
-		if ((n = epoll_wait(efd, events, MAX_EVENTS, dt)) == -1) {
+		if ((n = epoll_wait(efd, events, MAX_EVENTS, -1)) == -1) {
 			/*
 			 * This case occurs only when the server itself has been
 			 * suspended and resumed. We can just ignore this case.
@@ -266,9 +274,6 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 				fprintf(stderr, "event_process: bad event (%d,%d): %s: %s\n", i, events[i].data.fd, epetbl[err], strerror(errno));
 				removepeer(cb, events[i].data.fd);
 			}
-
-		// TODO determine new value
-		dt = -1;
 	}
 
 	cb.shutdown();
@@ -298,6 +303,11 @@ ServerSocket::ServerSocket(uint16_t port)
 }
 
 SSErr ServerSocket::push(sockfd fd, const Command &cmd, bool net_order) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	return push_unsafe(fd, cmd, net_order);
+}
+
+SSErr ServerSocket::push_unsafe(sockfd fd, const Command &cmd, bool net_order) {
 	auto search = wbuf.find(fd);
 	if (search == wbuf.end())
 		return SSErr::BADFD;
