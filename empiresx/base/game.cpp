@@ -49,7 +49,7 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 		sock.broadcast(*this, cmd);
 		{
 			auto str = cmd.text();
-			std::lock_guard<std::mutex> lock(mut);
+			std::lock_guard<std::recursive_mutex> lock(mut);
 			chats.emplace(str);
 			check_taunt(str);
 		}
@@ -69,13 +69,16 @@ void MultiplayerHost::shutdown() {
 	puts("host shutdown");
 }
 
-void MultiplayerHost::chat(const std::string &str) {
-	Command txt = Command::text(str);
-	sock.broadcast(*this, txt);
+bool MultiplayerHost::chat(const std::string &str, bool send) {
+	if (send) {
+		Command txt = Command::text(str);
+		sock.broadcast(*this, txt);
+	}
 
-	std::lock_guard<std::mutex> lock(mut);
+	std::lock_guard<std::recursive_mutex> lock(mut);
 	chats.emplace(str);
 	check_taunt(str);
+	return true;
 }
 
 MultiplayerClient::MultiplayerClient(uint32_t addr, uint16_t port) : Multiplayer(port), sock(port), addr(addr), activated(false) {
@@ -87,6 +90,7 @@ MultiplayerClient::MultiplayerClient(uint32_t addr, uint16_t port) : Multiplayer
 MultiplayerClient::~MultiplayerClient() {
 	puts("closing client");
 	// NOTE sock.close() has to be in both bodies, because its behavior will be slightly different!
+	// XXX figure out how to force a memory barrier between joinable and close or verify that the generated assembly is correct
 	if (t_worker.joinable()) {
 		sock.close();
 #if linux
@@ -123,24 +127,25 @@ void MultiplayerClient::eventloop() {
 	}
 
 	if (!connected) {
-		fputs("failed to connect\n", stderr);
+		chat("Failed to connect", false);
 		return;
 	}
 
-	puts("connected");
+	chat("Connected to server", false);
 
 	for (activated.store(true); activated.load();) {
 		Command cmd;
 
 		if (sock.recv(cmd)) {
 			activated.store(false);
+			chat("Server stopped", false);
 			continue;
 		}
 
 		switch (cmd.type) {
 		case TEXT:
 			{
-				std::lock_guard<std::mutex> lock(mut);
+				std::lock_guard<std::recursive_mutex> lock(mut);
 				auto str = cmd.text();
 				chats.emplace(str.c_str());
 				check_taunt(str);
@@ -154,9 +159,16 @@ void MultiplayerClient::eventloop() {
 	}
 }
 
-void MultiplayerClient::chat(const std::string &str) {
+bool MultiplayerClient::chat(const std::string &str, bool send) {
+	if (!send || !activated.load()) {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		chats.emplace(send ? "Not connected to server" : str);
+		return false;
+	}
+
 	Command cmd = Command::text(str);
 	sock.send(cmd, false);
+	return true;
 }
 
 }

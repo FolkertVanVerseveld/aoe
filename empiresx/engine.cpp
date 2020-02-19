@@ -335,7 +335,7 @@ Engine::~Engine() {
 	assert(eng);
 }
 
-void Engine::show_error(const std::string &title, const std::string &str) {
+void show_error(const std::string &title, const std::string &str) {
 #if windows
 	MessageBox(NULL, str.c_str(), title.c_str(), MB_ICONERROR | MB_OK);
 #else
@@ -344,7 +344,7 @@ void Engine::show_error(const std::string &title, const std::string &str) {
 #endif
 }
 
-void Engine::show_error(const std::string &str) {
+void show_error(const std::string &str) {
 	show_error("Error occurred", str);
 }
 

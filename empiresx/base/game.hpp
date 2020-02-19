@@ -20,7 +20,7 @@ protected:
 	uint16_t port;
 	std::thread t_worker;
 public:
-	std::mutex mut; // lock for all following variables
+	std::recursive_mutex mut; // lock for all following variables
 	std::queue<std::string> chats;
 
 	Multiplayer(uint16_t port) : net(), port(port), t_worker(), mut(), chats() {}
@@ -28,7 +28,7 @@ public:
 
 	virtual void eventloop() = 0;
 
-	virtual void chat(const std::string &str) = 0;
+	virtual bool chat(const std::string &str, bool send=true) = 0;
 };
 
 class Slave final {
@@ -52,7 +52,7 @@ public:
 	void event_process(sockfd fd, Command &cmd) override;
 	void shutdown() override;
 
-	void chat(const std::string &str) override;
+	bool chat(const std::string &str, bool send=true) override;
 };
 
 class MultiplayerClient final : public Multiplayer {
@@ -64,7 +64,7 @@ public:
 	~MultiplayerClient() override;
 
 	void eventloop() override;
-	void chat(const std::string &str) override;
+	bool chat(const std::string &str, bool send=true) override;
 };
 
 }

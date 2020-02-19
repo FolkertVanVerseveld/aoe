@@ -111,9 +111,9 @@ public:
 	~Engine();
 
 	const Config &config() const { return cfg; }
-
-	void show_error(const std::string &title, const std::string &str);
-	void show_error(const std::string &str);
 };
+
+void show_error(const std::string &title, const std::string &str);
+void show_error(const std::string &str);
 
 }

@@ -104,10 +104,12 @@ public:
 
 		add_field(f_chat = new ui::InputField(0, *this, ui::InputType::text, "", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0}, menu_lobby_field_chat, mode, pal, bkg));
 		resize(mode, mode);
+
+		chat.emplace_front(r, eng->assets->fnt_default, "Connecting to server...", SDL_Color{0xff, 0, 0});
 	}
 
 	void idle() override {
-		std::lock_guard<std::mutex> lock(mp->mut);
+		std::lock_guard<std::recursive_mutex> lock(mp->mut);
 		while (!mp->chats.empty()) {
 			chat.emplace_front(r, eng->assets->fnt_default, mp->chats.front().c_str(), SDL_Color{ 0xff, 0xff, 0 });
 			mp->chats.pop();
@@ -138,13 +140,13 @@ public:
 		switch (id) {
 		case 0:
 			{
-				//std::lock_guard<std::mutex> lock(mp->mut); // XXX consider recursive_mutex
+				std::lock_guard<std::recursive_mutex> lock(mp->mut);
 				auto s = f.text();
 				if (!s.empty()) {
 					if (s == "/clear")
 						chat.clear();
 					else
-						mp->chat(s);
+						return mp->chat(s);
 				}
 			}
 			break;
@@ -556,7 +558,7 @@ public:
 		switch (ch) {
 		case 's':
 		case 'S':
-			interacted(0);
+			//interacted(0);
 			break;
 		case 'm':
 		case 'M':
@@ -568,7 +570,7 @@ public:
 			break;
 		case 'e':
 		case 'E':
-			interacted(3);
+			//interacted(3);
 			break;
 		case 'q':
 		case 'Q':
@@ -625,8 +627,10 @@ int main(int argc, char **argv)
 		genie::nav->mainloop();
 	} catch (const std::exception &e) {
 		std::cerr << e.what() << std::endl;
+		genie::show_error(e.what());
 		return 1;
 	}
 
 	return 0;
 }
+
