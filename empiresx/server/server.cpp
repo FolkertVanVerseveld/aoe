@@ -19,6 +19,12 @@ namespace genie {
 
 void check_taunt(const std::string&) {}
 
+class DummyCallback : public MultiplayerCallback {
+public:
+	void join(JoinUser &usr) override {}
+	void leave(user_id id) override {}
+};
+
 }
 
 int main(int argc, char **argv) {
@@ -31,7 +37,8 @@ int main(int argc, char **argv) {
 	}
 
 	try {
-		genie::MultiplayerHost mp("", port);
+		genie::DummyCallback cb;
+		genie::MultiplayerHost mp(cb, "", port);
 		std::string input;
 
 		while (std::getline(std::cin, input)) {

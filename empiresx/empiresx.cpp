@@ -66,6 +66,30 @@ const SDL_Rect menu_lobby_lbl_chat[screen_modes] = {
 	{22, 469, 0, 0},
 };
 
+const SDL_Rect menu_lobby_lbl_name[screen_modes] = {
+	{32, 59, 0, 0},
+	{38, 74, 0, 0},
+	{46, 98, 0, 0},
+	{46, 98, 0, 0},
+	{46, 98, 0, 0},
+};
+
+const SDL_Rect menu_lobby_lbl_civ[screen_modes] = {
+	{195, 59, 0, 0},
+	{242, 74, 0, 0},
+	{308, 98, 0, 0},
+	{308, 98, 0, 0},
+	{308, 98, 0, 0},
+};
+
+const SDL_Rect menu_lobby_lbl_player[screen_modes] = {
+	{273, 59, 0, 0},
+	{358, 74, 0, 0},
+	{477, 98, 0, 0},
+	{477, 98, 0, 0},
+	{477, 98, 0, 0},
+};
+
 const SDL_Rect menu_lobby_border_chat[screen_modes] = {
 	{10, 300, 410 - 10, 396 - 300},
 	{12, 375, 512 - 12, 495 - 375},
@@ -82,22 +106,25 @@ const SDL_Rect menu_lobby_field_chat[screen_modes] = {
 	{16, 643, 656 - 16, 666 - 643},
 };
 
-class MenuLobby final : public Menu, public ui::InteractableCallback, public ui::InputCallback {
+class MenuLobby final : public Menu, public ui::InteractableCallback, public ui::InputCallback, public MultiplayerCallback {
 	std::unique_ptr<Multiplayer> mp;
 	bool host;
 	std::deque<Text> chat;
 	ui::Border *bkg_chat;
 	ui::InputField *f_chat;
+	std::recursive_mutex mut;
 public:
 	MenuLobby(SimpleRender &r, const std::string &name, uint32_t addr, uint16_t port, bool host = true)
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
-		, mp(host ? (Multiplayer*)new MultiplayerHost(name, port) : (Multiplayer*)new MultiplayerClient(name, addr, port))
+		, mp(host ? (Multiplayer*)new MultiplayerHost(*this, name, port) : (Multiplayer*)new MultiplayerClient(*this, name, addr, port)), mut()
 	{
 		Font &fnt = eng->assets->fnt_button;
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
 		ConfigScreenMode mode = eng->w->render().mode;
 
-		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, eng->assets->open_str(LangId::lbl_chat), menu_lobby_lbl_chat, eng->w->render().mode, pal, bkg, ui::HAlign::left, ui::VAlign::bottom, true, false));
+		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, eng->assets->open_str(LangId::lobby_chat), menu_lobby_lbl_chat, eng->w->render().mode, pal, bkg, ui::HAlign::left, ui::VAlign::bottom, true, false));
+		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, eng->assets->open_str(LangId::lobby_name), menu_lobby_lbl_name, eng->w->render().mode, pal, bkg));
+		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, eng->assets->open_str(LangId::lobby_civ), menu_lobby_lbl_civ, eng->w->render().mode, pal, bkg));
 		ui_objs.emplace_back(bkg_chat = new ui::Border(menu_lobby_border_chat, mode, pal, bkg, ui::BorderType::field, false));
 
 		add_btn(new ui::Button(0, *this, r, fnt, eng->assets->open_str(LangId::btn_cancel), fg, bg, menu_lobby_txt_cancel, menu_lobby_border_cancel, pal, bkg, mode));
@@ -105,7 +132,8 @@ public:
 		add_field(f_chat = new ui::InputField(0, *this, ui::InputType::text, "", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0}, menu_lobby_field_chat, mode, pal, bkg));
 		resize(mode, mode);
 
-		chat.emplace_front(r, eng->assets->fnt_default, "Connecting to server...", SDL_Color{0xff, 0, 0});
+		if (!host)
+			chat.emplace_front(r, eng->assets->fnt_default, "Connecting to server...", SDL_Color{0xff, 0, 0});
 	}
 
 	void idle() override {
@@ -166,6 +194,14 @@ public:
 				break;
 			x.paint(r, bnds.x + 8, y);
 		}
+	}
+
+	void join(JoinUser& usr) override {
+
+	}
+
+	void leave(user_id id) override {
+
 	}
 };
 

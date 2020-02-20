@@ -30,10 +30,12 @@ bool operator<(const Peer &lhs, const Peer &rhs) {
 
 Slave::Slave(const std::string &name) : fd(INVALID_SOCKET), id(0), name(name) {}
 
-Multiplayer::Multiplayer(const std::string &name, uint16_t port)
-	: net(), name(name), port(port), t_worker(), mut(), chats() {}
+Multiplayer::Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port)
+	: net(), name(name), port(port), t_worker(), cb(cb), mut(), chats() {}
 
-MultiplayerHost::MultiplayerHost(const std::string &name, uint16_t port) : Multiplayer(name, port), sock(port), slaves(), idmap(), idmod(1) {
+MultiplayerHost::MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port)
+	: Multiplayer(cb, name, port), sock(port), slaves(), idmap(), idmod(1)
+{
 	puts("start host");
 	// claim slot for server itself: id == 0 is used for that purpose
 	slaves.emplace(name);
@@ -87,6 +89,7 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 			s.name = join.nick().c_str();
 
 			printf("id: %u\n", s.id);
+			chats.emplace(join.nick() + " has joined");
 
 			Command cmd = Command::join(s.id, s.name);
 			cmd.hton();
@@ -97,11 +100,13 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 			// send all joined slaves to new client
 			for (auto &x : slaves) {
 				// ignore special slave and client itself
-				if (x.id == 0 || x.id == s.id)
+				if ((x.id == 0 && x.name.empty()) || x.id == s.id)
 					continue;
 				Command cmd = Command::join(x.id, x.name);
 				sock.push(fd, cmd, false);
 			}
+
+			cb.join(join);
 		}
 		break;
 	}
@@ -123,6 +128,7 @@ void MultiplayerHost::removepeer(sockfd fd) {
 	user_id leave = s.id;
 	assert(leave);
 	printf("%s has left\n", s.name.c_str());
+	chats.emplace(s.name + " has left");
 
 	slaves.erase(fd);
 
@@ -156,7 +162,9 @@ bool MultiplayerHost::chat(const std::string &str, bool send) {
 	return true;
 }
 
-MultiplayerClient::MultiplayerClient(const std::string &name, uint32_t addr, uint16_t port) : Multiplayer(name, port), sock(port), addr(addr), activated(false), self(0), peers() {
+MultiplayerClient::MultiplayerClient(MultiplayerCallback &cb, const std::string &name, uint32_t addr, uint16_t port)
+	: Multiplayer(cb, name, port), sock(port), addr(addr), activated(false), self(0), peers()
+{
 	sock.reuse();
 
 	t_worker = std::thread(client_start, std::ref(*this));
@@ -245,8 +253,8 @@ void MultiplayerClient::eventloop() {
 					printf("joined as %u: %s\n", usr.id, s.c_str());
 				}
 
-				//peers.emplace(usr.id, usr.id);
 				peers.emplace(std::piecewise_construct, std::forward_as_tuple(usr.id), std::forward_as_tuple(usr.id, s));
+				cb.join(usr);
 			}
 			break;
 		case CmdType::LEAVE:
@@ -256,6 +264,7 @@ void MultiplayerClient::eventloop() {
 
 				if (leave == self) {
 					fputs("we got kicked!\n", stderr);
+					chats.emplace("You are kicked from the server");
 					activated.store(false);
 					continue;
 				}
@@ -270,6 +279,7 @@ void MultiplayerClient::eventloop() {
 			break;
 		default:
 			fprintf(stderr, "communication error: unknown type %u\n", cmd.type);
+			chats.emplace("Communication error");
 			activated.store(false);
 			continue;
 		}

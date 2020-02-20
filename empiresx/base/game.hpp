@@ -14,18 +14,25 @@ namespace genie {
 
 extern void check_taunt(const std::string &str);
 
+class MultiplayerCallback {
+public:
+	virtual void join(JoinUser &usr) = 0;
+	virtual void leave(user_id id) = 0;
+};
+
 class Multiplayer {
 protected:
 	Net net;
 	std::string name;
 	uint16_t port;
 	std::thread t_worker;
+	MultiplayerCallback &cb;
 public:
 	std::recursive_mutex mut; // lock for all following variables
 	user_id id;
 	std::queue<std::string> chats;
 
-	Multiplayer(const std::string &name, uint16_t port);
+	Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port);
 	virtual ~Multiplayer() {}
 
 	virtual void eventloop() = 0;
@@ -53,7 +60,7 @@ class MultiplayerHost final : public Multiplayer, protected ServerCallback {
 	std::map<user_id, sockfd> idmap;
 	user_id idmod;
 public:
-	MultiplayerHost(const std::string &name, uint16_t port);
+	MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port);
 	~MultiplayerHost() override;
 
 private:
@@ -90,7 +97,7 @@ class MultiplayerClient final : public Multiplayer {
 	user_id self;
 	std::map<user_id, Peer> peers;
 public:
-	MultiplayerClient(const std::string &name, uint32_t addr, uint16_t port);
+	MultiplayerClient(MultiplayerCallback &cb, const std::string &name, uint32_t addr, uint16_t port);
 	~MultiplayerClient() override;
 
 	void eventloop() override;

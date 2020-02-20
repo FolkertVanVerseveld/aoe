@@ -46,8 +46,6 @@ enum class LangId {
 	btn_start_game = 9472,
 	btn_settings = 9682,
 
-	lbl_chat = 9687,
-
 	player_list = 10340,
 	player_1 = 10341,
 	player_2 = 10342,
@@ -164,6 +162,11 @@ enum class LangId {
 	multiplayer_gaming_zone = 9614,
 	multiplayer_join = 9632,
 	multiplayer_host = 9634,
+
+	lobby_name = 9680,
+	lobby_civ = 9681,
+	lobby_settings = 9682,
+	lobby_chat = 9687,
 
 	/* Extended help and game settings menu */
 	mode_640_480 = 9447,
