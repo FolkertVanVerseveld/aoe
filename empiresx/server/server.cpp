@@ -44,6 +44,8 @@ int main(int argc, char **argv) {
 					"say      - broadcast message to clients" << std::endl;
 			} else if (input == "q" || input == "quit") {
 				break;
+			} else if (input == "d") {
+				mp.dump();
 			} else if (starts_with(input, "say ")) {
 				mp.chat(input.substr(strlen("say ")));
 			} else {

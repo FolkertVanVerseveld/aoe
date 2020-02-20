@@ -127,6 +127,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 			}
 		}
 
+		// FIXME leave command removes too many peers?
 		// WSAPoll does not work properly if there are no peers, so check if we have to wait for any connections to arrive
 		if (peers.empty()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -158,8 +159,12 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 		// choose which peers we want to keep
 		keep.clear();
 
+		std::set<sockfd> handled;
+
 		for (unsigned i = 0; i < peers.size() && events; ++i) {
 			auto ev = &peers[i];
+
+			handled.emplace(ev->fd);
 
 			// drop any invalid sockets
 			if (ev->revents & (POLLERR | POLLHUP | POLLNVAL)) {
@@ -231,6 +236,11 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 
 			keep.push_back(*ev);
 		}
+
+		// figure out which events weren't triggered
+		for (auto &x : peers)
+			if (handled.find(x.fd) == handled.end())
+				keep.push_back(x);
 
 		peers.swap(keep);
 	}

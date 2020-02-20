@@ -19,6 +19,11 @@
 
 namespace genie {
 
+#if windows
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+
 extern void sock_block(sockfd fd, bool enabled);
 
 static inline void dump(const void *buf, unsigned len) {
@@ -28,10 +33,15 @@ static inline void dump(const void *buf, unsigned len) {
 
 const unsigned cmd_sizes[] = {
 	TEXT_LIMIT,
-	sizeof(JoinUser),
+	sizeof(user_id) + NAME_LIMIT,
+	sizeof(user_id)
 };
 
 void CmdData::hton(uint16_t type) {
+	assert(cmd_sizes[(unsigned)CmdType::MAX - 1]);
+	assert(sizeof(JoinUser) == sizeof(user_id) + NAME_LIMIT);
+	assert(sizeof(user_id) == sizeof(uint32_t));
+
 	switch ((CmdType)type) {
 	case CmdType::TEXT: break;
 	case CmdType::JOIN:
@@ -56,9 +66,9 @@ void CmdData::ntoh(uint16_t type) {
 }
 
 void Command::hton() {
+	data.hton(type);
 	type = htobe16(type);
 	length = htobe16(length);
-	data.hton(type);
 }
 
 void Command::ntoh() {
@@ -89,6 +99,15 @@ Command Command::join(user_id id, const std::string &str) {
 	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::JOIN];
 	cmd.data.join.id = id;
 	strncpy(cmd.data.join.name, str.c_str(), NAME_LIMIT);
+
+	return cmd;
+}
+
+Command Command::leave(user_id id) {
+	Command cmd;
+
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::LEAVE];
+	cmd.data.leave = id;
 
 	return cmd;
 }
@@ -310,7 +329,7 @@ SSErr CmdBuf::write() {
 	return transmitted == size ? SSErr::OK : SSErr::PENDING;
 }
 
-void ServerSocket::broadcast(ServerCallback &cb, Command &cmd, bool net_order) {
+void ServerSocket::broadcast(ServerCallback &cb, Command &cmd, bool net_order, bool ignore_bad) {
 	if (!net_order)
 		cmd.hton();
 
@@ -319,13 +338,48 @@ void ServerSocket::broadcast(ServerCallback &cb, Command &cmd, bool net_order) {
 	for (auto &x : peers) {
 		sockfd fd = pollfd(x);
 
-		if (push_unsafe(fd, cmd, true) != SSErr::OK)
+		switch (push_unsafe(fd, cmd, true)) {
+		case SSErr::OK: break;
+		case SSErr::BADFD:
+			if (!ignore_bad)
+				removepeer(cb, fd);
+			break;
+		default:
 			removepeer(cb, fd);
+			break;
+		}
+	}
+}
+
+void ServerSocket::broadcast(ServerCallback &cb, Command &cmd, sockfd origfd, bool net_order) {
+	if (!net_order)
+		cmd.hton();
+
+	std::lock_guard<std::recursive_mutex> lock(mut);
+
+	push_unsafe(origfd, cmd, true);
+
+	for (auto &x : peers) {
+		sockfd fd = pollfd(x);
+
+		if (fd == origfd)
+			continue;
+
+		switch (push_unsafe(fd, cmd, true)) {
+		case SSErr::OK: break;
+		default:
+			removepeer(cb, fd);
+			break;
+		}
 	}
 }
 
 bool operator<(const CmdBuf &lhs, const CmdBuf &rhs) {
 	return lhs.endpoint < rhs.endpoint;
 }
+
+#if windows
+#pragma warning(pop)
+#endif
 
 }

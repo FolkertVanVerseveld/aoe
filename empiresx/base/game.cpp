@@ -1,5 +1,6 @@
 #include "game.hpp"
 
+#include <cassert>
 #include <cstdio>
 #include <inttypes.h>
 
@@ -23,12 +24,16 @@ bool operator<(const Slave& lhs, const Slave& rhs) {
 	return lhs.fd < rhs.fd;
 }
 
+bool operator<(const Peer &lhs, const Peer &rhs) {
+	return lhs.id < rhs.id;
+}
+
 Slave::Slave(const std::string &name) : fd(INVALID_SOCKET), id(0), name(name) {}
 
 Multiplayer::Multiplayer(const std::string &name, uint16_t port)
 	: net(), name(name), port(port), t_worker(), mut(), chats() {}
 
-MultiplayerHost::MultiplayerHost(const std::string &name, uint16_t port) : Multiplayer(name, port), sock(port), slaves() {
+MultiplayerHost::MultiplayerHost(const std::string &name, uint16_t port) : Multiplayer(name, port), sock(port), slaves(), idmap(), idmod(1) {
 	puts("start host");
 	// claim slot for server itself: id == 0 is used for that purpose
 	slaves.emplace(name);
@@ -72,10 +77,31 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 	case CmdType::JOIN:
 		{
 			auto join = cmd.join();
+#if windows
+			printf("%llu joins as %s\n", fd, join.nick().c_str());
+#else
 			printf("%d joins as %s\n", fd, join.nick().c_str());
+#endif
 
 			Slave &s = slave(fd);
 			s.name = join.nick().c_str();
+
+			printf("id: %u\n", s.id);
+
+			Command cmd = Command::join(s.id, s.name);
+			cmd.hton();
+
+			// always send back first to the slave it came from
+			sock.broadcast(*this, cmd, fd, true);
+
+			// send all joined slaves to new client
+			for (auto &x : slaves) {
+				// ignore special slave and client itself
+				if (x.id == 0 || x.id == s.id)
+					continue;
+				Command cmd = Command::join(x.id, x.name);
+				sock.push(fd, cmd, false);
+			}
 		}
 		break;
 	}
@@ -86,18 +112,36 @@ void MultiplayerHost::incoming(pollev &ev) {
 	// disallow id 0 as slave, because this is always the host itself
 	if (idmod == 0)
 		++idmod;
+
 	slaves.emplace(pollfd(ev), idmod++);
 }
 
 void MultiplayerHost::removepeer(sockfd fd) {
 	std::lock_guard<std::recursive_mutex> lock(mut);
+
+	Slave &s = slave(fd);
+	user_id leave = s.id;
+	assert(leave);
+	printf("%s has left\n", s.name.c_str());
+
 	slaves.erase(fd);
+
+	Command cmd = Command::leave(leave);
+	sock.broadcast(*this, cmd, false, true);
 }
 
 void MultiplayerHost::shutdown() {
 	puts("host shutdown");
 	std::lock_guard<std::recursive_mutex> lock(mut);
 	slaves.clear();
+}
+
+void MultiplayerHost::dump() {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	printf("slaves: %lu\n", (long unsigned)slaves.size());
+
+	for (auto &x : slaves)
+		printf("%u %s\n", x.id, x.name.c_str());
 }
 
 bool MultiplayerHost::chat(const std::string &str, bool send) {
@@ -112,7 +156,7 @@ bool MultiplayerHost::chat(const std::string &str, bool send) {
 	return true;
 }
 
-MultiplayerClient::MultiplayerClient(const std::string &name, uint32_t addr, uint16_t port) : Multiplayer(name, port), sock(port), addr(addr), activated(false) {
+MultiplayerClient::MultiplayerClient(const std::string &name, uint32_t addr, uint16_t port) : Multiplayer(name, port), sock(port), addr(addr), activated(false), self(0), peers() {
 	sock.reuse();
 
 	t_worker = std::thread(client_start, std::ref(*this));
@@ -187,12 +231,51 @@ void MultiplayerClient::eventloop() {
 				check_taunt(str);
 			}
 			break;
+		case CmdType::JOIN:
+			{
+				std::lock_guard<std::recursive_mutex> lock(mut);
+				JoinUser usr = cmd.join();
+				const std::string &s = usr.nick();
+
+				chats.emplace(s + " has joined");
+
+				if (self == 0) {
+					self = usr.id;
+					name = s;
+					printf("joined as %u: %s\n", usr.id, s.c_str());
+				}
+
+				//peers.emplace(usr.id, usr.id);
+				peers.emplace(std::piecewise_construct, std::forward_as_tuple(usr.id), std::forward_as_tuple(usr.id, s));
+			}
+			break;
+		case CmdType::LEAVE:
+			{
+				std::lock_guard<std::recursive_mutex> lock(mut);
+				user_id leave = cmd.data.leave;
+
+				if (leave == self) {
+					fputs("we got kicked!\n", stderr);
+					activated.store(false);
+					continue;
+				}
+
+				auto search = peers.find(leave);
+
+				if (search != peers.end())
+					chats.emplace(search->second.name + " has left");
+
+				peers.erase(leave);
+			}
+			break;
 		default:
 			fprintf(stderr, "communication error: unknown type %u\n", cmd.type);
 			activated.store(false);
 			continue;
 		}
 	}
+
+	sock.close();
 }
 
 bool MultiplayerClient::chat(const std::string &str, bool send) {

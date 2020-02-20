@@ -67,13 +67,28 @@ public:
 	void event_process(sockfd fd, Command &cmd) override;
 	void shutdown() override;
 
+	void dump();
+
 	bool chat(const std::string &str, bool send=true) override;
+};
+
+class Peer final {
+public:
+	user_id id;
+	std::string name;
+
+	Peer(user_id id) : id(id), name() {}
+	Peer(user_id id, const std::string &name) : id(id), name(name) {}
+
+	friend bool operator<(const Peer &lhs, const Peer &rhs);
 };
 
 class MultiplayerClient final : public Multiplayer {
 	Socket sock;
 	uint32_t addr;
 	std::atomic<bool> activated;
+	user_id self;
+	std::map<user_id, Peer> peers;
 public:
 	MultiplayerClient(const std::string &name, uint32_t addr, uint16_t port);
 	~MultiplayerClient() override;

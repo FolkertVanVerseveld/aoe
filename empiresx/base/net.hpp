@@ -51,7 +51,7 @@ public:
 };
 
 static constexpr unsigned MAX_USERS = 64;
-static constexpr unsigned NAME_LIMIT = 18;
+static constexpr unsigned NAME_LIMIT = 24;
 static constexpr unsigned TEXT_LIMIT = 32;
 
 struct JoinUser final {
@@ -95,6 +95,7 @@ public:
 
 	static Command text(const std::string &str);
 	static Command join(user_id id, const std::string &str);
+	static Command leave(user_id id);
 };
 
 class ServerCallback {
@@ -195,7 +196,8 @@ public:
 	void close();
 
 	SSErr push(sockfd fd, const Command &cmd, bool net_order=false);
-	void broadcast(ServerCallback &cb, Command &cmd, bool net_order=false);
+	void broadcast(ServerCallback &cb, Command &cmd, bool net_order=false, bool ignore_bad=false);
+	void broadcast(ServerCallback &cb, Command &cmd, sockfd fd, bool net_order=false);
 
 private:
 	SSErr push_unsafe(sockfd fd, const Command &cmd, bool net_order=false);
