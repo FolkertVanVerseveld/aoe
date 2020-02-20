@@ -21,6 +21,8 @@ void check_taunt(const std::string&) {}
 
 class DummyCallback : public MultiplayerCallback {
 public:
+	void chat(const TextMsg &msg) override {}
+	void chat(user_id from, const std::string &text) {}
 	void join(JoinUser &usr) override {}
 	void leave(user_id id) override {}
 };

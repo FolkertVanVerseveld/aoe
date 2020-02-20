@@ -53,6 +53,16 @@ static inline void toupper(std::string &s) {
 	std::for_each(s.begin(), s.end(), [](char &ch) { ch = std::toupper((unsigned)ch); });
 }
 
+static inline size_t strlen(const char *str, size_t max) {
+	size_t n;
+
+	for (n = 0; n < max; ++n)
+		if (!str[n])
+			return n;
+
+	return n;
+}
+
 #if windows
 #pragma warning(push)
 #pragma warning(disable: 4996)

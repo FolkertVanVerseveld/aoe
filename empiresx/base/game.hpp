@@ -16,6 +16,8 @@ extern void check_taunt(const std::string &str);
 
 class MultiplayerCallback {
 public:
+	virtual void chat(const TextMsg &msg) = 0;
+	virtual void chat(user_id from, const std::string &str) = 0;
 	virtual void join(JoinUser &usr) = 0;
 	virtual void leave(user_id id) = 0;
 };
@@ -30,7 +32,6 @@ protected:
 public:
 	std::recursive_mutex mut; // lock for all following variables
 	user_id id;
-	std::queue<std::string> chats;
 
 	Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port);
 	virtual ~Multiplayer() {}

@@ -228,6 +228,7 @@ void GLRender::paint() {
 }
 
 Surface::Surface(const char *fname) : handle(NULL, &SDL_FreeSurface) {
+	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
 	SDL_Surface *surf;
 
 	if (!(surf = IMG_Load(fname)))
@@ -237,6 +238,7 @@ Surface::Surface(const char *fname) : handle(NULL, &SDL_FreeSurface) {
 }
 
 Texture::Texture(SimpleRender &r, SDL_Surface *s, bool close) : handle(NULL, &SDL_DestroyTexture) {
+	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
 	reset(r, s);
 
 	if (close)
@@ -246,6 +248,7 @@ Texture::Texture(SimpleRender &r, SDL_Surface *s, bool close) : handle(NULL, &SD
 Texture::Texture(int width, int height, SDL_Texture *handle) : handle(handle, &SDL_DestroyTexture), width(width), height(height) {}
 
 void Texture::reset(SimpleRender &r, SDL_Surface *surf) {
+	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
 	SDL_Texture *tex;
 
 	if (!(tex = SDL_CreateTextureFromSurface(r.canvas(), surf)))

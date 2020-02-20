@@ -43,7 +43,7 @@ Display::Display(int index) : index(index) {
 		throw std::runtime_error(std::string("Bad default display bounds: ") + SDL_GetError());
 }
 
-SDL::SDL() {
+SDL::SDL() : mut() {
 	if (SDL_Init(SDL_INIT_VIDEO))
 		throw std::runtime_error(std::string("Unable to initialize SDL: ") + SDL_GetError());
 }
@@ -53,10 +53,12 @@ SDL::~SDL() {
 };
 
 int SDL::display_count() {
+	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
 	return SDL_GetNumVideoDisplays();
 }
 
 void SDL::get_displays(std::vector<Display> &displays) {
+	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
 	int oldcount = -1, count = -1;
 	std::runtime_error last("Bad window manager: unable to determine display count");
 
@@ -218,6 +220,8 @@ Window::Window(const char *title, int x, int y, Config &cfg, Uint32 flags, Uint3
 
 	lastmode = scrmode = cfg.scrmode;
 
+	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
+
 	if (!(w = SDL_CreateWindow(title, x, y, width, height, flags)))
 		throw std::runtime_error(std::string("Unable to create SDL window: ") + SDL_GetError());
 
@@ -232,6 +236,8 @@ Window::Window(const char *title, int x, int y, Config &cfg, Uint32 flags, Uint3
 void Window::chmode(ConfigScreenMode mode) {
 	if (scrmode == mode)
 		return;
+
+	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
 
 	int index = SDL_GetWindowDisplayIndex(handle.get()), width = 0, height = 0;
 	bool was_windowed, go_windowed = true;
@@ -319,6 +325,8 @@ bool Window::toggleFullscreen() {
 Engine::Engine(Config &cfg) : cfg(cfg) {
 	assert(!eng);
 	eng = this;
+
+	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
 
 	try {
 		fs.init(os);

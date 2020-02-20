@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <string>
+#include <mutex>
 
 namespace genie {
 
@@ -33,6 +34,8 @@ public:
 
 class SDL final {
 public:
+	std::recursive_mutex mut;
+
 	SDL();
 	~SDL();
 

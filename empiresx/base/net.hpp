@@ -61,8 +61,15 @@ struct JoinUser final {
 	std::string nick();
 };
 
-union CmdData final {
+struct TextMsg final {
+	user_id from;
 	char text[TEXT_LIMIT];
+
+	std::string str() const;
+};
+
+union CmdData final {
+	TextMsg text;
 	JoinUser join;
 	user_id leave;
 
@@ -87,13 +94,13 @@ class Command final {
 public:
 	uint16_t type, length;
 	union CmdData data;
-	std::string text();
+	TextMsg text();
 	JoinUser join();
 
 	void hton();
 	void ntoh();
 
-	static Command text(const std::string &str);
+	static Command text(user_id id, const std::string &str);
 	static Command join(user_id id, const std::string &str);
 	static Command leave(user_id id);
 };
@@ -173,7 +180,6 @@ public:
 	void send(Command &cmd, bool net_order=false);
 };
 
-// XXX use locking to make it thread-safe
 class ServerSocket final {
 	Socket sock;
 #if linux

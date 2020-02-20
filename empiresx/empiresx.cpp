@@ -106,17 +106,36 @@ const SDL_Rect menu_lobby_field_chat[screen_modes] = {
 	{16, 643, 656 - 16, 666 - 643},
 };
 
+class MenuPlayer final {
+public:
+	user_id id;
+	std::string name;
+
+	// this ctor should only be used when looking up a menuplayer (e.g. std::set::find)
+	MenuPlayer(user_id id) : id(id), name() {}
+	MenuPlayer(JoinUser &join) : id(join.id), name(join.nick()) {}
+
+	friend bool operator<(const MenuPlayer &lhs, const MenuPlayer &rhs);
+};
+
+bool operator<(const MenuPlayer &lhs, const MenuPlayer &rhs) {
+	return lhs.id < rhs.id;
+}
+
 class MenuLobby final : public Menu, public ui::InteractableCallback, public ui::InputCallback, public MultiplayerCallback {
 	std::unique_ptr<Multiplayer> mp;
 	bool host;
-	std::deque<Text> chat;
+	std::deque<Text> lstchat;
 	ui::Border *bkg_chat;
 	ui::InputField *f_chat;
 	std::recursive_mutex mut;
+	std::set<MenuPlayer> players;
 public:
 	MenuLobby(SimpleRender &r, const std::string &name, uint32_t addr, uint16_t port, bool host = true)
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
-		, mp(host ? (Multiplayer*)new MultiplayerHost(*this, name, port) : (Multiplayer*)new MultiplayerClient(*this, name, addr, port)), mut()
+		, mp(host ? (Multiplayer*)new MultiplayerHost(*this, name, port) : (Multiplayer*)new MultiplayerClient(*this, name, addr, port))
+		, host(host), lstchat(), bkg_chat(NULL), f_chat(NULL)
+		, mut(), players()
 	{
 		Font &fnt = eng->assets->fnt_button;
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
@@ -133,16 +152,18 @@ public:
 		resize(mode, mode);
 
 		if (!host)
-			chat.emplace_front(r, eng->assets->fnt_default, "Connecting to server...", SDL_Color{0xff, 0, 0});
+			lstchat.emplace_front(r, eng->assets->fnt_default, "Connecting to server...", SDL_Color{0xff, 0, 0});
 	}
 
+#if 0
 	void idle() override {
 		std::lock_guard<std::recursive_mutex> lock(mp->mut);
 		while (!mp->chats.empty()) {
-			chat.emplace_front(r, eng->assets->fnt_default, mp->chats.front().c_str(), SDL_Color{ 0xff, 0xff, 0 });
+			lstchat.emplace_front(r, eng->assets->fnt_default, mp->chats.front().c_str(), SDL_Color{ 0xff, 0xff, 0 });
 			mp->chats.pop();
 		}
 	}
+#endif
 
 	bool keyup(int ch) override {
 		switch (ch) {
@@ -168,11 +189,11 @@ public:
 		switch (id) {
 		case 0:
 			{
-				std::lock_guard<std::recursive_mutex> lock(mp->mut);
+				std::lock_guard<std::recursive_mutex> lock(mut);
 				auto s = f.text();
 				if (!s.empty()) {
 					if (s == "/clear")
-						chat.clear();
+						lstchat.clear();
 					else
 						return mp->chat(s);
 				}
@@ -188,7 +209,7 @@ public:
 		unsigned i = 0;
 		SDL_Rect bnds(bkg_chat->bounds());
 
-		for (auto &x : chat) {
+		for (auto &x : lstchat) {
 			int y = bnds.y + bnds.h - 18 - 20 * i++;
 			if (y <= bnds.y + 4)
 				break;
@@ -196,12 +217,37 @@ public:
 		}
 	}
 
-	void join(JoinUser& usr) override {
+	void chat(const std::string &str, SDL_Color col) {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		lstchat.emplace_front(r, eng->assets->fnt_default, str.c_str(), col);
+	}
 
+	void chat(const TextMsg &msg) override {
+		chat(msg.from, msg.str());
+	}
+
+	void chat(user_id from, const std::string &text) override {
+		if (from) {
+			auto search = players.find(from);
+			assert(search != players.end());
+			chat(search->name + ": " + text, SDL_Color{0xff, 0xff, 0});
+			check_taunt(text);
+		} else {
+			chat(text, SDL_Color{0xff, 0, 0});
+		}
+	}
+
+	void join(JoinUser &usr) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		chat(usr.nick() + " has joined", SDL_Color{0, 0xff, 0});
+		players.emplace(usr);
 	}
 
 	void leave(user_id id) override {
-
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		auto search = players.find(id);
+		assert(search != players.end());
+		chat(search->name + " has left", SDL_Color{0xff, 0, 0});
 	}
 };
 

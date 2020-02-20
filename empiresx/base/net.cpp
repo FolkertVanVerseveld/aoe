@@ -16,6 +16,7 @@
 #endif
 
 #include "../endian.h"
+#include "../string.hpp"
 
 namespace genie {
 
@@ -32,8 +33,8 @@ static inline void dump(const void *buf, unsigned len) {
 }
 
 const unsigned cmd_sizes[] = {
-	TEXT_LIMIT,
-	sizeof(user_id) + NAME_LIMIT,
+	sizeof(TextMsg),
+	sizeof(JoinUser),
 	sizeof(user_id)
 };
 
@@ -43,7 +44,9 @@ void CmdData::hton(uint16_t type) {
 	assert(sizeof(user_id) == sizeof(uint32_t));
 
 	switch ((CmdType)type) {
-	case CmdType::TEXT: break;
+	case CmdType::TEXT:
+		text.from = htobe32(text.from);
+		break;
 	case CmdType::JOIN:
 		join.id = htobe32(join.id);
 		break;
@@ -55,7 +58,9 @@ void CmdData::hton(uint16_t type) {
 
 void CmdData::ntoh(uint16_t type) {
 	switch ((CmdType)type) {
-	case CmdType::TEXT: break;
+	case CmdType::TEXT:
+		text.from = be32toh(text.from);
+		break;
 	case CmdType::JOIN:
 		join.id = be32toh(join.id);
 		break;
@@ -77,9 +82,12 @@ void Command::ntoh() {
 	data.ntoh(type);
 }
 
-std::string Command::text() {
+std::string TextMsg::str() const {
+	return std::string(text, strlen(text, TEXT_LIMIT));
+}
+
+TextMsg Command::text() {
 	assert((CmdType)type == CmdType::TEXT);
-	data.text[TEXT_LIMIT - 1] = '\0';
 	return data.text;
 }
 
@@ -112,11 +120,12 @@ Command Command::leave(user_id id) {
 	return cmd;
 }
 
-Command Command::text(const std::string &str) {
+Command Command::text(user_id id, const std::string &str) {
 	Command cmd;
 
 	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::TEXT];
-	strncpy(cmd.data.text, str.c_str(), cmd.length);
+	cmd.data.text.from = id;
+	strncpy(cmd.data.text.text, str.c_str(), TEXT_LIMIT);
 
 	return cmd;
 }

@@ -31,7 +31,7 @@ bool operator<(const Peer &lhs, const Peer &rhs) {
 Slave::Slave(const std::string &name) : fd(INVALID_SOCKET), id(0), name(name) {}
 
 Multiplayer::Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port)
-	: net(), name(name), port(port), t_worker(), cb(cb), mut(), chats() {}
+	: net(), name(name), port(port), t_worker(), cb(cb), mut() {}
 
 MultiplayerHost::MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port)
 	: Multiplayer(cb, name, port), sock(port), slaves(), idmap(), idmod(1)
@@ -68,28 +68,30 @@ void MultiplayerHost::eventloop() {
 void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 	switch ((CmdType)cmd.type) {
 	case CmdType::TEXT:
-		sock.broadcast(*this, cmd);
 		{
 			auto str = cmd.text();
-			std::lock_guard<std::recursive_mutex> lock(mut);
-			chats.emplace(str);
-			check_taunt(str);
+			Slave &s = slave(fd);
+			if (str.from != s.id)
+				fprintf(stderr, "bad id for %s, expected %u, got %u\n", s.name.c_str(), s.id, str.from);
+			str.from = s.id;
+			cb.chat(str);
 		}
+		sock.broadcast(*this, cmd);
 		break;
 	case CmdType::JOIN:
 		{
 			auto join = cmd.join();
-#if windows
-			printf("%llu joins as %s\n", fd, join.nick().c_str());
-#else
-			printf("%d joins as %s\n", fd, join.nick().c_str());
-#endif
 
 			Slave &s = slave(fd);
 			s.name = join.nick().c_str();
 
-			printf("id: %u\n", s.id);
-			chats.emplace(join.nick() + " has joined");
+#if windows
+			printf("%llu joins as %u: %s\n", fd, s.id, join.nick().c_str());
+#else
+			printf("%d joins as %u: %s\n", fd, s.id, join.nick().c_str());
+#endif
+
+			cb.join(join);
 
 			Command cmd = Command::join(s.id, s.name);
 			cmd.hton();
@@ -128,7 +130,7 @@ void MultiplayerHost::removepeer(sockfd fd) {
 	user_id leave = s.id;
 	assert(leave);
 	printf("%s has left\n", s.name.c_str());
-	chats.emplace(s.name + " has left");
+	cb.leave(leave);
 
 	slaves.erase(fd);
 
@@ -151,14 +153,13 @@ void MultiplayerHost::dump() {
 }
 
 bool MultiplayerHost::chat(const std::string &str, bool send) {
-	if (send) {
-		Command txt = Command::text(str);
+	Command txt = Command::text(0, str);
+
+	if (send)
 		sock.broadcast(*this, txt);
-	}
 
 	std::lock_guard<std::recursive_mutex> lock(mut);
-	chats.emplace(str);
-	check_taunt(str);
+	cb.chat(txt.text());
 	return true;
 }
 
@@ -232,20 +233,13 @@ void MultiplayerClient::eventloop() {
 
 		switch ((CmdType)cmd.type) {
 		case CmdType::TEXT:
-			{
-				std::lock_guard<std::recursive_mutex> lock(mut);
-				auto str = cmd.text();
-				chats.emplace(str.c_str());
-				check_taunt(str);
-			}
+			cb.chat(cmd.text());
 			break;
 		case CmdType::JOIN:
 			{
 				std::lock_guard<std::recursive_mutex> lock(mut);
 				JoinUser usr = cmd.join();
 				const std::string &s = usr.nick();
-
-				chats.emplace(s + " has joined");
 
 				if (self == 0) {
 					self = usr.id;
@@ -264,7 +258,7 @@ void MultiplayerClient::eventloop() {
 
 				if (leave == self) {
 					fputs("we got kicked!\n", stderr);
-					chats.emplace("You are kicked from the server");
+					cb.chat(0, "You are kicked from the server");
 					activated.store(false);
 					continue;
 				}
@@ -272,14 +266,14 @@ void MultiplayerClient::eventloop() {
 				auto search = peers.find(leave);
 
 				if (search != peers.end())
-					chats.emplace(search->second.name + " has left");
+					cb.leave(leave);
 
 				peers.erase(leave);
 			}
 			break;
 		default:
 			fprintf(stderr, "communication error: unknown type %u\n", cmd.type);
-			chats.emplace("Communication error");
+			cb.chat(0, "Communication error");
 			activated.store(false);
 			continue;
 		}
@@ -291,11 +285,11 @@ void MultiplayerClient::eventloop() {
 bool MultiplayerClient::chat(const std::string &str, bool send) {
 	if (!send || !activated.load()) {
 		std::lock_guard<std::recursive_mutex> lock(mut);
-		chats.emplace(send ? "Not connected to server" : str);
+		cb.chat(0, send ? "Not connected to server" : str);
 		return false;
 	}
 
-	Command cmd = Command::text(str);
+	Command cmd = Command::text(self, str);
 	sock.send(cmd, false);
 	return true;
 }
