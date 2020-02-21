@@ -91,8 +91,6 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 			printf("%d joins as %u: %s\n", fd, s.id, join.nick().c_str());
 #endif
 
-			cb.join(join);
-
 			Command cmd = Command::join(s.id, s.name);
 			cmd.hton();
 
@@ -108,6 +106,8 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 				sock.push(fd, cmd, false);
 			}
 
+			// all bookkeeping is up-to-date, update to real ID and notify callback
+			join.id = s.id;
 			cb.join(join);
 		}
 		break;

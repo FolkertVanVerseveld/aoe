@@ -11,7 +11,7 @@
 namespace genie {
 
 Font::Font(const char *fname, int ptsize) : handle(NULL, &TTF_CloseFont), ptsize(ptsize) {
-	TTF_Font* f;
+	TTF_Font *f;
 
 	if (!(f = TTF_OpenFont(fname, ptsize)))
 		throw std::runtime_error(std::string("Unable to open font \"") + fname + "\": " + TTF_GetError());
@@ -39,7 +39,7 @@ Text::Text(SimpleRender &r, Font &f, const std::string &s, SDL_Color fg) : m_tex
 
 Text::Text(SimpleRender &r, const std::string &s, SDL_Color fg) : Text(r, eng->assets->fnt_default, s, fg) {}
 
-void Text::paint(SimpleRender& r, int x, int y) {
+void Text::paint(SimpleRender &r, int x, int y) {
 	m_tex.paint(r, x, y);
 }
 

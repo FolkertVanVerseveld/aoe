@@ -170,7 +170,6 @@ void Navigator::mainloop() {
 
 		top->idle();
 
-		std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
 		top->paint();
 		r.paint();
 	}

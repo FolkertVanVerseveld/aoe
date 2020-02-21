@@ -212,7 +212,7 @@ void Label::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
 }
 
 void Label::paint(SimpleRender &r) {
-	txt_bg.paint(r, bnds.x - 1, bnds.y - 1);
+	txt_bg.paint(r, bnds.x - 1, bnds.y + 1);
 	txt_fg.paint(r, bnds.x, bnds.y);
 }
 
