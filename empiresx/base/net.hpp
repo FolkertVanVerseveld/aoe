@@ -64,6 +64,29 @@ struct JoinUser final {
 	std::string nick();
 };
 
+struct StartMatch final {
+	/*
+	scenario: random map/death match/custom scenario
+	seed: (used when not custom scenario for) initial state for random number generator
+	map size: width x height
+	victory condition: enum
+	map type: enum
+	starting age: enum
+	resources: enum (real values only visible to server)
+	resources for current player: server only sends initial resources for the player that receives this message
+	difficulty level: enum
+	XXX path finding: do we really want to specify this? the servers handles this anyway...
+	options: fixed positions (y/n), full tech tree (y/n), reveal map (y/n), cheating (y/n)
+	...
+	*/
+	uint8_t scenario_type, options;
+	uint16_t map_w, map_h;
+	uint32_t seed;
+	uint8_t map_type, difficulty, starting_age, victory;
+	uint16_t food, wood, stone, gold;
+
+};
+
 struct TextMsg final {
 	user_id from;
 	char text[TEXT_LIMIT];
@@ -75,6 +98,7 @@ union CmdData final {
 	TextMsg text;
 	JoinUser join;
 	user_id leave;
+	StartMatch start;
 
 	void hton(uint16_t type);
 	void ntoh(uint16_t type);
@@ -88,6 +112,7 @@ enum class CmdType {
 	TEXT,
 	JOIN,
 	LEAVE,
+	START,
 	MAX,
 };
 
@@ -106,6 +131,7 @@ public:
 	static Command text(user_id id, const std::string &str);
 	static Command join(user_id id, const std::string &str);
 	static Command leave(user_id id);
+	static Command start(StartMatch &match);
 };
 
 class ServerCallback {

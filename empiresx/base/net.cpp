@@ -35,7 +35,8 @@ static inline void dump(const void *buf, unsigned len) {
 const unsigned cmd_sizes[] = {
 	sizeof(TextMsg),
 	sizeof(JoinUser),
-	sizeof(user_id)
+	sizeof(user_id),
+	sizeof(StartMatch),
 };
 
 void CmdData::hton(uint16_t type) {
@@ -53,6 +54,15 @@ void CmdData::hton(uint16_t type) {
 	case CmdType::LEAVE:
 		leave = htobe32(leave);
 		break;
+	case CmdType::START:
+		start.map_w = htobe16(start.map_w);
+		start.map_h = htobe16(start.map_h);
+		start.seed = htobe32(start.seed);
+		start.food = htobe16(start.food);
+		start.wood = htobe16(start.wood);
+		start.gold = htobe16(start.gold);
+		start.stone = htobe16(start.stone);
+		break;
 	}
 }
 
@@ -66,6 +76,15 @@ void CmdData::ntoh(uint16_t type) {
 		break;
 	case CmdType::LEAVE:
 		leave = be32toh(leave);
+		break;
+	case CmdType::START:
+		start.map_w = be16toh(start.map_w);
+		start.map_h = be16toh(start.map_h);
+		start.seed = be32toh(start.seed);
+		start.food = be16toh(start.food);
+		start.wood = be16toh(start.wood);
+		start.gold = be16toh(start.gold);
+		start.stone = be16toh(start.stone);
 		break;
 	}
 }

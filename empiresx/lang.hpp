@@ -168,6 +168,9 @@ enum class LangId {
 	lobby_settings = 9682,
 	lobby_chat = 9687,
 
+	lobby_ready = 9663,
+	btn_lobby_start = 9710,
+
 	/* Extended help and game settings menu */
 	mode_640_480 = 9447,
 	mode_800_600 = 9448,

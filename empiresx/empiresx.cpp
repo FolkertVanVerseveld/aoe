@@ -108,6 +108,22 @@ const SDL_Rect menu_lobby_field_chat[screen_modes] = {
 	{16, 643, 656 - 16, 666 - 643},
 };
 
+const SDL_Rect menu_lobby_border_start[screen_modes] = {
+	{195, 440, 395 - 195, 470 - 440},
+	{243, 550, 493 - 243, 587 - 550},
+	{312, 704, 632 - 312, 752 - 704},
+	{312, 704, 632 - 312, 752 - 704},
+	{312, 704, 632 - 312, 752 - 704},
+};
+
+const SDL_Rect menu_lobby_txt_start[screen_modes] = {
+	{195 + (395 - 195) / 2, 440 + (470 - 440) / 2},
+	{243 + (493 - 243) / 2, 550 + (587 - 550) / 2},
+	{312 + (632 - 312) / 2, 704 + (752 - 704) / 2},
+	{312 + (632 - 312) / 2, 704 + (752 - 704) / 2},
+	{312 + (632 - 312) / 2, 704 + (752 - 704) / 2},
+};
+
 class MenuPlayer final {
 public:
 	user_id id;
@@ -186,6 +202,8 @@ public:
 		ui_objs.emplace_back(bkg_chat = new ui::Border(menu_lobby_border_chat, mode, pal, bkg, ui::BorderType::field, false));
 
 		add_btn(new ui::Button(0, *this, r, fnt, eng->assets->open_str(LangId::btn_cancel), fg, bg, menu_lobby_txt_cancel, menu_lobby_border_cancel, pal, bkg, mode));
+		if (host)
+			add_btn(new ui::Button(1, *this, r, fnt, eng->assets->open_str(LangId::btn_lobby_start), fg, bg, menu_lobby_txt_start, menu_lobby_border_start, pal, bkg, mode));
 
 		add_field(f_chat = new ui::InputField(0, *this, ui::InputType::text, "", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0}, menu_lobby_field_chat, mode, pal, bkg));
 		resize(mode, mode);
@@ -222,15 +240,7 @@ public:
 		return Menu::keyup(ch);
 	}
 
-	void interacted(unsigned id) override {
-		jukebox.sfx(SfxId::button4);
-
-		switch (id) {
-		case 0:
-			nav->quit(1);
-			break;
-		}
-	}
+	void interacted(unsigned id) override;
 
 	bool input(unsigned id, ui::InputField &f) override {
 		switch (id) {
@@ -331,6 +341,47 @@ public:
 		state_now.players.erase(id);
 	}
 };
+
+class MenuGame final : public Menu, public ui::InteractableCallback {
+	game::Game game;
+public:
+	MenuGame(SimpleRender &r, Multiplayer *mp, bool host)
+		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff})
+		, game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, mp) {}
+
+	bool keyup(int ch) override {
+		switch (ch) {
+		case SDLK_ESCAPE:
+			interacted(0);
+			return true;
+		}
+
+		return Menu::keyup(ch);
+	}
+
+	void interacted(unsigned id) override {
+		jukebox.sfx(SfxId::button4);
+		nav->quit();
+	}
+
+	void paint() override {
+		Menu::paint_details(Menu::show_border);
+	}
+};
+
+void MenuLobby::interacted(unsigned id) {
+	jukebox.sfx(SfxId::button4);
+
+	switch (id) {
+	case 0:
+		nav->quit(1);
+		break;
+	case 1:
+		// TODO start the game
+		//nav->go_to(new MenuGame(r, mp.get(), host));
+		break;
+	}
+}
 
 const SDL_Rect menu_multi_lbl_name[screen_modes] = {
 	{26, 78, 0, 0},
@@ -437,7 +488,7 @@ public:
 	MenuMultiplayer(SimpleRender &r)
 		// we skip the connection type menu 9611, because we don't support serial connection or microsoft game zone anyway
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, eng->assets->open_str(LangId::title_multiplayer_servers), SDL_Color{ 0xff, 0xff, 0xff })
-		, port(25659)
+		, port(25659), name(), ip(0), f_name(nullptr), f_port(nullptr), f_ip(nullptr)
 	{
 		Font &fnt = eng->assets->fnt_button;
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};

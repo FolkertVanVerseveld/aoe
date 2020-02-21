@@ -28,6 +28,7 @@ public:
 
 	static constexpr unsigned show_border = 0x01;
 	static constexpr unsigned show_title = 0x02;
+	static constexpr unsigned show_background = 0x04;
 
 	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced=false);
 	virtual ~Menu() {}

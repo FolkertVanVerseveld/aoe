@@ -41,7 +41,8 @@ void Menu::paint_details(unsigned options) {
 	else if (ref.w > lgy_dim[0].w)
 		index = 1;
 
-	anim_bkg[index].subimage(0).draw_stretch(r, to);
+	if (options & show_background)
+		anim_bkg[index].subimage(0).draw_stretch(r, to);
 
 	if (options & show_border)
 		border.paint(r);
@@ -53,7 +54,7 @@ void Menu::paint_details(unsigned options) {
 }
 
 void Menu::paint() {
-	paint_details(Menu::show_border | Menu::show_title);
+	paint_details(Menu::show_border | Menu::show_title | Menu::show_background);
 }
 
 void Menu::mousedown(SDL_MouseButtonEvent &ev) {

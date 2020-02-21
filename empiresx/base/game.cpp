@@ -294,4 +294,10 @@ bool MultiplayerClient::chat(const std::string &str, bool send) {
 	return true;
 }
 
+namespace game {
+
+Game::Game(GameMode mode, Multiplayer *mp) : mode(mode), mp(mp), state(GameState::init) {}
+
+}
+
 }

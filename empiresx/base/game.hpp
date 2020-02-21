@@ -104,4 +104,32 @@ public:
 	bool chat(const std::string &str, bool send=true) override;
 };
 
+namespace game {
+
+enum class GameMode {
+	single_player,
+	multiplayer_host,
+	multiplayer_client,
+	editor
+};
+
+enum class GameState {
+	init,
+	running,
+	paused,
+	stopped,
+	closed
+};
+
+class Game final {
+	Multiplayer *mp;
+	GameMode mode;
+	GameState state;
+
+public:
+	Game(GameMode mode, Multiplayer *mp);
+};
+
+}
+
 }
