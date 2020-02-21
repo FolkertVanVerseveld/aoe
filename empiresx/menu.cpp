@@ -169,8 +169,9 @@ void Navigator::mainloop() {
 		}
 
 		top->idle();
-		top->paint();
 
+		std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
+		top->paint();
 		r.paint();
 	}
 }

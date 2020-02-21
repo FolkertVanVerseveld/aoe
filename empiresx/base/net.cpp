@@ -96,6 +96,10 @@ std::string JoinUser::nick() {
 	return name;
 }
 
+JoinUser::JoinUser(user_id id, const std::string &str) : id(id) {
+	strncpy(name, str.c_str(), NAME_LIMIT);
+}
+
 JoinUser Command::join() {
 	assert(type == (uint16_t)CmdType::JOIN);
 	return data.join;

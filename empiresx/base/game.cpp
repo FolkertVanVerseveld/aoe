@@ -31,7 +31,7 @@ bool operator<(const Peer &lhs, const Peer &rhs) {
 Slave::Slave(const std::string &name) : fd(INVALID_SOCKET), id(0), name(name) {}
 
 Multiplayer::Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port)
-	: net(), name(name), port(port), t_worker(), cb(cb), mut() {}
+	: net(), name(name), port(port), t_worker(), cb(cb), mut(), self(0) {}
 
 MultiplayerHost::MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port)
 	: Multiplayer(cb, name, port), sock(port), slaves(), idmap(), idmod(1)
@@ -164,7 +164,7 @@ bool MultiplayerHost::chat(const std::string &str, bool send) {
 }
 
 MultiplayerClient::MultiplayerClient(MultiplayerCallback &cb, const std::string &name, uint32_t addr, uint16_t port)
-	: Multiplayer(cb, name, port), sock(port), addr(addr), activated(false), self(0), peers()
+	: Multiplayer(cb, name, port), sock(port), addr(addr), activated(false), peers()
 {
 	sock.reuse();
 

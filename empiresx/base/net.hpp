@@ -58,6 +58,9 @@ struct JoinUser final {
 	user_id id;
 	char name[NAME_LIMIT];
 
+	JoinUser() = default;
+	JoinUser(user_id id, const std::string &str);
+
 	std::string nick();
 };
 

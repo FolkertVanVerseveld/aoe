@@ -31,7 +31,7 @@ protected:
 	MultiplayerCallback &cb;
 public:
 	std::recursive_mutex mut; // lock for all following variables
-	user_id id;
+	user_id self;
 
 	Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port);
 	virtual ~Multiplayer() {}
@@ -95,7 +95,6 @@ class MultiplayerClient final : public Multiplayer {
 	Socket sock;
 	uint32_t addr;
 	std::atomic<bool> activated;
-	user_id self;
 	std::map<user_id, Peer> peers;
 public:
 	MultiplayerClient(MultiplayerCallback &cb, const std::string &name, uint32_t addr, uint16_t port);

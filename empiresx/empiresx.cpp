@@ -18,6 +18,8 @@
 #include <vector>
 #include <stack>
 #include <map>
+#include <algorithm>
+#include <utility>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -110,10 +112,24 @@ class MenuPlayer final {
 public:
 	user_id id;
 	std::string name;
+	std::shared_ptr<Text> text; // couldn't use unique_ptr because copy ctor would be ill-formed, which we need for MenuLobbyState::dbuf
 
 	// this ctor should only be used when looking up a menuplayer (e.g. std::set::find)
-	MenuPlayer(user_id id) : id(id), name() {}
-	MenuPlayer(JoinUser &join) : id(join.id), name(join.nick()) {}
+	MenuPlayer(user_id id) : id(id), name(), text() {}
+	MenuPlayer(JoinUser &join, SimpleRender &r, Font &f) : id(join.id), name(join.nick()), text(nullptr) {
+		show(r, f);
+	}
+
+	void show(SimpleRender &r, Font &f) {
+		if (text)
+			return;
+
+		text.reset(new Text(r, f, name, SDL_Color{0xff, 0xff, 0}));
+	}
+
+	void hide() {
+		text.reset();
+	}
 
 	friend bool operator<(const MenuPlayer &lhs, const MenuPlayer &rhs);
 };
@@ -122,27 +138,50 @@ bool operator<(const MenuPlayer &lhs, const MenuPlayer &rhs) {
 	return lhs.id < rhs.id;
 }
 
+class MenuLobbyText final {
+public:
+	std::string text;
+	SDL_Color col;
+
+	MenuLobbyText(const std::string &text, SDL_Color col) : text(text), col(col) {}
+};
+
+class MenuLobbyState final {
+public:
+	std::deque<MenuLobbyText> chat;
+	std::set<MenuPlayer> players;
+
+	void dbuf(MenuLobbyState &s) {
+		std::swap(chat, s.chat);
+
+		// move all players
+		while (!s.players.empty())
+			players.emplace(std::move(s.players.extract(s.players.begin())).value());
+	}
+};
+
 class MenuLobby final : public Menu, public ui::InteractableCallback, public ui::InputCallback, public MultiplayerCallback {
 	std::unique_ptr<Multiplayer> mp;
 	bool host;
-	std::deque<Text> lstchat;
 	ui::Border *bkg_chat;
 	ui::InputField *f_chat;
+	ui::Label *lbl_name;
+
+	std::deque<Text> txtchat;
+	MenuLobbyState state_now, state_next;
 	std::recursive_mutex mut;
-	std::set<MenuPlayer> players;
+	static constexpr unsigned lst_player_max = 8;
 public:
 	MenuLobby(SimpleRender &r, const std::string &name, uint32_t addr, uint16_t port, bool host = true)
-		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, host ? "Multi Player - Host" : "Multi Player - Client", SDL_Color{ 0xff, 0xff, 0xff })
-		, mp(host ? (Multiplayer*)new MultiplayerHost(*this, name, port) : (Multiplayer*)new MultiplayerClient(*this, name, addr, port))
-		, host(host), lstchat(), bkg_chat(NULL), f_chat(NULL)
-		, mut(), players()
+		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, /*host ? "Multiplayer - Host" : "Multiplayer - Client"*/eng->assets->open_str(LangId::title_multiplayer), SDL_Color{ 0xff, 0xff, 0xff })
+		, mp(), host(host), txtchat(), state_now(), state_next(), bkg_chat(NULL), f_chat(NULL), mut()
 	{
 		Font &fnt = eng->assets->fnt_button;
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
 		ConfigScreenMode mode = eng->w->render().mode;
 
 		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, eng->assets->open_str(LangId::lobby_chat), menu_lobby_lbl_chat, eng->w->render().mode, pal, bkg, ui::HAlign::left, ui::VAlign::bottom, true, false));
-		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, eng->assets->open_str(LangId::lobby_name), menu_lobby_lbl_name, eng->w->render().mode, pal, bkg));
+		ui_objs.emplace_back(lbl_name = new ui::Label(r, eng->assets->fnt_button, eng->assets->open_str(LangId::lobby_name), menu_lobby_lbl_name, eng->w->render().mode, pal, bkg));
 		ui_objs.emplace_back(new ui::Label(r, eng->assets->fnt_button, eng->assets->open_str(LangId::lobby_civ), menu_lobby_lbl_civ, eng->w->render().mode, pal, bkg));
 		ui_objs.emplace_back(bkg_chat = new ui::Border(menu_lobby_border_chat, mode, pal, bkg, ui::BorderType::field, false));
 
@@ -151,19 +190,27 @@ public:
 		add_field(f_chat = new ui::InputField(0, *this, ui::InputType::text, "", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0}, menu_lobby_field_chat, mode, pal, bkg));
 		resize(mode, mode);
 
-		if (!host)
-			lstchat.emplace_front(r, eng->assets->fnt_default, "Connecting to server...", SDL_Color{0xff, 0, 0});
+		if (!host) {
+			//lstchat.emplace_front(r, eng->assets->fnt_default, "Connecting to server...", SDL_Color{0xff, 0, 0});
+			state_now.chat.emplace_front("Connecting to server...", SDL_Color{0xff, 0, 0});
+		} else {
+			JoinUser usr{0, name.c_str()};
+			state_now.players.emplace(usr, r, eng->assets->fnt_default);
+		}
+
+		mp.reset(host ? (Multiplayer*)new MultiplayerHost(*this, name, port) : (Multiplayer*)new MultiplayerClient(*this, name, addr, port));
 	}
 
-#if 0
 	void idle() override {
-		std::lock_guard<std::recursive_mutex> lock(mp->mut);
-		while (!mp->chats.empty()) {
-			lstchat.emplace_front(r, eng->assets->fnt_default, mp->chats.front().c_str(), SDL_Color{ 0xff, 0xff, 0 });
-			mp->chats.pop();
-		}
+		std::lock_guard<std::recursive_mutex> lock(mut);
+
+		state_now.dbuf(state_next);
+
+		for (auto &x : state_now.chat)
+			txtchat.emplace_front(r, eng->assets->fnt_default, x.text, x.col);
+
+		state_now.chat.clear();
 	}
-#endif
 
 	bool keyup(int ch) override {
 		switch (ch) {
@@ -193,7 +240,7 @@ public:
 				auto s = f.text();
 				if (!s.empty()) {
 					if (s == "/clear")
-						lstchat.clear();
+						txtchat.clear();
 					else
 						return mp->chat(s);
 				}
@@ -209,17 +256,48 @@ public:
 		unsigned i = 0;
 		SDL_Rect bnds(bkg_chat->bounds());
 
-		for (auto &x : lstchat) {
+		for (auto &x : txtchat) {
 			int y = bnds.y + bnds.h - 18 - 20 * i++;
 			if (y <= bnds.y + 4)
 				break;
 			x.paint(r, bnds.x + 8, y);
 		}
+
+		// always draw ourself first
+		if (state_now.players.empty())
+			return;
+
+		user_id self = host ? 0 : mp->self;
+
+		auto search = state_now.players.find(self);
+		if (search == state_now.players.end()) {
+			// player not added yet, skip frame
+			return;
+		}
+
+		bnds = lbl_name->bounds();
+
+		// 640: 33, 90
+		// 800: 40, 114
+
+		search->text->paint(r, bnds.x + 3, bnds.y + 30);
+
+		i = 1;
+
+		for (auto &p : state_now.players) {
+			if (p.id == self)
+				continue;
+
+			if (i == lst_player_max)
+				break;
+
+			p.text->paint(r, bnds.x + 3, bnds.y + 30 + i++ * 20);
+		}
 	}
 
 	void chat(const std::string &str, SDL_Color col) {
 		std::lock_guard<std::recursive_mutex> lock(mut);
-		lstchat.emplace_front(r, eng->assets->fnt_default, str.c_str(), col);
+		state_next.chat.emplace_front(str, col);
 	}
 
 	void chat(const TextMsg &msg) override {
@@ -227,10 +305,12 @@ public:
 	}
 
 	void chat(user_id from, const std::string &text) override {
-		if (from) {
-			auto search = players.find(from);
-			assert(search != players.end());
-			chat(search->name + ": " + text, SDL_Color{0xff, 0xff, 0});
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		// prepend name for message if it originated from a real user
+		if (from || host) {
+			auto search = state_now.players.find(from);
+			assert(search != state_now.players.end());
+			state_next.chat.emplace_front(search->name + ": " + text, SDL_Color{0xff, 0xff, 0});
 			check_taunt(text);
 		} else {
 			chat(text, SDL_Color{0xff, 0, 0});
@@ -239,15 +319,16 @@ public:
 
 	void join(JoinUser &usr) override {
 		std::lock_guard<std::recursive_mutex> lock(mut);
+		state_now.players.emplace(usr, r, eng->assets->fnt_default);
 		chat(usr.nick() + " has joined", SDL_Color{0, 0xff, 0});
-		players.emplace(usr);
 	}
 
 	void leave(user_id id) override {
 		std::lock_guard<std::recursive_mutex> lock(mut);
-		auto search = players.find(id);
-		assert(search != players.end());
+		auto search = state_now.players.find(id);
+		assert(search != state_now.players.end());
 		chat(search->name + " has left", SDL_Color{0xff, 0, 0});
+		state_now.players.erase(id);
 	}
 };
 
