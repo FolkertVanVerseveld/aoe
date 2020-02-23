@@ -127,7 +127,6 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 			}
 		}
 
-		// FIXME leave command removes too many peers?
 		// WSAPoll does not work properly if there are no peers, so check if we have to wait for any connections to arrive
 		if (peers.empty()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));

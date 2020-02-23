@@ -25,6 +25,10 @@ public:
 	void chat(user_id from, const std::string &text) {}
 	void join(JoinUser &usr) override {}
 	void leave(user_id id) override {}
+
+	void start(const StartMatch &match) override {
+		puts("start game");
+	}
 };
 
 }
@@ -57,6 +61,8 @@ int main(int argc, char **argv) {
 				mp.dump();
 			} else if (starts_with(input, "say ")) {
 				mp.chat(input.substr(strlen("say ")));
+			} else if (input == "start") {
+				mp.start();
 			} else {
 				std::cerr << "Unknown command. Type help for help" << std::endl;
 			}

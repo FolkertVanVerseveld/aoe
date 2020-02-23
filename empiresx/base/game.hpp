@@ -10,6 +10,8 @@
 #include <queue>
 #include <stack>
 
+#include "random.hpp"
+
 namespace genie {
 
 extern void check_taunt(const std::string &str);
@@ -20,6 +22,7 @@ public:
 	virtual void chat(user_id from, const std::string &str) = 0;
 	virtual void join(JoinUser &usr) = 0;
 	virtual void leave(user_id id) = 0;
+	virtual void start(const StartMatch &settings) = 0;
 };
 
 class Multiplayer {
@@ -78,6 +81,8 @@ public:
 	void dump();
 
 	bool chat(const std::string &str, bool send=true) override;
+	// TODO enable user to customize map settings
+	void start();
 };
 
 class Peer final {
@@ -125,9 +130,11 @@ class Game final {
 	Multiplayer *mp;
 	GameMode mode;
 	GameState state;
+	LCG lcg;
+	StartMatch settings;
 
 public:
-	Game(GameMode mode, Multiplayer *mp);
+	Game(GameMode mode, Multiplayer *mp, const StartMatch &settings);
 };
 
 }

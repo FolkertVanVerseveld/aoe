@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <mutex>
+#include <thread>
 
 namespace genie {
 
@@ -34,8 +35,9 @@ public:
 
 class SDL final {
 public:
-	std::recursive_mutex mut;
-
+#if windows
+	DWORD id; /**< Helps us debugging SDL race conditions */
+#endif
 	SDL();
 	~SDL();
 

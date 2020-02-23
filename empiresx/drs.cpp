@@ -64,8 +64,9 @@ static unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
 	return v;
 }
 
-bool slp_read(SDL_Surface *surface, const Palette &p, const Slp &slp, unsigned player) {
+bool slp_read(SDL_Surface *surface, const Palette &p, const Slp &slp, unsigned index, unsigned player) {
 	bool dynamic = false;
+	const io::SlpFrameInfo *info = &slp.info[index];
 
 	SDL_Palette *rawpal;
 	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal(NULL, &SDL_FreePalette);
@@ -88,18 +89,18 @@ bool slp_read(SDL_Surface *surface, const Palette &p, const Slp &slp, unsigned p
 	unsigned char *pixels = (unsigned char*)surface->pixels;
 
 	// clear pixel data
-	for (int y = 0, h = slp.info->height, p = surface->pitch; y < h; ++y)
-		for (int x = 0, w = slp.info->width; x < w; ++x)
+	for (int y = 0, h = info->height, p = surface->pitch; y < h; ++y)
+		for (int x = 0, w = info->width; x < w; ++x)
 			pixels[y * p + x] = 0;
 
-	const io::SlpFrameRowEdge *edge = (io::SlpFrameRowEdge*)((char*)slp.hdr + slp.info->outline_table_offset);
-	const unsigned char *cmd = (unsigned char*)((char*)slp.hdr + slp.info->cmd_table_offset + 4 * slp.info->height);
+	const io::SlpFrameRowEdge *edge = (io::SlpFrameRowEdge*)((char*)slp.hdr + info->outline_table_offset);
+	const unsigned char *cmd = (unsigned char*)((char*)slp.hdr + info->cmd_table_offset + 4 * info->height);
 
-	for (int y = 0, h = slp.info->height; y < h; ++y, ++edge) {
+	for (int y = 0, h = info->height; y < h; ++y, ++edge) {
 		if (edge->left_space == io::invalid_edge || edge->right_space == io::invalid_edge)
 			continue;
 
-		int line_size = slp.info->width - edge->left_space - edge->right_space;
+		int line_size = info->width - edge->left_space - edge->right_space;
 
 		// fill line_size with default value
 		for (int x = edge->left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
@@ -340,17 +341,18 @@ bool slp_read(SDL_Surface *surface, const Palette &p, const Slp &slp, unsigned p
 
 Image::Image() : surface((SDL_Surface*)NULL), texture(0, 0, NULL), hotspot_x(0), hotspot_y(0) {}
 
-bool Image::load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned player) {
+bool Image::load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned index, unsigned player) {
 	bool dynamic = false;
+	const io::SlpFrameInfo *info = &slp.info[index];
 
-	hotspot_x = slp.info->hotspot_x;
-	hotspot_y = slp.info->hotspot_y;
+	hotspot_x = info->hotspot_x;
+	hotspot_y = info->hotspot_y;
 
-	surface.reset(SDL_CreateRGBSurface(0, slp.info->width, slp.info->height, 8, 0, 0, 0, 0));
+	surface.reset(SDL_CreateRGBSurface(0, info->width, info->height, 8, 0, 0, 0, 0));
 	if (!surface.data())
 		throw std::runtime_error(std::string("Could not create Slp surface: ") + SDL_GetError());
 
-	dynamic = slp_read(surface.data(), pal, slp, player);
+	dynamic = slp_read(surface.data(), pal, slp, index, player);
 	texture.reset(r, surface.data());
 
 	return dynamic;
@@ -374,20 +376,17 @@ void Image::draw_stretch(SimpleRender &r, const SDL_Rect &from, const SDL_Rect &
 	texture.paint_stretch(r, from, to);
 }
 
-Animation::Animation(SimpleRender &r, const Palette &pal, const Slp &slp) : slp(slp), images(), image_count(0), dynamic(false) {
+Animation::Animation(SimpleRender &r, const Palette &pal, const Slp &slp, res_id id) : slp(slp), images(), id(id), image_count(0), dynamic(false) {
 	if (memcmp(slp.hdr->version, "2.0N", 4))
 		throw std::runtime_error("Could not load animation: bad header");
 
 	images.reset(new Image[image_count = slp.hdr->frame_count]);
 
-	for (size_t i = 0, n = slp.hdr->frame_count; i < n; ++i) {
-		const io::SlpFrameInfo *frame = &slp.info[i];
-
-		if (images[i].load(r, pal, slp)) {
+	for (size_t i = 0, n = slp.hdr->frame_count; i < n; ++i)
+		if (images[i].load(r, pal, slp, i)) {
 			dynamic = true;
 			break;
 		}
-	}
 
 	// use custom parsing if dynamic
 	if (!dynamic)
@@ -398,12 +397,16 @@ Animation::Animation(SimpleRender &r, const Palette &pal, const Slp &slp) : slp(
 	for (unsigned p = 0; p < io::max_players; ++p)
 		for (size_t i = 0, n = slp.hdr->frame_count; i < n; ++i) {
 			const io::SlpFrameInfo *info = &slp.info[i];
-			images[p * n + i].load(r, pal, slp, p);
+			images[p * n + i].load(r, pal, slp, i, p);
 		}
 }
 
 Image &Animation::subimage(unsigned index, unsigned player) {
 	return images[player * image_count + index];
+}
+
+bool operator<(const Animation &lhs, const Animation &rhs) {
+	return lhs.id < rhs.id;
 }
 
 void *DRS::open_wav(res_id id, size_t &count) {

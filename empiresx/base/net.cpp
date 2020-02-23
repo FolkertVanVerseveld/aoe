@@ -153,6 +153,20 @@ Command Command::text(user_id id, const std::string &str) {
 	return cmd;
 }
 
+Command Command::start(StartMatch &settings) {
+	Command cmd;
+
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::START];
+	cmd.data.start = settings;
+
+	return cmd;
+}
+
+StartMatch StartMatch::random() {
+	StartMatch m{rand(), 0, 72, 72, rand(), rand(), rand(), 1, 1, 200, 200, 150, 0};
+	return m;
+}
+
 Socket::Socket(uint16_t port) : Socket() {
 	this->port = port;
 }

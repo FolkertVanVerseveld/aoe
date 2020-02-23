@@ -43,9 +43,12 @@ Display::Display(int index) : index(index) {
 		throw std::runtime_error(std::string("Bad default display bounds: ") + SDL_GetError());
 }
 
-SDL::SDL() : mut() {
+SDL::SDL() {
 	if (SDL_Init(SDL_INIT_VIDEO))
 		throw std::runtime_error(std::string("Unable to initialize SDL: ") + SDL_GetError());
+#if windows
+	id = GetCurrentThreadId();
+#endif
 }
 
 SDL::~SDL() {
@@ -53,12 +56,16 @@ SDL::~SDL() {
 };
 
 int SDL::display_count() {
-	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
+#if windows
+	assert(GetCurrentThreadId() == id);
+#endif
 	return SDL_GetNumVideoDisplays();
 }
 
 void SDL::get_displays(std::vector<Display> &displays) {
-	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
+#if windows
+	assert(GetCurrentThreadId() == id);
+#endif
 	int oldcount = -1, count = -1;
 	std::runtime_error last("Bad window manager: unable to determine display count");
 
@@ -182,7 +189,7 @@ Animation Assets::open_slp(const Palette &pal, res_id id) {
 	Slp slp;
 
 	if (drs_border.open_slp(slp, id) || drs_gfx.open_slp(slp, id) || drs_ui.open_slp(slp, id) || drs_terrain.open_slp(slp, id))
-		return Animation((SimpleRender&)eng->w->render(), pal, slp);
+		return Animation((SimpleRender&)eng->w->render(), pal, slp, id);
 
 	throw std::runtime_error(std::string("Could not load animation ") + std::to_string(id) + ": bad id");
 }
@@ -219,8 +226,9 @@ Window::Window(const char *title, int x, int y, Config &cfg, Uint32 flags, Uint3
 	}
 
 	lastmode = scrmode = cfg.scrmode;
-
-	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
+#if windows
+	assert(GetCurrentThreadId() == eng->sdl.id);
+#endif
 
 	if (!(w = SDL_CreateWindow(title, x, y, width, height, flags)))
 		throw std::runtime_error(std::string("Unable to create SDL window: ") + SDL_GetError());
@@ -237,7 +245,9 @@ void Window::chmode(ConfigScreenMode mode) {
 	if (scrmode == mode)
 		return;
 
-	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
+#if windows
+	assert(GetCurrentThreadId() == eng->sdl.id);
+#endif
 
 	int index = SDL_GetWindowDisplayIndex(handle.get()), width = 0, height = 0;
 	bool was_windowed, go_windowed = true;
@@ -325,8 +335,6 @@ bool Window::toggleFullscreen() {
 Engine::Engine(Config &cfg) : cfg(cfg) {
 	assert(!eng);
 	eng = this;
-
-	std::lock_guard<std::recursive_mutex> lock(eng->sdl.mut);
 
 	try {
 		fs.init(os);

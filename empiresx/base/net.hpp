@@ -85,6 +85,7 @@ struct StartMatch final {
 	uint8_t map_type, difficulty, starting_age, victory;
 	uint16_t food, wood, stone, gold;
 
+	static StartMatch random();
 };
 
 struct TextMsg final {

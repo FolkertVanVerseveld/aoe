@@ -99,7 +99,7 @@ public:
 
 	Image();
 
-	bool load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned player=0);
+	bool load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned index, unsigned player=0);
 	void draw(SimpleRender &r, int x, int y, int w=0, int h=0);
 	void draw(SimpleRender &r, const SDL_Rect &bnds);
 	void draw_stretch(SimpleRender &r, const SDL_Rect &to);
@@ -110,12 +110,15 @@ class Animation final {
 	const Slp slp;
 public:
 	std::unique_ptr<Image[]> images;
+	res_id id;
 	unsigned image_count;
 	bool dynamic;
 
-	Animation(SimpleRender &r, const Palette &pal, const Slp &slp);
+	Animation(SimpleRender &r, const Palette &pal, const Slp &slp, res_id id);
 
 	Image &subimage(unsigned index, unsigned player=0);
+
+	friend bool operator<(const Animation &lhs, const Animation &rhs);
 };
 
 enum DrsType {

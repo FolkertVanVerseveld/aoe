@@ -2,6 +2,8 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
+#include <ctime>
 #include <inttypes.h>
 
 #include "../string.hpp"
@@ -37,6 +39,7 @@ MultiplayerHost::MultiplayerHost(MultiplayerCallback &cb, const std::string &nam
 	: Multiplayer(cb, name, port), sock(port), slaves(), idmap(), idmod(1)
 {
 	puts("start host");
+	srand(time(NULL));
 	// claim slot for server itself: id == 0 is used for that purpose
 	slaves.emplace(name);
 	t_worker = std::thread(host_start, std::ref(*this));
@@ -69,6 +72,7 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 	switch ((CmdType)cmd.type) {
 	case CmdType::TEXT:
 		{
+			std::lock_guard<std::recursive_mutex> lock(mut);
 			auto str = cmd.text();
 			Slave &s = slave(fd);
 			if (str.from != s.id)
@@ -80,6 +84,7 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 		break;
 	case CmdType::JOIN:
 		{
+			std::lock_guard<std::recursive_mutex> lock(mut);
 			auto join = cmd.join();
 
 			Slave &s = slave(fd);
@@ -161,6 +166,15 @@ bool MultiplayerHost::chat(const std::string &str, bool send) {
 	std::lock_guard<std::recursive_mutex> lock(mut);
 	cb.chat(txt.text());
 	return true;
+}
+
+void MultiplayerHost::start() {
+	Command start = Command::start(StartMatch::random());
+	StartMatch settings = start.data.start;
+
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	sock.broadcast(*this, start, false);
+	cb.start(settings);
 }
 
 MultiplayerClient::MultiplayerClient(MultiplayerCallback &cb, const std::string &name, uint32_t addr, uint16_t port)
@@ -271,6 +285,9 @@ void MultiplayerClient::eventloop() {
 				peers.erase(leave);
 			}
 			break;
+		case CmdType::START:
+			cb.start(cmd.data.start);
+			break;
 		default:
 			fprintf(stderr, "communication error: unknown type %u\n", cmd.type);
 			cb.chat(0, "Communication error");
@@ -296,8 +313,10 @@ bool MultiplayerClient::chat(const std::string &str, bool send) {
 
 namespace game {
 
-Game::Game(GameMode mode, Multiplayer *mp) : mode(mode), mp(mp), state(GameState::init) {}
-
+Game::Game(GameMode mode, Multiplayer *mp, const StartMatch &settings) : mode(mode), mp(mp), state(GameState::init), lcg(LCG::ansi_c(settings.seed)) {
+	for (unsigned i = 0; i < 10; ++i)
+		printf("%u: %llu\n", i, (unsigned long long)lcg.next());
 }
 
+}
 }

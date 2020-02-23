@@ -34,7 +34,7 @@
 #include "engine.hpp"
 #include "font.hpp"
 #include "menu.hpp"
-#include "base/game.hpp"
+#include "game.hpp"
 #include "audio.hpp"
 #include "string.hpp"
 
@@ -132,6 +132,9 @@ public:
 
 	// this ctor should only be used when looking up a menuplayer (e.g. std::set::find)
 	MenuPlayer(user_id id) : id(id), name(), text() {}
+	// this ctor should only be used for the network thread
+	MenuPlayer(JoinUser &join) : id(join.id), name(join.nick()), text() {}
+
 	MenuPlayer(JoinUser &join, SimpleRender &r, Font &f) : id(join.id), name(join.nick()), text(nullptr) {
 		show(r, f);
 	}
@@ -176,21 +179,81 @@ public:
 	}
 };
 
+res_id res_borders[screen_modes] = {
+	50733,
+	50737,
+	50741,
+	50741,
+	50741,
+};
+
+class MenuGame final : public Menu, public ui::InteractableCallback {
+	game::Game game;
+	ImageCache img;
+	bool host;
+public:
+	MenuGame(SimpleRender &r, Multiplayer *mp, bool host, const StartMatch &settings)
+		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff}, true)
+		, game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, mp, settings)
+		, img(), host(host)
+	{
+		jukebox.play(MusicId::game);
+	}
+
+	bool keyup(int ch) override {
+		switch (ch) {
+		case SDLK_ESCAPE:
+			interacted(0);
+			return true;
+		}
+
+		return Menu::keyup(ch);
+	}
+
+	void interacted(unsigned id) override {
+		jukebox.sfx(SfxId::button4);
+		nav->quit(host ? 2 : 1);
+	}
+
+	void paint() override {
+		paint_details(0);
+
+		// figure out which border we need
+		res_id res_border = res_borders[(unsigned)r.mode];
+		Animation &anim_border = img.get(res_border);
+
+		int left = 0;
+		Image &img_top = anim_border.subimage(0), &img_bottom = anim_border.subimage(1);
+
+		if (!mode_is_legacy(r.mode))
+			left = (r.dim.rel_bnds.w - img_top.texture.width) / 2;
+
+		img_top.draw(r, left, 0);
+		img_bottom.draw(r, left, r.dim.rel_bnds.h - img_bottom.texture.height);
+	}
+};
+
 class MenuLobby final : public Menu, public ui::InteractableCallback, public ui::InputCallback, public MultiplayerCallback {
 	std::unique_ptr<Multiplayer> mp;
 	bool host;
+	int running;
 	ui::Border *bkg_chat;
 	ui::InputField *f_chat;
 	ui::Label *lbl_name;
 
+	// current state. these vars need not be thread-safe, since read and writes to these vars are only allowed from the main thread anyway
 	std::deque<Text> txtchat;
 	MenuLobbyState state_now, state_next;
+	StartMatch settings;
+
+	/** lock to ensure updates to above vars \a mp has access to are thread-safe */
 	std::recursive_mutex mut;
+
 	static constexpr unsigned lst_player_max = 8;
 public:
 	MenuLobby(SimpleRender &r, const std::string &name, uint32_t addr, uint16_t port, bool host = true)
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, /*host ? "Multiplayer - Host" : "Multiplayer - Client"*/eng->assets->open_str(LangId::title_multiplayer), SDL_Color{ 0xff, 0xff, 0xff })
-		, mp(), host(host), txtchat(), state_now(), state_next(), bkg_chat(NULL), f_chat(NULL), mut()
+		, mp(), host(host), running(-1), txtchat(), state_now(), state_next(), bkg_chat(NULL), f_chat(NULL), mut()
 	{
 		Font &fnt = eng->assets->fnt_button;
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
@@ -209,7 +272,6 @@ public:
 		resize(mode, mode);
 
 		if (!host) {
-			//lstchat.emplace_front(r, eng->assets->fnt_default, "Connecting to server...", SDL_Color{0xff, 0, 0});
 			state_now.chat.emplace_front("Connecting to server...", SDL_Color{0xff, 0, 0});
 		} else {
 			JoinUser usr{0, name.c_str()};
@@ -228,6 +290,11 @@ public:
 			txtchat.emplace_front(r, eng->assets->fnt_default, x.text, x.col);
 
 		state_now.chat.clear();
+
+		if (running == 0) {
+			running = 1;
+			nav->go_to(new MenuGame(r, mp.get(), host, settings));
+		}
 	}
 
 	bool keyup(int ch) override {
@@ -290,6 +357,7 @@ public:
 		// 640: 33, 90
 		// 800: 40, 114
 
+		const_cast<MenuPlayer&>(*search).show(r, eng->assets->fnt_default);
 		search->text->paint(r, bnds.x + 3, bnds.y + 30);
 
 		i = 1;
@@ -298,9 +366,12 @@ public:
 			if (p.id == self)
 				continue;
 
-			if (i == lst_player_max)
-				break;
+			if (i >= lst_player_max) {
+				const_cast<MenuPlayer&>(p).hide();
+				continue;
+			}
 
+			const_cast<MenuPlayer&>(p).show(r, eng->assets->fnt_default);
 			p.text->paint(r, bnds.x + 3, bnds.y + 30 + i++ * 20);
 		}
 	}
@@ -329,7 +400,7 @@ public:
 
 	void join(JoinUser &usr) override {
 		std::lock_guard<std::recursive_mutex> lock(mut);
-		state_now.players.emplace(usr, r, eng->assets->fnt_default);
+		state_next.players.emplace(usr);
 		chat(usr.nick() + " has joined", SDL_Color{0, 0xff, 0});
 	}
 
@@ -340,32 +411,11 @@ public:
 		chat(search->name + " has left", SDL_Color{0xff, 0, 0});
 		state_now.players.erase(id);
 	}
-};
 
-class MenuGame final : public Menu, public ui::InteractableCallback {
-	game::Game game;
-public:
-	MenuGame(SimpleRender &r, Multiplayer *mp, bool host)
-		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff})
-		, game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, mp) {}
-
-	bool keyup(int ch) override {
-		switch (ch) {
-		case SDLK_ESCAPE:
-			interacted(0);
-			return true;
-		}
-
-		return Menu::keyup(ch);
-	}
-
-	void interacted(unsigned id) override {
-		jukebox.sfx(SfxId::button4);
-		nav->quit();
-	}
-
-	void paint() override {
-		Menu::paint_details(Menu::show_border);
+	void start(const StartMatch &settings) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		running = 0;
+		this->settings = settings;
 	}
 };
 
@@ -379,6 +429,8 @@ void MenuLobby::interacted(unsigned id) {
 	case 1:
 		// TODO start the game
 		//nav->go_to(new MenuGame(r, mp.get(), host));
+		if (host)
+			((MultiplayerHost*)mp.get())->start();
 		break;
 	}
 }
@@ -816,7 +868,7 @@ public:
 	}
 
 	void paint() override {
-		paint_details(Menu::show_border);
+		paint_details(Menu::show_background | Menu::show_border);
 	}
 };
 

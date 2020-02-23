@@ -169,6 +169,9 @@ void Navigator::mainloop() {
 			}
 		}
 
+		if (!top)
+			return;
+
 		top->idle();
 
 		top->paint();
