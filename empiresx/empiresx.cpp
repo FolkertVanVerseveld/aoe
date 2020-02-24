@@ -395,6 +395,7 @@ public:
 			check_taunt(text);
 		} else {
 			chat(text, SDL_Color{0xff, 0, 0});
+			check_taunt(text);
 		}
 	}
 

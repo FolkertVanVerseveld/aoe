@@ -47,3 +47,9 @@ Designed a new unit subsystem & game logic diagram
 Wed, Oct 16, 2019 22:22:02
 
 start gameconfig
+
+Mon, Feb 24, 2020 09:46:41
+
+Started working on server mid-november. Complete game and server rewrite around
+december till january. Trying to finally make a working game prototype. Working
+on public presentation/press documents and core game logic.
