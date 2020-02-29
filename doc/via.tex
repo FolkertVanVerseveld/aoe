@@ -1,0 +1,216 @@
+\documentclass{beamer}
+%
+% Choose how your presentation looks.
+%
+% For more themes, color themes and font themes, see:
+% http://deic.uab.es/~iblanes/beamer_gallery/index_by_theme.html
+%
+\mode<presentation>
+{
+  \usetheme{default}      % or try Darmstadt, Madrid, Warsaw, ...
+  \usecolortheme{default} % or try albatross, beaver, crane, ...
+  \usefonttheme{default}  % or try serif, structurebold, ...
+  \setbeamertemplate{navigation symbols}{}
+  \setbeamertemplate{caption}[numbered]
+} 
+
+% inputenc moet voor babel, anders krijgen we problemen met diacretics
+\usepackage[utf8]{inputenc}
+\usepackage[english,vietnamese]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+
+\title[Preserving and opensourcing RTS video games]{Porting Age of Empires}
+\author{Folkert van Verseveld}
+\institute{University of Amsterdam}
+\date{\today}
+
+\begin{document}
+
+%% ---
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% Uncomment these lines for an automatically generated outline.
+\begin{frame}{Outline}
+	\tableofcontents
+\end{frame}
+
+%% ---
+
+\section{Introduction}
+
+\begin{frame}{Introduction}
+	\begin{itemize}
+		\item Tinkering with computers since 2 years old (i.e. 23 years)
+		\item Programming since 6 years old (19 years)
+		\item Lots of unfinished projects (this is one of them)
+		\item In june 2016, had to quit studying Computer Science due to various reasons
+		\item Lots of free time at hands, so why not port my all time favorite RTS game?
+		\item Working on and off the project since september 2016
+		\item Several thousands hours of work (rough estimate)
+		\item And after all this time... AoE is still incomplete!
+	\end{itemize}
+\end{frame}
+
+%% ---
+
+\begin{frame}
+	\begin{figure}
+	\includegraphics[width=0.7\linewidth]{images/aoe_cover.jpg}
+	\end{figure}
+
+\end{frame}
+
+% ---
+
+\subsection{Timeline}
+
+\begin{frame}{Timeline}
+	\begin{itemize}
+		\item 2016: Project setup, gathering documentation, reverse engineering
+		\item 2017: Writing DRS tools, UI stack, reverse engineering graphics
+		\item 2018-2019: Completed in-game graphics and basic map file format
+		\item 2020: Rewrite engine and server from scratch
+		\item 2020-: \dots
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{Why hasn't AoE been completely opensourced yet?}
+	\begin{itemize}
+		\item No real need to: still runs on Windows 10 and Wine
+		\item Difficult to port: around 500.000 lines of C code and some assembly
+		\item Fragmented community: around 10 groups are trying to opensource AoE: only 3 are still active
+	\end{itemize}
+
+\end{frame}
+
+% ---
+
+\subsection{20+ years of AoE}
+
+\begin{frame}{Has AoE aged well?}
+	\begin{itemize}
+		\item Many sequels/expansions (AoE II) and reboots on steam etc.
+		\item Arguably one of the longest and most successful RTS games of all time
+		\item Horrible path-finding
+		\item Stupid A.I. moments
+		\item Couple of bugs (at least less than Definitive Edition)
+		\begin{itemize}
+			\item Some are nowadays used for strategy (blocking units, pop cap)
+			\item Save file corruption for projectiles (AFAIK only in 1.0c)
+		\end{itemize}
+	\end{itemize}
+
+\end{frame}
+
+% ---
+
+\begin{frame}{Alive and kicking}
+	\begin{itemize}
+		\item Still being played/streamed all over the world on Voobly, YouTube, Twitch, \dots
+		\item Quite popular in Vietnam: \url{https://youtu.be/6T2CmWY6nd4?t=3036}
+		\item Definitive Edition released on 20-02-2018 and... it's not so good:
+		\href{https://steamcommunity.com/id/youshallnothash/recommended/1017900/}{Steam review},
+		\url{https://www.youtube.com/watch?v=4g9F-pGQOco}
+	\end{itemize}
+
+\end{frame}
+
+% ---
+
+\begin{frame}{Alive and kicking}
+	Chim Sẻ Đi Nắng tái đấu Shen Long thể loại 2vs2
+
+	\begin{figure}
+	\includegraphics[width=0.85\linewidth]{images/gamesao_2vs2.jpg}
+	\end{figure}
+
+\end{frame}
+
+% ---
+
+\section{Porting AoE}
+
+\begin{frame}{How are we going to port AoE?}
+
+	\begin{itemize}
+		\item Analyze gameplay (lots of testscenarios)
+		\item Figure out game specific file formats
+		\item Reverse engineer code that we can't replicate directly
+		\item Redesign multiplayer from scratch
+	\end{itemize}
+
+\end{frame}
+
+% ---
+
+\begin{frame}{What do we need?}
+	\begin{itemize}
+		\item Tools to read, debug (and patch) original AoE
+		\item Systematic approach to reconstruct source code
+		\item Tools to test replicated AoE
+		\item Documentation (if there's any)
+	\end{itemize}
+
+\end{frame}
+
+% ---
+
+\begin{frame}{Rendering system}
+	\begin{itemize}
+		\item Written entirely in x86 assembly: ASMdraw
+		% FIXME confirm this
+		\item Optimised for pentium II?
+		% FIXME confirm year and heritage
+		\item May be derived from 1992/5 MS-DOS VGA library
+	\end{itemize}
+
+\end{frame}
+
+%\section{Some \LaTeX{} Examples}
+%
+%\subsection{Tables and Figures}
+%
+%\begin{frame}{Tables and Figures}
+%
+%\begin{itemize}
+%\item Use \texttt{tabular} for basic tables --- see Table~\ref{tab:widgets}, for example.
+%\item You can upload a figure (JPEG, PNG or PDF) using the files menu. 
+%\item To include it in your document, use the \texttt{includegraphics} command (see the comment below in the source code).
+%\end{itemize}
+%
+%% Commands to include a figure:
+%%\begin{figure}
+%%\includegraphics[width=\textwidth]{your-figure's-file-name}
+%%\caption{\label{fig:your-figure}Caption goes here.}
+%%\end{figure}
+%
+%\begin{table}
+%\centering
+%\begin{tabular}{l|r}
+%Item & Quantity \\\hline
+%Widgets & 42 \\
+%Gadgets & 13
+%\end{tabular}
+%\caption{\label{tab:widgets}An example table.}
+%\end{table}
+%
+%\end{frame}
+%
+%\subsection{Mathematics}
+%
+%\begin{frame}{Readable Mathematics}
+%
+%Let $X_1, X_2, \ldots, X_n$ be a sequence of independent and identically distributed random variables with $\text{E}[X_i] = \mu$ and $\text{Var}[X_i] = \sigma^2 < \infty$, and let
+%\[ S_n = \frac{X_1 + X_2 + \cdots + X_n}{n}
+%      = \frac{1}{n}\sum_{i}^{n} X_i \]
+%denote their mean. Then as $n$ approaches infinity, the random variables $\sqrt{n}(S_n - \mu)$ converge in distribution to a normal $\mathcal{N}(0, \sigma^2)$.
+%
+%\end{frame}
+
+\end{document}

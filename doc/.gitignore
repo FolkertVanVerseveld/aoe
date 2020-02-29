@@ -1,3 +1,12 @@
 # Doxygen output
 html/
 latex/
+
+# tex stuff
+*.aux
+*.log
+*.nav
+*.out
+*.pdf
+*.snm
+*.toc
