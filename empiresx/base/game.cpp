@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <cstring>
 #include <inttypes.h>
 
 #include "../string.hpp"
@@ -177,8 +178,8 @@ bool MultiplayerHost::chat(const std::string &str, bool send) {
 
 void MultiplayerHost::start() {
 	std::lock_guard<std::recursive_mutex> lock(mut);
-	Command start = Command::start(StartMatch::random(slaves.size(), slaves.size() + 1));
-	StartMatch settings = start.data.start;
+	StartMatch settings = StartMatch::random(slaves.size(), slaves.size() - 1);
+	Command start = Command::start(settings);
 
 	sock.broadcast(*this, start, false);
 	cb.start(settings);
