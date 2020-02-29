@@ -62,6 +62,8 @@ void CmdData::hton(uint16_t type) {
 		start.wood = htobe16(start.wood);
 		start.gold = htobe16(start.gold);
 		start.stone = htobe16(start.stone);
+		start.slave_count = htobe16(start.slave_count);
+		start.player_count = htobe16(start.player_count);
 		break;
 	}
 }
@@ -85,6 +87,8 @@ void CmdData::ntoh(uint16_t type) {
 		start.wood = be16toh(start.wood);
 		start.gold = be16toh(start.gold);
 		start.stone = be16toh(start.stone);
+		start.slave_count = be16toh(start.slave_count);
+		start.player_count = be16toh(start.player_count);
 		break;
 	}
 }
@@ -162,8 +166,8 @@ Command Command::start(StartMatch &settings) {
 	return cmd;
 }
 
-StartMatch StartMatch::random() {
-	StartMatch m{rand(), 0, 72, 72, rand(), rand(), rand(), 1, 1, 200, 200, 150, 0};
+StartMatch StartMatch::random(unsigned slave_count, unsigned player_count) {
+	StartMatch m{rand(), 0, 72, 72, rand(), rand(), rand(), 1, 1, 200, 200, 150, 0, slave_count, player_count};
 	return m;
 }
 

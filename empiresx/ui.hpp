@@ -14,6 +14,7 @@ namespace ui {
 
 class InteractableCallback {
 public:
+	virtual ~InteractableCallback() {}
 	virtual void interacted(unsigned index) = 0;
 };
 
@@ -148,6 +149,7 @@ class InputField;
 
 class InputCallback {
 public:
+	virtual ~InputCallback() {}
 	virtual bool input(unsigned id, InputField &field) = 0;
 };
 

@@ -358,10 +358,10 @@ bool Image::load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned i
 	return dynamic;
 }
 
-void Image::draw(SimpleRender &r, int x, int y, int w, int h) {
+void Image::draw(SimpleRender &r, int x, int y, int w, int h, int sx, int sy) {
 	if (!w) w = surface.data()->w;
 	if (!h) h = surface.data()->h;
-	texture.paint(r, x - hotspot_x, y - hotspot_y, w, h);
+	texture.paint(r, x - hotspot_x, y - hotspot_y, w, h, sx, sy);
 }
 
 void Image::draw(SimpleRender &r, const SDL_Rect &bnds) {

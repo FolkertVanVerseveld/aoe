@@ -100,7 +100,7 @@ public:
 	Image();
 
 	bool load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned index, unsigned player=0);
-	void draw(SimpleRender &r, int x, int y, int w=0, int h=0);
+	void draw(SimpleRender &r, int x, int y, int w=0, int h=0, int sx=0, int sy=0);
 	void draw(SimpleRender &r, const SDL_Rect &bnds);
 	void draw_stretch(SimpleRender &r, const SDL_Rect &to);
 	void draw_stretch(SimpleRender &r, const SDL_Rect &from, const SDL_Rect &to);

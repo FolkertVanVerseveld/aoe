@@ -84,8 +84,10 @@ struct StartMatch final {
 	uint32_t seed;
 	uint8_t map_type, difficulty, starting_age, victory;
 	uint16_t food, wood, stone, gold;
+	uint16_t slave_count; /**< number of connected clients/users to server */
+	uint16_t player_count; /**< number of tribes in game (including gaia) */
 
-	static StartMatch random();
+	static StartMatch random(unsigned slave_count, unsigned player_count);
 };
 
 struct TextMsg final {

@@ -18,6 +18,7 @@ extern void check_taunt(const std::string &str);
 
 class MultiplayerCallback {
 public:
+	virtual ~MultiplayerCallback() {}
 	virtual void chat(const TextMsg &msg) = 0;
 	virtual void chat(user_id from, const std::string &str) = 0;
 	virtual void join(JoinUser &usr) = 0;
@@ -31,15 +32,17 @@ protected:
 	std::string name;
 	uint16_t port;
 	std::thread t_worker;
+	std::recursive_mutex mut; // lock for all following variables
 	MultiplayerCallback &cb;
 public:
-	std::recursive_mutex mut; // lock for all following variables
 	user_id self;
 
 	Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port);
 	virtual ~Multiplayer() {}
 
 	virtual void eventloop() = 0;
+
+	void change_cb(MultiplayerCallback &cb, MultiplayerCallback &old);
 
 	virtual bool chat(const std::string &str, bool send=true) = 0;
 };
@@ -124,6 +127,44 @@ enum class GameState {
 	paused,
 	stopped,
 	closed
+};
+
+enum class TileId {
+	// FIXME support forest, water and borders
+	FLAT1,
+	FLAT2,
+	FLAT3,
+	FLAT4,
+	FLAT5,
+	FLAT6,
+	FLAT7,
+	FLAT8,
+	FLAT9,
+	HILL_CORNER_SOUTH_EAST1,
+	HILL_CORNER_NORTH_WEST1,
+	HILL_CORNER_SOUTH_WEST1,
+	HILL_CORNER_NORTH_EAST1,
+	HILL_SOUTH,
+	HILL_WEST,
+	HILL_EAST,
+	HILL_NORTH,
+	HILL_CORNER_SOUTH_EAST2,
+	HILL_CORNER_NORTH_WEST2,
+	HILL_CORNER_SOUTH_WEST2,
+	HILL_CORNER_NORTH_EAST2,
+	FLAT_CORNER_SOUTH_EAST,
+	FLAT_CORNER_NORTH_WEST,
+	FLAT_CORNER_SOUTH_WEST,
+	FLAT_CORNER_NORTH_EAST,
+	TILE_MAX
+};
+
+class Map final {
+public:
+	unsigned w, h;
+	std::unique_ptr<uint8_t[]> tiles, heights; // y,x order
+
+	Map(LCG &lcg, const StartMatch &settings);
 };
 
 class Game final {
