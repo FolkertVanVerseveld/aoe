@@ -45,7 +45,7 @@ public:
 	virtual bool keydown(int ch);
 	virtual bool keyup(int ch);
 
-	virtual void idle() {}
+	virtual void idle(Uint32 ms) {}
 	virtual void paint();
 
 	void paint_details(unsigned options);

@@ -14,6 +14,8 @@
 
 namespace genie {
 
+class MenuLobby;
+
 extern void check_taunt(const std::string &str);
 
 class MultiplayerCallback {
@@ -34,15 +36,16 @@ protected:
 	std::thread t_worker;
 	std::recursive_mutex mut; // lock for all following variables
 	MultiplayerCallback &cb;
+	bool invalidated;
 public:
 	user_id self;
 
 	Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port);
 	virtual ~Multiplayer() {}
 
-	virtual void eventloop() = 0;
+	void dispose();
 
-	void change_cb(MultiplayerCallback &cb, MultiplayerCallback &old);
+	virtual void eventloop() = 0;
 
 	virtual bool chat(const std::string &str, bool send=true) = 0;
 };
@@ -169,13 +172,19 @@ public:
 
 class Game final {
 	Multiplayer *mp;
+	MenuLobby *lobby;
 	GameMode mode;
 	GameState state;
 	LCG lcg;
 	StartMatch settings;
-
 public:
-	Game(GameMode mode, Multiplayer *mp, const StartMatch &settings);
+	Map map;
+
+	Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings);
+	~Game();
+
+	void idle(unsigned ms);
+	void chmode(GameMode mode);
 };
 
 }

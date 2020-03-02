@@ -297,10 +297,10 @@ void Texture::paint(SimpleRender &r, int x, int y, int w, int h, int sx, int sy)
 	if (!w) w = width;
 	if (!h) h = height;
 
-	for (src.y = sy, dest.y = y; dest.y < y + h; src.y = r.offset.y, dest.y += dest.h) {
+	for (src.y = sy, dest.y = y; dest.y < y + h; src.y = 0, dest.y += dest.h) {
 		src.h = dest.h = min(height, y + h - dest.y);
 
-		for (src.x = sx, dest.x = x; dest.x < x + w; src.x = r.offset.x, dest.x += dest.w) {
+		for (src.x = sx, dest.x = x; dest.x < x + w; src.x = 0, dest.x += dest.w) {
 			src.w = dest.w = min(width, x + w - dest.x);
 
 			SDL_RenderCopy(r.canvas(), data(), &src, &dest);

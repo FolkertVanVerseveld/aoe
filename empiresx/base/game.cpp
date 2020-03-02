@@ -13,6 +13,8 @@
 
 namespace genie {
 
+extern void menu_lobby_stop_game(MenuLobby *lobby);
+
 void host_start(MultiplayerHost& host) {
 	host.eventloop();
 }
@@ -33,13 +35,7 @@ bool operator<(const Peer &lhs, const Peer &rhs) {
 Slave::Slave(const std::string &name) : fd(INVALID_SOCKET), id(0), name(name) {}
 
 Multiplayer::Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port)
-	: net(), name(name), port(port), t_worker(), cb(cb), mut(), self(0) {}
-
-void Multiplayer::change_cb(MultiplayerCallback &cb, MultiplayerCallback &old) {
-	std::lock_guard<std::recursive_mutex> lock(mut);
-	old = this->cb;
-	this->cb = cb;
-}
+	: net(), name(name), port(port), t_worker(), cb(cb), mut(), invalidated(false), self(0) {}
 
 MultiplayerHost::MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port)
 	: Multiplayer(cb, name, port), sock(port), slaves(), idmap(), idmod(1)
@@ -177,7 +173,7 @@ bool MultiplayerHost::chat(const std::string &str, bool send) {
 
 void MultiplayerHost::start() {
 	std::lock_guard<std::recursive_mutex> lock(mut);
-	Command start = Command::start(StartMatch::random(slaves.size(), slaves.size() + 1));
+	Command start = Command::start(StartMatch::random(slaves.size(), slaves.size()));
 	StartMatch settings = start.data.start;
 
 	sock.broadcast(*this, start, false);
@@ -307,17 +303,32 @@ void MultiplayerClient::eventloop() {
 	sock.close();
 }
 
+void Multiplayer::dispose() {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	invalidated = true;
+}
+
+#pragma warning(push)
+#pragma warning(disable: 26117)
+
+// XXX broken MSVC lock balancing/bogus lock balancing warning?
 bool MultiplayerClient::chat(const std::string &str, bool send) {
-	if (!send || !activated.load()) {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		cb.chat(0, send ? "Not connected to server" : str);
+	std::lock_guard<std::recursive_mutex> lock(mut);
+
+	if (invalidated)
 		return false;
+
+	if (!send || !activated.load()) {
+		cb.chat(0, send ? "Not connected to server" : str);
+		return false; // should be balanced, since dtor must be called...
 	}
 
 	Command cmd = Command::text(self, str);
 	sock.send(cmd, false);
 	return true;
 }
+
+#pragma warning(pop)
 
 namespace game {
 
@@ -326,14 +337,24 @@ Map::Map(LCG &lcg, const StartMatch &settings) : w(settings.map_w), h(settings.m
 
 	for (unsigned y = 0; y < h; ++y)
 		for (unsigned x = 0; x < w; ++x)
-			tiles[y * w + x] = lcg.next() % (unsigned)TileId::TILE_MAX;
+			tiles[y * w + x] = lcg.next() % ((unsigned)TileId::FLAT9 + 1);
 
+	// TODO support heightmaps
 	memset(heights.get(), 0, w * h);
 }
 
-Game::Game(GameMode mode, Multiplayer *mp, const StartMatch &settings) : mp(mp), mode(mode), state(GameState::init), lcg(LCG::ansi_c(settings.seed)), settings(settings) {
-	for (unsigned i = 0; i < 10; ++i)
-		printf("%u: %llu\n", i, (unsigned long long)lcg.next());
+Game::Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings) : mp(mp), lobby(lobby), mode(mode), state(GameState::init), lcg(LCG::ansi_c(settings.seed)), settings(settings), map(lcg, settings) {
+}
+
+Game::~Game() {
+	if (lobby)
+		menu_lobby_stop_game(lobby);
+}
+
+void Game::idle(unsigned ms) {
+}
+
+void Game::chmode(GameMode mode) {
 }
 
 }

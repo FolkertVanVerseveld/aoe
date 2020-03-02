@@ -28,8 +28,10 @@ void Menu::add_field(ui::InputField *field) {
 }
 
 void Menu::paint_details(unsigned options) {
-	r.color({0, 0, 0, SDL_ALPHA_OPAQUE});
-	r.clear();
+	if (options) {
+		r.color({0, 0, 0, SDL_ALPHA_OPAQUE});
+		r.clear();
+	}
 
 	int index = 0;
 	SDL_Rect to(enhanced ? r.dim.rel_bnds : r.dim.lgy_orig), ref(enhanced ? r.dim.rel_bnds : r.dim.lgy_bnds);
@@ -123,7 +125,14 @@ bool Menu::keyup(int ch) {
 
 std::unique_ptr<Navigator> nav;
 
+/** Maximum interval in milliseconds that is considered correct/reliable for game logic. */
+#define MAX_DELAY 200
+/** The default interval in milliseconds that is used when the last computed interval is unavailable or unreliable. */
+#define DEFAULT_DELAY 20
+
 void Navigator::mainloop() {
+	Uint32 ticks = SDL_GetTicks();
+
 	while (1) {
 		SDL_Event ev;
 
@@ -172,7 +181,10 @@ void Navigator::mainloop() {
 		if (!top)
 			return;
 
-		top->idle();
+		Uint32 ticks_next = SDL_GetTicks();
+		Uint32 diff = ticks_next - ticks;
+		top->idle(diff > MAX_DELAY ? DEFAULT_DELAY : diff);
+		ticks = ticks_next;
 
 		top->paint();
 		r.paint();

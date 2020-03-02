@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <cstddef>
 #include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <stdexcept>
@@ -186,6 +187,89 @@ public:
 	}
 };
 
+/** High-level menu lobby state wrapper that only cares about user interface user representation. */
+class UIPlayerState final : public MultiplayerCallback {
+public:
+	std::recursive_mutex mut;
+	std::deque<Text> txtchat;
+	MenuLobbyState state_now, state_next;
+	bool host;
+	int running;
+	StartMatch settings;
+
+	UIPlayerState(bool host) : mut(), txtchat(), state_now(), state_next(), host(host), running(-1) {}
+
+	bool dbuf(SimpleRender &r) {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		state_now.dbuf(state_next);
+		state_now.apply(txtchat, r, eng->assets->fnt_default);
+
+		if (running == 0) {
+			running = 1;
+			return true;
+		}
+
+		return false;
+	}
+
+	void paint(SimpleRender &r, int left, int start, int end) {
+		unsigned i = 0;
+
+		for (auto &x : txtchat) {
+			int y = start - 20 * i++;
+			if (y <= end)
+				break;
+			x.paint(r, left, y);
+		}
+	}
+
+	void chat(const std::string &str, SDL_Color col) {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		state_next.chat.emplace_front(str, col);
+	}
+
+	void chat(const TextMsg &msg) {
+		chat(msg.from, msg.str());
+	}
+
+	void chat(user_id from, const std::string &text) {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		// prepend name for message if it originated from a real user
+		if (from || host) {
+			auto search = state_now.players.find(from);
+			assert(search != state_now.players.end());
+			state_next.chat.emplace_front(search->name + ": " + text, SDL_Color{0xff, 0xff, 0});
+		} else {
+			chat(text, SDL_Color{0xff, 0, 0});
+		}
+		// FIXME should be thread-safe
+		check_taunt(text);
+	}
+
+	void join(JoinUser &usr) {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		state_next.players.emplace(usr);
+		chat(usr.nick() + " has joined", SDL_Color{0, 0xff, 0});
+	}
+
+	void leave(user_id id) {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		auto search = state_now.players.find(id);
+		assert(search != state_now.players.end());
+		chat(search->name + " has left", SDL_Color{0xff, 0, 0});
+		state_now.players.erase(id);
+	}
+
+	void start(const StartMatch &settings) {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		assert(running == -1);
+		running = 0;
+		this->settings = settings;
+		// XXX do we still need this?
+		assert(state_now.players.size() + 1 >= settings.slave_count);
+	}
+};
+
 res_id res_borders[screen_modes] = {
 	50733,
 	50737,
@@ -194,50 +278,128 @@ res_id res_borders[screen_modes] = {
 	50741,
 };
 
-class MenuGame final : public Menu, public ui::InteractableCallback, public MultiplayerCallback {
+const SDL_Rect menu_game_field_chat[screen_modes] = {
+	{4, 354 - 30, 300, 23},
+	{4, 474 - 30, 300, 23},
+	{4, 642 - 30, 300, 23},
+	{4, 642 - 30, 300, 23},
+	{4, 642 - 30, 300, 23},
+};
+
+class MenuLobby;
+
+class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCallback {
 	Multiplayer *mp;
 	game::Game game;
 	ImageCache img;
 	bool host;
 
-	bool chatting;
-	TextBuf t_chat;
-	MultiplayerCallback &old;
+	ui::InputField *f_chat;
+	float view_x, view_y;
+
+	static constexpr unsigned key_right = 0x01;
+	static constexpr unsigned key_up    = 0x02;
+	static constexpr unsigned key_left  = 0x04;
+	static constexpr unsigned key_down  = 0x08;
+
+	static constexpr int tw = 64, th = 32;
+
+	unsigned key_state;
 
 	// lock to ensure access variables below are thread-safe
 	std::recursive_mutex mut;
-
-	std::deque<Text> txtchat;
-	MenuLobbyState state_now, state_next;
+	UIPlayerState *playerstate;
 public:
-	MenuGame(SimpleRender &r, Multiplayer *mp, bool host, const StartMatch &settings)
+	MenuGame(MenuLobby *lobby, SimpleRender &r, Multiplayer *mp, UIPlayerState *state, bool host, const StartMatch &settings)
 		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff}, true)
-		, mp(mp), game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, mp, settings)
+		, mp(mp), game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, lobby, mp, settings)
 		, img(), host(host)
-		, chatting(false), t_chat(r, eng->assets->fnt_default, "", SDL_Color{0, 0, 0})
-		, old(*this), mut()
-		, txtchat(), state_now(), state_next()
+		, f_chat(nullptr), view_x(0), view_y(0), key_state(0)
+		, mut()
+		, playerstate(state) // FIXME copy state_now and state_next (and txtchat?) from menulobby
 	{
-		// hijack callback from menulobby
-		mp->change_cb(*this, old);
+		add_field(f_chat = new ui::InputField(0, *this, ui::InputType::text, "", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_game_field_chat, r.mode, pal, bkg, true));
 		jukebox.play(MusicId::game);
 	}
 
-	~MenuGame() {
-		// restore callback to menulobby
-		MultiplayerCallback &dummy = *this;
-		mp->change_cb(old, dummy);
+private:
+	void update_viewport(unsigned ms) {
+		int dx = 0, dy = 0;
+
+		if (key_state & key_right)
+			++dx;
+		if (key_state & key_up)
+			++dy;
+		if (key_state & key_left)
+			--dx;
+		if (key_state & key_down)
+			--dy;
+
+		if (!dy && !dx)
+			return;
+
+		float angle, fdx, fdy, speed = 0.5f * ms; // TODO playtest movement speed factor
+
+		angle = atan2(dy, dx);
+		fdx = cos(angle) * speed;
+		fdy = sin(angle) * speed;
+
+		view_x += fdx;
+		view_y += fdy;
+	}
+public:
+
+	void idle(Uint32 ms) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		playerstate->dbuf(r);
+
+		update_viewport(ms);
+
+		// TODO lock viewport bounds
 	}
 
-	void idle() override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
+	bool keydown(int ch) override {
+		switch (ch) {
+		case SDLK_RIGHT:
+			key_state |= key_right;
+			break;
+		case SDLK_UP:
+			key_state |= key_up;
+			break;
+		case SDLK_LEFT:
+			key_state |= key_left;
+			break;
+		case SDLK_DOWN:
+			key_state |= key_down;
+			break;
+		}
 
-		state_now.dbuf(state_next);
-		state_now.apply(txtchat, r, eng->assets->fnt_default);
+		if (!f_chat->focus() && ch == 't') {
+			key_state = 0;
+			f_chat->focus(true);
+			return true;
+		}
+
+		return Menu::keydown(ch);
 	}
 
 	bool keyup(int ch) override {
 		switch (ch) {
+		case SDLK_RIGHT:
+			key_state &= ~key_right;
+			break;
+		case SDLK_UP:
+			key_state &= ~key_up;
+			break;
+		case SDLK_LEFT:
+			key_state &= ~key_left;
+			break;
+		case SDLK_DOWN:
+			key_state &= ~key_down;
+			break;
+		case SDLK_HOME:
+			view_x = view_y = 0;
+			break;
 		case SDLK_ESCAPE:
 			interacted(0);
 			return true;
@@ -248,11 +410,44 @@ public:
 
 	void interacted(unsigned id) override {
 		jukebox.sfx(SfxId::button4);
-		nav->quit(host ? 2 : 1);
+		nav->quit(2);
 	}
 
+	bool input(unsigned id, ui::InputField &field) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		mp->chat(field.text(), true);
+		return true;
+	}
+
+private:
+	void tile_to_scr(int &x, int &y, int tx, int ty) {
+		y = (tx - ty) * th / 2;
+		x = (tx + ty) * tw / 2;
+	}
+
+	void paint_tiles() {
+		Animation &desert_tiles = img.get(15000);
+
+		int left = (int)-view_x, top = (int)view_y;
+
+		for (unsigned ty = 0; ty < game.map.h; ++ty) {
+			for (unsigned tx = 0; tx < game.map.w; ++tx) {
+				int x, y;
+				tile_to_scr(x, y, tx, ty);
+
+				unsigned tile = game.map.tiles[ty * game.map.w + tx];
+
+				desert_tiles.subimage(tile).draw(r, left + x, top + y);
+			}
+		}
+	}
+
+public:
 	void paint() override {
-		paint_details(0);
+		r.color({0, 0, 0, SDL_ALPHA_OPAQUE});
+		r.clear();
+
+		paint_tiles();
 
 		// figure out which border we need
 		res_id res_border = res_borders[(unsigned)r.mode];
@@ -261,12 +456,11 @@ public:
 		int left = 0;
 		Image &img_top = anim_border.subimage(0), &img_bottom = anim_border.subimage(1);
 
-		if (!mode_is_legacy(r.mode))
-			left = (r.dim.rel_bnds.w - img_top.texture.width) / 2;
-
 		int top = r.dim.rel_bnds.h - img_bottom.texture.height;
 
 		if (!mode_is_legacy(r.mode)) {
+			left = (r.dim.rel_bnds.w - img_top.texture.width) / 2;
+
 			int rep_left, rep_top, rep_right, rep_bottom;
 
 			rep_left = left + img_bottom.texture.width;
@@ -295,63 +489,13 @@ public:
 		img_top.draw(r, left, 0);
 		img_bottom.draw(r, left, top);
 
-		// draw text chat
-		int padding = 8;
+		playerstate->paint(r, 8, f_chat->bounds().y - 20, img_top.texture.height);
 
-		if (chatting)
-			t_chat.paint(left + padding, top - 20 - padding);
-
-		for (auto &x : txtchat) {
-			int y = top - 2 * 20 - padding;
-			if (y <= img_top.texture.height)
-				break;
-			x.paint(r, padding, y);
-		}
-	}
-
-	void chat(const std::string& str, SDL_Color col) {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		state_next.chat.emplace_front(str, col);
-	}
-
-	void chat(const TextMsg& msg) override {
-		chat(msg.from, msg.str());
-	}
-
-	void chat(user_id from, const std::string& text) override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		// prepend name for message if it originated from a real user
-		if (from || host) {
-			auto search = state_now.players.find(from);
-			assert(search != state_now.players.end());
-			state_next.chat.emplace_front(search->name + ": " + text, SDL_Color{0xff, 0xff, 0});
-			check_taunt(text);
-		} else {
-			chat(text, SDL_Color{0xff, 0, 0});
-			check_taunt(text);
-		}
-	}
-
-	void join(JoinUser &usr) override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		state_next.players.emplace(usr);
-		chat(usr.nick() + " has joined", SDL_Color{0, 0xff, 0});
-	}
-
-	void leave(user_id id) override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		auto search = state_now.players.find(id);
-		assert(search != state_now.players.end());
-		chat(search->name + " has left", SDL_Color{0xff, 0, 0});
-		state_now.players.erase(id);
-	}
-
-	void start(const StartMatch &settings) override {
-		assert("game already started" == 0);
+		paint_details(0);
 	}
 };
 
-class MenuLobby final : public Menu, public ui::InteractableCallback, public ui::InputCallback, public MultiplayerCallback {
+class MenuLobby final : public Menu, public ui::InteractableCallback, public ui::InputCallback {
 	std::unique_ptr<Multiplayer> mp;
 	bool host;
 	int running;
@@ -360,18 +504,15 @@ class MenuLobby final : public Menu, public ui::InteractableCallback, public ui:
 	ui::Label *lbl_name;
 
 	// current state. these vars need not be thread-safe, since read and writes to these vars are only allowed from the main thread anyway
-	std::deque<Text> txtchat;
-	MenuLobbyState state_now, state_next;
-	StartMatch settings;
-
-	/** lock to ensure updates to above vars \a mp has access to are thread-safe */
-	std::recursive_mutex mut;
+	UIPlayerState state;
+	MenuGame *game;
 
 	static constexpr unsigned lst_player_max = 8;
 public:
 	MenuLobby(SimpleRender &r, const std::string &name, uint32_t addr, uint16_t port, bool host = true)
 		: Menu(MenuId::multiplayer, r, eng->assets->fnt_title, /*host ? "Multiplayer - Host" : "Multiplayer - Client"*/eng->assets->open_str(LangId::title_multiplayer), SDL_Color{ 0xff, 0xff, 0xff })
-		, mp(), host(host), running(-1), txtchat(), state_now(), state_next(), bkg_chat(NULL), f_chat(NULL), mut()
+		, mp(), host(host), running(-1), bkg_chat(NULL), f_chat(NULL), lbl_name(nullptr), state(host)
+		, game(nullptr)
 	{
 		Font &fnt = eng->assets->fnt_button;
 		SDL_Color fg{bkg.text[0], bkg.text[1], bkg.text[2], 0xff}, bg{bkg.text[3], bkg.text[4], bkg.text[5], 0xff};
@@ -390,25 +531,22 @@ public:
 		resize(mode, mode);
 
 		if (!host) {
-			state_now.chat.emplace_front("Connecting to server...", SDL_Color{0xff, 0, 0});
+			state.state_now.chat.emplace_front("Connecting to server...", SDL_Color{0xff, 0, 0});
 		} else {
 			JoinUser usr{0, name.c_str()};
-			state_now.players.emplace(usr, r, eng->assets->fnt_default);
+			state.state_now.players.emplace(usr, r, eng->assets->fnt_default);
 		}
 
-		mp.reset(host ? (Multiplayer*)new MultiplayerHost(*this, name, port) : (Multiplayer*)new MultiplayerClient(*this, name, addr, port));
+		mp.reset(host ? (Multiplayer*)new MultiplayerHost(state, name, port) : (Multiplayer*)new MultiplayerClient(state, name, addr, port));
 	}
 
-	void idle() override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
+	~MenuLobby() override {
+		mp->dispose();
+	}
 
-		state_now.dbuf(state_next);
-		state_now.apply(txtchat, r, eng->assets->fnt_default);
-
-		if (running == 0) {
-			running = 1;
-			nav->go_to(new MenuGame(r, mp.get(), host, settings));
-		}
+	void idle(Uint32) override {
+		if (state.dbuf(r))
+			nav->go_to(game = new MenuGame(this, r, mp.get(), &state, host, state.settings));
 	}
 
 	bool keyup(int ch) override {
@@ -427,11 +565,11 @@ public:
 		switch (id) {
 		case 0:
 			{
-				std::lock_guard<std::recursive_mutex> lock(mut);
+				std::lock_guard<std::recursive_mutex> lock(state.mut);
 				auto s = f.text();
 				if (!s.empty()) {
 					if (s == "/clear")
-						txtchat.clear();
+						state.txtchat.clear();
 					else
 						return mp->chat(s);
 				}
@@ -447,21 +585,17 @@ public:
 		unsigned i = 0;
 		SDL_Rect bnds(bkg_chat->bounds());
 
-		for (auto &x : txtchat) {
-			int y = bnds.y + bnds.h - 18 - 20 * i++;
-			if (y <= bnds.y + 4)
-				break;
-			x.paint(r, bnds.x + 8, y);
-		}
+		state.paint(r, bnds.x + 8, bnds.y + bnds.h - 18, bnds.y + 4);
 
+		// no need to lock state_now, since it will never be written to during paint()
 		// always draw ourself first
-		if (state_now.players.empty())
+		if (state.state_now.players.empty())
 			return;
 
 		user_id self = host ? 0 : mp->self;
 
-		auto search = state_now.players.find(self);
-		if (search == state_now.players.end()) {
+		auto search = state.state_now.players.find(self);
+		if (search == state.state_now.players.end()) {
 			// player not added yet, skip frame
 			return;
 		}
@@ -476,7 +610,7 @@ public:
 
 		i = 1;
 
-		for (auto &p : state_now.players) {
+		for (auto &p : state.state_now.players) {
 			if (p.id == self)
 				continue;
 
@@ -490,48 +624,9 @@ public:
 		}
 	}
 
-	void chat(const std::string &str, SDL_Color col) {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		state_next.chat.emplace_front(str, col);
-	}
-
-	void chat(const TextMsg &msg) override {
-		chat(msg.from, msg.str());
-	}
-
-	void chat(user_id from, const std::string &text) override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		// prepend name for message if it originated from a real user
-		if (from || host) {
-			auto search = state_now.players.find(from);
-			assert(search != state_now.players.end());
-			state_next.chat.emplace_front(search->name + ": " + text, SDL_Color{0xff, 0xff, 0});
-			check_taunt(text);
-		} else {
-			chat(text, SDL_Color{0xff, 0, 0});
-			check_taunt(text);
-		}
-	}
-
-	void join(JoinUser &usr) override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		state_next.players.emplace(usr);
-		chat(usr.nick() + " has joined", SDL_Color{0, 0xff, 0});
-	}
-
-	void leave(user_id id) override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		auto search = state_now.players.find(id);
-		assert(search != state_now.players.end());
-		chat(search->name + " has left", SDL_Color{0xff, 0, 0});
-		state_now.players.erase(id);
-	}
-
-	void start(const StartMatch &settings) override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		running = 0;
-		this->settings = settings;
-		assert(state_now.players.size() == settings.slave_count);
+	void stop_game() {
+		std::lock_guard<std::recursive_mutex> lock(state.mut);
+		game = nullptr;
 	}
 };
 
@@ -543,12 +638,14 @@ void MenuLobby::interacted(unsigned id) {
 		nav->quit(1);
 		break;
 	case 1:
-		// TODO start the game
-		//nav->go_to(new MenuGame(r, mp.get(), host));
 		if (host)
 			((MultiplayerHost*)mp.get())->start();
 		break;
 	}
+}
+
+void menu_lobby_stop_game(MenuLobby *lobby) {
+	lobby->stop_game();
 }
 
 const SDL_Rect menu_multi_lbl_name[screen_modes] = {
@@ -744,7 +841,7 @@ public:
 		}
 	}
 
-	bool input(unsigned id, ui::InputField &f) {
+	bool input(unsigned, ui::InputField&) {
 		return false;
 	}
 };

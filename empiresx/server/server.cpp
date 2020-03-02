@@ -18,6 +18,7 @@ uint16_t port = 25659;
 namespace genie {
 
 void check_taunt(const std::string&) {}
+void menu_lobby_stop_game(MenuLobby*) {}
 
 class DummyCallback : public MultiplayerCallback {
 public:

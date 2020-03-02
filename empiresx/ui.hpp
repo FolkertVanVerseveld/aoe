@@ -174,6 +174,7 @@ public:
 	bool keyup(int ch);
 
 	void focus(bool on);
+	bool focus() const { return hasfocus; }
 
 	long long number() const;
 	uint16_t port() const;
