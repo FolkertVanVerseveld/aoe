@@ -51,7 +51,7 @@
 		\item Lots of free time at hands, so why not port my all time favorite RTS game?
 		\item Working on and off the project since september 2016
 		\item Several thousands hours of work (rough estimate)
-		\item And after all this time... AoE is still incomplete!
+		\item And after all this time... AoE remake is still incomplete!
 	\end{itemize}
 \end{frame}
 
@@ -74,7 +74,7 @@
 		\item 2017: Writing DRS tools, UI stack, reverse engineering graphics
 		\item 2018-2019: Completed in-game graphics and basic map file format
 		\item 2020: Rewrite engine and server from scratch
-		\item 2020-: \dots
+		\item 2020-: HD-support, Multiplayer mode, \dots
 	\end{itemize}
 \end{frame}
 
@@ -134,15 +134,58 @@
 
 % ---
 
+\begin{frame}{So what's the progress so far?}
+	Not much at the moment, but these demo's give an illustration.
+
+	\begin{itemize}
+		\item OpenAge
+		\item Folkert's AoE remake
+	\end{itemize}
+\end{frame}
+
+% ---
+
 \section{Porting AoE}
+
+\subsection{Goals}
+
+\begin{frame}{AoE Remake goals}
+
+	\begin{itemize}
+		\item Replicate original game experience
+		\item Redesign multiplayer from scratch
+		\item Support game mods
+		\item Provide tools for legacy file formats
+		\item Fix gameplay and annoying bugs
+	\end{itemize}
+
+\end{frame}
+
+% ---
+
+\subsection{Challenges}
+
+\begin{frame}{How are we going to port AoE?}
+
+	Should not be too much work right?
+
+	\begin{itemize}
+		\item We don't have any source code!
+		\item Game uses (un)documented propietary file formats
+		\item Lots of groups have tried this before... and failed
+	\end{itemize}
+
+\end{frame}
+
+% ---
 
 \begin{frame}{How are we going to port AoE?}
 
 	\begin{itemize}
-		\item Analyze gameplay (lots of testscenarios)
-		\item Figure out game specific file formats
-		\item Reverse engineer code that we can't replicate directly
 		\item Redesign multiplayer from scratch
+		\item Analyze gameplay (lots of testscenarios)
+		\item Figure out game specific file formats with trial and error
+		\item Reverse engineer code that we can't replicate directly
 	\end{itemize}
 
 \end{frame}
@@ -163,11 +206,22 @@
 
 \begin{frame}{Rendering system}
 	\begin{itemize}
-		\item Written entirely in x86 assembly: ASMdraw
+		\item Game graphics rendered entirely using x86 assembly: ASMdraw
 		% FIXME confirm this
 		\item Optimised for pentium II?
 		% FIXME confirm year and heritage
-		\item May be derived from 1992/5 MS-DOS VGA library
+		\item May be inspired by 1992/5 MS-DOS VGA library
+	\end{itemize}
+
+\end{frame}
+
+% ---
+
+\begin{frame}{Community}
+	\begin{itemize}
+		\item SiegeEngineers: OpenAge (2013), Genie-Reverse (2016)
+		\item Chariot (2017)
+		\item Small groups here and there
 	\end{itemize}
 
 \end{frame}
