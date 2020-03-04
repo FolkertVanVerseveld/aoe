@@ -166,8 +166,21 @@ Command Command::start(StartMatch &settings) {
 	return cmd;
 }
 
+const unsigned map_sizes[] = {
+	48, // 0
+	72, // 1
+	96, // 2
+	120, // 3
+	120, // 4
+	144, // 5
+	144, // 6
+	168, // 7
+	168, // 8
+};
+
 StartMatch StartMatch::random(unsigned slave_count, unsigned player_count) {
-	StartMatch m{rand(), 0, 72, 72, rand(), rand(), rand(), 1, 1, 200, 200, 150, 0, slave_count, player_count};
+	unsigned size = player_count <= 8 ? map_sizes[player_count] : (player_count + 6) * 12;
+	StartMatch m{rand(), 0, size, size, rand(), rand(), rand(), 1, 1, 200, 200, 150, 0, slave_count, player_count};
 	return m;
 }
 
