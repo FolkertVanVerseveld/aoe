@@ -11,6 +11,7 @@
 #include <stack>
 
 #include "random.hpp"
+#include "world.hpp"
 
 namespace genie {
 
@@ -53,7 +54,8 @@ public:
 class Slave final {
 	sockfd fd;
 public:
-	user_id id;
+	user_id id; /**< unique identifier (is equal to server's modification counter at creation) */
+	uint16_t pid; /**< virtual player unique identifier (also used to detect modification changes) */
 	std::string name;
 
 	Slave(sockfd fd) : fd(fd), id(0), name() {}
@@ -168,6 +170,78 @@ public:
 	std::unique_ptr<uint8_t[]> tiles, heights; // y,x order
 
 	Map(LCG &lcg, const StartMatch &settings);
+};
+
+enum class PlayerState {
+	active = 0x01, /**< player is generating/processing events. */
+	op     = 0x02, /**< player can directly control server. */
+	human  = 0x04, /**< player is controlled by human slave. */
+};
+
+enum class PlayerCheat {
+	no_fog             = 0x0001,
+	reveal_map         = 0x0002,
+	spy_resources      = 0x0004,
+	instant_gather     = 0x0008,
+	instant_build      = 0x0010,
+	instant_train      = 0x0020,
+	instant_convert    = 0x0040,
+	instant_all        = instant_gather | instant_build | instant_train | instant_convert,
+	no_res_costs       = 0x0080,
+	teleport_units     = 0x0100,
+	teleport_buildings = 0x0200,
+	teleport_all       = teleport_units | teleport_buildings,
+	god                = 0x03FF,
+};
+
+enum class HandicapType {
+	res             = 0x0001,
+	cost_units      = 0x0002,
+	cost_buildings  = 0x0004,
+	cost_techs      = 0x0008,
+	gather          = 0x0010,
+	build           = 0x0020,
+	train_units     = 0x0040,
+	train_buildings = 0x0080,
+	train_techs     = 0x0100,
+	train           = train_units | train_buildings | train_techs,
+	convert         = 0x0200,
+	repair_wonder   = 0x0400,
+	repair          = 0x0800,
+	wincounter      = 0x1000,
+	trade           = 0x2000,
+	all             = 0x3FFF,
+};
+
+struct PlayerHandicap final {
+	HandicapType type;
+	bool percent;
+	union HandicapData {
+		float fraction;
+		int raw;
+	} adjust;
+};
+
+/**
+ * Virtual user, this makes it possible for multiple players to control the
+ * same user. NOTE never ever cache a pointer or index to a player directly,
+ * since it can change on the fly!
+ */
+class Player {
+	uint16_t id; /**< unique identifier */
+	uint16_t uid; /**< index to user table, not unique */
+	unsigned state;
+	unsigned hc; /**< player handicap */
+	unsigned cheats; /**< active OP actions */
+	unsigned ai; /**< determines the AI mode, zero if human player without handicap/assistance */
+	std::string name; /**< E.g. Ramses III, this does not have to be the slave name that controls it */
+public:
+	Player();
+};
+
+class GameCallback {
+public:
+	virtual ~GameCallback() {}
 };
 
 class Game final {

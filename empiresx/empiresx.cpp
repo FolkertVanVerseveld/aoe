@@ -340,7 +340,7 @@ private:
 
 		float angle, fdx, fdy, speed = 0.5f * ms; // TODO playtest movement speed factor
 
-		angle = atan2(dy, dx);
+		angle = atan2f(dy, dx);
 		fdx = cos(angle) * speed;
 		fdy = sin(angle) * speed;
 
