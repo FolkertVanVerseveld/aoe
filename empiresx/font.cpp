@@ -1,3 +1,5 @@
+/* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 #include "font.hpp"
 
 #include <SDL2/SDL_render.h>

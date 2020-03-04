@@ -1,3 +1,4 @@
+/* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 #include "engine.hpp"
 
 #include <cassert>
@@ -336,15 +337,10 @@ Engine::Engine(Config &cfg) : cfg(cfg) {
 	assert(!eng);
 	eng = this;
 
-	try {
-		fs.init(os);
-		assets.reset(new Assets());
+	fs.init(os);
+	assets.reset(new Assets());
 
-		w.reset(new Window(DEFAULT_TITLE, cfg));
-	} catch (const std::runtime_error &e) {
-		show_error(e.what());
-		throw;
-	}
+	w.reset(new Window(DEFAULT_TITLE, cfg));
 }
 
 Engine::~Engine() {

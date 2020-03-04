@@ -1,3 +1,9 @@
+/* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
+/*
+Linux specific socket I/O epoll API wrapper
+*/
+
 #include "../base/net.hpp"
 
 #include <cerrno>

@@ -1,3 +1,9 @@
+/* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
+/*
+Windows specific socket I/O WinSock2 API wrapper
+*/
+
 #include "../base/net.hpp"
 
 #include "../os_macros.hpp"
@@ -256,6 +262,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 void ServerSocket::close() {
 	if (activated.load()) {
 		activated.store(false);
+		// XXX apparently, this doesn't work because it is WinSock v1 specific? (we use WinSock2 i.e. v2)
 		WSACancelBlockingCall(); // the calls we are using are probably non-blocking, but just be safe
 	}
 }

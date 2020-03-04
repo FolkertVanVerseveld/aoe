@@ -1,3 +1,5 @@
+/* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 /*
 Dedicated headless server free software remake of
 Age of Empires and Rise of Rome expansion

@@ -1,3 +1,5 @@
+/* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
 /**
  * Simple quick and dirty AOE demo using my own cmake-sdl2-template
  *
@@ -199,6 +201,7 @@ public:
 
 	UIPlayerState(bool host) : mut(), txtchat(), state_now(), state_next(), host(host), running(-1) {}
 
+	/** Swap internal state to provide a `double buffering' like system */
 	bool dbuf(SimpleRender &r) {
 		std::lock_guard<std::recursive_mutex> lock(mut);
 		state_now.dbuf(state_next);
@@ -212,6 +215,7 @@ public:
 		return false;
 	}
 
+	/** Draw all chat items that fit within the specified bounds. */
 	void paint(SimpleRender &r, int left, int start, int end) {
 		unsigned i = 0;
 
@@ -225,7 +229,7 @@ public:
 
 	void chat(const std::string &str, SDL_Color col) {
 		std::lock_guard<std::recursive_mutex> lock(mut);
-		state_next.chat.emplace_front(str, col);
+		state_next.chat.emplace_back(str, col);
 	}
 
 	void chat(const TextMsg &msg) {
@@ -238,7 +242,7 @@ public:
 		if (from || host) {
 			auto search = state_now.players.find(from);
 			assert(search != state_now.players.end());
-			state_next.chat.emplace_front(search->name + ": " + text, SDL_Color{0xff, 0xff, 0});
+			state_next.chat.emplace_back(search->name + ": " + text, SDL_Color{0xff, 0xff, 0});
 		} else {
 			chat(text, SDL_Color{0xff, 0, 0});
 		}
@@ -270,6 +274,7 @@ public:
 	}
 };
 
+// FIXME dynamically determine which type of border (egyptian, greek, ...) needs to be used
 res_id res_borders[screen_modes] = {
 	50733,
 	50737,
@@ -323,6 +328,7 @@ public:
 	}
 
 private:
+	/** Move visible area on screen at a consistent speed. */
 	void update_viewport(unsigned ms) {
 		int dx = 0, dy = 0;
 
@@ -346,16 +352,15 @@ private:
 
 		view_x += fdx;
 		view_y += fdy;
+
+		// FIXME lock viewport bounds
 	}
 public:
-
 	void idle(Uint32 ms) override {
 		std::lock_guard<std::recursive_mutex> lock(mut);
 		playerstate->dbuf(r);
 
 		update_viewport(ms);
-
-		// TODO lock viewport bounds
 	}
 
 	bool keydown(int ch) override {
@@ -410,6 +415,9 @@ public:
 
 	void interacted(unsigned id) override {
 		jukebox.sfx(SfxId::button4);
+		// TODO support leaving the game, but not the lobby
+		// this can get complicated because it will continue to receive
+		// game events that are not handled because the user has resigned
 		nav->quit(2);
 	}
 
@@ -531,7 +539,7 @@ public:
 		resize(mode, mode);
 
 		if (!host) {
-			state.state_now.chat.emplace_front("Connecting to server...", SDL_Color{0xff, 0, 0});
+			state.state_now.chat.emplace_back("Connecting to server...", SDL_Color{0xff, 0, 0});
 		} else {
 			JoinUser usr{0, name.c_str()};
 			state.state_now.players.emplace(usr, r, eng->assets->fnt_default);
