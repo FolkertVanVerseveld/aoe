@@ -269,8 +269,6 @@ public:
 		assert(running == -1);
 		running = 0;
 		this->settings = settings;
-		// XXX do we still need this?
-		assert(state_now.players.size() + 1 >= settings.slave_count);
 	}
 };
 
@@ -346,7 +344,7 @@ private:
 
 		float angle, fdx, fdy, speed = 0.5f * ms; // TODO playtest movement speed factor
 
-		angle = atan2f(dy, dx);
+		angle = atan2f((float)dy, (float)dx);
 		fdx = cos(angle) * speed;
 		fdy = sin(angle) * speed;
 
@@ -647,7 +645,7 @@ void MenuLobby::interacted(unsigned id) {
 		break;
 	case 1:
 		if (host)
-			((MultiplayerHost*)mp.get())->start();
+			((MultiplayerHost*)mp.get())->start(false);
 		break;
 	}
 }

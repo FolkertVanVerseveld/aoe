@@ -14,6 +14,7 @@
 #include <queue>
 #include <mutex>
 
+typedef uint16_t player_id;
 typedef uint32_t user_id;
 
 #if windows
@@ -74,8 +75,6 @@ struct StartMatch final {
 	victory condition: enum
 	map type: enum
 	starting age: enum
-	resources: enum (real values only visible to server)
-	resources for current player: server only sends initial resources for the player that receives this message
 	difficulty level: enum
 	XXX path finding: do we really want to specify this? the servers handles this anyway...
 	options: fixed positions (y/n), full tech tree (y/n), reveal map (y/n), cheating (y/n)
@@ -85,11 +84,11 @@ struct StartMatch final {
 	uint16_t map_w, map_h;
 	uint32_t seed;
 	uint8_t map_type, difficulty, starting_age, victory;
-	uint16_t food, wood, stone, gold;
 	uint16_t slave_count; /**< number of connected clients/users to server */
-	uint16_t player_count; /**< number of tribes in game (including gaia) */
 
 	static StartMatch random(unsigned slave_count, unsigned player_count);
+
+	void dump() const;
 };
 
 struct TextMsg final {
@@ -99,11 +98,31 @@ struct TextMsg final {
 	std::string str() const;
 };
 
+struct Ready final {
+	uint16_t slave_count;
+	uint16_t prng_next; /**< LCG checksum */
+};
+
+struct CreatePlayer final {
+	player_id id;
+	char name[NAME_LIMIT];
+
+	std::string str() const;
+};
+
+struct AssignSlave final {
+	user_id from;
+	player_id to;
+};
+
 union CmdData final {
 	TextMsg text;
 	JoinUser join;
 	user_id leave;
 	StartMatch start;
+	Ready ready;
+	CreatePlayer create;
+	AssignSlave assign;
 
 	void hton(uint16_t type);
 	void ntoh(uint16_t type);
@@ -114,11 +133,14 @@ static constexpr unsigned CMD_HDRSZ = 4;
 class CmdBuf;
 
 enum class CmdType {
-	TEXT,
-	JOIN,
-	LEAVE,
-	START,
-	MAX,
+	text,
+	join,
+	leave,
+	start,
+	ready,
+	create,
+	assign,
+	max,
 };
 
 class Command final {
@@ -137,6 +159,8 @@ public:
 	static Command join(user_id id, const std::string &str);
 	static Command leave(user_id id);
 	static Command start(StartMatch &match);
+	static Command create(user_id id, const std::string &str);
+	static Command assign(user_id id, player_id pid);
 };
 
 class ServerCallback {
@@ -227,11 +251,15 @@ class ServerSocket final {
 	std::set<CmdBuf> rbuf;
 	/** Cache for any pending write operations. */
 	std::map<sockfd, std::queue<CmdBuf>> wbuf;
-	std::atomic<bool> activated;
+	std::atomic<bool> activated, accepting;
 	std::recursive_mutex mut; /**< Makes all sockets manipulations thread safe. */
 public:
 	ServerSocket(uint16_t port);
 	~ServerSocket();
+
+	bool accept() const { return accepting.load(); }
+	/** Control whether we accept incoming clients. It is disabled when a game is running. */
+	void accept(bool b) { accepting.store(b); }
 
 	void close();
 

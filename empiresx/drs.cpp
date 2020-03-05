@@ -384,7 +384,7 @@ Animation::Animation(SimpleRender &r, const Palette &pal, const Slp &slp, res_id
 
 	images.reset(new Image[image_count = slp.hdr->frame_count]);
 
-	for (size_t i = 0, n = slp.hdr->frame_count; i < n; ++i)
+	for (unsigned i = 0, n = slp.hdr->frame_count; i < n; ++i)
 		if (images[i].load(r, pal, slp, i)) {
 			dynamic = true;
 			break;
@@ -397,7 +397,7 @@ Animation::Animation(SimpleRender &r, const Palette &pal, const Slp &slp, res_id
 	images.reset(new Image[slp.hdr->frame_count * io::max_players]);
 
 	for (unsigned p = 0; p < io::max_players; ++p)
-		for (size_t i = 0, n = slp.hdr->frame_count; i < n; ++i) {
+		for (unsigned i = 0, n = slp.hdr->frame_count; i < n; ++i) {
 			const io::SlpFrameInfo *info = &slp.info[i];
 			images[p * n + i].load(r, pal, slp, i, p);
 		}
@@ -420,6 +420,9 @@ void *DRS::open_wav(res_id id, size_t &count) {
 	count = item.size;
 	return (char*)hdr + item.offset;
 }
+
+#pragma warning(push)
+#pragma warning(disable: 4996)
 
 Palette DRS::open_pal(res_id id) {
 	io::DrsItem item;
@@ -545,6 +548,8 @@ BackgroundSettings DRS::open_bkg(res_id id) {
 
 	return bkg;
 }
+
+#pragma warning(pop)
 
 bool DRS::open_slp(Slp &slp, res_id id) {
 	io::DrsItem item;

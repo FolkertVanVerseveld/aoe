@@ -37,13 +37,18 @@ bool operator<(const Peer &lhs, const Peer &rhs) {
 Slave::Slave(const std::string &name) : fd(INVALID_SOCKET), id(0), name(name) {}
 
 Multiplayer::Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port)
-	: net(), name(name), port(port), t_worker(), cb(cb), mut(), invalidated(false), self(0) {}
+	: net(), name(name), port(port), t_worker(), mut(), cb(cb), gcb(nullptr), invalidated(false), self(0) {}
+
+void Multiplayer::set_gcb(GameCallback *gcb) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	this->gcb = gcb;
+}
 
 MultiplayerHost::MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port)
 	: Multiplayer(cb, name, port), sock(port), slaves(), idmap(), idmod(1)
 {
 	puts("start host");
-	srand(time(NULL));
+	srand((unsigned)time(NULL));
 	// claim slot for server itself: id == 0 is used for that purpose
 	slaves.emplace(name);
 	t_worker = std::thread(host_start, std::ref(*this));
@@ -77,7 +82,7 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 	std::lock_guard<std::recursive_mutex> lock(mut);
 
 	switch ((CmdType)cmd.type) {
-	case CmdType::TEXT:
+	case CmdType::text:
 		{
 			auto str = cmd.text();
 			Slave &s = slave(fd);
@@ -88,7 +93,7 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 		}
 		sock.broadcast(*this, cmd);
 		break;
-	case CmdType::JOIN:
+	case CmdType::join:
 		{
 			auto join = cmd.join();
 
@@ -173,11 +178,14 @@ bool MultiplayerHost::chat(const std::string &str, bool send) {
 	return true;
 }
 
-void MultiplayerHost::start() {
+void MultiplayerHost::start(bool dedicated) {
 	std::lock_guard<std::recursive_mutex> lock(mut);
-	StartMatch settings = StartMatch::random(slaves.size(), slaves.size());
+	unsigned count = (unsigned)slaves.size();
+	StartMatch settings = StartMatch::random(count, dedicated ? count - 1 : count);
 	Command start = Command::start(settings);
 
+	// ignore any new clients: the match has already started at this point
+	sock.accept(false);
 	sock.broadcast(*this, start, false);
 	cb.start(settings);
 }
@@ -254,10 +262,10 @@ void MultiplayerClient::eventloop() {
 		std::lock_guard<std::recursive_mutex> lock(mut);
 
 		switch ((CmdType)cmd.type) {
-		case CmdType::TEXT:
+		case CmdType::text:
 			cb.chat(cmd.text());
 			break;
-		case CmdType::JOIN:
+		case CmdType::join:
 			{
 				JoinUser usr = cmd.join();
 				const std::string &s = usr.nick();
@@ -272,7 +280,7 @@ void MultiplayerClient::eventloop() {
 				cb.join(usr);
 			}
 			break;
-		case CmdType::LEAVE:
+		case CmdType::leave:
 			{
 				user_id leave = cmd.data.leave;
 
@@ -291,7 +299,7 @@ void MultiplayerClient::eventloop() {
 				peers.erase(leave);
 			}
 			break;
-		case CmdType::START:
+		case CmdType::start:
 			cb.start(cmd.data.start);
 			break;
 		default:
@@ -345,7 +353,13 @@ Map::Map(LCG &lcg, const StartMatch &settings) : w(settings.map_w), h(settings.m
 	memset(heights.get(), 0, w * h);
 }
 
-Game::Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings) : mp(mp), lobby(lobby), mode(mode), state(GameState::init), lcg(LCG::ansi_c(settings.seed)), settings(settings), map(lcg, settings) {
+bool operator==(const Player &lhs, const Player &rhs) {
+	return lhs.id == rhs.id;
+}
+
+Game::Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings)
+	: mp(mp), lobby(lobby), mode(mode), state(GameState::init), lcg(LCG::ansi_c(settings.seed))
+	, settings(settings), players(), id_map(), mut(), map(lcg, settings) {
 }
 
 Game::~Game() {
@@ -354,6 +368,7 @@ Game::~Game() {
 }
 
 void Game::idle(unsigned ms) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
 }
 
 void Game::chmode(GameMode mode) {

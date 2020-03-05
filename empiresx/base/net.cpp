@@ -6,6 +6,8 @@
 #include <cassert>
 #include <cstring>
 
+#include <inttypes.h>
+
 #include <chrono>
 #include <thread>
 #include <stdexcept>
@@ -38,58 +40,73 @@ const unsigned cmd_sizes[] = {
 	sizeof(JoinUser),
 	sizeof(user_id),
 	sizeof(StartMatch),
+	sizeof(Ready),
+	sizeof(CreatePlayer),
+	sizeof(AssignSlave),
 };
 
 void CmdData::hton(uint16_t type) {
-	assert(cmd_sizes[(unsigned)CmdType::MAX - 1]);
-	assert(sizeof(JoinUser) == sizeof(user_id) + NAME_LIMIT);
-	assert(sizeof(user_id) == sizeof(uint32_t));
+	assert(cmd_sizes[(unsigned)CmdType::max - 1]);
+	static_assert(sizeof(JoinUser) == sizeof(user_id) + NAME_LIMIT);
+	static_assert(sizeof(user_id) == sizeof(uint32_t));
 
 	switch ((CmdType)type) {
-	case CmdType::TEXT:
+	case CmdType::text:
 		text.from = htobe32(text.from);
 		break;
-	case CmdType::JOIN:
+	case CmdType::join:
 		join.id = htobe32(join.id);
 		break;
-	case CmdType::LEAVE:
+	case CmdType::leave:
 		leave = htobe32(leave);
 		break;
-	case CmdType::START:
+	case CmdType::start:
 		start.map_w = htobe16(start.map_w);
 		start.map_h = htobe16(start.map_h);
 		start.seed = htobe32(start.seed);
-		start.food = htobe16(start.food);
-		start.wood = htobe16(start.wood);
-		start.gold = htobe16(start.gold);
-		start.stone = htobe16(start.stone);
 		start.slave_count = htobe16(start.slave_count);
-		start.player_count = htobe16(start.player_count);
+		break;
+	case CmdType::ready:
+		ready.slave_count = htobe16(ready.slave_count);
+		ready.prng_next = htobe16(ready.prng_next);
+		break;
+	case CmdType::create:
+		create.id = htobe16(create.id);
+		break;
+	case CmdType::assign:
+		assign.from = htobe32(assign.from);
+		assign.to = htobe32(assign.to);
 		break;
 	}
 }
 
 void CmdData::ntoh(uint16_t type) {
 	switch ((CmdType)type) {
-	case CmdType::TEXT:
+	case CmdType::text:
 		text.from = be32toh(text.from);
 		break;
-	case CmdType::JOIN:
+	case CmdType::join:
 		join.id = be32toh(join.id);
 		break;
-	case CmdType::LEAVE:
+	case CmdType::leave:
 		leave = be32toh(leave);
 		break;
-	case CmdType::START:
+	case CmdType::start:
 		start.map_w = be16toh(start.map_w);
 		start.map_h = be16toh(start.map_h);
 		start.seed = be32toh(start.seed);
-		start.food = be16toh(start.food);
-		start.wood = be16toh(start.wood);
-		start.gold = be16toh(start.gold);
-		start.stone = be16toh(start.stone);
 		start.slave_count = be16toh(start.slave_count);
-		start.player_count = be16toh(start.player_count);
+		break;
+	case CmdType::ready:
+		ready.slave_count = be16toh(ready.slave_count);
+		ready.prng_next = be16toh(ready.prng_next);
+		break;
+	case CmdType::create:
+		create.id = be16toh(create.id);
+		break;
+	case CmdType::assign:
+		assign.from = be32toh(assign.from);
+		assign.to = be16toh(assign.to);
 		break;
 	}
 }
@@ -110,8 +127,12 @@ std::string TextMsg::str() const {
 	return std::string(text, strlen(text, TEXT_LIMIT));
 }
 
+std::string CreatePlayer::str() const {
+	return std::string(name, strlen(name, NAME_LIMIT));
+}
+
 TextMsg Command::text() {
-	assert((CmdType)type == CmdType::TEXT);
+	assert((CmdType)type == CmdType::text);
 	return data.text;
 }
 
@@ -125,14 +146,14 @@ JoinUser::JoinUser(user_id id, const std::string &str) : id(id) {
 }
 
 JoinUser Command::join() {
-	assert(type == (uint16_t)CmdType::JOIN);
+	assert(type == (uint16_t)CmdType::join);
 	return data.join;
 }
 
 Command Command::join(user_id id, const std::string &str) {
 	Command cmd;
 
-	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::JOIN];
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::join];
 	cmd.data.join.id = id;
 	strncpy(cmd.data.join.name, str.c_str(), NAME_LIMIT);
 
@@ -142,7 +163,7 @@ Command Command::join(user_id id, const std::string &str) {
 Command Command::leave(user_id id) {
 	Command cmd;
 
-	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::LEAVE];
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::leave];
 	cmd.data.leave = id;
 
 	return cmd;
@@ -151,7 +172,7 @@ Command Command::leave(user_id id) {
 Command Command::text(user_id id, const std::string &str) {
 	Command cmd;
 
-	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::TEXT];
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::text];
 	cmd.data.text.from = id;
 	strncpy(cmd.data.text.text, str.c_str(), TEXT_LIMIT);
 
@@ -161,8 +182,28 @@ Command Command::text(user_id id, const std::string &str) {
 Command Command::start(StartMatch &settings) {
 	Command cmd;
 
-	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::START];
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::start];
 	cmd.data.start = settings;
+
+	return cmd;
+}
+
+Command Command::create(user_id id, const std::string &str) {
+	Command cmd;
+
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::create];
+	cmd.data.create.id = id;
+	strncpy(cmd.data.create.name, str.c_str(), NAME_LIMIT);
+	
+	return cmd;
+}
+
+Command Command::assign(user_id id, player_id pid) {
+	Command cmd;
+
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::assign];
+	cmd.data.assign.from = id;
+	cmd.data.assign.to = pid;
 
 	return cmd;
 }
@@ -179,9 +220,20 @@ const unsigned map_sizes[] = {
 	168, // 8
 };
 
+void StartMatch::dump() const {
+	printf("startmatch settings:\n");
+	printf("scenario type: %" PRIu8 ", options: %" PRIx8 "\n", scenario_type, options);
+	printf("size: %" PRIu16 "x%" PRIu16 "\n", map_w, map_h);
+	printf("human players: %" PRIu16 ", difficulty: %" PRIu8 "\n", slave_count, difficulty);
+	printf("seed: %" PRIu32 ", map type: %" PRIu8 ", starting age: %" PRIu8 ", victory: %" PRIu8 "\n", seed, map_type, starting_age, victory);
+}
+
 StartMatch StartMatch::random(unsigned slave_count, unsigned player_count) {
 	unsigned size = player_count <= 8 ? map_sizes[player_count] : (player_count + 6) * 12;
-	StartMatch m{rand(), 0, size, size, rand(), rand(), rand(), 1, 1, 200, 200, 150, 0, slave_count, player_count};
+	
+	StartMatch m{rand(), 0, size, size, rand(), rand(), rand(), 1, 1, slave_count};
+	m.dump();
+
 	return m;
 }
 
@@ -271,7 +323,7 @@ int Socket::recv(Command &cmd) {
 
 		uint16_t type = be16toh(cmd.type), length = be16toh(cmd.length);
 
-		if (type >= (uint16_t)CmdType::MAX || length != cmd_sizes[type])
+		if (type >= (uint16_t)CmdType::max || length != cmd_sizes[type])
 			return 2;
 
 		recvFully((char*)&cmd + CMD_HDRSZ, length);
@@ -331,8 +383,8 @@ int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 		// validate header
 		unsigned type = be16toh(cmd.type), length = be16toh(cmd.length);
 
-		if (type >= (uint16_t)CmdType::MAX || length != cmd_sizes[type]) {
-			if (type < (uint16_t)CmdType::MAX)
+		if (type >= (uint16_t)CmdType::max || length != cmd_sizes[type]) {
+			if (type < (uint16_t)CmdType::max)
 				fprintf(stderr, "bad header: type %u, size %u (expected %u)\n", type, length, cmd_sizes[type]);
 			else
 				fprintf(stderr, "bad header: type %u, size %u\n", type, length);

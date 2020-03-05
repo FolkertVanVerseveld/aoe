@@ -38,6 +38,7 @@ protected:
 	std::thread t_worker;
 	std::recursive_mutex mut; // lock for all following variables
 	MultiplayerCallback &cb;
+	GameCallback *gcb;
 	bool invalidated;
 public:
 	user_id self;
@@ -48,6 +49,8 @@ public:
 	void dispose();
 
 	virtual void eventloop() = 0;
+
+	void set_gcb(GameCallback *gcb);
 
 	virtual bool chat(const std::string &str, bool send=true) = 0;
 };
@@ -91,7 +94,7 @@ public:
 
 	bool chat(const std::string &str, bool send=true) override;
 	// TODO enable user to customize map settings
-	void start();
+	void start(bool dedicated);
 };
 
 class Peer final {
@@ -230,19 +233,26 @@ struct PlayerHandicap final {
  */
 class Player {
 	uint16_t id; /**< unique identifier */
+	// XXX do we still need this?
 	uint16_t uid; /**< index to user table, not unique */
-	unsigned state;
-	unsigned hc; /**< player handicap */
-	unsigned cheats; /**< active OP actions */
+	PlayerState state;
+	PlayerHandicap hc; /**< player handicap */
+	PlayerCheat cheats; /**< active OP actions */
 	unsigned ai; /**< determines the AI mode, zero if human player without handicap/assistance */
 	std::string name; /**< E.g. Ramses III, this does not have to be the slave name that controls it */
 public:
 	Player();
+
+	friend bool operator==(const Player&, const Player&);
 };
 
 class GameCallback {
 public:
 	virtual ~GameCallback() {}
+
+	virtual void new_player(const CreatePlayer&) = 0;
+	virtual void assign_player(const AssignSlave&) = 0;
+
 };
 
 class Game final {
@@ -252,6 +262,9 @@ class Game final {
 	GameState state;
 	LCG lcg;
 	StartMatch settings;
+	std::map<uint16_t, Player> players;
+	std::map<uint16_t, uint16_t> id_map; /**< Lookuptable for player id using slave id */
+	std::recursive_mutex mut;
 public:
 	Map map;
 

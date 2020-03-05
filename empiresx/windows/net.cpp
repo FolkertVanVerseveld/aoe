@@ -103,6 +103,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 	int addrlen = sizeof addr;
 
 	activated.store(true);
+	accepting.store(true);
 
 	while (activated.load()) {
 		int err, incoming = 0;
@@ -111,7 +112,12 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 		{
 			std::lock_guard<std::recursive_mutex> lock(mut);
 
-			while ((sock = accept(this->sock.fd, (sockaddr*)&addr, &addrlen)) != INVALID_SOCKET) {
+			while ((sock = ::accept(this->sock.fd, (sockaddr*)&addr, &addrlen)) != INVALID_SOCKET) {
+				if (!accepting.load()) {
+					closesocket(sock);
+					continue;
+				}
+
 				sock_block(sock, false);
 
 				WSAPOLLFD ev = {0};

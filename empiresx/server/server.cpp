@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 			} else if (starts_with(input, "say ")) {
 				mp.chat(input.substr(strlen("say ")));
 			} else if (input == "start") {
-				mp.start();
+				mp.start(true);
 			} else {
 				std::cerr << "Unknown command. Type help for help" << std::endl;
 			}

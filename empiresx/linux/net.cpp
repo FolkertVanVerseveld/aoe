@@ -83,10 +83,15 @@ void ServerSocket::incoming(ServerCallback &cb) {
 		int err = 0, infd;
 		socklen_t in_len = sizeof in_addr;
 
-		if ((infd = accept(sock.fd, &in_addr, &in_len)) == -1) {
+		if ((infd = ::accept(sock.fd, &in_addr, &in_len)) == -1) {
 			if (errno != EAGAIN && errno != EWOULDBLOCK)
 				perror("accept");
 			break;
+		}
+
+		if (!accepting.load()) {
+			::closesocket(sock.fd);
+			continue;
 		}
 
 		char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
@@ -200,9 +205,9 @@ int ServerSocket::event_process(ServerCallback &cb, pollev &ev) {
 			if ((n = read(fd, buf, sizeof buf)) < 0) {
 				if (errno != EAGAIN && errno != EWOULDBLOCK) {
 					fprintf(stderr,
-							"event_process: read error fd %d: %s\n",
-							fd, strerror(errno)
-					       );
+						"event_process: read error fd %d: %s\n",
+						fd, strerror(errno)
+					);
 					return EPE_READ;
 				}
 				break;
@@ -253,6 +258,7 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 	epoll_event events[MAX_EVENTS];
 
 	activated.store(true);
+	accepting.store(true);
 
 	while (activated.load()) {
 		int err, n;
