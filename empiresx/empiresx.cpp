@@ -215,6 +215,12 @@ public:
 		return false;
 	}
 
+	void clearchat() {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		state_now.chat.clear();
+		txtchat.clear();
+	}
+
 	/** Draw all chat items that fit within the specified bounds. */
 	void paint(SimpleRender &r, int left, int start, int end) {
 		unsigned i = 0;
@@ -291,11 +297,9 @@ const SDL_Rect menu_game_field_chat[screen_modes] = {
 
 class MenuLobby;
 
-class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCallback {
-	Multiplayer *mp;
-	game::Game game;
+class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCallback, public game::Game {
 	ImageCache img;
-	bool host;
+	bool host, started;
 
 	ui::InputField *f_chat;
 	float view_x, view_y;
@@ -314,14 +318,18 @@ class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCa
 	UIPlayerState *playerstate;
 public:
 	MenuGame(MenuLobby *lobby, SimpleRender &r, Multiplayer *mp, UIPlayerState *state, bool host, const StartMatch &settings)
-		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff}, true)
-		, mp(mp), game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, lobby, mp, settings)
-		, img(), host(host)
+		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff}, true), Game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, lobby, mp, settings)
+		, img(), host(host), started(false)
 		, f_chat(nullptr), view_x(0), view_y(0), key_state(0)
 		, mut()
-		, playerstate(state) // FIXME copy state_now and state_next (and txtchat?) from menulobby
+		, playerstate(state) // copy state_now and state_next and txtchat from menulobby
 	{
 		add_field(f_chat = new ui::InputField(0, *this, ui::InputType::text, "", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_game_field_chat, r.mode, pal, bkg, true));
+		if (!host)
+			((MultiplayerClient*)mp)->set_gcb(this, (uint16_t)playerstate->state_now.players.size(), (uint16_t)lcg.next());
+		else
+			((MultiplayerHost*)mp)->set_gcb(this);
+
 		jukebox.play(MusicId::game);
 	}
 
@@ -357,6 +365,12 @@ public:
 	void idle(Uint32 ms) override {
 		std::lock_guard<std::recursive_mutex> lock(mut);
 		playerstate->dbuf(r);
+
+		if (host && !started)
+			started = ((MultiplayerHost*)mp)->try_start();
+
+		if (started)
+			Game::step(ms);
 
 		update_viewport(ms);
 	}
@@ -421,7 +435,14 @@ public:
 
 	bool input(unsigned id, ui::InputField &field) override {
 		std::lock_guard<std::recursive_mutex> lock(mut);
-		mp->chat(field.text(), true);
+
+		auto s = field.text();
+		if (!s.empty()) {
+			if (s == "/clear")
+				playerstate->clearchat();
+			else
+				return mp->chat(s);
+		}
 		return true;
 	}
 
@@ -436,12 +457,12 @@ private:
 
 		int left = (int)-view_x, top = (int)view_y;
 
-		for (unsigned ty = 0; ty < game.map.h; ++ty) {
-			for (unsigned tx = 0; tx < game.map.w; ++tx) {
+		for (unsigned ty = 0; ty < map.h; ++ty) {
+			for (unsigned tx = 0; tx < map.w; ++tx) {
 				int x, y;
 				tile_to_scr(x, y, tx, ty);
 
-				unsigned tile = game.map.tiles[ty * game.map.w + tx];
+				unsigned tile = map.tiles[ty * map.w + tx];
 
 				desert_tiles.subimage(tile).draw(r, left + x, top + y);
 			}
@@ -449,6 +470,17 @@ private:
 	}
 
 public:
+	void new_player(const CreatePlayer &create) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		players.emplace(create.id, create.str());
+	}
+
+	void assign_player(const AssignSlave &assign) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		assert(players.find(assign.to) != players.end());
+		usertbl.emplace(assign.from, assign.to);
+	}
+
 	void paint() override {
 		r.color({0, 0, 0, SDL_ALPHA_OPAQUE});
 		r.clear();
@@ -575,7 +607,7 @@ public:
 				auto s = f.text();
 				if (!s.empty()) {
 					if (s == "/clear")
-						state.txtchat.clear();
+						state.clearchat();
 					else
 						return mp->chat(s);
 				}
@@ -645,7 +677,7 @@ void MenuLobby::interacted(unsigned id) {
 		break;
 	case 1:
 		if (host)
-			((MultiplayerHost*)mp.get())->start(false);
+			((MultiplayerHost*)mp.get())->prepare_match();
 		break;
 	}
 }

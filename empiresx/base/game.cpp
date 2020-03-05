@@ -26,7 +26,7 @@ void client_start(MultiplayerClient& client) {
 	client.eventloop();
 }
 
-bool operator<(const Slave& lhs, const Slave& rhs) {
+bool operator<(const Slave &lhs, const Slave &rhs) {
 	return lhs.fd < rhs.fd;
 }
 
@@ -34,18 +34,23 @@ bool operator<(const Peer &lhs, const Peer &rhs) {
 	return lhs.id < rhs.id;
 }
 
+Slave::Slave(sockfd fd) : fd(fd), id(0), pid(0), name() {}
+Slave::Slave(sockfd fd, user_id id) : fd(fd), id(id), pid(0), name() {}
 Slave::Slave(const std::string &name) : fd(INVALID_SOCKET), id(0), name(name) {}
 
 Multiplayer::Multiplayer(MultiplayerCallback &cb, const std::string &name, uint16_t port)
 	: net(), name(name), port(port), t_worker(), mut(), cb(cb), gcb(nullptr), invalidated(false), self(0) {}
 
-void Multiplayer::set_gcb(GameCallback *gcb) {
+void MultiplayerClient::set_gcb(game::GameCallback *gcb, uint16_t slave_count, uint16_t prng_next) {
 	std::lock_guard<std::recursive_mutex> lock(mut);
 	this->gcb = gcb;
+
+	Command cmd = Command::ready(slave_count, prng_next);
+	sock.send(cmd, false);
 }
 
-MultiplayerHost::MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port)
-	: Multiplayer(cb, name, port), sock(port), slaves(), idmap(), idmod(1)
+MultiplayerHost::MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port, bool dedicated)
+	: Multiplayer(cb, name, port), sock(port), slaves(), idmod(1), ready_confirms(0), dedicated(dedicated)
 {
 	puts("start host");
 	srand((unsigned)time(NULL));
@@ -126,6 +131,16 @@ void MultiplayerHost::event_process(sockfd fd, Command &cmd) {
 			cb.join(join);
 		}
 		break;
+	case CmdType::ready:
+		// ensure expected settings match
+		if (expected_settings != cmd.ready()) {
+			Slave &s = slave(fd);
+			fprintf(stderr, "bad ready settings for slave %u: %s\n", s.id, s.name.c_str());
+			sock.close();
+			cb.leave(s.id);
+		}
+		--ready_confirms;
+		break;
 	}
 }
 
@@ -167,6 +182,42 @@ void MultiplayerHost::dump() {
 		printf("%u %s\n", x.id, x.name.c_str());
 }
 
+void MultiplayerHost::set_gcb(game::GameCallback *gcb) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	this->gcb = gcb;
+}
+
+bool MultiplayerHost::try_start() {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	if (ready_confirms) {
+		printf("need %u more confirms\n", ready_confirms);
+		return false;
+	}
+
+	assert(gcb);
+
+	// create players
+	player_id pid = 0;
+
+	for (auto &x : slaves) {
+		if (x.id == 0 && dedicated)
+			continue;
+
+		// announce player to slaves
+		Command create = Command::create(const_cast<Slave&>(x).pid = pid++, x.name);
+		gcb->new_player(create.data.create);
+		sock.broadcast(*this, create);
+
+		// assign slave to player
+		Command assign = Command::assign(x.id, x.pid);
+		gcb->assign_player(assign.data.assign);
+		sock.broadcast(*this, assign);
+	}
+
+	return true;
+}
+
+
 bool MultiplayerHost::chat(const std::string &str, bool send) {
 	Command txt = Command::text(0, str);
 
@@ -178,14 +229,19 @@ bool MultiplayerHost::chat(const std::string &str, bool send) {
 	return true;
 }
 
-void MultiplayerHost::start(bool dedicated) {
+void MultiplayerHost::prepare_match() {
 	std::lock_guard<std::recursive_mutex> lock(mut);
 	unsigned count = (unsigned)slaves.size();
-	StartMatch settings = StartMatch::random(count, dedicated ? count - 1 : count);
+	ready_confirms = count - 1;
+	// headless server does not announce 'hidden' slave
+	if (dedicated)
+		--count;
+	StartMatch settings = StartMatch::random(count, count);
 	Command start = Command::start(settings);
 
 	// ignore any new clients: the match has already started at this point
 	sock.accept(false);
+	expected_settings.slave_count = count;
 	sock.broadcast(*this, start, false);
 	cb.start(settings);
 }
@@ -307,6 +363,13 @@ void MultiplayerClient::eventloop() {
 			cb.chat(0, "Communication error");
 			activated.store(false);
 			continue;
+		case CmdType::create:
+			assert(gcb);
+			gcb->new_player(cmd.data.create);
+			break;
+		case CmdType::assign:
+			gcb->assign_player(cmd.data.assign);
+			break;
 		}
 	}
 
@@ -353,25 +416,49 @@ Map::Map(LCG &lcg, const StartMatch &settings) : w(settings.map_w), h(settings.m
 	memset(heights.get(), 0, w * h);
 }
 
-bool operator==(const Player &lhs, const Player &rhs) {
-	return lhs.id == rhs.id;
+Player::Player(player_id id) : Player(id, "") {}
+
+Player::Player(player_id id, const std::string &name)
+	: id(id), state(PlayerState::active), cheats((PlayerCheat)0), ai(0), name(name) {}
+
+bool operator<(const Player &lhs, const Player &rhs) {
+	return lhs.id < rhs.id;
 }
 
 Game::Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings)
 	: mp(mp), lobby(lobby), mode(mode), state(GameState::init), lcg(LCG::ansi_c(settings.seed))
-	, settings(settings), players(), id_map(), mut(), map(lcg, settings) {
-}
+	, settings(settings), players(), usertbl(), mut(), map(lcg, settings)
+	, ticks_per_second(50), tick_interval(1.0 / ticks_per_second), tick_timer(0) {}
 
 Game::~Game() {
 	if (lobby)
 		menu_lobby_stop_game(lobby);
 }
 
-void Game::idle(unsigned ms) {
+void Game::tick(unsigned n) {
+	printf("do %u ticks\n", n);
+}
+
+void Game::step(unsigned ms) {
 	std::lock_guard<std::recursive_mutex> lock(mut);
+	tick_timer += ms / 1000.0;
+	if (tick_timer >= tick_interval) {
+		tick(tick_timer / tick_interval);
+		tick_timer = fmod(tick_timer, tick_interval);
+	}
+}
+
+void Game::step(double sec) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	tick_timer += sec;
+	if (tick_timer >= tick_interval) {
+		tick(tick_timer / tick_interval);
+		tick_timer = fmod(tick_timer, tick_interval);
+	}
 }
 
 void Game::chmode(GameMode mode) {
+	std::lock_guard<std::recursive_mutex> lock(mut);
 }
 
 }

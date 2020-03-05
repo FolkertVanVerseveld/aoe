@@ -48,17 +48,17 @@ const unsigned cmd_sizes[] = {
 void CmdData::hton(uint16_t type) {
 	assert(cmd_sizes[(unsigned)CmdType::max - 1]);
 	static_assert(sizeof(JoinUser) == sizeof(user_id) + NAME_LIMIT);
-	static_assert(sizeof(user_id) == sizeof(uint32_t));
+	static_assert(sizeof(user_id) == sizeof(uint16_t));
 
 	switch ((CmdType)type) {
 	case CmdType::text:
-		text.from = htobe32(text.from);
+		text.from = htobe16(text.from);
 		break;
 	case CmdType::join:
-		join.id = htobe32(join.id);
+		join.id = htobe16(join.id);
 		break;
 	case CmdType::leave:
-		leave = htobe32(leave);
+		leave = htobe16(leave);
 		break;
 	case CmdType::start:
 		start.map_w = htobe16(start.map_w);
@@ -68,14 +68,13 @@ void CmdData::hton(uint16_t type) {
 		break;
 	case CmdType::ready:
 		ready.slave_count = htobe16(ready.slave_count);
-		ready.prng_next = htobe16(ready.prng_next);
 		break;
 	case CmdType::create:
 		create.id = htobe16(create.id);
 		break;
 	case CmdType::assign:
-		assign.from = htobe32(assign.from);
-		assign.to = htobe32(assign.to);
+		assign.from = htobe16(assign.from);
+		assign.to = htobe16(assign.to);
 		break;
 	}
 }
@@ -83,13 +82,13 @@ void CmdData::hton(uint16_t type) {
 void CmdData::ntoh(uint16_t type) {
 	switch ((CmdType)type) {
 	case CmdType::text:
-		text.from = be32toh(text.from);
+		text.from = be16toh(text.from);
 		break;
 	case CmdType::join:
-		join.id = be32toh(join.id);
+		join.id = be16toh(join.id);
 		break;
 	case CmdType::leave:
-		leave = be32toh(leave);
+		leave = be16toh(leave);
 		break;
 	case CmdType::start:
 		start.map_w = be16toh(start.map_w);
@@ -99,13 +98,12 @@ void CmdData::ntoh(uint16_t type) {
 		break;
 	case CmdType::ready:
 		ready.slave_count = be16toh(ready.slave_count);
-		ready.prng_next = be16toh(ready.prng_next);
 		break;
 	case CmdType::create:
 		create.id = be16toh(create.id);
 		break;
 	case CmdType::assign:
-		assign.from = be32toh(assign.from);
+		assign.from = be16toh(assign.from);
 		assign.to = be16toh(assign.to);
 		break;
 	}
@@ -125,6 +123,10 @@ void Command::ntoh() {
 
 std::string TextMsg::str() const {
 	return std::string(text, strlen(text, TEXT_LIMIT));
+}
+
+CreatePlayer::CreatePlayer(player_id id, const std::string &str) : id(id), name() {
+	strncpy(name, str.c_str(), NAME_LIMIT);
 }
 
 std::string CreatePlayer::str() const {
@@ -148,6 +150,11 @@ JoinUser::JoinUser(user_id id, const std::string &str) : id(id) {
 JoinUser Command::join() {
 	assert(type == (uint16_t)CmdType::join);
 	return data.join;
+}
+
+Ready Command::ready() {
+	assert(type == (uint16_t)CmdType::ready);
+	return data.ready;
 }
 
 Command Command::join(user_id id, const std::string &str) {
@@ -188,7 +195,16 @@ Command Command::start(StartMatch &settings) {
 	return cmd;
 }
 
-Command Command::create(user_id id, const std::string &str) {
+Command Command::ready(uint16_t slave_count, uint16_t prng_next) {
+	Command cmd;
+
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::ready];
+	cmd.data.ready.slave_count = slave_count;
+
+	return cmd;
+}
+
+Command Command::create(player_id id, const std::string &str) {
 	Command cmd;
 
 	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::create];
@@ -230,8 +246,10 @@ void StartMatch::dump() const {
 
 StartMatch StartMatch::random(unsigned slave_count, unsigned player_count) {
 	unsigned size = player_count <= 8 ? map_sizes[player_count] : (player_count + 6) * 12;
+	// maps bigger than 65536*65536 are not supported, since we would need at least 4GB of RAM
+	assert(size <= UINT16_MAX);
 	
-	StartMatch m{rand(), 0, size, size, rand(), rand(), rand(), 1, 1, slave_count};
+	StartMatch m{(uint8_t)rand(), 0, (uint16_t)size, (uint16_t)size, (uint32_t)rand(), (uint8_t)rand(), (uint8_t)rand(), 1, 1, (uint16_t)slave_count};
 	m.dump();
 
 	return m;

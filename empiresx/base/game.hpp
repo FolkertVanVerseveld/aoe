@@ -30,6 +30,12 @@ public:
 	virtual void start(const StartMatch &settings) = 0;
 };
 
+namespace game {
+
+class GameCallback;
+
+}
+
 class Multiplayer {
 protected:
 	Net net;
@@ -38,7 +44,7 @@ protected:
 	std::thread t_worker;
 	std::recursive_mutex mut; // lock for all following variables
 	MultiplayerCallback &cb;
-	GameCallback *gcb;
+	game::GameCallback *gcb;
 	bool invalidated;
 public:
 	user_id self;
@@ -50,8 +56,6 @@ public:
 
 	virtual void eventloop() = 0;
 
-	void set_gcb(GameCallback *gcb);
-
 	virtual bool chat(const std::string &str, bool send=true) = 0;
 };
 
@@ -59,11 +63,11 @@ class Slave final {
 	sockfd fd;
 public:
 	user_id id; /**< unique identifier (is equal to server's modification counter at creation) */
-	uint16_t pid; /**< virtual player unique identifier (also used to detect modification changes) */
+	player_id pid; /**< virtual player unique identifier (also used to detect modification changes) */
 	std::string name;
 
-	Slave(sockfd fd) : fd(fd), id(0), name() {}
-	Slave(sockfd fd, user_id id) : fd(fd), id(id), name() {}
+	Slave(sockfd fd);
+	Slave(sockfd fd, user_id id);
 	// serversocket only: for id == 0
 	Slave(const std::string &name);
 
@@ -73,16 +77,16 @@ public:
 class MultiplayerHost final : public Multiplayer, protected ServerCallback {
 	ServerSocket sock;
 	std::set<Slave> slaves;
-	std::map<user_id, sockfd> idmap;
 	user_id idmod;
+	Ready expected_settings; /**< data that each client has to send that must match */
+	unsigned ready_confirms; /**< pending ready messages from slaves */
+	bool dedicated; /**< whether the server is running headless (i.e. without a GUI) */
 public:
-	MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port);
+	MultiplayerHost(MultiplayerCallback &cb, const std::string &name, uint16_t port, bool dedicated=false);
 	~MultiplayerHost() override;
 
 private:
 	Slave &slave(sockfd fd);
-
-	sockfd findfd(user_id id);
 public:
 	void eventloop() override;
 	void incoming(pollev &ev) override;
@@ -91,10 +95,13 @@ public:
 	void shutdown() override;
 
 	void dump();
+	void set_gcb(game::GameCallback *gcb);
+
+	bool try_start();
 
 	bool chat(const std::string &str, bool send=true) override;
 	// TODO enable user to customize map settings
-	void start(bool dedicated);
+	void prepare_match();
 };
 
 class Peer final {
@@ -118,6 +125,7 @@ public:
 	~MultiplayerClient() override;
 
 	void eventloop() override;
+	void set_gcb(game::GameCallback *gcb, uint16_t slave_count, uint16_t prng_next);
 	bool chat(const std::string &str, bool send=true) override;
 };
 
@@ -227,23 +235,21 @@ struct PlayerHandicap final {
 };
 
 /**
- * Virtual user, this makes it possible for multiple players to control the
- * same user. NOTE never ever cache a pointer or index to a player directly,
- * since it can change on the fly!
+ * Virtual user, this makes it possible for multiple players to control the same user.
  */
 class Player {
-	uint16_t id; /**< unique identifier */
-	// XXX do we still need this?
-	uint16_t uid; /**< index to user table, not unique */
+	player_id id; /**< unique identifier */
 	PlayerState state;
-	PlayerHandicap hc; /**< player handicap */
+	//std::multiset<PlayerHandicap> hc; /**< player handicap */
 	PlayerCheat cheats; /**< active OP actions */
 	unsigned ai; /**< determines the AI mode, zero if human player without handicap/assistance */
-	std::string name; /**< E.g. Ramses III, this does not have to be the slave name that controls it */
 public:
-	Player();
+	std::string name; /**< E.g. Ramses III, this does not have to be the slave name that controls it */
 
-	friend bool operator==(const Player&, const Player&);
+	Player(player_id id); // only used to lookup players in a set
+	Player(player_id id, const std::string &name);
+
+	friend bool operator<(const Player&, const Player&);
 };
 
 class GameCallback {
@@ -252,26 +258,33 @@ public:
 
 	virtual void new_player(const CreatePlayer&) = 0;
 	virtual void assign_player(const AssignSlave&) = 0;
-
 };
 
-class Game final {
+class Game : public GameCallback {
+protected:
 	Multiplayer *mp;
 	MenuLobby *lobby;
 	GameMode mode;
 	GameState state;
 	LCG lcg;
 	StartMatch settings;
-	std::map<uint16_t, Player> players;
-	std::map<uint16_t, uint16_t> id_map; /**< Lookuptable for player id using slave id */
+	std::set<Player> players;
+	std::map<user_id, player_id> usertbl; /**< Lookuptable for user id using slave player id */
 	std::recursive_mutex mut;
+	unsigned ticks_per_second;
+	double tick_interval;
+	double tick_timer;
 public:
 	Map map;
 
 	Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings);
 	~Game();
 
-	void idle(unsigned ms);
+private:
+	void tick(unsigned n=1);
+public:
+	void step(unsigned ms);
+	void step(double sec);
 	void chmode(GameMode mode);
 };
 

@@ -15,7 +15,7 @@
 #include <mutex>
 
 typedef uint16_t player_id;
-typedef uint32_t user_id;
+typedef uint16_t user_id;
 
 #if windows
 #include <WinSock2.h>
@@ -100,12 +100,22 @@ struct TextMsg final {
 
 struct Ready final {
 	uint16_t slave_count;
-	uint16_t prng_next; /**< LCG checksum */
+
+	friend bool operator==(const Ready &lhs, const Ready &rhs) {
+		return lhs.slave_count == rhs.slave_count;
+	}
+
+	friend bool operator!=(const Ready &lhs, const Ready &rhs) {
+		return !(lhs == rhs);
+	}
 };
 
 struct CreatePlayer final {
 	player_id id;
 	char name[NAME_LIMIT];
+
+	CreatePlayer() = default;
+	CreatePlayer(player_id id, const std::string &str);
 
 	std::string str() const;
 };
@@ -151,6 +161,7 @@ public:
 	union CmdData data;
 	TextMsg text();
 	JoinUser join();
+	Ready ready();
 
 	void hton();
 	void ntoh();
@@ -159,7 +170,8 @@ public:
 	static Command join(user_id id, const std::string &str);
 	static Command leave(user_id id);
 	static Command start(StartMatch &match);
-	static Command create(user_id id, const std::string &str);
+	static Command ready(uint16_t slave_count, uint16_t prng_next);
+	static Command create(player_id id, const std::string &str);
 	static Command assign(user_id id, player_id pid);
 };
 
