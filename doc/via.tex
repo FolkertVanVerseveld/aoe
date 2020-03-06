@@ -18,7 +18,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[english,vietnamese]{babel}
 \usepackage[T1]{fontenc}
-\usepackage{hyperref}
+\usepackage{hyperref, pdfpages}
 
 \title[Preserving and opensourcing RTS video games]{Porting Age of Empires}
 \author{Folkert van Verseveld}
@@ -33,7 +33,24 @@
   \titlepage
 \end{frame}
 
-% Uncomment these lines for an automatically generated outline.
+%% ---
+
+\begin{frame}
+	\begin{figure}
+	\includegraphics[width=0.7\linewidth]{images/aoe_cover.jpg}
+	\end{figure}
+
+\end{frame}
+
+%% ---
+
+\begin{frame}
+	\begin{figure}
+	\includegraphics[width=0.9\linewidth]{images/website.png}
+	\end{figure}
+
+\end{frame}
+
 \begin{frame}{Outline}
 	\tableofcontents
 \end{frame}
@@ -44,24 +61,16 @@
 
 \begin{frame}{Introduction}
 	\begin{itemize}
+		\item Folkert likes oldskool and vintage soft- and hardware
 		\item Tinkering with computers since 2 years old (i.e. 23 years)
-		\item Programming since 6 years old (19 years)
+		\item 19 years programming experience
 		\item Lots of unfinished projects (this is one of them)
-		\item In june 2016, had to quit studying Computer Science due to various reasons
+		\item In june 2016, had to quit studying Computer Science due to various reasons and restarted in september at UvA
 		\item Lots of free time at hands, so why not port my all time favorite RTS game?
 		\item Working on and off the project since september 2016
 		\item Several thousands hours of work (rough estimate)
 		\item And after all this time... AoE remake is still incomplete!
 	\end{itemize}
-\end{frame}
-
-%% ---
-
-\begin{frame}
-	\begin{figure}
-	\includegraphics[width=0.7\linewidth]{images/aoe_cover.jpg}
-	\end{figure}
-
 \end{frame}
 
 % ---
@@ -70,11 +79,19 @@
 
 \begin{frame}{Timeline}
 	\begin{itemize}
-		\item 2016: Project setup, gathering documentation, reverse engineering
-		\item 2017: Writing DRS tools, UI stack, reverse engineering graphics
-		\item 2018-2019: Completed in-game graphics and basic map file format
-		\item 2020: Rewrite engine and server from scratch
-		\item 2020-: HD-support, Multiplayer mode, \dots
+		\item[2016] Project setup, gathering documentation, reverse engineering
+		\item[2017] Writing DRS tools, UI stack, reverse engineering graphics
+		\item[2017-04] Reverse engineering SLP, joined OpenAge team
+		\item[2017-08] Project stalled: hacking on C64, gathering more documentation
+		\item[2018-09] Completed in-game graphics
+		\item[2018-12] Project stalled: Still recovering from X18
+		\item[2019-04] TTF rendering hell, cursing at libfreetype
+		\item[2019-06] Figured out SCN compression
+		%\item[2019-08] Asked to join Genie-Reverse team
+		\item[2019-11] TTF solution found
+		\item[2020] Rewrite engine and server from scratch
+		\item[2020-01] Joined Genie-Reverse team
+		\item[2020-] HD-support, Multiplayer mode, \dots
 	\end{itemize}
 \end{frame}
 
@@ -83,8 +100,22 @@
 \begin{frame}{Why hasn't AoE been completely opensourced yet?}
 	\begin{itemize}
 		\item No real need to: still runs on Windows 10 and Wine
-		\item Difficult to port: around 500.000 lines of C code and some assembly
-		\item Fragmented community: around 10 groups are trying to opensource AoE: only 3 are still active
+		\item Difficult to port: around 400.000 lines of C++/C/assembly
+		\begin{itemize}
+			\item Technical challenges: propietary file formats, undocumented behavior, \dots
+			\item Several things have only been partially figured out
+		\end{itemize}
+		\item Community
+		\begin{itemize}
+			\item[Fragmented] 10+ groups are trying to opensource AoE: 3 are still active
+			\item[Cooperation] completely different goals and toolchains
+		\end{itemize}
+		\item Legal issues
+		\begin{itemize}
+			\item[IP] Microsoft/Ensemble Studios still own rights to product
+			\item[Licensing] can't resell directly
+			\item[Solution] same approach as OpenTTD, OpenRCT, \dots
+		\end{itemize}
 	\end{itemize}
 
 \end{frame}
@@ -101,10 +132,36 @@
 		\item Stupid A.I. moments
 		\item Couple of bugs (at least less than Definitive Edition)
 		\begin{itemize}
-			\item Some are nowadays used for strategy (blocking units, pop cap)
-			\item Save file corruption for projectiles (AFAIK only in 1.0c)
+			\item[Useful] blocking enemy-units, training more units than allowed
+			\item[Annoying] save file corruption for projectiles (AFAIK only in 1.0c)
 		\end{itemize}
 	\end{itemize}
+
+\end{frame}
+
+% ---
+
+\begin{frame}{Why port AoE?}
+	\begin{itemize}
+		\item No real need to: still runs on Windows 10 and Wine
+		\item Extremely challenging and timeconsuming as a one-man-project
+		\item Community
+		\begin{itemize}
+			\item Deserves open-source version
+			\item Microsoft's Definitive Edition sucks
+			\item We need mod support
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{Alive and kicking}
+	Chim Sẻ Đi Nắng tái đấu Shen Long thể loại 2vs2
+
+	\begin{figure}
+	\includegraphics[width=0.85\linewidth]{images/gamesao_2vs2.jpg}
+	\end{figure}
 
 \end{frame}
 
@@ -123,12 +180,72 @@
 
 % ---
 
-\begin{frame}{Alive and kicking}
-	Chim Sẻ Đi Nắng tái đấu Shen Long thể loại 2vs2
+\section{History}
 
+\subsection{Dawn of Man}
+
+\begin{frame}{History of AoE}
 	\begin{figure}
-	\includegraphics[width=0.85\linewidth]{images/gamesao_2vs2.jpg}
+	\includegraphics[width=\linewidth]{images/dawn_of_man.jpg}
 	\end{figure}
+\end{frame}
+
+% ---
+
+\begin{frame}{Dawn of Man}
+	\begin{itemize}
+		\item TRIBE engine
+		\item Tony \& Rick Goodman and Bruce C. Shelley
+		\item Civilisation-like style
+		\item Project started around 1995
+		\item Old alpha version preserved by Strong Museum of Play curators Andrew Borman and Lauren
+		% TODO verify this
+		\item Engine already uses inline assembly code for graphical subsystem
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\subsection{Ensemble Studios}
+
+\begin{frame}{History - Ensemble Studios}
+	\begin{itemize}
+		\item Worked closely together with Microsoft months before release
+		\item Age of Empires released on October 15, 1997
+		\item The Rise of Rome Expansion on October 22, 1998
+		\item AoE was unique in its kind
+		\item Many sequels released
+		%\item Forgotten Empires, AoE II HD patch, \dots
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{History - Rise and Fall of Ensemble Studios}
+	\begin{itemize}
+		\item Founded in 1995 Dallas, Texas, USA
+		\item Around 60 fte working on Age of Empires
+		\item Microsoft acquired Ensemble Studios in 2001
+		\item Peak performance with AoE II Conquerors Expansion
+		\item Many ES employees left after AoE II
+		\item Almost nothing completed on time
+		\item Poor guidance after AoE III
+		\item Closed on january 29, 2009
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{So what's the progress so far?}
+	Community progress:
+	\begin{tabular}{l|l|l|l}
+		Project & Started & Collab. & Status \\ \hline
+		OpenAge & 2013 & 20/140 & Basic engine \\
+		AoE remake & 2016 & 1 & Basic dummy server \\
+		AoCE-I & 2017 & 6 & Renders map and some buildings \\
+		GenieReverse & 2017 & 4 & Reconstructing codebase \\
+		Chariot & 2017 & 7 & Basic map rendering \\ %Stalled since 2018 \\
+	\end{tabular}
 
 \end{frame}
 
@@ -138,8 +255,27 @@
 	Not much at the moment, but these demo's give an illustration.
 
 	\begin{itemize}
-		\item OpenAge
+		\item OpenAge (currently, only AoE II or later supported)
 		\item Folkert's AoE remake
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{OpenAge - AoE II}
+	\begin{figure}
+	\includegraphics[width=\linewidth]{images/openage.png}
+	\end{figure}
+\end{frame}
+
+% ---
+
+\section{Demo}
+
+\begin{frame}{AoE remake}
+	\begin{itemize}
+		\item Still a prototype, so don't expect it to be good
+		\item Server hosted on XXX.XXX.XXX.XXX:25659
 	\end{itemize}
 \end{frame}
 
@@ -154,9 +290,10 @@
 	\begin{itemize}
 		\item Replicate original game experience
 		\item Redesign multiplayer from scratch
-		\item Support game mods
+		\item Support game mods (c/lua/python, TBD)
 		\item Provide tools for legacy file formats
-		\item Fix gameplay and annoying bugs
+		\item Upgrade gameplay
+		\item Fix bugs in original: some useful ones may be kept/selectable
 	\end{itemize}
 
 \end{frame}
@@ -179,7 +316,7 @@
 
 % ---
 
-\begin{frame}{How are we going to port AoE?}
+\begin{frame}{Porting AoE}
 
 	\begin{itemize}
 		\item Redesign multiplayer from scratch
@@ -204,6 +341,142 @@
 
 % ---
 
+\section{Reverse Engineering}
+
+\begin{frame}{Reverse Engineering - Overview}
+	\begin{itemize}
+		\item Need professional tools and Windows documentation
+		\begin{itemize}
+			\item[x86 diassembly] HexRays IDA Freeware 7.0 (or Ghidra)
+			\item[documentation] MSDN and WineDocs (when MSDN sucks)
+			\item[file formats] ResEdit (setup dialogs, sfx, in-game text), custom made tools
+			% TODO show hidden image of authors in setup
+		\end{itemize}
+		\item Localization
+		\item Read (and write for mods) AoE specific files
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Reverse Engineering - Scenario's}
+	\begin{figure}
+	\includegraphics[width=\linewidth]{images/scn_re.png}
+	\end{figure}
+\end{frame}
+
+% ---
+
+\subsection{Challenges}
+
+\begin{frame}{Reverse Engineering - Challenges}
+	\begin{itemize}
+		\item Documentation is dated and/or wrong
+		\item Localization stored in PE DLLs: mapping, magic text
+		\item x86 assembly is not pretty to read and understand
+		\item Reverse engineer various Genie file formats
+	\end{itemize}
+
+	\begin{tabular}{l|l|l}
+	Name & Format type & Description \\ \hline
+	DRS & Data Resource Set & Uncompressed container for \\
+	& & SLP, SHP, WAV, and BIN files \\
+	SHP & Shape? & Bytecoded color indexed bitmap graphics \\
+	SLP & SHP list & Animation of SHPs \\
+	CPN & Campaign & Container for scenario's \\
+	SCN & Scenario & AoE Map
+	\end{tabular}
+
+\end{frame}
+
+% ---
+
+\subsection{Localization}
+
+\begin{frame}{Localization: PE file format}
+	\begin{itemize}
+		\item All in-game text stored in language.dll
+		\item DLLs use PE format
+		\item Need library to process data
+		\item PE is successor to COM
+		\item Designed to support graphical resources
+		\item Need professional tools and Windows documentation
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{Localization: PE support}
+	\begin{itemize}
+		\item Win32 API already supports this
+		\item Linux doesn't, wine does, but we don't want that
+		\item pelib, but
+		\begin{itemize}
+			\item Only provides partial information
+			\item Doesn't support text
+			\item Poor performance
+		\end{itemize}
+		\item libpev, but:
+		\begin{itemize}
+			\item We need direct access to resources
+			\item Inefficient for frequent use
+			\item BMP poorly supported
+			\item Does not support UTF16-strings properly
+		\end{itemize}
+		\item Windows also doesn't like cross arch DLLs
+		\item So... we need to roll our own
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{PE file format}
+	\begin{figure}
+	\includegraphics[width=\linewidth]{images/pe_format.png}
+	\end{figure}
+\end{frame}
+
+% ---
+
+\begin{frame}{}
+	\begin{figure}
+	\includegraphics[width=0.25\linewidth]{images/pe_layout.png}
+	\end{figure}
+\end{frame}
+
+% ---
+
+\begin{frame}{}
+	\begin{figure}
+	\includegraphics[width=0.85\linewidth]{images/pe_restree.png}
+	\end{figure}
+\end{frame}
+
+% ---
+
+\subsection{Challenges}
+
+\begin{frame}{Reverse Engineering - ASMdraw}
+	When AoE was being developed, a typical developer machine had 16MB RAM and 1-2MB video RAM
+	\begin{itemize}
+		\item Rendering is done every frame
+		\item Needs to be really fast
+		\item Programwide goto's in mid-function
+		\item Hand optimised code
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{Lessons Learned}
+	\begin{itemize}
+		\item Double check if something hasn't already been done before
+		\item Verify that previous work is correct
+		\item Always look for debug information
+	\end{itemize}
+
+\end{frame}
+
+% ---
+
 \begin{frame}{Rendering system}
 	\begin{itemize}
 		\item Game graphics rendered entirely using x86 assembly: ASMdraw
@@ -211,17 +484,6 @@
 		\item Optimised for pentium II?
 		% FIXME confirm year and heritage
 		\item May be inspired by 1992/5 MS-DOS VGA library
-	\end{itemize}
-
-\end{frame}
-
-% ---
-
-\begin{frame}{Community}
-	\begin{itemize}
-		\item SiegeEngineers: OpenAge (2013), Genie-Reverse (2016)
-		\item Chariot (2017)
-		\item Small groups here and there
 	\end{itemize}
 
 \end{frame}
