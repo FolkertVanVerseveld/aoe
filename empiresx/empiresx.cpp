@@ -457,12 +457,12 @@ private:
 
 		int left = (int)-view_x, top = (int)view_y;
 
-		for (unsigned ty = 0; ty < map.h; ++ty) {
-			for (unsigned tx = 0; tx < map.w; ++tx) {
+		for (unsigned ty = 0; ty < world.map.h; ++ty) {
+			for (unsigned tx = 0; tx < world.map.w; ++tx) {
 				int x, y;
 				tile_to_scr(x, y, tx, ty);
 
-				unsigned tile = map.tiles[ty * map.w + tx];
+				unsigned tile = world.map.tiles[ty * world.map.w + tx];
 
 				desert_tiles.subimage(tile).draw(r, left + x, top + y);
 			}

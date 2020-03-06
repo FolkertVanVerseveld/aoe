@@ -13,6 +13,7 @@
 #include <stack>
 
 #include "random.hpp"
+#include "world.hpp"
 
 namespace genie {
 
@@ -146,44 +147,6 @@ enum class GameState {
 	closed
 };
 
-enum class TileId {
-	// FIXME support forest, water and borders
-	FLAT1,
-	FLAT2,
-	FLAT3,
-	FLAT4,
-	FLAT5,
-	FLAT6,
-	FLAT7,
-	FLAT8,
-	FLAT9,
-	HILL_CORNER_SOUTH_EAST1,
-	HILL_CORNER_NORTH_WEST1,
-	HILL_CORNER_SOUTH_WEST1,
-	HILL_CORNER_NORTH_EAST1,
-	HILL_SOUTH,
-	HILL_WEST,
-	HILL_EAST,
-	HILL_NORTH,
-	HILL_CORNER_SOUTH_EAST2,
-	HILL_CORNER_NORTH_WEST2,
-	HILL_CORNER_SOUTH_WEST2,
-	HILL_CORNER_NORTH_EAST2,
-	FLAT_CORNER_SOUTH_EAST,
-	FLAT_CORNER_NORTH_WEST,
-	FLAT_CORNER_SOUTH_WEST,
-	FLAT_CORNER_NORTH_EAST,
-	TILE_MAX
-};
-
-class Map final {
-public:
-	unsigned w, h;
-	std::unique_ptr<uint8_t[]> tiles, heights; // y,x order
-
-	Map(LCG &lcg, const StartMatch &settings);
-};
-
 enum class PlayerState {
 	active = 0x01, /**< player is generating/processing events. */
 	op     = 0x02, /**< player can directly control server. */
@@ -275,7 +238,7 @@ protected:
 	double tick_interval;
 	double tick_timer;
 public:
-	Map map;
+	World world;
 
 	Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings);
 	~Game();
