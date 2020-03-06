@@ -90,7 +90,7 @@ void ServerSocket::incoming(ServerCallback &cb) {
 		}
 
 		if (!accepting.load()) {
-			::closesocket(sock.fd);
+			::close(sock.fd);
 			continue;
 		}
 

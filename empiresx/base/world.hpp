@@ -3,9 +3,11 @@
 #pragma once
 
 #include "random.hpp"
+#include "math.hpp"
 
 #include <cassert>
 
+#include <array>
 #include <memory>
 #include <vector>
 #include <set>
@@ -79,7 +81,7 @@ public:
 	}
 
 	friend constexpr Vector2<T> operator/(Vector2<T> vec, T v) noexcept {
-		vec /= t;
+		vec /= v;
 		return vec;
 	}
 
@@ -88,6 +90,14 @@ public:
 		y /= v;
 		return *this;
 	}
+};
+
+enum class Quadrant {
+	tr = 0,
+	tl = 1,
+	bl = 2,
+	br = 3,
+	bad = 4,
 };
 
 template<typename T> class Box2 {
@@ -100,18 +110,30 @@ public:
 	constexpr Box2(const Vector2<T> &pos, const Vector2<T> &size) noexcept
 		: left(pos.x), top(pos.y), w(size.x), h(size.y) { assert(size.x >= 0 && size.y >= 0); }
 
-	constexpr T right() const noexcept { return left + width; }
-	constexpr T bottom() const noexcept { return top + height; }
+	constexpr T right() const noexcept { return left + w; }
+	constexpr T bottom() const noexcept { return top + h; }
 	constexpr Vector2<T> topleft() const noexcept { return Vector2<T>(left, top); }
 	constexpr Vector2<T> rightbottom() const noexcept { return Vector2<T>(right(), bottom()); }
-	constexpr Vector2<T> center() const noexcept { return Vector2<T>(left + width / 2, top + height / 2); }
+	constexpr Vector2<T> center() const noexcept { return Vector2<T>(left + w / 2, top + h / 2); }
 
 	constexpr bool contains(const Box2<T> &box) const noexcept {
 		return left <= box.left && top <= box.top && right() <= box.right() && bottom() <= box.bottom();
 	}
 
+	constexpr bool contains(const Vector2<T> &pt) const noexcept {
+		return pt.x >= left && pt.y >= top && pt.x < right() && pt.y < bottom();
+	}
+
 	constexpr bool intersects(const Box2<T> &box) const noexcept {
 		return !(left >= box.right() || top >= box.bottom() || right() <= box.left || bottom() <= box.top);
+	}
+
+	constexpr Quadrant quadrant(const Vector2<T> &pt) const noexcept {
+		if (!contains(pt))
+			return Quadrant::bad;
+
+		if (pt.y < center().y) {
+		}
 	}
 };
 
@@ -162,7 +184,7 @@ protected:
 public:
 	virtual void draw(Map &map) const = 0;
 
-	template<typename T> friend bool operator==(const Particle<T> &lhs, const Particle<T> &rhs) {
+	friend bool operator==(const Particle<T> &lhs, const Particle<T> &rhs) {
 		return lhs.id == rhs.id;
 	}
 
@@ -180,7 +202,7 @@ public:
 	unsigned hp, hp_max;
 
 	Unit(unsigned hp, const Box2<T> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0)
-		: hp(hp), hp_max(hp), Particle(pos, anim_index, image_index, color) {}
+		: hp(hp), hp_max(hp), Particle<T>(pos, anim_index, image_index, color) {}
 };
 
 class StaticResource final : public Unit<int>, public Resource {
@@ -188,13 +210,35 @@ public:
 	StaticResource(const Box2<int> &pos, ResourceType type, unsigned res_anim=0);
 };
 
+template<typename T> class Quadtree {
+	struct Quadnode {
+		std::array<std::unique_ptr<Quadnode>, 4> children;
+		// XXX it is tempting to use a set, but this will probably degrade performance and mess too much with data caches
+		std::vector<std::unique_ptr<Particle<T>>> items;
+	};
+
+	std::unique_ptr<Quadnode> root;
+	Box2<T> bounds;
+public:
+	Quadtree(const Box2<T> &box) : bounds(box), root(nullptr) {}
+
+	Quadtree(const Vector2<T> &size) : Quadtree(Box2<T>(0, 0, size.x, size.y)) {}
+
+	Quadnode *closest_node(Box2<T> &bnds, const Vector2<T> &pt) {
+		return nullptr;
+	}
+
+	void add(Particle<T> *item) {
+	}
+};
+
 /** Container for all particles, entities, etc. */
 class World final {
 public:
 	Map map;
 
-	std::set<unsigned, Particle<int>> tiled_objects;
-	std::set<unsigned, Particle<float>> movable_objects; // a.k.a. sprites
+	Quadtree<int> tiled_objects;
+	Quadtree<float> movable_objects; // a.k.a. sprites
 
 	World(LCG &lcg, const StartMatch &settings);
 };

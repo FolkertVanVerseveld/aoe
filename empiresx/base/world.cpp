@@ -59,7 +59,10 @@ StaticResource::StaticResource(const Box2<int> &pos, ResourceType type, unsigned
 	: Unit(res_hp[(unsigned)type], pos, res ? res : res_anim[(unsigned)type], 0)
 	, Resource(type, res_amount[(unsigned)type]) {}
 
-World::World(LCG &lcg, const StartMatch &settings) : map(lcg, settings) {}
+World::World(LCG &lcg, const StartMatch &settings)
+	: map(lcg, settings)
+	, tiled_objects(Vector2<int>(ispow2(settings.map_w) ? settings.map_w : nextpow2(settings.map_w), ispow2(settings.map_h) ? settings.map_h : nextpow2(settings.map_h)))
+	, movable_objects(Vector2<float>(static_cast<float>(settings.map_w), static_cast<float>(settings.map_h))) {}
 
 }
 
