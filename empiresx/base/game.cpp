@@ -446,6 +446,10 @@ void Game::tick(unsigned n) {
 
 void Game::step(unsigned ms) {
 	std::lock_guard<std::recursive_mutex> lock(mut);
+
+	if (state != GameState::running)
+		return;
+
 	tick_timer += ms / 1000.0;
 	if (tick_timer >= tick_interval) {
 		tick((unsigned)(tick_timer / tick_interval));
@@ -455,15 +459,15 @@ void Game::step(unsigned ms) {
 
 void Game::step(double sec) {
 	std::lock_guard<std::recursive_mutex> lock(mut);
+
+	if (state != GameState::running)
+		return;
+
 	tick_timer += sec;
 	if (tick_timer >= tick_interval) {
 		tick((unsigned)(tick_timer / tick_interval));
 		tick_timer = fmod(tick_timer, tick_interval);
 	}
-}
-
-void Game::chmode(GameMode mode) {
-	std::lock_guard<std::recursive_mutex> lock(mut);
 }
 
 }

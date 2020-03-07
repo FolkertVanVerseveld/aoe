@@ -26,4 +26,12 @@ Animation &ImageCache::get(res_id id) {
 	return const_cast<Animation&>(search->second);
 }
 
+namespace game {
+
+void Particle::draw(Map &map) const {
+
+}
+
+}
+
 }

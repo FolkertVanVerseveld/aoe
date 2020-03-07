@@ -31,6 +31,8 @@ namespace game {
 
 class DedicatedGame;
 
+void Particle::draw(Map&) const {}
+
 void worker_loop(DedicatedGame &game);
 
 class DedicatedGame final : public Game {

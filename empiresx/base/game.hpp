@@ -248,7 +248,7 @@ private:
 public:
 	void step(unsigned ms);
 	void step(double sec);
-	void chmode(GameMode mode);
+	//void chstate(GameState state);
 };
 
 }

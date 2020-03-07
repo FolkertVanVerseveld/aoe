@@ -127,6 +127,9 @@ const SDL_Rect menu_lobby_txt_start[screen_modes] = {
 	{312 + (632 - 312) / 2, 704 + (752 - 704) / 2},
 };
 
+/**
+ * Minimal wrapper for a player that can chat in the lobby or in-game.
+ */
 class MenuPlayer final {
 public:
 	user_id id;
@@ -149,6 +152,7 @@ public:
 		text.reset(new Text(r, f, name, SDL_Color{0xff, 0xff, 0}));
 	}
 
+	/** Delete any graphical stuff associated with this player. */
 	void hide() {
 		text.reset();
 	}
@@ -159,14 +163,6 @@ public:
 bool operator<(const MenuPlayer &lhs, const MenuPlayer &rhs) {
 	return lhs.id < rhs.id;
 }
-
-class MenuLobbyText final {
-public:
-	std::string text;
-	SDL_Color col;
-
-	MenuLobbyText(const std::string &text, SDL_Color col) : text(text), col(col) {}
-};
 
 class MenuLobbyState final {
 public:
@@ -181,6 +177,7 @@ public:
 			players.emplace(std::move(s.players.extract(s.players.begin())).value());
 	}
 
+	/** Finalise double buffer swap. This must be called from the main thread. */
 	void apply(std::deque<Text> &chat, SimpleRender &r, Font &f) {
 		for (auto &x : this->chat)
 			chat.emplace_front(r, eng->assets->fnt_default, x.text, x.col);
@@ -199,7 +196,7 @@ public:
 	int running;
 	StartMatch settings;
 
-	UIPlayerState(bool host) : mut(), txtchat(), state_now(), state_next(), host(host), running(-1) {}
+	UIPlayerState(bool host) : mut(), txtchat(), state_now(), state_next(), host(host), running(-1), settings() {}
 
 	/** Swap internal state to provide a `double buffering' like system */
 	bool dbuf(SimpleRender &r) {
@@ -244,36 +241,44 @@ public:
 
 	void chat(user_id from, const std::string &text) {
 		std::lock_guard<std::recursive_mutex> lock(mut);
+
 		// prepend name for message if it originated from a real user
 		if (from || host) {
 			auto search = state_now.players.find(from);
 			assert(search != state_now.players.end());
+
 			state_next.chat.emplace_back(search->name + ": " + text, SDL_Color{0xff, 0xff, 0});
 		} else {
 			chat(text, SDL_Color{0xff, 0, 0});
 		}
+
 		// FIXME should be thread-safe
 		check_taunt(text);
 	}
 
 	void join(JoinUser &usr) {
 		std::lock_guard<std::recursive_mutex> lock(mut);
+
 		state_next.players.emplace(usr);
 		chat(usr.nick() + " has joined", SDL_Color{0, 0xff, 0});
 	}
 
 	void leave(user_id id) {
 		std::lock_guard<std::recursive_mutex> lock(mut);
+
 		auto search = state_now.players.find(id);
 		assert(search != state_now.players.end());
 		chat(search->name + " has left", SDL_Color{0xff, 0, 0});
+
 		state_now.players.erase(id);
 	}
 
 	void start(const StartMatch &settings) {
 		std::lock_guard<std::recursive_mutex> lock(mut);
+
 		assert(running == -1);
 		running = 0;
+
 		this->settings = settings;
 	}
 };
@@ -308,8 +313,6 @@ class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCa
 	static constexpr unsigned key_up    = 0x02;
 	static constexpr unsigned key_left  = 0x04;
 	static constexpr unsigned key_down  = 0x08;
-
-	static constexpr int tw = 64, th = 32;
 
 	unsigned key_state;
 
@@ -447,11 +450,6 @@ public:
 	}
 
 private:
-	void tile_to_scr(int &x, int &y, int tx, int ty) {
-		y = (tx - ty) * th / 2;
-		x = (tx + ty) * tw / 2;
-	}
-
 	void paint_tiles() {
 		Animation &desert_tiles = img.get(15000);
 
@@ -469,24 +467,7 @@ private:
 		}
 	}
 
-public:
-	void new_player(const CreatePlayer &create) override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		players.emplace(create.id, create.str());
-	}
-
-	void assign_player(const AssignSlave &assign) override {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		assert(players.find(assign.to) != players.end());
-		usertbl.emplace(assign.from, assign.to);
-	}
-
-	void paint() override {
-		r.color({0, 0, 0, SDL_ALPHA_OPAQUE});
-		r.clear();
-
-		paint_tiles();
-
+	void paint_hud_borders() {
 		// figure out which border we need
 		res_id res_border = res_borders[(unsigned)r.mode];
 		Animation &anim_border = img.get(res_border);
@@ -528,7 +509,27 @@ public:
 		img_bottom.draw(r, left, top);
 
 		playerstate->paint(r, 8, f_chat->bounds().y - 20, img_top.texture.height);
+	}
 
+public:
+	void new_player(const CreatePlayer &create) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		players.emplace(create.id, create.str());
+	}
+
+	void assign_player(const AssignSlave &assign) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+
+		assert(players.find(assign.to) != players.end());
+		usertbl.emplace(assign.from, assign.to);
+	}
+
+	void paint() override {
+		r.color({0, 0, 0, SDL_ALPHA_OPAQUE});
+		r.clear();
+
+		paint_tiles();
+		paint_hud_borders();
 		paint_details(0);
 	}
 };

@@ -14,6 +14,9 @@
 
 namespace genie {
 
+/**
+ * General graphical interface for a menu the user can navigate with.
+ */
 class Menu {
 protected:
 	SimpleRender &r;
@@ -28,6 +31,7 @@ public:
 	Animation anim_bkg[lgy_screen_modes];
 	bool enhanced;
 
+	// options for painting details
 	static constexpr unsigned show_border = 0x01;
 	static constexpr unsigned show_title = 0x02;
 	static constexpr unsigned show_background = 0x04;
@@ -49,7 +53,7 @@ public:
 
 	virtual void idle(Uint32 ms) {}
 	virtual void paint();
-
+	/** Low level call from paint to only draw certain aspects. See the static constexpr show_ options for details. */
 	void paint_details(unsigned options);
 };
 
@@ -70,5 +74,18 @@ public:
 };
 
 extern std::unique_ptr<Navigator> nav;
+
+/**
+ * Minimal wrapper to show any chat messages in the lobby and in-game.
+ * This does not contain any UI elements, since these cannot be
+ * constructed any thread other than the main thread.
+ */
+class MenuLobbyText final {
+public:
+	std::string text;
+	SDL_Color col;
+
+	MenuLobbyText(const std::string &text, SDL_Color col) : text(text), col(col) {}
+};
 
 }

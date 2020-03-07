@@ -132,8 +132,10 @@ public:
 		if (!contains(pt))
 			return Quadrant::bad;
 
-		if (pt.y < center().y) {
-		}
+		if (pt.y < center().y)
+			return pt.x < center().x ? Quadrant::tl : Quadrant::tr;
+
+		return pt.x < center().x ? Quadrant::bl : Quadrant::br;
 	}
 };
 
@@ -170,75 +172,38 @@ public:
 
 extern unsigned particle_id_counter;
 
-template<typename T> class Particle {
+class Particle {
 protected:
-	Box2<T> pos;
+	Box2<float> pos, scr;
+
 	unsigned anim_index;
 	unsigned image_index;
-
 	unsigned color, id;
 
-
-	Particle(const Box2<T> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0)
+	Particle(const Box2<float> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0)
 		: pos(pos), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter++) {}
 public:
-	virtual void draw(Map &map) const = 0;
+	virtual void draw(Map &map) const;
 
-	friend bool operator==(const Particle<T> &lhs, const Particle<T> &rhs) {
+	friend bool operator==(const Particle &lhs, const Particle &rhs) {
 		return lhs.id == rhs.id;
 	}
 
-	friend bool operator==(const Particle<T> &lhs, unsigned id) {
+	friend bool operator==(const Particle &lhs, unsigned id) {
 		return lhs.id == id;
 	}
 };
 
-/**
- * Elementary world unit. This includes gaia stuff (e.g. trees, gold, berry
- * bushes...)
- */
-template<typename T> class Unit : public Particle<T> {
+class StaticResource : public Particle, public Resource {
 public:
-	unsigned hp, hp_max;
-
-	Unit(unsigned hp, const Box2<T> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0)
-		: hp(hp), hp_max(hp), Particle<T>(pos, anim_index, image_index, color) {}
-};
-
-class StaticResource final : public Unit<int>, public Resource {
-public:
-	StaticResource(const Box2<int> &pos, ResourceType type, unsigned res_anim=0);
-};
-
-template<typename T> class Quadtree {
-	struct Quadnode {
-		std::array<std::unique_ptr<Quadnode>, 4> children;
-		// XXX it is tempting to use a set, but this will probably degrade performance and mess too much with data caches
-		std::vector<std::unique_ptr<Particle<T>>> items;
-	};
-
-	std::unique_ptr<Quadnode> root;
-	Box2<T> bounds;
-public:
-	Quadtree(const Box2<T> &box) : bounds(box), root(nullptr) {}
-
-	Quadtree(const Vector2<T> &size) : Quadtree(Box2<T>(0, 0, size.x, size.y)) {}
-
-	Quadnode *closest_node(Box2<T> &bnds, const Vector2<T> &pt) {
-		return nullptr;
-	}
-
-	void add(Particle<T> *item) {
-	}
+	StaticResource(const Box2<float> &pos, ResourceType type, unsigned res_anim, unsigned image=0);
 };
 
 /** Container for all particles, entities, etc. */
 class World final {
 public:
 	Map map;
-
-	Quadtree<int> tiled_objects;
-	Quadtree<float> movable_objects; // a.k.a. sprites
+	std::vector<std::unique_ptr<StaticResource>> static_res;
 
 	World(LCG &lcg, const StartMatch &settings);
 };
