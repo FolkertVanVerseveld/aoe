@@ -174,6 +174,7 @@
 		\item Definitive Edition released on 20-02-2018 and... it's not so good:
 		\href{https://steamcommunity.com/id/youshallnothash/recommended/1017900/}{Steam review},
 		\url{https://www.youtube.com/watch?v=4g9F-pGQOco}
+		% 59:36 unit blocking with buildings
 	\end{itemize}
 
 \end{frame}
@@ -241,11 +242,12 @@
 	\begin{tabular}{l|l|l|l}
 		Project & Started & Collab. & Status \\ \hline
 		OpenAge & 2013 & 20/140 & Basic engine \\
-		AoE remake & 2016 & 1 & Basic dummy server \\
+		*AoE remake & 2016 & 1 & Basic dummy server \\
 		AoCE-I & 2017 & 6 & Renders map and some buildings \\
 		GenieReverse & 2017 & 4 & Reconstructing codebase \\
 		Chariot & 2017 & 7 & Basic map rendering \\ %Stalled since 2018 \\
 	\end{tabular}
+	(*) this is my one-man-project.
 
 \end{frame}
 
@@ -266,6 +268,7 @@
 	\begin{figure}
 	\includegraphics[width=\linewidth]{images/openage.png}
 	\end{figure}
+	\url{https://www.youtube.com/watch?v=4GujF6YGSBY}
 \end{frame}
 
 % ---
@@ -275,7 +278,8 @@
 \begin{frame}{AoE remake}
 	\begin{itemize}
 		\item Still a prototype, so don't expect it to be good
-		\item Server hosted on XXX.XXX.XXX.XXX:25659
+		\item Hosted on \url{https://github.com/folkertvanverseveld/aoe}
+		\item Server running on 159.69.33.193:25659
 	\end{itemize}
 \end{frame}
 
@@ -347,7 +351,7 @@
 	\begin{itemize}
 		\item Need professional tools and Windows documentation
 		\begin{itemize}
-			\item[x86 diassembly] HexRays IDA Freeware 7.0 (or Ghidra)
+			\item[dissassembly] HexRays IDA Freeware 7.0 (or Ghidra)
 			\item[documentation] MSDN and WineDocs (when MSDN sucks)
 			\item[file formats] ResEdit (setup dialogs, sfx, in-game text), custom made tools
 			% TODO show hidden image of authors in setup
@@ -452,7 +456,7 @@
 
 % ---
 
-\subsection{Challenges}
+\subsection{ASMdraw}
 
 \begin{frame}{Reverse Engineering - ASMdraw}
 	When AoE was being developed, a typical developer machine had 16MB RAM and 1-2MB video RAM
@@ -466,67 +470,75 @@
 
 % ---
 
-\begin{frame}{Lessons Learned}
-	\begin{itemize}
-		\item Double check if something hasn't already been done before
-		\item Verify that previous work is correct
-		\item Always look for debug information
-	\end{itemize}
-
-\end{frame}
-
-% ---
-
 \begin{frame}{Rendering system}
 	\begin{itemize}
 		\item Game graphics rendered entirely using x86 assembly: ASMdraw
 		% FIXME confirm this
-		\item Optimised for pentium II?
+		\item It's really fast. Hand optimised for pentium I
+		\item 16MB RAM, 1MB VRAM
 		% FIXME confirm year and heritage
 		\item May be inspired by 1992/5 MS-DOS VGA library
+		\item Located in THIS\_COD section in PE
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{Reverse engineering source code using HexRays IDA}
+	\begin{itemize}
+		\item Can convert low-level assembly code to pseudo C
+		\item Unfortunately, fails to convert some functions in ASMdraw (e.g. ASMdraw\_sprite)
+		\item Still able to do code-flow analysis and investigate with debugger
+	\end{itemize}
+\end{frame}
+
+% ---
+
+\begin{frame}{HexRays IDA - Proximity view}
+	\begin{figure}
+	\hspace*{-10mm}
+	\includegraphics[width=1.2\linewidth]{images/proximityview_asmdraw_sprite.png}
+	\end{figure}
+\end{frame}
+
+% ---
+
+\begin{frame}{HexRays IDA - Proximity view close up}
+	\begin{figure}
+	\hspace*{-10mm}
+	\includegraphics[width=1.2\linewidth]{images/proximityview_asmdraw_sprite_branches.png}
+	\end{figure}
+\end{frame}
+
+% ---
+
+\begin{frame}{HexRays IDA - Text view}
+	\begin{figure}
+	\hspace*{-10mm}
+	\includegraphics[width=1.2\linewidth]{images/asmdraw_sprite_x86.png}
+	\end{figure}
+\end{frame}
+
+% ---
+
+\begin{frame}{HexRays IDA - What does this code do?}
+	\begin{figure}
+	\hspace*{-10mm}
+	\includegraphics[width=1.2\linewidth]{images/asmdraw_color_xform.png}
+	\end{figure}
+\end{frame}
+
+% ---
+
+\begin{frame}{Lessons Learned}
+	\begin{itemize}
+		\item Double check if something hasn't already been done/implemented before
+		\item Verify that previous work is correct
+		\item Always look for debug information and clues for reverse engineering
+		\item Little details about tools used back when it was developed
+		\item Hidden game assets
 	\end{itemize}
 
 \end{frame}
-
-%\section{Some \LaTeX{} Examples}
-%
-%\subsection{Tables and Figures}
-%
-%\begin{frame}{Tables and Figures}
-%
-%\begin{itemize}
-%\item Use \texttt{tabular} for basic tables --- see Table~\ref{tab:widgets}, for example.
-%\item You can upload a figure (JPEG, PNG or PDF) using the files menu. 
-%\item To include it in your document, use the \texttt{includegraphics} command (see the comment below in the source code).
-%\end{itemize}
-%
-%% Commands to include a figure:
-%%\begin{figure}
-%%\includegraphics[width=\textwidth]{your-figure's-file-name}
-%%\caption{\label{fig:your-figure}Caption goes here.}
-%%\end{figure}
-%
-%\begin{table}
-%\centering
-%\begin{tabular}{l|r}
-%Item & Quantity \\\hline
-%Widgets & 42 \\
-%Gadgets & 13
-%\end{tabular}
-%\caption{\label{tab:widgets}An example table.}
-%\end{table}
-%
-%\end{frame}
-%
-%\subsection{Mathematics}
-%
-%\begin{frame}{Readable Mathematics}
-%
-%Let $X_1, X_2, \ldots, X_n$ be a sequence of independent and identically distributed random variables with $\text{E}[X_i] = \mu$ and $\text{Var}[X_i] = \sigma^2 < \infty$, and let
-%\[ S_n = \frac{X_1 + X_2 + \cdots + X_n}{n}
-%      = \frac{1}{n}\sum_{i}^{n} X_i \]
-%denote their mean. Then as $n$ approaches infinity, the random variables $\sqrt{n}(S_n - \mu)$ converge in distribution to a normal $\mathcal{N}(0, \sigma^2)$.
-%
-%\end{frame}
 
 \end{document}
