@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../os_macros.hpp"
+#include "types.hpp"
 
 #include <cstdint>
 
@@ -14,16 +15,13 @@
 #include <queue>
 #include <mutex>
 
-typedef uint16_t player_id;
-typedef uint16_t user_id;
-
 #if windows
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <Windows.h>
 
-typedef SOCKET sockfd;
-typedef WSAPOLLFD pollev;
+typedef SOCKET sockfd; /**< wrapper for low-level socket descriptor */
+typedef WSAPOLLFD pollev; /**< wrapper for low-level incoming slave network events. */
 
 static inline SOCKET pollfd(const pollev &ev) { return ev.fd; }
 #else
@@ -33,9 +31,10 @@ static inline SOCKET pollfd(const pollev &ev) { return ev.fd; }
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-typedef int sockfd;
-typedef epoll_event pollev;
+typedef int sockfd; /**< wrapper for low-level socket descriptor */
+typedef epoll_event pollev; /**< wrapper for low-level incoming slave network events. */
 
+// windows already provides one in winsock2, so define this on posix to make it more consistent
 #define INVALID_SOCKET ((int)-1)
 
 static inline int pollfd(const epoll_event &ev) { return ev.data.fd; }
@@ -53,10 +52,14 @@ public:
 	~Net();
 };
 
-static constexpr unsigned MAX_USERS = 64;
+static constexpr unsigned MAX_SLAVES = 64; /**< Maximum concurrent amount of slaves that may connect. */
 static constexpr unsigned NAME_LIMIT = 24;
 static constexpr unsigned TEXT_LIMIT = 32;
 
+/**
+ * Low-level event to indicate a new user has joined the server.
+ * The id is guaranteed to be unique.
+ */
 struct JoinUser final {
 	user_id id;
 	char name[NAME_LIMIT];
@@ -138,7 +141,7 @@ union CmdData final {
 	void ntoh(uint16_t type);
 };
 
-static constexpr unsigned CMD_HDRSZ = 4;
+static constexpr unsigned CMD_HDRSZ = 4; /**< The network packet header in bytes. */
 
 class CmdBuf;
 
@@ -153,6 +156,7 @@ enum class CmdType {
 	max,
 };
 
+/** Mid-level wrapper for low-level network data and simple interface for high-level network game events. */
 class Command final {
 	friend CmdBuf;
 
@@ -183,6 +187,7 @@ public:
 	virtual void event_process(sockfd fd, Command &cmd) = 0;
 };
 
+/** ServerSocket errors */
 enum class SSErr {
 	OK,
 	BADFD,
@@ -199,7 +204,7 @@ class CmdBuf final {
 	Command cmd;
 public:
 	CmdBuf(sockfd fd);
-	CmdBuf(sockfd fd, const Command& cmd, bool net_order=false);
+	CmdBuf(sockfd fd, const Command &cmd, bool net_order=false);
 
 	int read(ServerCallback &cb, char *buf, unsigned len);
 	/** Try to send the command completely. Zero is returned if the all data has been sent. */

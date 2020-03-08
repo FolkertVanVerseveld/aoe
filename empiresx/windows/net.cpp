@@ -256,13 +256,22 @@ void ServerSocket::eventloop(ServerCallback &cb) {
 		peers.swap(keep);
 	}
 
+	// FIXME figure out if this has anything to do with rare deadlocks when last client has left.
 	// XXX do we need to lock here?
+#if 0
 	std::lock_guard<std::recursive_mutex> lock(mut);
 
 	for (unsigned i = 0; i < peers.size(); ++i)
 		closesocket(peers[i].fd);
 
 	cb.shutdown();
+#else
+	for (unsigned i = 0; i < peers.size(); ++i)
+		closesocket(peers[i].fd);
+
+	std::lock_guard<std::recursive_mutex> lock(mut);
+	cb.shutdown();
+#endif
 }
 
 void ServerSocket::close() {

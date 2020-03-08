@@ -26,7 +26,7 @@ GatherStatus Resource::gather(Resource &dest, unsigned amount) {
 	return GatherStatus::ok;
 }
 
-unsigned particle_id_counter = 0;
+unsigned particle_id_counter = 1;
 
 const unsigned res_hp[] = {
 	40,
@@ -77,7 +77,6 @@ void World::populate(const StartMatch &settings) {
 
 	printf("create %llu trees\n", (long long unsigned)trees);
 
-#if 1
 	for (size_t i = 0; i < trees; ++i) {
 		Box2<float> pos(
 			static_cast<uint16_t>(lcg.next() % settings.map_w),
@@ -85,18 +84,19 @@ void World::populate(const StartMatch &settings) {
 		);
 		static_res.emplace_back(new StaticResource(map, pos, ResourceType::wood, 463));
 	}
-
-#else
-	static_res.emplace_back(new StaticResource(map, Box2<float>(), ResourceType::wood, 463));
-	static_res.emplace_back(new StaticResource(map, Box2<float>(settings.map_w - 1), ResourceType::wood, 463));
-	static_res.emplace_back(new StaticResource(map, Box2<float>(0, settings.map_h - 1), ResourceType::wood, 463));
-	static_res.emplace_back(new StaticResource(map, Box2<float>(settings.map_w - 1, settings.map_h - 1), ResourceType::wood, 463));
-#endif
 }
 
-void World::query(std::vector<StaticResource*> &list, const Box2<float> &bounds) {
+void World::add_player(player_id id, unsigned color) {
+
+}
+
+void World::query_static(std::vector<Particle*> &list, const Box2<float> &bounds) {
 	for (auto &x : static_res)
 		if (bounds.intersects(x->scr))
+			list.push_back(x.get());
+
+	for (auto &x : buildings)
+		if (bounds.contains(x->scr))
 			list.push_back(x.get());
 }
 

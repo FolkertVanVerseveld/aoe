@@ -73,7 +73,7 @@ void ServerSocket::close() {
 	// TODO figure out if this may trigger UB and/or leak memory
 }
 
-static constexpr unsigned MAX_EVENTS = 2 * MAX_USERS;
+static constexpr unsigned MAX_EVENTS = 2 * MAX_SLAVES;
 
 void ServerSocket::incoming(ServerCallback &cb) {
 	std::lock_guard<std::recursive_mutex> lock(mut);

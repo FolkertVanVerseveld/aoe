@@ -310,10 +310,10 @@ class Viewport final {
 public:
 	game::Box2<float> bounds;
 
-	std::vector<game::StaticResource*> static_res;
+	std::vector<game::Particle*> particles;
 	unsigned invalidate;
 
-	static constexpr unsigned invalidate_static_res = 0x01;
+	static constexpr unsigned invalidate_static = 0x01;
 	static constexpr unsigned invalidate_all = 0x01;
 
 	float move_speed = 0.5f; // TODO playtest movement speed factor
@@ -321,7 +321,7 @@ public:
 	game::World &world;
 
 	Viewport(game::World &world)
-		: bounds(), static_res(), invalidate(invalidate_all)
+		: bounds(), particles(), invalidate(invalidate_all)
 		, mode(eng->w->render().mode), world(world) {}
 
 private:
@@ -330,11 +330,12 @@ private:
 		if (!invalidate)
 			return;
 
-		if (invalidate & invalidate_static_res) {
-			static_res.clear();
-			world.query(static_res, bounds);
+		if (invalidate & invalidate_static) {
+			particles.clear();
+			world.query_static(particles, bounds);
 
-			std::sort(static_res.begin(), static_res.end(), [](game::StaticResource *lhs, game::StaticResource *rhs) {
+			// maintain z-order by sorting all selected objects such that the upper units are drawn first
+			std::sort(particles.begin(), particles.end(), [](game::Particle *lhs, game::Particle *rhs) {
 				return lhs->scr.top < rhs->scr.top;
 			});
 		}
@@ -353,6 +354,8 @@ public:
 		auto &r = eng->w->render();
 		ConfigScreenMode next_mode = r.mode;
 
+		// we cannot check directly if the game mode has changed.
+		// if it did, recompute the visual state.
 		if (mode != next_mode) {
 			invalidate = invalidate_all;
 			mode = next_mode;
@@ -377,7 +380,7 @@ public:
 
 		// FIXME lock viewport bounds
 
-		invalidate |= invalidate_static_res;
+		invalidate |= invalidate_static;
 		update();
 	}
 
@@ -386,7 +389,7 @@ public:
 	}
 
 	void paint() {
-		for	(auto &x : static_res)
+		for (auto &x : particles)
 			x->draw(static_cast<int>(-bounds.left), static_cast<int>(-bounds.top));
 	}
 };

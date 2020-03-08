@@ -17,30 +17,47 @@ namespace genie {
  * See also https://en.wikipedia.org/wiki/Linear_congruential_generator
  */
 class LCG {
-    const uint64_t m, a, c;
-    uint64_t v, mask;
-    /** Range of bits [start, end) that is provided from the seed when next() is called */
-    unsigned start, end;
+	const uint64_t m, a, c;
+	uint64_t v, mask;
+	/** Range of bits [start, end) that is provided from the seed when next() is called */
+	unsigned start, end;
 public:
-    LCG(uint64_t modulo, uint64_t multiplier, uint64_t increment, unsigned start, unsigned end, uint64_t seed=1)
-        : m(modulo), a(multiplier), c(increment), start(start), end(end), v(seed), mask(0)
-    {
-        for (unsigned i = 0; i < end - start; ++i)
-            mask = (mask << 1) | 1;
-    }
+	/**
+	 * Construct linear congruent generator that yields bits form range [start, end) starting with \a seed.
+	 * It is undefined if modulo is 0.
+	 */
+	LCG(uint64_t modulo, uint64_t multiplier, uint64_t increment, unsigned start, unsigned end, uint64_t seed=1)
+		: m(modulo), a(multiplier), c(increment), start(start), end(end), v(seed), mask(0)
+	{
+		for (unsigned i = 0; i < end - start; ++i)
+			mask = (mask << 1) | 1;
+	}
 
-    void seed(uint64_t v) { this->v = v; }
+	void seed(uint64_t v) noexcept { this->v = v; }
 
-    uint64_t next() {
-        v = (a * v + c) % m;
-        return (v >> start) & mask;
-    }
+	// somewhere, stdlib.h gets included, but i have no clue where
+#undef max
 
-    const unsigned bits() const { return end - start; }
+	constexpr uint64_t max() noexcept { return mask; }
 
-    static LCG ansi_c(uint64_t seed=1) {
-        return LCG(1UL << 31, 0x41C64E6D, 0x3039, 16, 31, seed);
-    }
+	uint64_t next() noexcept {
+		v = (a * v + c) % m;
+		return (v >> start) & mask;
+	}
+
+	uint64_t next(uint64_t high) noexcept { return next(0, high); }
+
+	/** Return a number in range [low, high]. high is inclusive such that we can always specify the upper bound. */
+	uint64_t next(uint64_t low, uint64_t high) noexcept {
+		double f = next() / static_cast<double>(mask);
+		return low + static_cast<uint64_t>((high - low + 1) * f);
+	}
+
+	constexpr unsigned bits() const noexcept { return end - start; }
+
+	static LCG ansi_c(uint64_t seed=1) {
+		return LCG(1UL << 31, 0x41C64E6D, 0x3039, 16, 31, seed);
+	}
 };
 
 }

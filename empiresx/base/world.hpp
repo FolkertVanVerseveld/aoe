@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "types.hpp"
 #include "random.hpp"
 #include "math.hpp"
 #include "geom.hpp"
@@ -12,6 +13,7 @@
 #include <memory>
 #include <vector>
 #include <set>
+#include <algorithm>
 
 namespace genie {
 
@@ -152,8 +154,21 @@ protected:
 	unsigned image_index;
 	unsigned color, id;
 
+	// special ctor for e.g. effects that do not care about the tile position \a pos
+	Particle(const Box2<float>& scr, unsigned anim_index, unsigned image_index = 0, unsigned color = 0)
+		: pos(), scr(scr), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter)
+	{
+		// disallow particle_id_counter to be zero
+		particle_id_counter = particle_id_counter == UINT_MAX ? 1 : particle_id_counter + 1;
+	}
+
+	// default ctor for anything that is not a graphical effect
 	Particle(Map &map, const Box2<float> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0)
-		: pos(pos), scr(map.tile_to_scr(pos.topleft(), anim_index, image_index)), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter++) {}
+		: pos(pos), scr(map.tile_to_scr(pos.topleft(), anim_index, image_index)), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter)
+	{
+		// disallow particle_id_counter to be zero
+		particle_id_counter = particle_id_counter == UINT_MAX ? 1 : particle_id_counter + 1;
+	}
 public:
 	virtual void draw(int offx, int offy) const;
 
@@ -166,7 +181,61 @@ public:
 	}
 };
 
-class StaticResource : public Particle, public Resource {
+/** Minimal wrapper to indicate that the Particle has some logic that is executed every game step. */
+class Active {
+public:
+	virtual ~Active() {}
+
+	virtual void tick() = 0;
+};
+
+enum class EffectType {
+	move,
+	marker, // waypoint
+	explosion0, // small
+	explosion1, // medium
+	explosion2, // big
+};
+
+/** Special foreground graphical effect */
+class Effect final : public Particle, public Active {
+public:
+	Effect(Map &map, const Box2<float> &pos, EffectType type);
+};
+
+#undef min
+
+class Alive : public Active {
+public:
+	unsigned hp, hp_max;
+
+	Alive(unsigned hp=1) : hp(hp), hp_max(hp) { assert(hp); }
+	virtual ~Alive() {}
+
+	constexpr Alive &operator+=(unsigned v) noexcept {
+		hp = std::min(hp + v, hp_max);
+		return *this;
+	}
+
+	constexpr Alive &operator-=(unsigned v) noexcept {
+		hp = v > hp ? 0 : hp - v;
+		return *this;
+	}
+};
+
+enum class BuildingType {
+	barracks,
+	town_center
+};
+
+class Building final : public Particle, public Alive {
+public:
+	Building(Map &map, const Box2<float> &pos, BuildingType type, unsigned player=0);
+
+	void tick() override;
+};
+
+class StaticResource final : public Particle, public Resource {
 public:
 	StaticResource(Map &map, const Box2<float> &pos, ResourceType type, unsigned res_anim, unsigned image=0);
 };
@@ -179,13 +248,17 @@ public:
 
 private:
 	std::vector<std::unique_ptr<StaticResource>> static_res;
+	std::vector<std::unique_ptr<Building>> buildings;
 
 public:
 	World(LCG &lcg, const StartMatch &settings);
 
 	void populate(const StartMatch &settings);
 
-	void query(std::vector<StaticResource*> &list, const Box2<float> &bounds);
+	void add_player(player_id id) { add_player(id, id); }
+	void add_player(player_id id, unsigned color);
+
+	void query_static(std::vector<Particle*> &list, const Box2<float> &bounds);
 };
 
 }

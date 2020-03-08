@@ -3,6 +3,10 @@
 
 #include "../os_macros.hpp"
 
+// change this if you need to debug cmdbuf::read
+#define DEBUG 0
+#include "dbg.h"
+
 #include <cassert>
 #include <cstring>
 
@@ -14,6 +18,7 @@
 #include <string>
 #include <type_traits>
 
+// linux needs in_addr and sockaddr_in
 #if linux
 #include <arpa/inet.h>
 #endif
@@ -374,13 +379,13 @@ CmdBuf::CmdBuf(sockfd fd, const Command &cmd, bool net_order) : size(0), transmi
 int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 	unsigned processed = 0;
 
-	printf("read: buf=%p, len=%u\n", (void*)buf, len);
+	dbgf("read: buf=%p, len=%u\n", (void*)buf, len);
 	while (len) {
 		unsigned need;
 
 		// wait for complete header before processing any data
 		if (transmitted < CMD_HDRSZ) {
-			puts("waiting for header data");
+			dbgs("waiting for header data");
 			need = CMD_HDRSZ - transmitted;
 
 			if (need > len) {
@@ -390,7 +395,7 @@ int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 				return 0; // stop, we need more data
 			}
 
-			puts("got header");
+			dbgs("got header");
 
 			memcpy((char*)&cmd + transmitted, buf + processed, need);
 			transmitted += need;
@@ -415,7 +420,7 @@ int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 		if (transmitted < size) {
 			// packet incomplete, read only as much as we need
 			need = size - transmitted;
-			printf("need %u more bytes (%u available)\n", need, len);
+			dbgf("need %u more bytes (%u available)\n", need, len);
 
 			unsigned copy = need < len ? need : len;
 
@@ -423,14 +428,14 @@ int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 			transmitted += copy;
 			len -= copy;
 			processed += copy;
-			printf("read %u bytes: trans, len: %u, %u\n", copy, transmitted, len);
+			dbgf("read %u bytes: trans, len: %u, %u\n", copy, transmitted, len);
 		}
 
 		// only process full packets
 		if (transmitted >= size) {
 			cmd.ntoh();
 
-			printf("process: %d, %d\n", transmitted, size);
+			dbgf("process: %d, %d\n", transmitted, size);
 
 			dump((char*)&cmd, transmitted);
 			putchar('\n');
@@ -444,7 +449,7 @@ int CmdBuf::read(ServerCallback &cb, char *buf, unsigned len) {
 			transmitted -= size;
 			size = 0;
 
-			printf("trans, size: %d, %d\n", transmitted, size);
+			dbgf("trans, size: %d, %d\n", transmitted, size);
 		}
 	}
 
