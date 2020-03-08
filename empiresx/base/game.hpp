@@ -60,6 +60,8 @@ public:
 	virtual bool chat(const std::string &str, bool send=true) = 0;
 };
 
+class MultiplayerHost;
+
 class Slave final {
 	sockfd fd;
 public:

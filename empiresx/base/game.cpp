@@ -191,7 +191,7 @@ void MultiplayerHost::set_gcb(game::GameCallback *gcb) {
 bool MultiplayerHost::try_start() {
 	std::lock_guard<std::recursive_mutex> lock(mut);
 	if (ready_confirms) {
-		printf("need %u more confirms\n", ready_confirms);
+		//printf("need %u more confirms\n", ready_confirms);
 		return false;
 	}
 

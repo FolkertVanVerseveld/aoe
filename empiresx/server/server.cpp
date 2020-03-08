@@ -24,6 +24,7 @@ uint16_t port = 25659;
 
 namespace genie {
 
+// dummy callbacks
 void check_taunt(const std::string&) {}
 void menu_lobby_stop_game(MenuLobby*) {}
 
@@ -31,7 +32,13 @@ namespace game {
 
 class DedicatedGame;
 
-void Particle::draw(Map&) const {}
+// dummy draw. we don't do anything graphical, so this is just a nop.
+void Particle::draw(int, int) const {}
+
+void img_dim(Box2<float> &dim, unsigned, unsigned) {
+	// we don't care about its dimensions, just that it represents some small area
+	dim.w = dim.h = 10;
+}
 
 void worker_loop(DedicatedGame &game);
 
@@ -125,7 +132,8 @@ int main(int argc, char **argv) {
 				std::cout <<
 					"h(elp)/? - show this help\n"
 					"q/quit   - fast shutdown server\n"
-					"say      - broadcast message to clients" << std::endl;
+					"say      - broadcast message to clients\n"
+					"start    - start new match\n" << std::endl;
 			} else if (input == "q" || input == "quit") {
 				break;
 			} else if (input == "d") {

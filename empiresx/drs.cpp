@@ -363,7 +363,7 @@ bool Image::load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned i
 void Image::draw(SimpleRender &r, int x, int y, int w, int h, int sx, int sy) {
 	if (!w) w = surface.data()->w;
 	if (!h) h = surface.data()->h;
-	texture.paint(r, x - hotspot_x, y - hotspot_y, w, h, sx, sy);
+	texture.paint(r, x, y, w, h, sx, sy);
 }
 
 void Image::draw(SimpleRender &r, const SDL_Rect &bnds) {
@@ -404,7 +404,8 @@ Animation::Animation(SimpleRender &r, const Palette &pal, const Slp &slp, res_id
 }
 
 Image &Animation::subimage(unsigned index, unsigned player) {
-	return images[player * image_count + index];
+	return dynamic ? images[(player % io::max_players) * image_count + index % this->image_count]
+		: images[index % this->image_count];
 }
 
 bool operator<(const Animation &lhs, const Animation &rhs) {

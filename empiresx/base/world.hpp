@@ -4,6 +4,7 @@
 
 #include "random.hpp"
 #include "math.hpp"
+#include "geom.hpp"
 
 #include <cassert>
 
@@ -46,50 +47,6 @@ enum class TileId {
 	FLAT_CORNER_SOUTH_WEST,
 	FLAT_CORNER_NORTH_EAST,
 	TILE_MAX
-};
-
-/**
-* Simple minimal API for a point in two dimensional euclidean space
-*/
-
-template<typename T> class Vector2 {
-public:
-	T x, y;
-
-	constexpr Vector2<T>(T x=0, T y=0) noexcept : x(x), y(y) {}
-
-	friend constexpr Vector2<T> operator+(Vector2<T> lhs, const Vector2<T> &rhs) noexcept {
-		lhs += rhs;
-		return lhs;
-	}
-
-	constexpr Vector2<T> &operator+=(const Vector2<T> &other) noexcept {
-		x += other.x;
-		y += other.y;
-		return *this;
-	}
-
-	friend constexpr Vector2<T> operator-(Vector2<T> lhs, const Vector2<T>& rhs) noexcept {
-		lhs -= rhs;
-		return lhs;
-	}
-
-	constexpr Vector2<T> &operator-=(const Vector2<T>& other) noexcept {
-		x -= other.x;
-		y -= other.y;
-		return *this;
-	}
-
-	friend constexpr Vector2<T> operator/(Vector2<T> vec, T v) noexcept {
-		vec /= v;
-		return vec;
-	}
-
-	constexpr Vector2<T> &operator/=(T v) noexcept {
-		x /= v;
-		y /= v;
-		return *this;
-	}
 };
 
 enum class Quadrant {
@@ -139,12 +96,23 @@ public:
 	}
 };
 
+extern void img_dim(Box2<float> &dim, unsigned res, unsigned image);
+
 class Map final {
 public:
 	unsigned w, h;
 	std::unique_ptr<uint8_t[]> tiles, heights; // y,x order
 
 	Map(LCG &lcg, const StartMatch &settings);
+
+	Box2<float> tile_to_scr(const Vector2<float> &pos, unsigned res, unsigned image) {
+		Box2<float> scr;
+
+		genie::tile_to_scr(scr.left, scr.top, pos.x, pos.y);
+		img_dim(scr, res, image);
+
+		return scr;
+	}
 };
 
 enum class ResourceType {
@@ -172,18 +140,22 @@ public:
 
 extern unsigned particle_id_counter;
 
+/**
+ * Most abstract non-tiled world object. This may be an effect (e.g. debris, dead units, ...)
+ * or static resources (trees, berry bushes, ...) or dynamic stuff (e.g. deer, clubman, ...)
+ */
 class Particle {
-protected:
+public:
 	Box2<float> pos, scr;
-
+protected:
 	unsigned anim_index;
 	unsigned image_index;
 	unsigned color, id;
 
-	Particle(const Box2<float> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0)
-		: pos(pos), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter++) {}
+	Particle(Map &map, const Box2<float> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0)
+		: pos(pos), scr(map.tile_to_scr(pos.topleft(), anim_index, image_index)), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter++) {}
 public:
-	virtual void draw(Map &map) const;
+	virtual void draw(int offx, int offy) const;
 
 	friend bool operator==(const Particle &lhs, const Particle &rhs) {
 		return lhs.id == rhs.id;
@@ -196,16 +168,24 @@ public:
 
 class StaticResource : public Particle, public Resource {
 public:
-	StaticResource(const Box2<float> &pos, ResourceType type, unsigned res_anim, unsigned image=0);
+	StaticResource(Map &map, const Box2<float> &pos, ResourceType type, unsigned res_anim, unsigned image=0);
 };
 
 /** Container for all particles, entities, etc. */
 class World final {
 public:
 	Map map;
+	LCG &lcg;
+
+private:
 	std::vector<std::unique_ptr<StaticResource>> static_res;
 
+public:
 	World(LCG &lcg, const StartMatch &settings);
+
+	void populate(const StartMatch &settings);
+
+	void query(std::vector<StaticResource*> &list, const Box2<float> &bounds);
 };
 
 }

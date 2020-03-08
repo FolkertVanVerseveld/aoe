@@ -302,12 +302,100 @@ const SDL_Rect menu_game_field_chat[screen_modes] = {
 
 class MenuLobby;
 
+/**
+ * Direct representation wrapper for all visual elements in the world that are
+ * visible within the visible screen area.
+ */
+class Viewport final {
+public:
+	game::Box2<float> bounds;
+
+	std::vector<game::StaticResource*> static_res;
+	unsigned invalidate;
+
+	static constexpr unsigned invalidate_static_res = 0x01;
+	static constexpr unsigned invalidate_all = 0x01;
+
+	float move_speed = 0.5f; // TODO playtest movement speed factor
+	ConfigScreenMode mode;
+	game::World &world;
+
+	Viewport(game::World &world)
+		: bounds(), static_res(), invalidate(invalidate_all)
+		, mode(eng->w->render().mode), world(world) {}
+
+private:
+	/** Ensure that the visual state is consistent with the associated world. */
+	void update() {
+		if (!invalidate)
+			return;
+
+		if (invalidate & invalidate_static_res) {
+			static_res.clear();
+			world.query(static_res, bounds);
+
+			std::sort(static_res.begin(), static_res.end(), [](game::StaticResource *lhs, game::StaticResource *rhs) {
+				return lhs->scr.top < rhs->scr.top;
+			});
+		}
+
+		invalidate = 0;
+	}
+
+public:
+	/** Force refresh the visual state */
+	void populate() {
+		invalidate = invalidate_all;
+		update();
+	}
+
+	void idle(game::World &world, int dx, int dy, unsigned ms) {
+		auto &r = eng->w->render();
+		ConfigScreenMode next_mode = r.mode;
+
+		if (mode != next_mode) {
+			invalidate = invalidate_all;
+			mode = next_mode;
+		}
+
+		if (!dx && !dy) {
+			update();
+			return;
+		}
+
+		float angle, fdx, fdy, speed = move_speed * ms;
+
+		angle = atan2f(static_cast<float>(dy), static_cast<float>(dx));
+		fdx = cos(angle) * speed;
+		fdy = sin(angle) * speed;
+
+		bounds.left += fdx;
+		bounds.top += fdy;
+		auto &rel_bnds = r.dim.rel_bnds;
+		bounds.w = static_cast<float>(rel_bnds.w);
+		bounds.h = static_cast<float>(rel_bnds.h);
+
+		// FIXME lock viewport bounds
+
+		invalidate |= invalidate_static_res;
+		update();
+	}
+
+	void reset() {
+		bounds.left = bounds.top = 0;
+	}
+
+	void paint() {
+		for	(auto &x : static_res)
+			x->draw(static_cast<int>(-bounds.left), static_cast<int>(-bounds.top));
+	}
+};
+
 class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCallback, public game::Game {
 	ImageCache img;
 	bool host, started;
 
 	ui::InputField *f_chat;
-	float view_x, view_y;
 
 	static constexpr unsigned key_right = 0x01;
 	static constexpr unsigned key_up    = 0x02;
@@ -319,14 +407,20 @@ class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCa
 	// lock to ensure access variables below are thread-safe
 	std::recursive_mutex mut;
 	UIPlayerState *playerstate;
+	Viewport view;
 public:
 	MenuGame(MenuLobby *lobby, SimpleRender &r, Multiplayer *mp, UIPlayerState *state, bool host, const StartMatch &settings)
 		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff}, true), Game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, lobby, mp, settings)
 		, img(), host(host), started(false)
-		, f_chat(nullptr), view_x(0), view_y(0), key_state(0)
+		, f_chat(nullptr), key_state(0)
 		, mut()
 		, playerstate(state) // copy state_now and state_next and txtchat from menulobby
+		, view(world)
 	{
+		cache = &img;
+		world.populate(settings);
+		view.populate();
+
 		add_field(f_chat = new ui::InputField(0, *this, ui::InputType::text, "", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_game_field_chat, r.mode, pal, bkg, true));
 		if (!host)
 			((MultiplayerClient*)mp)->set_gcb(this, (uint16_t)playerstate->state_now.players.size(), (uint16_t)lcg.next());
@@ -344,25 +438,13 @@ private:
 		if (key_state & key_right)
 			++dx;
 		if (key_state & key_up)
-			++dy;
+			--dy;
 		if (key_state & key_left)
 			--dx;
 		if (key_state & key_down)
-			--dy;
+			++dy;
 
-		if (!dy && !dx)
-			return;
-
-		float angle, fdx, fdy, speed = 0.5f * ms; // TODO playtest movement speed factor
-
-		angle = atan2f((float)dy, (float)dx);
-		fdx = cos(angle) * speed;
-		fdy = sin(angle) * speed;
-
-		view_x += fdx;
-		view_y += fdy;
-
-		// FIXME lock viewport bounds
+		view.idle(this->world, dx, dy, ms);
 	}
 public:
 	void idle(Uint32 ms) override {
@@ -418,7 +500,7 @@ public:
 			key_state &= ~key_down;
 			break;
 		case SDLK_HOME:
-			view_x = view_y = 0;
+			view.reset();
 			break;
 		case SDLK_ESCAPE:
 			interacted(0);
@@ -453,12 +535,12 @@ private:
 	void paint_tiles() {
 		Animation &desert_tiles = img.get(15000);
 
-		int left = (int)-view_x, top = (int)view_y;
+		int left = static_cast<int>(-view.bounds.left), top = static_cast<int>(-view.bounds.top);
 
 		for (unsigned ty = 0; ty < world.map.h; ++ty) {
 			for (unsigned tx = 0; tx < world.map.w; ++tx) {
 				int x, y;
-				tile_to_scr(x, y, tx, ty);
+				tile_to_scr(x, y, static_cast<int>(tx), static_cast<int>(ty));
 
 				unsigned tile = world.map.tiles[ty * world.map.w + tx];
 
@@ -529,6 +611,8 @@ public:
 		r.clear();
 
 		paint_tiles();
+		view.paint();
+
 		paint_hud_borders();
 		paint_details(0);
 	}

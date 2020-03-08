@@ -11,7 +11,7 @@
 
 namespace genie {
 
-class ImageCache final {
+extern class ImageCache final {
 	Palette pal;
 	std::map<res_id, Animation> cache;
 public:
@@ -25,6 +25,6 @@ public:
 	 * The specified \a id must be valid.
 	 */
 	Animation &get(res_id id);
-};
+} *cache;
 
 }

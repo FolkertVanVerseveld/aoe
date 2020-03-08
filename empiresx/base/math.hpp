@@ -27,7 +27,8 @@ static constexpr inline uint64_t makepow2(uint64_t v) noexcept {
 	return ispow2(v) ? v : nextpow2(v);
 }
 
-static constexpr void tile_to_scr(int &x, int &y, int tx, int ty) {
+template<typename T>
+static constexpr void tile_to_scr(T &x, T &y, T tx, T ty) {
 	y = (tx - ty) * th / 2;
 	x = (tx + ty) * tw / 2;
 }
