@@ -432,7 +432,7 @@ bool operator<(const Player &lhs, const Player &rhs) {
 
 Game::Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings)
 	: mp(mp), lobby(lobby), mode(mode), state(GameState::init), lcg(LCG::ansi_c(settings.seed))
-	, settings(settings), players(), usertbl(), mut(), world(lcg, settings)
+	, settings(settings), players(), usertbl(), mut(), world(lcg, settings, mode != GameMode::multiplayer_client)
 	, ticks_per_second(50), tick_interval(1.0 / ticks_per_second), tick_timer(0) {}
 
 Game::~Game() {

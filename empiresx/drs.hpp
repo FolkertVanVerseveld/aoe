@@ -13,13 +13,12 @@
 #include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_render.h>
 
+#include "base/drs.hpp"
 #include "render.hpp"
 
 struct SDL_Surface;
 
 namespace genie {
-
-typedef uint16_t res_id; /**< symbolic alias for win32 rc resource stuff */
 
 namespace io {
 

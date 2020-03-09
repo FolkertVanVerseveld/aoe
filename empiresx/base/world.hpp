@@ -14,6 +14,7 @@
 #include <vector>
 #include <set>
 #include <algorithm>
+#include <deque>
 
 namespace genie {
 
@@ -98,7 +99,7 @@ public:
 	}
 };
 
-extern void img_dim(Box2<float> &dim, unsigned res, unsigned image);
+extern void img_dim(Box2<float> &dim, int &hotspot_x, int &hotspot_y, unsigned res, unsigned image);
 
 class Map final {
 public:
@@ -107,11 +108,11 @@ public:
 
 	Map(LCG &lcg, const StartMatch &settings);
 
-	Box2<float> tile_to_scr(const Vector2<float> &pos, unsigned res, unsigned image) {
+	Box2<float> tile_to_scr(const Vector2<float> &pos, int &hotspot_x, int &hotspot_y, unsigned res, unsigned image) {
 		Box2<float> scr;
 
 		genie::tile_to_scr(scr.left, scr.top, pos.x, pos.y);
-		img_dim(scr, res, image);
+		img_dim(scr, hotspot_x, hotspot_y, res, image);
 
 		return scr;
 	}
@@ -149,6 +150,7 @@ extern unsigned particle_id_counter;
 class Particle {
 public:
 	Box2<float> pos, scr;
+	int hotspot_x, hotspot_y;
 protected:
 	unsigned anim_index;
 	unsigned image_index;
@@ -164,11 +166,13 @@ protected:
 
 	// default ctor for anything that is not a graphical effect
 	Particle(Map &map, const Box2<float> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0)
-		: pos(pos), scr(map.tile_to_scr(pos.topleft(), anim_index, image_index)), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter)
+		: pos(pos), scr(map.tile_to_scr(pos.topleft(), hotspot_x, hotspot_y, anim_index, image_index)), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter)
 	{
 		// disallow particle_id_counter to be zero
 		particle_id_counter = particle_id_counter == UINT_MAX ? 1 : particle_id_counter + 1;
 	}
+
+	virtual ~Particle() {}
 public:
 	virtual void draw(int offx, int offy) const;
 
@@ -181,12 +185,14 @@ public:
 	}
 };
 
+class World;
+
 /** Minimal wrapper to indicate that the Particle has some logic that is executed every game step. */
 class Active {
 public:
 	virtual ~Active() {}
 
-	virtual void tick() = 0;
+	virtual void tick(World &world) = 0;
 };
 
 enum class EffectType {
@@ -223,16 +229,36 @@ public:
 	}
 };
 
+enum class UnitType {
+	clubman,
+	villager,
+};
+
 enum class BuildingType {
 	barracks,
 	town_center
 };
 
+class Production final {
+public:
+	UnitType what;
+	unsigned ticks, total;
+
+	Production(UnitType what, unsigned ticks);
+
+	bool tick();
+};
+
 class Building final : public Particle, public Alive {
+	unsigned anim_player;
+	unsigned player;
+	std::deque<Production> prod;
+
 public:
 	Building(Map &map, const Box2<float> &pos, BuildingType type, unsigned player=0);
 
-	void tick() override;
+	void tick(World &world) override;
+	void draw(int offx, int offy) const override;
 };
 
 class StaticResource final : public Particle, public Resource {
@@ -240,23 +266,39 @@ public:
 	StaticResource(Map &map, const Box2<float> &pos, ResourceType type, unsigned res_anim, unsigned image=0);
 };
 
+class Unit : public Particle, public Alive {
+public:
+	Unit(Map &map, const Box2<float> &pos);
+	virtual ~Unit() {}
+
+	virtual void tick(World &world) override;
+	virtual void draw(int offx, int offy) const override;
+};
+
+class Villager final : public Unit {
+	Resource garrison; // determines villager type and stuff it is holding
+public:
+	Villager(Map &map, const Box2<float> &pos);
+
+	void tick(World &world) override;
+	void draw(int offx, int offy) const override;
+};
+
 /** Container for all particles, entities, etc. */
 class World final {
 public:
 	Map map;
 	LCG &lcg;
+	bool host;
 
 private:
 	std::vector<std::unique_ptr<StaticResource>> static_res;
 	std::vector<std::unique_ptr<Building>> buildings;
 
 public:
-	World(LCG &lcg, const StartMatch &settings);
+	World(LCG &lcg, const StartMatch &settings, bool host);
 
-	void populate(const StartMatch &settings);
-
-	void add_player(player_id id) { add_player(id, id); }
-	void add_player(player_id id, unsigned color);
+	void populate(unsigned players);
 
 	void query_static(std::vector<Particle*> &list, const Box2<float> &bounds);
 };

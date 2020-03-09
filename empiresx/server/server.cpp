@@ -34,8 +34,9 @@ class DedicatedGame;
 
 // dummy draw. we don't do anything graphical, so this is just a nop.
 void Particle::draw(int, int) const {}
+void Building::draw(int, int) const {}
 
-void img_dim(Box2<float> &dim, unsigned, unsigned) {
+void img_dim(Box2<float> &dim, int&, int&, unsigned, unsigned) {
 	// we don't care about its dimensions, just that it represents some small area
 	dim.w = dim.h = 10;
 }
@@ -51,6 +52,7 @@ public:
 	DedicatedGame(const StartMatch &settings, MultiplayerHost &cb)
 		//: Game(game::GameMode::multiplayer_host, nullptr, nullptr, settings), t_worker(worker_loop, std::ref(*this)), cb(cb) {}
 		: Game(game::GameMode::multiplayer_host, nullptr, nullptr, settings), t_worker(), cb(cb) {
+		world.populate(settings.slave_count);
 		cb.set_gcb(this);
 		t_worker = std::thread(worker_loop, std::ref(*this));
 	}

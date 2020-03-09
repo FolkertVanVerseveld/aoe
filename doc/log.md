@@ -53,3 +53,7 @@ Mon, Feb 24, 2020 09:46:41
 Started working on server mid-november. Complete game and server rewrite around
 december till january. Trying to finally make a working game prototype. Working
 on public presentation/press documents and core game logic.
+
+Mon, Mar  9, 2020 15:10:56
+
+hacking together first prototype demo

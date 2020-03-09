@@ -7,7 +7,9 @@
  * platforms if initialised with the same seed.
  */
 
+#include <cassert>
 #include <cstdint>
+#include <cmath>
 
 namespace genie {
 
@@ -50,7 +52,9 @@ public:
 	/** Return a number in range [low, high]. high is inclusive such that we can always specify the upper bound. */
 	uint64_t next(uint64_t low, uint64_t high) noexcept {
 		double f = next() / static_cast<double>(mask);
-		return low + static_cast<uint64_t>((high - low + 1) * f);
+		uint64_t v = low + static_cast<uint64_t>(round((high - low) * f));
+		assert(v >= low && v <= high);
+		return v;
 	}
 
 	constexpr unsigned bits() const noexcept { return end - start; }
