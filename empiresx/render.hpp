@@ -120,7 +120,7 @@ public:
 	SDL_Texture *data() { return handle.get(); }
 
 	void paint(SimpleRender &r, int x, int y);
-	void paint(SimpleRender &r, int x, int y, int w, int h, int sx=0, int sy=0);
+	void paint(SimpleRender &r, int x, int y, int w, int h, int sx=0, int sy=0, bool hflip=false);
 	void paint_stretch(SimpleRender &r, const SDL_Rect &to);
 	void paint_stretch(SimpleRender &r, const SDL_Rect &from, const SDL_Rect &to);
 	void reset(SimpleRender &r, SDL_Surface *surf);

@@ -45,10 +45,10 @@ void img_dim(game::Box2<float> &dim, int &hotspot_x, int &hotspot_y, unsigned re
 	dim.h = static_cast<float>(img.texture.height);
 }
 
-void Particle::draw(int offx, int offy) const {
+void Particle::draw(int offx, int offy, unsigned index) const {
 	SimpleRender &r = (SimpleRender&)eng->w->render();
 	Animation &anim = const_cast<Animation&>(cache->get(this->anim_index));
-	anim.subimage(this->image_index).draw(r, static_cast<int>(this->scr.left) + offx, static_cast<int>(this->scr.top) + offy);
+	anim.subimage(index).draw(r, static_cast<int>(this->scr.left) + offx, static_cast<int>(this->scr.top) + offy, 0, 0, 0, 0, hflip);
 #if DEBUG
 	r.color(SDL_Color{0xff, 0, 0, SDL_ALPHA_OPAQUE});
 	SDL_Rect bnds{static_cast<int>(this->scr.left) + offx, static_cast<int>(this->scr.top) + offy, static_cast<int>(scr.w), static_cast<int>(scr.h)};

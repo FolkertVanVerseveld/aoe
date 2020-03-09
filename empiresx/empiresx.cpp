@@ -579,6 +579,8 @@ private:
 		Animation &desert_tiles = img.get(15000);
 
 		int left = static_cast<int>(-view.bounds.left), top = static_cast<int>(-view.bounds.top);
+		auto &rel_bnds = eng->w->render().dim.rel_bnds;
+		auto bnds_left = rel_bnds.x, bnds_right = rel_bnds.x + rel_bnds.w, bnds_top = rel_bnds.y, bnds_bottom = rel_bnds.y + rel_bnds.h;
 
 		for (unsigned ty = 0; ty < world.map.h; ++ty) {
 			for (unsigned tx = 0; tx < world.map.w; ++tx) {
@@ -587,7 +589,9 @@ private:
 
 				unsigned tile = world.map.tiles[ty * world.map.w + tx];
 
-				desert_tiles.subimage(tile).draw(r, left + x, top + y);
+				// quick and dirty check to see if tile should be drawn
+				if (left + x + tw >= bnds_left && left + x < bnds_right && top + y + th >= bnds_top && top + y < bnds_bottom)
+					desert_tiles.subimage(tile).draw(r, left + x, top + y);
 			}
 		}
 	}

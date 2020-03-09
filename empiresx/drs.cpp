@@ -360,10 +360,10 @@ bool Image::load(SimpleRender &r, const Palette &pal, const Slp &slp, unsigned i
 	return dynamic;
 }
 
-void Image::draw(SimpleRender &r, int x, int y, int w, int h, int sx, int sy) {
+void Image::draw(SimpleRender &r, int x, int y, int w, int h, int sx, int sy, bool hflip) {
 	if (!w) w = surface.data()->w;
 	if (!h) h = surface.data()->h;
-	texture.paint(r, x, y, w, h, sx, sy);
+	texture.paint(r, x, y, w, h, sx, sy, hflip);
 }
 
 void Image::draw(SimpleRender &r, const SDL_Rect &bnds) {

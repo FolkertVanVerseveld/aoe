@@ -33,7 +33,7 @@ namespace game {
 class DedicatedGame;
 
 // dummy draw. we don't do anything graphical, so this is just a nop.
-void Particle::draw(int, int) const {}
+void Particle::draw(int, int, unsigned) const {}
 void Building::draw(int, int) const {}
 
 void img_dim(Box2<float> &dim, int&, int&, unsigned, unsigned) {

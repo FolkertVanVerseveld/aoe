@@ -293,7 +293,7 @@ void Texture::paint_stretch(SimpleRender &r, const SDL_Rect &from, const SDL_Rec
 	SDL_RenderCopy(r.canvas(), data(), &from, &dst);
 }
 
-void Texture::paint(SimpleRender &r, int x, int y, int w, int h, int sx, int sy) {
+void Texture::paint(SimpleRender &r, int x, int y, int w, int h, int sx, int sy, bool hflip) {
 	SDL_Rect src, dest;
 
 	if (!w) w = width;
@@ -305,7 +305,10 @@ void Texture::paint(SimpleRender &r, int x, int y, int w, int h, int sx, int sy)
 		for (src.x = sx, dest.x = x; dest.x < x + w; src.x = 0, dest.x += dest.w) {
 			src.w = dest.w = min(width, x + w - dest.x);
 
-			SDL_RenderCopy(r.canvas(), data(), &src, &dest);
+			if (!hflip)
+				SDL_RenderCopy(r.canvas(), data(), &src, &dest);
+			else
+				SDL_RenderCopyEx(r.canvas(), data(), &src, &dest, 0, NULL, SDL_FLIP_HORIZONTAL);
 		}
 	}
 }

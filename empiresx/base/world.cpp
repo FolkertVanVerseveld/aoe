@@ -4,6 +4,7 @@
 
 #include "net.hpp"
 #include "drs.hpp"
+#include "game.hpp"
 #include "random.hpp"
 
 #include <cmath>
@@ -204,7 +205,7 @@ static const float unit_movespeed[] = {
 Unit::Unit(Map &map, const Box2<float> &pos, UnitType type, unsigned player)
 	: Particle(map, pos, (unsigned)unit_anim[(unsigned)type], 0, player)
 	, Alive(unit_hp[(unsigned)type])
-	, type(type), dir(UnitDirection::down), dir_images(unit_dir_images[(unsigned)type])
+	, type(type), dir(UnitDirection::down_left), dir_images(unit_dir_images[(unsigned)type])
 	, target(pos.left, pos.top) {}
 
 void Unit::imgtick() {
@@ -223,13 +224,15 @@ void Unit::tick(World &world) {
 	pos.left += cos(angle) * movespeed;
 	pos.top += sin(angle) * movespeed;
 
+	// FIXME update unit direction
+
 	// particle has moved, force update scr
 	scr = world.map.tile_to_scr(pos.topleft(), hotspot_x, hotspot_y, anim_index, image_index);
 }
 
 void Unit::draw(int offx, int offy) const {
 	int index = (unsigned)dir * dir_images + image_index;
-	Particle::draw(offx, offy);
+	Particle::draw(offx, offy, index);
 }
 
 Villager::Villager(Map &map, const Box2<float> &pos, unsigned player)
@@ -238,6 +241,10 @@ Villager::Villager(Map &map, const Box2<float> &pos, unsigned player)
 void World::imgtick() {
 	for (auto &x : units)
 		x->imgtick();
+}
+
+void World::tick(Multiplayer *mp) {
+	assert("stub" == 0);
 }
 
 void World::query_static(std::vector<Particle*> &list, const Box2<float> &bounds) {

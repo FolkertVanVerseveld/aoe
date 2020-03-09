@@ -19,6 +19,7 @@
 namespace genie {
 
 struct StartMatch;
+class Multiplayer;
 
 namespace game {
 
@@ -156,26 +157,34 @@ protected:
 	unsigned image_index;
 	unsigned color;
 	uint32_t id;
+	bool hflip;
 
 	// special ctor for e.g. effects that do not care about the tile position \a pos
-	Particle(const Box2<float>& scr, unsigned anim_index, unsigned image_index = 0, unsigned color = 0)
-		: pos(), scr(scr), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter)
+	Particle(const Box2<float> &scr, unsigned anim_index, unsigned image_index=0, unsigned color=0, bool hflip=false)
+		: pos(), scr(scr), anim_index(anim_index), image_index(image_index), color(color)
+		, id(particle_id_counter), hflip(hflip)
 	{
 		// disallow particle_id_counter to be zero
 		particle_id_counter = particle_id_counter == UINT32_MAX ? 1 : particle_id_counter + 1;
 	}
 
 	// default ctor for anything that is not a graphical effect
-	Particle(Map &map, const Box2<float> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0)
-		: pos(pos), scr(map.tile_to_scr(pos.topleft(), hotspot_x, hotspot_y, anim_index, image_index)), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter)
+	Particle(Map &map, const Box2<float> &pos, unsigned anim_index, unsigned image_index=0, unsigned color=0, bool hflip=false)
+		: pos(pos), scr(map.tile_to_scr(pos.topleft(), hotspot_x, hotspot_y, anim_index, image_index)), anim_index(anim_index), image_index(image_index), color(color)
+		, id(particle_id_counter), hflip(hflip)
 	{
 		// disallow particle_id_counter to be zero
 		particle_id_counter = particle_id_counter == UINT32_MAX ? 1 : particle_id_counter + 1;
 	}
 
 	virtual ~Particle() {}
+
+protected:
+	void draw(int offx, int offy, unsigned index) const;
 public:
-	virtual void draw(int offx, int offy) const;
+	virtual void draw(int offx, int offy) const {
+		draw(offx, offy, image_index);
+	}
 
 	friend bool operator==(const Particle &lhs, const Particle &rhs) {
 		return lhs.id == rhs.id;
@@ -315,8 +324,17 @@ public:
 	World(LCG &lcg, const StartMatch &settings, bool host);
 
 	void populate(unsigned players);
-
+	/**
+	 * Animate all dynamic particles. This is not synchronized with the server whatsoever,
+	 * since there is no need to (well, it should be in sync automatigcally... but we have
+	 * to see if that also happens in practise).
+	 */
 	void imgtick();
+	/**
+	 * Compute the next simulation step and use the mp for any events that are generated.
+	 * If the world is created as host, this will also send messages to other clients.
+	 */
+	void tick(Multiplayer *mp);
 
 	void query_static(std::vector<Particle*> &list, const Box2<float> &bounds);
 	// FIXME change type to Unit*
