@@ -136,6 +136,7 @@ union CmdData final {
 	Ready ready;
 	CreatePlayer create;
 	AssignSlave assign;
+	uint8_t gamestate;
 
 	void hton(uint16_t type);
 	void ntoh(uint16_t type);
@@ -153,6 +154,7 @@ enum class CmdType {
 	ready,
 	create,
 	assign,
+	gamestate,
 	max,
 };
 
@@ -166,6 +168,7 @@ public:
 	TextMsg text();
 	JoinUser join();
 	Ready ready();
+	uint8_t gamestate();
 
 	void hton();
 	void ntoh();
@@ -177,6 +180,7 @@ public:
 	static Command ready(uint16_t slave_count, uint16_t prng_next);
 	static Command create(player_id id, const std::string &str);
 	static Command assign(user_id id, player_id pid);
+	static Command gamestate(uint8_t type);
 };
 
 class ServerCallback {

@@ -141,7 +141,7 @@ public:
 	GatherStatus gather(Resource &dest, unsigned amount=1);
 };
 
-extern unsigned particle_id_counter;
+extern uint32_t particle_id_counter;
 
 /**
  * Most abstract non-tiled world object. This may be an effect (e.g. debris, dead units, ...)
@@ -154,14 +154,15 @@ public:
 protected:
 	unsigned anim_index;
 	unsigned image_index;
-	unsigned color, id;
+	unsigned color;
+	uint32_t id;
 
 	// special ctor for e.g. effects that do not care about the tile position \a pos
 	Particle(const Box2<float>& scr, unsigned anim_index, unsigned image_index = 0, unsigned color = 0)
 		: pos(), scr(scr), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter)
 	{
 		// disallow particle_id_counter to be zero
-		particle_id_counter = particle_id_counter == UINT_MAX ? 1 : particle_id_counter + 1;
+		particle_id_counter = particle_id_counter == UINT32_MAX ? 1 : particle_id_counter + 1;
 	}
 
 	// default ctor for anything that is not a graphical effect
@@ -169,7 +170,7 @@ protected:
 		: pos(pos), scr(map.tile_to_scr(pos.topleft(), hotspot_x, hotspot_y, anim_index, image_index)), anim_index(anim_index), image_index(image_index), color(color), id(particle_id_counter)
 	{
 		// disallow particle_id_counter to be zero
-		particle_id_counter = particle_id_counter == UINT_MAX ? 1 : particle_id_counter + 1;
+		particle_id_counter = particle_id_counter == UINT32_MAX ? 1 : particle_id_counter + 1;
 	}
 
 	virtual ~Particle() {}
@@ -230,13 +231,8 @@ public:
 };
 
 enum class UnitType {
-	clubman,
 	villager,
-};
-
-enum class BuildingType {
-	barracks,
-	town_center
+	clubman,
 };
 
 class Production final {
@@ -247,6 +243,11 @@ public:
 	Production(UnitType what, unsigned ticks);
 
 	bool tick();
+};
+
+enum class BuildingType {
+	barracks,
+	town_center
 };
 
 class Building final : public Particle, public Alive {
@@ -266,22 +267,36 @@ public:
 	StaticResource(Map &map, const Box2<float> &pos, ResourceType type, unsigned res_anim, unsigned image=0);
 };
 
+enum class UnitDirection {
+	down,
+	down_left,
+	left,
+	top_left,
+	top,
+	// mirrored images
+	top_right,
+	right,
+	down_right
+};
+
 class Unit : public Particle, public Alive {
+	UnitType type;
+	UnitDirection dir; /**< indicates which direction the unit is facing */
+	unsigned dir_images;
+	float movespeed;
+	Vector2<float> target; /**< map pos target. this never represents a screen position! */
 public:
-	Unit(Map &map, const Box2<float> &pos);
+	Unit(Map &map, const Box2<float> &pos, UnitType type, unsigned player);
 	virtual ~Unit() {}
 
+	virtual void imgtick();
 	virtual void tick(World &world) override;
 	virtual void draw(int offx, int offy) const override;
 };
 
 class Villager final : public Unit {
-	Resource garrison; // determines villager type and stuff it is holding
 public:
-	Villager(Map &map, const Box2<float> &pos);
-
-	void tick(World &world) override;
-	void draw(int offx, int offy) const override;
+	Villager(Map &map, const Box2<float> &pos, unsigned player);
 };
 
 /** Container for all particles, entities, etc. */
@@ -294,13 +309,18 @@ public:
 private:
 	std::vector<std::unique_ptr<StaticResource>> static_res;
 	std::vector<std::unique_ptr<Building>> buildings;
+	std::vector<std::unique_ptr<Unit>> units;
 
 public:
 	World(LCG &lcg, const StartMatch &settings, bool host);
 
 	void populate(unsigned players);
 
+	void imgtick();
+
 	void query_static(std::vector<Particle*> &list, const Box2<float> &bounds);
+	// FIXME change type to Unit*
+	void query_dynamic(std::vector<Particle*> &list, const Box2<float> &bounds);
 };
 
 }

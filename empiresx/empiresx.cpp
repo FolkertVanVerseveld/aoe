@@ -313,7 +313,7 @@ public:
 	std::vector<game::Particle*> particles;
 	unsigned invalidate;
 
-	static constexpr unsigned invalidate_static = 0x01;
+	static constexpr unsigned invalidate_particles = 0x01;
 	static constexpr unsigned invalidate_all = 0x01;
 
 	float move_speed = 0.5f; // TODO playtest movement speed factor
@@ -331,9 +331,10 @@ private:
 		if (!invalidate)
 			return;
 
-		if (invalidate & invalidate_static) {
+		if (invalidate & invalidate_particles) {
 			particles.clear();
 			world.query_static(particles, bounds);
+			world.query_dynamic(particles, bounds);
 
 			// maintain z-order by sorting all selected objects such that the upper units are drawn first
 			std::sort(particles.begin(), particles.end(), [](game::Particle *lhs, game::Particle *rhs) {
@@ -381,7 +382,7 @@ public:
 
 		// FIXME lock viewport bounds
 
-		invalidate |= invalidate_static;
+		invalidate |= invalidate_particles;
 		update();
 	}
 
@@ -646,6 +647,11 @@ public:
 
 		assert(players.find(assign.to) != players.end());
 		usertbl.emplace(assign.from, assign.to);
+	}
+
+	void change_state(const game::GameState &state) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		this->state = state;
 	}
 
 	void paint() override {

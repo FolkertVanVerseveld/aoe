@@ -72,6 +72,9 @@ World::World(LCG &lcg, const StartMatch &settings, bool host)
 {
 }
 
+#pragma warning(push)
+#pragma warning(disable: 4244)
+
 void World::populate(unsigned players) {
 	size_t tiles = static_cast<size_t>(map.w) * map.h;
 	size_t trees = static_cast<size_t>(round(pow(static_cast<double>(tiles), 0.6)));
@@ -136,7 +139,7 @@ void World::populate(unsigned players) {
 		static_res.emplace_back(new StaticResource(map, pos, ResourceType::stone, 622, lcg.next(6)));
 	}
 
-	printf("create %u players\n", players);
+	printf("create %u players and 3 villagers and 2 clubman\n", players);
 
 	for (unsigned i = 0; i < players; ++i) {
 		Box2<float> pos(
@@ -145,8 +148,15 @@ void World::populate(unsigned players) {
 		buildings.emplace_back(new Building(map, pos, BuildingType::town_center, i));
 		pos.top += 4;
 		buildings.emplace_back(new Building(map, pos, BuildingType::barracks, i));
+
+		pos.top -= 4 + 3;
+		units.emplace_back(new Villager(map, pos, i));
+		pos.left += 1;
+		units.emplace_back(new Villager(map, pos, i));
 	}
 }
+
+#pragma warning(pop)
 
 static const DrsId build_anim_base[] = {
 	DrsId::barracks_base,
@@ -172,12 +182,76 @@ void Building::tick(World &world) {
 	auto &next = prod.front();
 }
 
+static const DrsId unit_anim[] = {
+	DrsId::villager_idle,
+};
+
+static const unsigned unit_hp[] = {
+	25,
+	25,
+};
+
+static const unsigned unit_dir_images[] = {
+	6,
+	1,
+};
+
+static const float unit_movespeed[] = {
+	0.5f,
+	0.4f,
+};
+
+Unit::Unit(Map &map, const Box2<float> &pos, UnitType type, unsigned player)
+	: Particle(map, pos, (unsigned)unit_anim[(unsigned)type], 0, player)
+	, Alive(unit_hp[(unsigned)type])
+	, type(type), dir(UnitDirection::down), dir_images(unit_dir_images[(unsigned)type])
+	, target(pos.left, pos.top) {}
+
+void Unit::imgtick() {
+	image_index = (image_index + 1) % dir_images;
+}
+
+static constexpr float move_threshold = 0.5f / tw; // half a horizontal pixel should be close enough
+
+void Unit::tick(World &world) {
+	float dx = target.x - pos.left, dy = target.y - pos.top;
+
+	if (abs(dx) < move_threshold && abs(dy) < move_threshold)
+		return;
+
+	float angle = atan2(dy, dx);
+	pos.left += cos(angle) * movespeed;
+	pos.top += sin(angle) * movespeed;
+
+	// particle has moved, force update scr
+	scr = world.map.tile_to_scr(pos.topleft(), hotspot_x, hotspot_y, anim_index, image_index);
+}
+
+void Unit::draw(int offx, int offy) const {
+	int index = (unsigned)dir * dir_images + image_index;
+	Particle::draw(offx, offy);
+}
+
+Villager::Villager(Map &map, const Box2<float> &pos, unsigned player)
+	: Unit(map, pos, UnitType::villager, player) {}
+
+void World::imgtick() {
+	for (auto &x : units)
+		x->imgtick();
+}
+
 void World::query_static(std::vector<Particle*> &list, const Box2<float> &bounds) {
 	for (auto &x : static_res)
 		if (bounds.intersects(x->scr))
 			list.push_back(x.get());
 
 	for (auto &x : buildings)
+		if (bounds.intersects(x->scr))
+			list.push_back(x.get());
+}
+
+void World::query_dynamic(std::vector<Particle*> &list, const Box2<float> &bounds) {
+	for (auto &x : units)
 		if (bounds.intersects(x->scr))
 			list.push_back(x.get());
 }

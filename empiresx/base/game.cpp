@@ -217,7 +217,11 @@ bool MultiplayerHost::try_start() {
 
 	// TODO create random stuff on terrain
 
-	// TODO announce all slaves to start the game
+	// announce all slaves to start the game
+	auto newstate = game::GameState::running;
+	Command do_start = Command::gamestate((unsigned)newstate);
+	gcb->change_state(newstate);
+	sock.broadcast(*this, do_start);
 
 	return true;
 }
@@ -375,6 +379,9 @@ void MultiplayerClient::eventloop() {
 		case CmdType::assign:
 			gcb->assign_player(cmd.data.assign);
 			break;
+		case CmdType::gamestate:
+			gcb->change_state((game::GameState)cmd.data.gamestate);
+			break;
 		}
 	}
 
@@ -430,10 +437,12 @@ bool operator<(const Player &lhs, const Player &rhs) {
 	return lhs.id < rhs.id;
 }
 
+static constexpr unsigned timer_anim_ticks = 5;
+
 Game::Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings)
 	: mp(mp), lobby(lobby), mode(mode), state(GameState::init), lcg(LCG::ansi_c(settings.seed))
 	, settings(settings), players(), usertbl(), mut(), world(lcg, settings, mode != GameMode::multiplayer_client)
-	, ticks_per_second(50), tick_interval(1.0 / ticks_per_second), tick_timer(0) {}
+	, ticks_per_second(50), tick_interval(1.0 / ticks_per_second), tick_timer(0), timer_anim(timer_anim_ticks) {}
 
 Game::~Game() {
 	if (lobby)
@@ -441,7 +450,14 @@ Game::~Game() {
 }
 
 void Game::tick(unsigned n) {
-	printf("do %u ticks\n", n);
+	for (unsigned i = 0; i < n; ++i) {
+		if (!timer_anim) {
+			timer_anim = timer_anim_ticks;
+			world.imgtick();
+		} else {
+			--timer_anim;
+		}
+	}
 }
 
 void Game::step(unsigned ms) {

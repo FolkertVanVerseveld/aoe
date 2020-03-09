@@ -74,6 +74,12 @@ public:
 		printf("assign user %u to %u: %s\n", assign.from, assign.to, players.find(assign.to)->name.c_str());
 		usertbl.emplace(assign.from, assign.to);
 	}
+
+	void change_state(const GameState &state) override {
+		std::lock_guard<std::recursive_mutex> lock(mut);
+		printf("change gamestate to %u\n", (unsigned)state);
+		this->state = state;
+	}
 };
 
 void worker_loop(DedicatedGame &game) {

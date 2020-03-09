@@ -48,6 +48,7 @@ const unsigned cmd_sizes[] = {
 	sizeof(Ready),
 	sizeof(CreatePlayer),
 	sizeof(AssignSlave),
+	sizeof(uint8_t),
 };
 
 void CmdData::hton(uint16_t type) {
@@ -162,6 +163,11 @@ Ready Command::ready() {
 	return data.ready;
 }
 
+uint8_t Command::gamestate() {
+	assert(type == (uint16_t)CmdType::gamestate);
+	return data.gamestate;
+}
+
 Command Command::join(user_id id, const std::string &str) {
 	Command cmd;
 
@@ -225,6 +231,15 @@ Command Command::assign(user_id id, player_id pid) {
 	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::assign];
 	cmd.data.assign.from = id;
 	cmd.data.assign.to = pid;
+
+	return cmd;
+}
+
+Command Command::gamestate(uint8_t type) {
+	Command cmd;
+
+	cmd.length = cmd_sizes[cmd.type = (uint16_t)CmdType::gamestate];
+	cmd.data.gamestate = type;
 
 	return cmd;
 }

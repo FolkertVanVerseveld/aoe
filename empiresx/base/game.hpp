@@ -223,6 +223,7 @@ public:
 
 	virtual void new_player(const CreatePlayer&) = 0;
 	virtual void assign_player(const AssignSlave&) = 0;
+	virtual void change_state(const game::GameState&) = 0;
 };
 
 class Game : public GameCallback {
@@ -239,6 +240,7 @@ protected:
 	unsigned ticks_per_second;
 	double tick_interval;
 	double tick_timer;
+	unsigned timer_anim;
 public:
 	World world;
 

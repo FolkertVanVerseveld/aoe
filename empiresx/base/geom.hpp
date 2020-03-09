@@ -9,14 +9,14 @@
 namespace genie {
 
 /**
-* Simple minimal API for a point in two dimensional euclidean space
-*/
-
+ * Simple minimal API for a point in two dimensional euclidean space.
+ */
 template<typename T> class Vector2 {
 public:
 	T x, y;
 
 	constexpr Vector2<T>(T x=0, T y=0) noexcept : x(x), y(y) {}
+	constexpr Vector2<T>(const Vector2<T> &other) noexcept : x(other.x), y(other.y) {}
 
 	friend constexpr Vector2<T> operator+(Vector2<T> lhs, const Vector2<T> &rhs) noexcept {
 		lhs += rhs;
