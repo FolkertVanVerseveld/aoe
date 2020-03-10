@@ -3,7 +3,6 @@
 #pragma once
 
 #include "base/types.hpp"
-#include "drs.hpp"
 
 #include <SDL2/SDL_mouse.h>
 
@@ -24,7 +23,6 @@ enum class CursorId {
 
 class Cursor final {
 	std::unique_ptr<SDL_Cursor, decltype(&SDL_FreeCursor)> handle;
-	Animation &icons;
 public:
 	Cursor(CursorId);
 	~Cursor();

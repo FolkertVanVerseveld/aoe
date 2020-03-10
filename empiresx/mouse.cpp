@@ -5,10 +5,11 @@
 #include <cassert>
 
 #include "engine.hpp"
+#include "drs.hpp"
 
 namespace genie {
 
-Cursor::Cursor(CursorId id) : handle(nullptr, &SDL_FreeCursor), icons(eng->assets->open_slp(eng->assets->pal_default, 51000)) {
+Cursor::Cursor(CursorId id) : handle(nullptr, &SDL_FreeCursor) {
 	change(id);
 }
 
@@ -24,6 +25,7 @@ void Cursor::change(CursorId id) {
 	}
 
 	SDL_Cursor *newhandle;
+	Animation icons(eng->assets->open_slp(eng->assets->pal_default, 51000));
 
 	auto &img = icons.subimage((unsigned)id - 1);
 	if (!(newhandle = SDL_CreateColorCursor(img.surface.data(), img.hotspot_x, img.hotspot_y))) {
