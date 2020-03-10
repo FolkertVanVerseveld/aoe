@@ -45,8 +45,10 @@ public:
 
 	virtual void resize(ConfigScreenMode old_mode, ConfigScreenMode mode);
 
-	virtual void mousedown(SDL_MouseButtonEvent &ev);
-	virtual void mouseup(SDL_MouseButtonEvent &ev);
+	virtual void custom_mouseup(SDL_MouseButtonEvent&) {}
+
+	void mousedown(SDL_MouseButtonEvent &ev);
+	void mouseup(SDL_MouseButtonEvent &ev);
 
 	virtual bool keydown(int ch);
 	virtual bool keyup(int ch);

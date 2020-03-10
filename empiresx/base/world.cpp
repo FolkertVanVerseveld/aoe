@@ -177,7 +177,7 @@ static const unsigned build_hp[] = {
 Building::Building(Map &map, const Box2<float> &pos, BuildingType type, unsigned player)
 	: Particle(map, pos, (unsigned)build_anim_base[(unsigned)type], 0, player)
 	, Alive(build_hp[(unsigned)type])
-	, anim_player((unsigned)build_anim_player[(unsigned)type]), player(player), prod() {}
+	, anim_player((unsigned)build_anim_player[(unsigned)type]), player(player), prod(), type(type) {}
 
 void Building::tick(World &world) {
 	auto &next = prod.front();

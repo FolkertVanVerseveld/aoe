@@ -176,8 +176,12 @@ protected:
 		// disallow particle_id_counter to be zero
 		particle_id_counter = particle_id_counter == UINT32_MAX ? 1 : particle_id_counter + 1;
 	}
-
+public:
 	virtual ~Particle() {}
+
+	constexpr uint32_t getid() const noexcept {
+		return id;
+	}
 
 protected:
 	void draw(int offx, int offy, unsigned index) const;
@@ -265,6 +269,8 @@ class Building final : public Particle, public Alive {
 	std::deque<Production> prod;
 
 public:
+	const BuildingType type;
+
 	Building(Map &map, const Box2<float> &pos, BuildingType type, unsigned player=0);
 
 	void tick(World &world) override;

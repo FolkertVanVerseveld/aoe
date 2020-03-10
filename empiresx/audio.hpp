@@ -84,6 +84,9 @@ enum class SfxId {
 	taunt23 = 50023,
 	taunt24 = 50024,
 	taunt25 = 50025,
+
+	// various
+	unit_select = 5231,
 };
 
 enum class MusicId {

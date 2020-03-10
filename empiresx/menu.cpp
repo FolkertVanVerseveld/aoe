@@ -84,14 +84,25 @@ void Menu::mouseup(SDL_MouseButtonEvent &ev) {
 		ev.y -= r.offset.y;
 	}
 
-	if (ui_objs.empty())
+	if (ui_objs.empty()) {
+		custom_mouseup(ev);
 		return;
+	}
+
+	bool munched = false;
 
 	for (auto &x : ui_focus)
 		x->press(false);
 
-	for (auto &x : ui_inputs)
-		x->focus(x->collides(ev.x, ev.y));
+	for (auto &x : ui_inputs) {
+		bool b = x->collides(ev.x, ev.y);
+		if (b)
+			munched = true;
+		x->focus(b);
+	}
+
+	if (!munched)
+		custom_mouseup(ev);
 }
 
 void Menu::go_to(Menu *menu) {

@@ -319,7 +319,7 @@ public:
 	float move_speed = 0.5f; // TODO playtest movement speed factor
 	ConfigScreenMode mode;
 	game::World &world;
-	unsigned selected = 0;
+	uint32_t selected = 0;
 
 	Viewport(game::World &world)
 		: bounds(), particles(), invalidate(invalidate_all)
@@ -384,6 +384,68 @@ public:
 
 		invalidate |= invalidate_particles;
 		update();
+	}
+
+	void mouseup(SDL_MouseButtonEvent &ev) {
+		switch (ev.button) {
+			case SDL_BUTTON_LEFT:
+			{
+				game::Box2<float> area(bounds.left + static_cast<float>(ev.x), bounds.top + static_cast<float>(ev.y));
+				std::vector<game::Particle*> selected;
+
+				world.query_static(selected, area);
+				world.query_dynamic(selected, area);
+
+				std::sort(selected.begin(), selected.end(), [](game::Particle *lhs, game::Particle *rhs) {
+					return lhs->scr.top + lhs->hotspot_y > rhs->scr.top + rhs->hotspot_y;
+				});
+
+				this->selected = selected.empty() ? 0 : selected[0]->getid();
+
+				if (this->selected) {
+					game::Particle *p = selected[0];
+					game::Villager *v = dynamic_cast<game::Villager*>(p);
+
+					if (v) {
+						SfxId sfx;
+
+						switch (rand() % 5) {
+						case 0: sfx = SfxId::villager1; break;
+						case 1: sfx = SfxId::villager2; break;
+						case 2: sfx = SfxId::villager3; break;
+						case 3: sfx = SfxId::villager4; break;
+						default: sfx = SfxId::villager5; break;
+						}
+
+						jukebox.sfx(sfx);
+						return;
+					}
+
+					game::Building *b = dynamic_cast<game::Building*>(p);
+
+					if (b) {
+						switch (b->type) {
+						case game::BuildingType::town_center:
+							jukebox.sfx(SfxId::town_center);
+							break;
+						case game::BuildingType::barracks:
+							jukebox.sfx(SfxId::barracks);
+							break;
+						}
+						return;
+					}
+
+					// it is something else, just play placeholder sound for now
+					jukebox.sfx(SfxId::unit_select);
+				}
+			}
+			break;
+			case SDL_BUTTON_RIGHT:
+			{
+				
+			}
+			break;
+		}
 	}
 
 	void reset() {
@@ -559,6 +621,10 @@ public:
 		// this can get complicated because it will continue to receive
 		// game events that are not handled because the user has resigned
 		nav->quit(2);
+	}
+
+	void custom_mouseup(SDL_MouseButtonEvent &ev) override {
+		view.mouseup(ev);
 	}
 
 	bool input(unsigned id, ui::InputField &field) override {
