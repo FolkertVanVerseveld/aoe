@@ -1,6 +1,6 @@
 /* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
-#define DEBUG 1
+#define DEBUG 0
 
 #include "game.hpp"
 #include "engine.hpp"

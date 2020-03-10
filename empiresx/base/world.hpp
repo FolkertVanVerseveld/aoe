@@ -340,7 +340,7 @@ public:
 	 * Compute the next simulation step and use the mp for any events that are generated.
 	 * If the world is created as host, this will also send messages to other clients.
 	 */
-	void tick(Multiplayer *mp);
+	void tick();
 
 	void query_static(std::vector<Particle*> &list, const Box2<float> &bounds);
 	// FIXME change type to Unit*

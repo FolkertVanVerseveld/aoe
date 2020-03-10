@@ -4,7 +4,12 @@
 
 #include <cassert>
 
+#include "os_macros.hpp"
 #include "engine.hpp"
+
+#if linux
+#include <unistd.h>
+#endif
 
 namespace genie {
 
@@ -162,6 +167,7 @@ void Navigator::mainloop() {
 		while (SDL_PollEvent(&ev)) {
 			switch (ev.type) {
 			case SDL_QUIT:
+				_exit(0);
 				return;
 			case SDL_KEYDOWN:
 				switch (ev.key.keysym.sym) {

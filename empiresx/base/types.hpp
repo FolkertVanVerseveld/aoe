@@ -27,4 +27,6 @@ typedef uint16_t player_id;
  */
 typedef uint16_t user_id;
 
+typedef uint16_t res_id;
+
 }

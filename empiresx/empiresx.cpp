@@ -40,6 +40,7 @@
 #include "game.hpp"
 #include "audio.hpp"
 #include "string.hpp"
+#include "mouse.hpp"
 
 #if windows
 #pragma comment(lib, "opengl32")
@@ -321,9 +322,11 @@ public:
 	game::World &world;
 	uint32_t selected = 0;
 
+	Cursor cursor; // TODO move this to game eventually
+
 	Viewport(game::World &world)
 		: bounds(), particles(), invalidate(invalidate_all)
-		, mode(eng->w->render().mode), world(world) {}
+		, mode(eng->w->render().mode), world(world), cursor(CursorId::game_default) {}
 
 private:
 	/** Ensure that the visual state is consistent with the associated world. */

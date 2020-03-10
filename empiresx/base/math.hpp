@@ -6,6 +6,10 @@
 
 namespace genie {
 
+#ifndef M_PI
+#    define M_PI 3.14159265358979323846
+#endif
+
 static constexpr int tw = 64, th = 32;
 
 static constexpr inline bool ispow2(uint64_t v) noexcept {

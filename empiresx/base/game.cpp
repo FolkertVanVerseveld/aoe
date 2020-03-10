@@ -457,6 +457,7 @@ void Game::tick(unsigned n) {
 		} else {
 			--timer_anim;
 		}
+		world.tick();
 	}
 }
 

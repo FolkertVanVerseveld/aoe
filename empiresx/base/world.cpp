@@ -149,10 +149,19 @@ void World::populate(unsigned players) {
 		buildings.emplace_back(new Building(map, pos, BuildingType::town_center, i));
 		pos.top += 4;
 		buildings.emplace_back(new Building(map, pos, BuildingType::barracks, i));
+		pos.top += 3;
+		pos.left += 1;
+		units.emplace_back(new Unit(map, pos, UnitType::clubman, i));
+		pos.left += 1;
+		units.emplace_back(new Unit(map, pos, UnitType::clubman, i));
+		pos.top -= 3;
+		pos.left -= 2;
 
 		pos.top -= 4 + 3;
 		units.emplace_back(new Villager(map, pos, i));
 		pos.left += 1;
+		units.emplace_back(new Villager(map, pos, i));
+		pos.left += 2;
 		units.emplace_back(new Villager(map, pos, i));
 	}
 }
@@ -185,6 +194,7 @@ void Building::tick(World &world) {
 
 static const DrsId unit_anim[] = {
 	DrsId::villager_idle,
+	DrsId::clubman_stand,
 };
 
 static const unsigned unit_hp[] = {
@@ -194,7 +204,7 @@ static const unsigned unit_hp[] = {
 
 static const unsigned unit_dir_images[] = {
 	6,
-	1,
+	6,
 };
 
 static const float unit_movespeed[] = {
@@ -205,8 +215,11 @@ static const float unit_movespeed[] = {
 Unit::Unit(Map &map, const Box2<float> &pos, UnitType type, unsigned player)
 	: Particle(map, pos, (unsigned)unit_anim[(unsigned)type], 0, player)
 	, Alive(unit_hp[(unsigned)type])
-	, type(type), dir(UnitDirection::down_left), dir_images(unit_dir_images[(unsigned)type])
-	, target(pos.left, pos.top) {}
+	, type(type), dir((UnitDirection)(rand() % 8)), dir_images(unit_dir_images[(unsigned)type])
+	, target(pos.left, pos.top)
+{
+	hflip = dir >= UnitDirection::top_right;
+}
 
 void Unit::imgtick() {
 	image_index = (image_index + 1) % dir_images;
@@ -225,6 +238,24 @@ void Unit::tick(World &world) {
 	pos.top += sin(angle) * movespeed;
 
 	// FIXME update unit direction
+	// -angle + 270
+	Vector2<float> scr_target;
+	genie::tile_to_scr(scr_target.x, scr_target.y, target.x, target.y);
+	float scr_dx = scr_target.x - scr.left, scr_dy = scr_target.y;
+	// force scr_angle to be positive in range [0,360)
+	double scr_angle = fmod(2 * M_PI + -atan2(scr_dy, scr_dx) + 1.5 * M_PI, 2 * M_PI);
+
+	unsigned norm_dir = static_cast<unsigned>(8 + round(scr_angle / (2 * M_PI / 8))) % 8;
+	dir = (UnitDirection)(norm_dir);
+
+	hflip = norm_dir >= (unsigned)UnitDirection::top_right;
+
+	Box2<float> dim;
+	int index = (unsigned)dir * dir_images + image_index;
+	img_dim(dim, hotspot_x, hotspot_y, anim_index, index);
+
+	if (hflip)
+		hotspot_x = static_cast<int>(dim.w) - hotspot_x;
 
 	// particle has moved, force update scr
 	scr = world.map.tile_to_scr(pos.topleft(), hotspot_x, hotspot_y, anim_index, image_index);
@@ -243,8 +274,9 @@ void World::imgtick() {
 		x->imgtick();
 }
 
-void World::tick(Multiplayer *mp) {
-	assert("stub" == 0);
+void World::tick() {
+	for (auto& x : units)
+		x->tick(*this);
 }
 
 void World::query_static(std::vector<Particle*> &list, const Box2<float> &bounds) {
