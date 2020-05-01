@@ -20,6 +20,7 @@ Symptom                    | Cause                                              
 ---------------------------|--------------------------------------------------------|-------------------------------------------------------
 No music                   | The CD-ROM audio partition is not mounted              | Open the directory in your filebrowser to automount it
 Cursor clipping inaccurate | X11 does not support clipping of subset of Window area | No workaround at the moment
+Game becomes unresponsive  | To be investigated: probably a thread deadlock         | No workaround at the moment
 
 Bugs for any executable in tools/:
 
