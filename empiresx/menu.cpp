@@ -6,6 +6,7 @@
 
 #include "os_macros.hpp"
 #include "engine.hpp"
+#include "mouse.hpp"
 
 #if linux
 #include <unistd.h>
@@ -193,6 +194,9 @@ void Navigator::mainloop() {
 				break;
 			case SDL_MOUSEBUTTONUP:
 				top->mouseup(ev.button);
+				break;
+			case SDL_WINDOWEVENT_FOCUS_GAINED: // keyboard focus gained, but treat this as mouse cursor focus gained
+				Cursor::clip();
 				break;
 			}
 		}

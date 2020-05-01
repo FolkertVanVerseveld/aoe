@@ -1,11 +1,11 @@
 /* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /**
- * Simple quick and dirty AOE demo using my own cmake-sdl2-template
+ * Age of Empires Free Software Remake
  *
  * See INSTALL for instructions
  *
- * This is just a quick template to get started. Most code is quickly hacked together and could be made more consistent but I won't bother as long as it fucking works
+ * empiresx is going to replace empires eventually as the new modern version of my AoE remake...
  */
 
 #include <cctype>
@@ -523,6 +523,8 @@ public:
 		, playerstate(state) // copy state_now and state_next and txtchat from menulobby
 		, view(world), events()
 	{
+		Cursor::clip(true);
+
 		cache = &img;
 		world.populate(settings.slave_count);
 		view.populate();
@@ -534,6 +536,10 @@ public:
 			((MultiplayerHost*)mp)->set_gcb(this);
 
 		jukebox.play(MusicId::game);
+	}
+
+	~MenuGame() {
+		Cursor::clip(false);
 	}
 
 private:

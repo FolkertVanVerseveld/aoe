@@ -245,7 +245,7 @@ public:
 	World world;
 
 	Game(GameMode mode, MenuLobby *lobby, Multiplayer *mp, const StartMatch &settings);
-	~Game();
+	virtual ~Game();
 
 private:
 	void tick(unsigned n=1);

@@ -28,6 +28,7 @@ protected:
 	InteractableCallback &cb;
 public:
 	Interactable(unsigned id, InteractableCallback &cb) : int_id(id), has_focus(false), is_pressed(false), cb(cb) {}
+	virtual ~Interactable() {}
 
 	virtual void focus(bool on) = 0;
 	virtual void press(bool on) = 0;
@@ -97,6 +98,7 @@ public:
 	bool flip;
 
 	Border(const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, BorderType type, bool enhanced=false);
+	virtual ~Border() {}
 
 	void paint(SimpleRender &r) override;
 	void paint(SimpleRender &r, const SDL_Color &bg);
@@ -171,6 +173,7 @@ public:
 	bool error;
 
 	InputField(unsigned id, InputCallback &cb, InputType type, const std::string &init, SimpleRender &r, Font &f, SDL_Color fg, const SDL_Rect bnds[screen_modes], ConfigScreenMode mode, const Palette &pal, const BackgroundSettings &bkg, bool enhanced=false);
+	virtual ~InputField() {}
 
 	bool keydown(int ch);
 	bool keyup(int ch);

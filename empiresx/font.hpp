@@ -28,7 +28,9 @@ public:
 	const int ptsize;
 
 	Font(const char *fname, int ptsize);
-	Font(TTF_Font *handle, int ptsize = 12);
+	Font(TTF_Font *handle, int ptsize=12);
+	Font(Font&) = delete;
+	Font(Font&&) = default;
 
 	SDL_Surface *surf(const char *text, SDL_Color fg);
 	SDL_Texture *tex(SimpleRender &r, const char *text, SDL_Color fg);

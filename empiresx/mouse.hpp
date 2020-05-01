@@ -28,6 +28,9 @@ public:
 	~Cursor();
 
 	void change(CursorId);
+
+	static void clip();
+	static void clip(bool enable);
 };
 
 }

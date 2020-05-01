@@ -18,6 +18,7 @@
 #include "os.hpp"
 #include "render.hpp"
 #include "audio.hpp"
+#include "mouse.hpp"
 
 namespace genie {
 
@@ -318,6 +319,8 @@ void Window::chmode(ConfigScreenMode mode) {
 		scr_dim[(unsigned)ConfigScreenMode::MODE_FULLSCREEN].w = bnds.w;
 		scr_dim[(unsigned)ConfigScreenMode::MODE_FULLSCREEN].h = bnds.h;
 	}
+
+	Cursor::clip();
 }
 
 bool Window::toggleFullscreen() {
