@@ -516,15 +516,14 @@ class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCa
 	GameEvents events;
 public:
 	MenuGame(MenuLobby *lobby, SimpleRender &r, Multiplayer *mp, UIPlayerState *state, bool host, const StartMatch &settings)
-		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff}, true), Game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, lobby, mp, settings)
+		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff}, true, true)
+		, Game(host ? game::GameMode::multiplayer_host : game::GameMode::multiplayer_client, lobby, mp, settings)
 		, img(), host(host), started(false)
 		, f_chat(nullptr), key_state(0)
 		, mut()
 		, playerstate(state) // copy state_now and state_next and txtchat from menulobby
 		, view(world), events()
 	{
-		Cursor::clip(true);
-
 		cache = &img;
 		world.populate(settings.slave_count);
 		view.populate();
@@ -537,11 +536,6 @@ public:
 
 		jukebox.play(MusicId::game);
 	}
-
-	~MenuGame() {
-		Cursor::clip(false);
-	}
-
 private:
 	/** Move visible area on screen at a consistent speed. */
 	void update_viewport(unsigned ms) {
@@ -1271,6 +1265,7 @@ public:
 		ConfigScreenMode mode = eng->w->render().mode;
 
 		// TODO add single player and scenario editor menus
+		fprintf(stderr, "%s: stub singleplayer and editor menu\n", __func__);
 		//add_btn(new ui::Button(0, *this, r, fnt, "(S) " + eng->assets->open_str(LangId::btn_singleplayer), fg, bg, menu_start_btn_txt_start, menu_start_btn_border_start, pal, bkg, mode));
 		add_btn(new ui::Button(1, *this, r, fnt, "(M) " + eng->assets->open_str(LangId::btn_multiplayer), fg, bg, menu_start_btn_txt_multi, menu_start_btn_border_multi, pal, bkg, mode));
 		add_btn(new ui::Button(2, *this, r, fnt, "(H) Help and settings", fg, bg, menu_start_btn_txt_help, menu_start_btn_border_help, pal, bkg, mode));
@@ -1287,6 +1282,7 @@ public:
 		switch (ch) {
 		case 's':
 		case 'S':
+			fprintf(stderr, "%s: singleplayer stub\n", __func__);
 			//interacted(0);
 			break;
 		case 'm':
@@ -1299,6 +1295,7 @@ public:
 			break;
 		case 'e':
 		case 'E':
+			fprintf(stderr, "%s: editor stub\n", __func__);
 			//interacted(3);
 			break;
 		case 'q':

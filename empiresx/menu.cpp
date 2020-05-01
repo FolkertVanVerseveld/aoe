@@ -14,12 +14,12 @@
 
 namespace genie {
 
-Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced)
+Menu::Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced, bool grab_cursor)
 	: r(r), ui_objs(), ui_focus(), ui_inputs(), title(r, f, s, fg)
 	, bkg(eng->assets->open_bkg((res_id)id)), pal(eng->assets->open_pal(bkg.pal))
 	, border(scr_dim, eng->w->mode(), pal, bkg, ui::BorderType::background, enhanced)
 	, anim_bkg{eng->assets->open_slp(pal, bkg.bmp[0]), eng->assets->open_slp(pal, bkg.bmp[1]), eng->assets->open_slp(pal, bkg.bmp[2])}
-	, enhanced(enhanced)
+	, enhanced(enhanced), grab_cursor(grab_cursor)
 {
 	r.legvp(!enhanced);
 	resize(r.mode, r.mode);
@@ -124,6 +124,11 @@ void Menu::resize(ConfigScreenMode old_mode, ConfigScreenMode mode) {
 
 	for (auto &x : ui_objs)
 		x->resize(old_mode, mode);
+
+	if (grab_cursor || mode == ConfigScreenMode::MODE_FULLSCREEN)
+		clip_control.clip(enhanced);
+	else if (!grab_cursor)
+		clip_control.noclip();
 }
 
 bool Menu::keydown(int ch) {
@@ -196,7 +201,7 @@ void Navigator::mainloop() {
 				top->mouseup(ev.button);
 				break;
 			case SDL_WINDOWEVENT_FOCUS_GAINED: // keyboard focus gained, but treat this as mouse cursor focus gained
-				Cursor::clip();
+				clip_control.focus_gained();
 				break;
 			}
 		}
@@ -238,6 +243,9 @@ void Navigator::quit(unsigned count) {
 		to_purge.emplace_back(trace[trace.size() - 1].release());
 		trace.pop_back();
 	}
+
+	// restore new top state
+	clip_control.clip(trace[trace.size() - 1]->enhanced);
 }
 
 }

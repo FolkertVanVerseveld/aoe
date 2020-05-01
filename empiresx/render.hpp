@@ -45,7 +45,8 @@ public:
 
 	Render(Window &w);
 public:
-	virtual void legvp(bool legacy=true);
+	/** Adjust LEGacy ViewPort */
+	virtual void legvp(bool legacy=true) {}
 
 	virtual void chmode(ConfigScreenMode old_mode, ConfigScreenMode mode) = 0;
 

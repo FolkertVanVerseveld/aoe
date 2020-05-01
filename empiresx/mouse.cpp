@@ -19,7 +19,7 @@ Cursor::~Cursor() {
 	change(CursorId::os_default);
 }
 
-static bool is_clipping = false;
+ClipControl clip_control;
 
 void Cursor::change(CursorId id) {
 	if (!(unsigned)id) {
@@ -41,16 +41,28 @@ void Cursor::change(CursorId id) {
 	handle.reset(newhandle);
 }
 
-void Cursor::clip() { clip(is_clipping); }
-
-void Cursor::clip(bool enable) {
+void ClipControl::noclip() {
+	// invalidate area
+	area.h = 0;
 #if windows
-	if (!enable) {
-		ClipCursor(NULL);
-		is_clipping = false;
-		return;
-	}
+	ClipCursor(NULL);
+	clipping = false;
+#elif linux
+	fprintf(stderr, "%s: stub\n", __func__);
+#else
+	fprintf(stderr, "%s: operation not supported\n", __func__);
+#endif
+}
 
+void ClipControl::focus_gained() {
+	if (clipping)
+		clip(enhanced);
+	else
+		noclip();
+}
+
+void ClipControl::clip(bool enhanced) {
+#if windows
 	SDL_SysWMinfo info;
 	SDL_VERSION(&info.version);
 
@@ -62,17 +74,33 @@ void Cursor::clip(bool enable) {
 	HWND h = info.info.win.window;
 	RECT r;
 	POINT p{ 0, 0 };
+
+
 	if (!ClientToScreen(h, &p) || !GetClientRect(h, &r)) {
-		fprintf(stderr, "%s: cannot get clipping bounds\n", __func__);
+		fprintf(stderr, "%s: could not get clipping area\n", __func__);
 		return;
 	}
-	// adjust clipping area to window screen area
-	r.left += p.x; r.right += p.x;
-	r.top += p.y; r.bottom += p.y;
+
+	// adjust clipping area to attached display
+	if (enhanced) {
+		r.left += p.x; r.right += p.x;
+		r.top += p.y; r.bottom += p.y;
+	} else {
+		auto &ren = eng->w->render();
+		SDL_Rect ref(enhanced ? ren.dim.rel_bnds : ren.dim.lgy_bnds);
+
+		// adjust clipping area
+		r.left = p.x + ref.x; r.right = r.left + ref.w;
+		r.top = p.y + ref.y; r.bottom = r.top + ref.h;
+	}
+
 	ClipCursor(&r);
-	is_clipping = true;
+	clipping = true;
+#elif linux
+	// https://tronche.com/gui/x/xlib/input/XGrabPointer.html
+	fprintf(stderr, "%s: stub\n", __func__);
 #else
-	fprintf(stderr, "%s: stub\n", __func);
+	fprintf(stderr, "%s: operation not supported\n", __func__);
 #endif
 }
 

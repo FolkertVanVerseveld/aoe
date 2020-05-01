@@ -73,8 +73,6 @@ void Dimensions::resize(const SDL_Rect &abs) {
 	lgy_bnds.y = (rel_bnds.h - (int)need_h) / 2;
 }
 
-void Render::legvp(bool) {}
-
 Render::Render(Window &w) : w(w), old_dim(), dim(), mode(w.mode()) {
 	SDL_Window *win = w.data();
 

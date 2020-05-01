@@ -29,14 +29,14 @@ public:
 	Palette pal;
 	ui::Border border;
 	Animation anim_bkg[lgy_screen_modes];
-	bool enhanced;
+	bool enhanced, grab_cursor;
 
 	// options for painting details
 	static constexpr unsigned show_border = 0x01;
 	static constexpr unsigned show_title = 0x02;
 	static constexpr unsigned show_background = 0x04;
 
-	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced=false);
+	Menu(MenuId id, SimpleRender &r, Font &f, const std::string &s, SDL_Color fg, bool enhanced=false, bool grab_cursor=false);
 	virtual ~Menu() {}
 
 	void add_btn(ui::Button *btn);
