@@ -5,8 +5,8 @@ is an educational non-profit project we are writing in our free time.*
 
 ## Preview
 
-![Main Menu](https://user-images.githubusercontent.com/5989565/66706421-8fe7ed80-ed32-11e9-9a4c-3cdac94ab0c4.png)
-![Demo map](https://user-images.githubusercontent.com/5989565/66708315-eb27d900-ed4e-11e9-8b0f-737848cfccc0.png)
+![Main Menu](https://user-images.githubusercontent.com/5989565/80805165-98f9b880-8bb7-11ea-8552-872f572e8a55.png)
+![Demo map](https://user-images.githubusercontent.com/5989565/80805187-a9aa2e80-8bb7-11ea-8f70-6b2106e7a93f.png)
 
 ## Overview
 
