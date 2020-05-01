@@ -195,13 +195,24 @@ void Navigator::mainloop() {
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
+				// On linux, selecting the menu bar is also treated as SDL_WINDOWEVENT_FOCUS_GAINED, but this will fail, so we have to try again here...
+#if linux
+				clip_control.focus_gained();
+#endif
 				top->mousedown(ev.button);
 				break;
 			case SDL_MOUSEBUTTONUP:
 				top->mouseup(ev.button);
 				break;
-			case SDL_WINDOWEVENT_FOCUS_GAINED: // keyboard focus gained, but treat this as mouse cursor focus gained
-				clip_control.focus_gained();
+			case SDL_WINDOWEVENT:
+				switch (ev.window.event) {
+				case SDL_WINDOWEVENT_FOCUS_GAINED:
+					clip_control.focus_gained();
+					break;
+				case SDL_WINDOWEVENT_FOCUS_LOST:
+					clip_control.focus_lost();
+					break;
+				}
 				break;
 			}
 		}

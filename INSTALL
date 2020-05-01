@@ -1,25 +1,29 @@
 BUILDING THE GAME
 
-All code is spread across multiple directories. The game setup installer is
-located in setup/, the original game in empires/. The game engine itself is
-located in genie/ and tools in tools/ (as you can see, it is pretty
-self-explanatory).
+For any new readers, you should try to compile empires/empiresx using CMake,
+since this one is actively maintained.
 
-Note that setup/ and reverse_engineering/ are pretty outdated. genie/ and
-empires/ are actively maintained.
+Change directory to empiresx:
 
-The genie engine requires XenoTech's cross platform common library v1.0.1 or
-better, which you can find at: https://github.com/XenoTech-Inc/libxtcommon
+  cd empiresx/
 
 You can build the game using:
 
+  cmake .
   make
 
 Or if you prefer running it in parallel:
 
+  cmake .
   make -j8
 
 Where `-j8' means `use 8 cores'.
+
+If you want to use the standalone server exclusively on a server with no
+graphical display (e.g. on a VPS running linux), you should configure cmake
+using:
+
+  cmake -DHEADLESS=1 .
 
 INSTALLING THE GAME
 

@@ -10,7 +10,8 @@ is an educational non-profit project we are writing in our free time.*
 
 ## Overview
 
-Cross-platform game port of windows game Age of Empires Rise of Rome
+Cross-platform free software game port of Microsoft's original Age of Empires
+and the Rise of Rome expansion.
 
 It tries to take fully advantage of modern technology and APIs while mimicking
 the windows API and the genie game engine for compatibility reasons. In order to
@@ -37,10 +38,25 @@ of simple low-level stuff in the game engine is implemented. See
 
 ## Support
 
-This project has been built primarly for Xubuntu 18.04.1, but it should
-build on any POSIX-compatible machine.
+*NOTE* empires/empires is considered legacy and is going to be replaced by
+empires/empiresx eventually! empires/empires is more feature complete at the
+moment, but empiresx is an improved version that provides multiplayer support
+as well.
 
-For more information, see [INSTALL](INSTALL).
+Operating System    | Supported programs and tools
+--------------------|-----------------------------
+Xubuntu 18.04.4     | AoEx, server, tools
+Windows 10 Pro 1909 | AoEx, server
+
+The programs and tools are abbreviated as:
+
+Abbreviation | Program(s)/Tool(s) | Path(s)
+-------------|--------------------|--------------------------
+AoEx         | Age of Empires     | empiresx/empiresx
+server       | Standalone server  | empiresx/dedicated_server
+tools        | Mod tools          | tools/
+
+For more information how to install and run AoE, see [INSTALL](INSTALL).
 
 ## Troubleshooting
 

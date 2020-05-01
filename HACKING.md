@@ -44,7 +44,8 @@ libsdl2-mixer-dev | SDL2 audio development package
 libopenal-dev     | OpenAL development package
 libxtcommon       | XenoTech's cross platform library
 
-The following commands are expected to be installed:
+The following commands are expected to be installed
+(descriptions are taken from their repsective manuals):
 
 Name        | Description
 ------------|--------------------------------------------------
@@ -54,6 +55,7 @@ gcc         | GNU project C and C++ compiler
 git         | the stupid content tracker
 sed         | stream editor for filtering and transforming text
 make        | GNU make utility to maintain groups of programs
+cmake       | CMake Command-Line Reference
 
 # Tools
 

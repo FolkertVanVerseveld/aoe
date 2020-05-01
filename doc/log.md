@@ -57,3 +57,17 @@ on public presentation/press documents and core game logic.
 Mon, Mar  9, 2020 15:10:56
 
 hacking together first prototype demo
+
+vr  1 mei 2020 13:39:31 CEST
+
+(yeah I know, the date format does not match, but will fix this later)
+Continue working on AoE. Also started writing my thesis on March 30th, so time
+is still limited, but I want to do more than just working on my thesis.
+
+To get back on track, I started to address mouse clipping, since it is annoying
+to scroll in-game if the cursor can move out of bounds. This was trickier to
+implement than expected (as usual...) and it is working correctly on Windows 10,
+but X11 does not support partial client area clipping... Since this should not
+be a real problem for legacy windows, I consider this to be working good enough
+to continue working on other things: Multiplayer User Interface and host
+configuration parameters as well as loading and parsing map data.

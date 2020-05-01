@@ -3,6 +3,7 @@
 #include "mouse.hpp"
 
 #include <cassert>
+#include <cstdio>
 
 #include "engine.hpp"
 #include "drs.hpp"
@@ -42,27 +43,14 @@ void Cursor::change(CursorId id) {
 }
 
 void ClipControl::noclip() {
-	// invalidate area
-	area.h = 0;
-#if windows
-	ClipCursor(NULL);
 	clipping = false;
-#elif linux
-	fprintf(stderr, "%s: stub\n", __func__);
-#else
-	fprintf(stderr, "%s: operation not supported\n", __func__);
-#endif
-}
 
-void ClipControl::focus_gained() {
-	if (clipping)
-		clip(enhanced);
-	else
-		noclip();
-}
-
-void ClipControl::clip(bool enhanced) {
 #if windows
+	if (ClipCursor(NULL))
+		is_clipping = false;
+	else
+		fprintf(stderr, "%s: cannot disable clipping\n", __func__);
+#elif linux
 	SDL_SysWMinfo info;
 	SDL_VERSION(&info.version);
 
@@ -71,10 +59,43 @@ void ClipControl::clip(bool enhanced) {
 		return;
 	}
 
+	// FIXME how do we interpret the return value?
+	XUngrabPointer(info.info.x11.display, CurrentTime);
+	is_clipping = false;
+#else
+	fprintf(stderr, "%s: operation not supported\n", __func__);
+#endif
+}
+
+void ClipControl::focus_gained() {
+	if (clipping == is_clipping)
+		return;
+
+	if (clipping)
+		clip(enhanced);
+	else
+		noclip();
+}
+
+void ClipControl::focus_lost() {
+	is_clipping = false;
+}
+
+void ClipControl::clip(bool enhanced) {
+	clipping = true;
+
+	SDL_SysWMinfo info;
+	SDL_VERSION(&info.version);
+
+	if (!SDL_GetWindowWMInfo(eng->w->data(), &info)) {
+		fprintf(stderr, "%s: cannot get window info: %s\n", __func__, SDL_GetError());
+		return;
+	}
+
+#if windows
 	HWND h = info.info.win.window;
 	RECT r;
 	POINT p{ 0, 0 };
-
 
 	if (!ClientToScreen(h, &p) || !GetClientRect(h, &r)) {
 		fprintf(stderr, "%s: could not get clipping area\n", __func__);
@@ -95,13 +116,26 @@ void ClipControl::clip(bool enhanced) {
 	}
 
 	ClipCursor(&r);
-	clipping = true;
 #elif linux
 	// https://tronche.com/gui/x/xlib/input/XGrabPointer.html
-	fprintf(stderr, "%s: stub\n", __func__);
+	::Display *display = info.info.x11.display;
+	::Window window = info.info.x11.window;
+
+	// FIXME figure out how to grab pointer to area within window
+	if (!enhanced)
+		fprintf(stderr, "%s: legacy displays not supported\n", __func__);
+
+	if (XGrabPointer(display, window, True, 0, GrabModeAsync, GrabModeAsync, window, None, CurrentTime) != GrabSuccess) {
+		fprintf(stderr, "%s: could not grab cursor\n", __func__);
+		return;
+	}
 #else
 	fprintf(stderr, "%s: operation not supported\n", __func__);
+	return;
 #endif
+
+	is_clipping = true;
+	this->enhanced = enhanced;
 }
 
 }

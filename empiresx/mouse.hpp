@@ -23,11 +23,9 @@ enum class CursorId {
 };
 
 extern class ClipControl final {
-	/** Clipping area that is considered valid iff area.h != 0. */
-	SDL_Rect area;
-	bool clipping, enhanced;
+	bool is_clipping, clipping, enhanced;
 public:
-	ClipControl() : area(), clipping(false), enhanced(false) {}
+	ClipControl() : is_clipping(false), clipping(false), enhanced(false) {}
 
 	/** Disable cursor clipping. */
 	void noclip();
@@ -36,8 +34,12 @@ public:
 	/** Enable cursor clipping around specified area. */
 	void clip(const SDL_Rect &bnds);
 
-	/** Reapply focus state. This should be called whenever the window has lost and regained focus. */
+	/**
+	 * Reapply focus state. This should be called whenever the window has lost and regained focus.
+	 * NOTE on linux, this will be spuriously called because clip() may have failed earlier!
+	 */
 	void focus_gained();
+	void focus_lost();
 } clip_control;
 
 class Cursor final {

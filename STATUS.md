@@ -22,8 +22,10 @@ File I/O       | Parse basic game assets  | Audio works, partial slp and bin par
 Tools          | (Un)packing game assets  | Pretty stable, but outdated and needs some cleanup
 Game assets    | PE parsing               | Integrated libpe in empires and aoesetup. Completed for palettes, backgrounds and some slps
 User Interface | Background image parsing | Minor problems with dialogs
+"              | Cursor handling          | Cursor clipping, custom cursors almost work (legacy screens have issues in X11)
 Slp parsing    | Game gfx assets          |
 Cross-platform | Windows and Linux        |
+Multiplayer    | Networking               | Basic chat lobby and dummy game, minor problems with start sync point
 
 Unfortunately, the audio tracks mounting issue is related to the particular
 Linux distribution the game is running on and we do not know if this is possible
@@ -39,7 +41,7 @@ Subsystem       | Task / Purpose        | Notes
 ----------------|-----------------------|-------------------------------------
 Multiplayer     | Networking            | For multiplayer games etc.
 User Interface  | Missing menu's etc.   |
-Game logic      | Dynamic Unit logic    | Movement stub
+Game logic      | Dynamic Unit logic    | Movement stub (yanked in empiresx)
 
 ## Backlog
 
