@@ -1,9 +1,9 @@
 /* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
 /*
-Dedicated headless server free software remake of
-Age of Empires and Rise of Rome expansion
-*/
+ * Dedicated headless server free software remake of
+ * Age of Empires and Rise of Rome expansion
+ */
 
 #include <cassert>
 #include <cstdio>
@@ -49,9 +49,7 @@ public:
 	MultiplayerHost &cb;
 	std::atomic<bool> running;
 
-	DedicatedGame(const StartMatch &settings, MultiplayerHost &cb)
-		//: Game(game::GameMode::multiplayer_host, nullptr, nullptr, settings), t_worker(worker_loop, std::ref(*this)), cb(cb) {}
-		: Game(game::GameMode::multiplayer_host, nullptr, nullptr, settings), t_worker(), cb(cb) {
+	DedicatedGame(const StartMatch &settings, MultiplayerHost &cb) : Game(game::GameMode::multiplayer_host, nullptr, nullptr, settings), t_worker(), cb(cb) {
 		world.populate(settings.slave_count);
 		cb.set_gcb(this);
 		t_worker = std::thread(worker_loop, std::ref(*this));
@@ -95,6 +93,10 @@ void worker_loop(DedicatedGame &game) {
 		auto end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> diff = end - start;
 		game.step(diff.count());
+		// ensure server does not spin CPU
+		using namespace std::chrono_literals;
+		if (diff < 0.010s)
+			std::this_thread::sleep_for(0.010s - diff);
 		start = end;
 	}
 }

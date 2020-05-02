@@ -99,6 +99,8 @@ class Surface final {
 public:
 	Surface(const char *fname);
 	Surface(SDL_Surface *handle) : handle(handle, &SDL_FreeSurface) {}
+	Surface(const Surface&) = delete;
+	Surface(Surface&&) = default;
 
 	SDL_Surface *data() { return handle.get(); }
 	void reset(SDL_Surface *surf) { handle.reset(surf); }

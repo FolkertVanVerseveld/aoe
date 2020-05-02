@@ -461,41 +461,6 @@ public:
 	}
 };
 
-class GameEvent {
-public:
-	GameEvent();
-	virtual ~GameEvent() {}
-
-	virtual void apply(game::World &world) = 0;
-};
-
-class GameEvents final {
-	std::recursive_mutex mut;
-	std::deque<std::unique_ptr<GameEvent>> events_now, events_next;
-public:
-	void dbuf() {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		events_now.swap(events_next);
-	}
-
-	void apply(game::World &world) {
-		for (auto &e : events_now)
-			e->apply(world);
-
-		events_now.clear();
-	}
-
-	void idle(game::World &world) {
-		dbuf();
-		apply(world);
-	}
-
-	void push(GameEvent *e) {
-		std::lock_guard<std::recursive_mutex> lock(mut);
-		events_next.emplace_back(e);
-	}
-};
-
 class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCallback, public game::Game {
 	ImageCache img;
 	bool host, started;
@@ -513,7 +478,6 @@ class MenuGame final : public Menu, public ui::InteractableCallback, ui::InputCa
 	std::recursive_mutex mut;
 	UIPlayerState *playerstate;
 	Viewport view;
-	GameEvents events;
 public:
 	MenuGame(MenuLobby *lobby, SimpleRender &r, Multiplayer *mp, UIPlayerState *state, bool host, const StartMatch &settings)
 		: Menu(MenuId::selectnav, r, eng->assets->fnt_title, "Game", SDL_Color{0xff, 0xff, 0xff}, true, true)
@@ -522,7 +486,7 @@ public:
 		, f_chat(nullptr), key_state(0)
 		, mut()
 		, playerstate(state) // copy state_now and state_next and txtchat from menulobby
-		, view(world), events()
+		, view(world)
 	{
 		cache = &img;
 		world.populate(settings.slave_count);
@@ -562,7 +526,6 @@ public:
 
 		if (started) {
 			Game::step(ms);
-			events.idle(world);
 		}
 
 		update_viewport(ms);

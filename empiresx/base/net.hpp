@@ -2,6 +2,13 @@
 
 #pragma once
 
+/*
+ * Network common code
+ *
+ * Note that some API calls will behave differently on the target platform, as
+ * some API calls are simply not available on some platforms...
+ */
+
 #include "../os_macros.hpp"
 #include "types.hpp"
 
