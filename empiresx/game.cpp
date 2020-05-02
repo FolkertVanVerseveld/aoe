@@ -50,9 +50,11 @@ void Particle::draw(int offx, int offy, unsigned index) const {
 	Animation &anim = const_cast<Animation&>(cache->get(this->anim_index));
 	anim.subimage(index).draw(r, static_cast<int>(this->scr.left) + offx, static_cast<int>(this->scr.top) + offy, 0, 0, 0, 0, hflip);
 #if DEBUG
-	r.color(SDL_Color{0xff, 0, 0, SDL_ALPHA_OPAQUE});
-	SDL_Rect bnds{static_cast<int>(this->scr.left) + offx, static_cast<int>(this->scr.top) + offy, static_cast<int>(scr.w), static_cast<int>(scr.h)};
-	SDL_RenderDrawRect(r.canvas(), &bnds);
+	if (draw_bbox) {
+		r.color(SDL_Color{ 0xff, 0, 0, SDL_ALPHA_OPAQUE });
+		SDL_Rect bnds{ static_cast<int>(this->scr.left) + offx, static_cast<int>(this->scr.top) + offy, static_cast<int>(scr.w), static_cast<int>(scr.h) };
+		SDL_RenderDrawRect(r.canvas(), &bnds);
+	}
 #endif
 }
 

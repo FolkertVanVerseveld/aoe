@@ -351,6 +351,11 @@ private:
 public:
 	/** Force refresh the visual state */
 	void populate() {
+		auto &r = eng->w->render();
+		auto &rel_bnds = r.dim.rel_bnds;
+		bounds.w = static_cast<float>(rel_bnds.w);
+		bounds.h = static_cast<float>(rel_bnds.h);
+
 		invalidate = invalidate_all;
 		update();
 	}
@@ -443,11 +448,6 @@ public:
 				}
 			}
 			break;
-			case SDL_BUTTON_RIGHT:
-			{
-				
-			}
-			break;
 		}
 	}
 
@@ -490,9 +490,9 @@ public:
 	{
 		cache = &img;
 		world.populate(settings.slave_count);
-		view.populate();
 
 		add_field(f_chat = new ui::InputField(0, *this, ui::InputType::text, "", r, eng->assets->fnt_default, SDL_Color{0xff, 0xff, 0xff}, menu_game_field_chat, r.mode, pal, bkg, true));
+
 		if (!host)
 			((MultiplayerClient*)mp)->set_gcb(this, (uint16_t)playerstate->state_now.players.size(), (uint16_t)lcg.next());
 		else
@@ -521,10 +521,15 @@ public:
 		std::lock_guard<std::recursive_mutex> lock(mut);
 		playerstate->dbuf(r);
 
+		bool old_started = started;
+
 		if (host && !started)
 			started = ((MultiplayerHost*)mp)->try_start();
 
 		if (started) {
+			if (!old_started)
+				view.populate();
+
 			Game::step(ms);
 		}
 
