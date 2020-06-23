@@ -1,4 +1,7 @@
 lib/
 
+.vs/
+out/
+
 # game specific data
 empires.bmp
