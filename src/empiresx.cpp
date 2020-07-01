@@ -9,10 +9,20 @@
 
 // addons
 #include "imgui/ImGuiFileDialog.h"
-#include "imgui/imguial_msgbox.h"
 
-#include <stdio.h>
+#include "prodcons.hpp"
+#include "lang.hpp"
+#include "fs.hpp"
+
+#include <cstdio>
 #include <SDL2/SDL.h>
+
+#include <atomic>
+#include <string>
+#include <thread>
+#include <variant>
+#include <utility>
+#include <memory>
 
 #define FDLG_CHOOSE_DIR "Fdlg Choose AoE dir"
 #define MSG_INIT "Msg Init"
@@ -49,7 +59,214 @@ using namespace gl;
 #include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #endif
 
-static bool show_debug = false;
+static bool show_debug;
+static bool fs_has_root;
+static std::atomic_bool running;
+
+enum class WorkTaskType {
+	stop,
+	check_root,
+};
+
+using FdlgItem = std::pair<std::string, std::string>;
+
+class WorkTask final {
+public:
+	WorkTaskType type;
+	std::variant<std::nullopt_t, FdlgItem> data;
+
+	WorkTask(WorkTaskType t) : type(t), data(std::nullopt) {}
+
+	template<typename... Args>
+	WorkTask(WorkTaskType t, Args&&... args) : type(t), data(args...) {}
+};
+
+enum class WorkResultType {
+	stop,
+	success,
+	fail,
+};
+
+class WorkResult final {
+public:
+	WorkTaskType task_type;
+	WorkResultType type;
+	std::string what;
+
+	WorkResult(WorkTaskType tt, WorkResultType rt) : task_type(tt), type(rt), what() {}
+	WorkResult(WorkTaskType tt, WorkResultType rt, const std::string &what) : task_type(tt), type(rt), what(what) {}
+};
+
+struct WorkerProgress final {
+	std::atomic<unsigned> step;
+	unsigned total;
+	std::string desc;
+};
+
+// trick to abort worker thread on shutdown
+struct WorkInterrupt final {
+	WorkInterrupt() {}
+};
+
+namespace genie {
+
+class Assets final {
+public:
+	std::vector<std::unique_ptr<fs::Blob>> blobs;
+} assets;
+
+}
+
+class Worker final {
+public:
+	ConcurrentChannel<WorkTask> tasks;
+	ConcurrentChannel<WorkResult> results;
+
+	std::mutex mut;
+	WorkerProgress p;
+
+	Worker() : tasks(WorkTaskType::stop, 10), results(WorkResult{ WorkTaskType::stop, WorkResultType::stop }, 10), mut(), p() {}
+
+	int run() {
+		try {
+			while (tasks.is_open()) {
+				WorkTask task = tasks.consume();
+
+				switch (task.type) {
+					case WorkTaskType::stop:
+						continue;
+					case WorkTaskType::check_root:
+						check_root(std::get<std::pair<std::string, std::string>>(task.data));
+						break;
+					default:
+						assert("bad task type" == 0);
+						break;
+				}
+			}
+		} catch (WorkInterrupt&) {
+			done(WorkTaskType::stop, WorkResultType::stop);
+			return 1;
+		}
+
+		return 0;
+	}
+
+	bool progress(WorkerProgress &p) {
+		std::unique_lock<std::mutex> lock(mut);
+
+		unsigned v = this->p.step.load();
+
+		p.desc = this->p.desc;
+		p.step.store(v);
+		p.total = this->p.total;
+
+		return v != p.total;
+	}
+
+private:
+	void start(unsigned total, unsigned step=0) {
+		std::unique_lock<std::mutex> lock(mut);
+		if (!running)
+			throw WorkInterrupt();
+		p.step = step;
+		p.total = total;
+	}
+
+	void set_desc(const std::string &s) {
+		std::unique_lock<std::mutex> lock(mut);
+		if (!running)
+			throw WorkInterrupt();
+		p.desc = s;
+	}
+
+	template<typename... Args>
+	void done(Args&&... args) {
+		std::unique_lock<std::mutex> lock(mut);
+		p.step = p.total;
+		results.produce(args...);
+	}
+
+	void check_root(const std::pair<std::string, std::string> &item) {
+#define COUNT 5
+
+		genie::fs::iofd fd[COUNT];
+		// windows doesn't care about case sensitivity, but we need to make sure this also works on *n*x
+		std::string fnames[COUNT] = {
+			"Border.drs",
+			"graphics.drs",
+			"Interfac.drs",
+			"sounds.drs",
+			"Terrain.drs"
+		};
+		start(4);
+
+		set_desc(TXT(TextId::work_drs));
+
+		try {
+			for (unsigned i = 0; i < COUNT; ++i) {
+				std::string path(genie::fs::drs_path(item.first, fnames[i]));
+				if ((fd[i] = genie::fs::open(path.c_str())) == genie::fs::fd_invalid) {
+					for (unsigned j = 0; j < i; ++j)
+						genie::fs::close(fd[j]);
+
+					throw std::runtime_error(path);
+				}
+			}
+		} catch (std::runtime_error &e) {
+			try {
+				for (unsigned i = 0; i < COUNT; ++i) {
+					std::string path(genie::fs::drs_path(item.second, fnames[i]));
+					if ((fd[i] = genie::fs::open(path.c_str())) == genie::fs::fd_invalid) {
+						for (unsigned j = 0; j < i; ++j)
+							genie::fs::close(fd[j]);
+
+						throw std::runtime_error(path);
+					}
+				}
+			} catch (std::runtime_error &e) {
+				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
+				return;
+			}
+
+		}
+
+		genie::assets.blobs.clear();
+
+		for (unsigned i = 0; i < COUNT; ++i) {
+			try {
+				genie::assets.blobs.emplace_back(new genie::fs::Blob(fnames[i], fd[i], i != 3));
+			} catch (std::runtime_error &e) {
+				for (unsigned j = i + 1; j < COUNT; ++j)
+					genie::fs::close(fd[j]);
+
+				genie::assets.blobs.clear();
+				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
+				return;
+			}
+		}
+
+		++p.step;
+
+		set_desc("Verifying data resource sets");
+		Sleep(1000);
+		++p.step;
+
+		set_desc("Looking for game campaigns");
+		Sleep(1000);
+		++p.step;
+
+		set_desc("Looking for localisation");
+		Sleep(1000);
+		++p.step;
+
+		done(WorkTaskType::check_root, WorkResultType::fail, "Cannot find game data");
+#undef COUNT
+	}
+};
+
+static void worker_init(Worker &w, int &status) {
+	status = w.run();
+}
 
 // Main code
 int main(int, char**)
@@ -89,6 +306,8 @@ int main(int, char**)
 	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 	SDL_GL_MakeCurrent(window, gl_context);
 	SDL_GL_SetSwapInterval(1); // Enable vsync
+
+	SDL_SetWindowMinimumSize(window, dim_lgy[0].w, dim_lgy[0].h);
 
 	// Initialize OpenGL loader
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
@@ -141,6 +360,8 @@ int main(int, char**)
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
 	//ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 	//IM_ASSERT(font != NULL);
+	//io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
+	//io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesVietnamese());
 
 	// Our state
 	bool show_demo_window = true;
@@ -148,17 +369,19 @@ int main(int, char**)
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	auto fd = igfd::ImGuiFileDialog::Instance();
-	bool fs_has_root = false, fd_show = false;
 
 	static const char *buttons[] = {"Alright", NULL};
-	ImGuiAl::MsgBox msgbox;
 
-	bool msg_show = false;
-	msgbox.Init(MSG_INIT, "Whoahrning", "Test ik el", buttons, true);
+	bool fs_choose_root = false;
+	Worker w_bkg;
+	int err_bkg;
+
+	std::thread t_bkg(worker_init, std::ref(w_bkg), std::ref(err_bkg));
+	WorkerProgress p = { 0 };
+	std::string bkg_result;
 
 	// Main loop
-	bool done = false;
-	while (!done)
+	for (running = true; running;)
 	{
 		// Poll and handle events (inputs, window resize, etc.)
 		// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -190,9 +413,9 @@ int main(int, char**)
 			}
 
 			if (event.type == SDL_QUIT)
-				done = true;
+				running = false;
 			if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-				done = true;
+				running = false;
 
 			if (!munched) {
 				switch (event.type) {
@@ -248,39 +471,67 @@ int main(int, char**)
 			}
 		}
 
-		if (!msg_show) {
-			ImGui::OpenPopup(MSG_INIT);
-			msg_show = true;
+		static int lang_current = 0;
+		bool working = w_bkg.progress(p);
+
+		std::optional<WorkResult> res = w_bkg.results.try_consume();
+		if (res.has_value()) {
+			switch (res->type) {
+				case WorkResultType::success:
+					switch (res->task_type) {
+						case WorkTaskType::stop:
+							break;
+						case WorkTaskType::check_root:
+							fs_has_root = true;
+							break;
+						default:
+							assert("bad task type" == 0);
+							break;
+					}
+					break;
+				case WorkResultType::stop:
+				case WorkResultType::fail:
+					break;
+				default:
+					assert("bad result type" == 0);
+					break;
+			}
+			bkg_result = res->what;
 		}
 
-		if (true) {
-			switch (msgbox.Draw()) {
-			case 0:
-				break;
-			default:
-				msg_show = false;
-				break;
-			}
-		}
+		ImGui::Begin("Startup configuration", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus);
+		{
+			ImGui::SetWindowSize(io.DisplaySize);
+			ImGui::SetWindowPos(ImVec2());
+			ImGui::TextWrapped(TXT(TextId::hello));
 
-		if (!fs_has_root) {
-			if (!fd_show) {
-				fd->OpenDialog(FDLG_CHOOSE_DIR, "Choose installation directory of original game", 0, ".");
-				fd_show = true;
-			}
+			lang_current = int(lang);
+			ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
+			lang = LangId(lang_current);
 
-			if (fd->FileDialog(FDLG_CHOOSE_DIR)) {
+			if (!fs_has_root && !working && ImGui::Button(TXT(TextId::set_game_dir)))
+				fd->OpenDialog(FDLG_CHOOSE_DIR, TXT(TextId::dlg_game_dir), 0, ".");
+
+			if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !working) {
 				if (fd->IsOk == true) {
 					std::string fname(fd->GetFilepathName()), path(fd->GetCurrentPath());
 					printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
-				} else {
-					done = true;
+
+					w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
 				}
 
-				fs_has_root = true;
 				fd->CloseDialog(FDLG_CHOOSE_DIR);
 			}
+
+			if (working && p.total) {
+				ImGui::TextUnformatted(p.desc.c_str());
+				ImGui::ProgressBar(float(p.step) / p.total);
+			}
+
+			if (!bkg_result.empty())
+				ImGui::TextUnformatted(bkg_result.c_str());
 		}
+		ImGui::End();
 
 		// Rendering
 		ImGui::Render();
@@ -290,6 +541,9 @@ int main(int, char**)
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(window);
 	}
+
+	w_bkg.tasks.stop();
+	t_bkg.join();
 
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();
