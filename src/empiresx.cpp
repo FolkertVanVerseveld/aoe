@@ -26,6 +26,11 @@
 #include <memory>
 #include <future>
 #include <algorithm>
+#include <stack>
+#include <exception>
+#include <stdexcept>
+
+#include <signal.h>
 
 #include <SDL2/SDL.h>
 
@@ -72,9 +77,101 @@ using namespace gl;
 #include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #endif
 
+#if __APPLE__
+// GL 3.2 Core + GLSL 150
+const char *glsl_version = "#version 150";
+#else
+// GL 3.0 + GLSL 130
+const char *glsl_version = "#version 130";
+#endif
+
+class Shader final {
+public:
+	const GLchar *src;
+	GLuint handle;
+	GLenum type;
+
+	Shader(const GLchar *src, GLenum type) : src(src), handle(0), type(type) {}
+
+	void compile() {
+		const GLchar *srclist[] = {src};
+		handle = glCreateShader(type);
+		if (!handle) {
+			fputs("fatal error: glCreateShader\n", stderr);
+			abort();
+		}
+		glShaderSource(handle, 1, srclist, NULL);
+		glCompileShader(handle);
+
+		GLint status, length;
+		glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
+		glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &length);
+
+		if (length > 0) {
+			std::string msg(length, 0);
+			glGetShaderInfoLog(handle, length, NULL, (GLchar*)msg.data());
+			fprintf((GLboolean)status == GL_FALSE ? stderr : stdout, "%s\n", msg.c_str());
+		}
+
+		if ((GLboolean)status == GL_FALSE) {
+			fprintf(stderr, "fatal error: glCompileShader type %u\n", type);
+			abort();
+		}
+	}
+} shader_vtx(R"glsl(
+#version 120
+attribute vec2 coord2d;
+void main(void)
+{
+	gl_Position = vec4(coord2d, 0.0, 1.0);
+}
+)glsl", GL_VERTEX_SHADER)
+, shader_frag(R"glsl(
+#version 120
+void main(void) {
+	gl_FragColor[0] = 0.0;
+	gl_FragColor[1] = 0.0;
+	gl_FragColor[2] = 1.0;
+}
+)glsl", GL_FRAGMENT_SHADER);
+
+static GLint attr_pos;
+
+class ShaderProgram final {
+public:
+	GLuint vtx, frag;
+	GLuint handle;
+
+	ShaderProgram(GLuint vtx, GLuint frag) : vtx(vtx), frag(frag), handle(0) {
+		if (!(handle = glCreateProgram())) {
+			fputs("fatal error: glCreateProgram\n", stderr);
+			abort();
+		}
+
+		glAttachShader(handle, vtx);
+		glAttachShader(handle, frag);
+		glLinkProgram(handle);
+
+		GLint status, length;
+		glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
+		glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &length);
+
+		if (length > 0) {
+			std::string msg(length, 0);
+			glGetShaderInfoLog(handle, length, NULL, (GLchar*)msg.data());
+			fprintf((GLboolean)status == GL_FALSE ? stderr : stdout, "%s\n", msg.c_str());
+		}
+
+		if ((GLboolean)status == GL_FALSE) {
+			fputs("fatal error: glLinkProgram\n", stderr);
+			abort();
+		}
+	}
+};
+
 static bool show_debug;
 static bool fs_has_root;
-static std::atomic_bool running;
+static std::atomic_bool running(true);
 
 enum class MenuId {
 	config,
@@ -253,7 +350,11 @@ private:
 					throw std::runtime_error(path);
 				}
 			}
-		} catch (std::runtime_error&) {
+		} catch (std::runtime_error &e) {
+			if (item.first == item.second) {
+				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
+				return;
+			}
 			try {
 				for (unsigned i = 0; i < COUNT; ++i) {
 					std::string path(genie::drs_path(item.second, fnames[i]));
@@ -323,15 +424,11 @@ int main(int, char**)
 
 	// Decide GL+GLSL versions
 #if __APPLE__
-	// GL 3.2 Core + GLSL 150
-	const char *glsl_version = "#version 150";
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #else
-	// GL 3.0 + GLSL 130
-	const char *glsl_version = "#version 130";
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -373,6 +470,10 @@ int main(int, char**)
 		return 1;
 	}
 
+	GLint major, minor;
+	glGetIntegerv(GL_MAJOR_VERSION, &major);
+	glGetIntegerv(GL_MINOR_VERSION, &minor);
+
 	time_t t_start = time(NULL);
 	struct tm *tm_start = localtime(&t_start);
 	int year_start = std::max(tm_start->tm_year, 2020);
@@ -385,8 +486,8 @@ int main(int, char**)
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
 	// Setup Dear ImGui style
-	ImGui::StyleColorsDark();
-	//ImGui::StyleColorsClassic();
+	//ImGui::StyleColorsDark();
+	ImGui::StyleColorsClassic();
 
 	// Setup Platform/Renderer bindings
 	ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
@@ -411,12 +512,12 @@ int main(int, char**)
 
 	// Our state
 	bool show_demo_window = true;
-	bool show_another_window = false;
+	bool ther_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	auto fd = igfd::ImGuiFileDialog::Instance();
 
-	bool fs_choose_root = false;
+	bool fs_choose_root = false, auto_detect = false;
 	Worker w_bkg;
 	int err_bkg;
 
@@ -424,8 +525,37 @@ int main(int, char**)
 	WorkerProgress p = { 0 };
 	std::string bkg_result;
 
+	std::stack<const char*> auto_paths;
+#if windows
+	auto_paths.emplace("C:\\Program Files (x86)\\Microsoft Games\\Age of Empires");
+	auto_paths.emplace("C:\\Program Files\\Microsoft Games\\Age of Empires");
+#else
+	auto_paths.emplace("/media/cdrom");
+#endif
+
+	if (!auto_paths.empty()) {
+		auto_detect = true;
+		std::string path(auto_paths.top());
+		w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
+		auto_paths.pop();
+	}
+
+	// while our worker thread is auto detecting, we can setup the shaders
+	shader_vtx.compile();
+	shader_frag.compile();
+
+	ShaderProgram prog(shader_vtx.handle, shader_frag.handle);
+	attr_pos = glGetAttribLocation(prog.handle, "coord2d");
+
+	if (attr_pos == -1) {
+		fputs("fatal error: glGetAttribLocation\n", stderr);
+		abort();
+	}
+
+	glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+
 	// Main loop
-	for (running = true; running;)
+	while (running)
 	{
 		// Poll and handle events (inputs, window resize, etc.)
 		// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -471,14 +601,6 @@ int main(int, char**)
 			}
 		}
 
-		// engine display stub
-		switch (menu_id) {
-			case MenuId::config: break;
-			case MenuId::start:
-			case MenuId::editor:
-				break;
-		}
-
 		// Start the Dear ImGui frame
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplSDL2_NewFrame(window);
@@ -489,46 +611,39 @@ int main(int, char**)
 			if (show_demo_window)
 				ImGui::ShowDemoWindow(&show_demo_window);
 
-			// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+			ImGui::Begin("Debug control");
 			{
-				static float f = 0.0f;
-				static int counter = 0;
-
-				ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-				ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-				ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-				ImGui::Checkbox("Another Window", &show_another_window);
-
-				ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
 				ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-				if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-					counter++;
-				ImGui::SameLine();
-				ImGui::Text("counter = %d", counter);
-
 				ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-				ImGui::End();
-			}
+				ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
 
-			// 3. Show another simple window.
-			if (show_another_window)
-			{
-				ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-				ImGui::Text("Hello from another window!");
-				if (ImGui::Button("Close Me"))
-					show_another_window = false;
-				ImGui::End();
+				static int current_fault = 0;
+				static const char *fault_types[] = {"Segmentation violation", "NULL dereference", "_Exit", "exit", "abort", "std::terminate", "throw int"};
+
+				ImGui::Combo("Fault type", &current_fault, fault_types, IM_ARRAYSIZE(fault_types));
+
+				if (ImGui::Button("Oops")) {
+					switch (current_fault) {
+						default: raise(SIGSEGV); break;
+						// NULL dereferencing directly is usually optimised out in modern compilers, so use a trick to bypass this...
+						case 1: { int *p = (int*)1; -1[p]++; } break;
+						case 2: _Exit(1); break;
+						case 3: exit(1); break;
+						case 4: abort(); break;
+						case 5: std::terminate(); break;
+						case 6: throw 42; break;
+					}
+				}
 			}
+			ImGui::End();
 		}
 
 		static int lang_current = 0;
 		static bool show_about = false;
 		bool working = w_bkg.progress(p);
 
-		std::optional<WorkResult> res = w_bkg.results.try_consume();
-		if (res.has_value()) {
+		// munch all results
+		for (std::optional<WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
 			switch (res->type) {
 				case WorkResultType::success:
 					switch (res->task_type) {
@@ -536,6 +651,11 @@ int main(int, char**)
 							break;
 						case WorkTaskType::check_root:
 							fs_has_root = true;
+							// start game automatically on auto detect
+							if (auto_detect) {
+								auto_detect = false;
+								menu_id = MenuId::start;
+							}
 							break;
 						default:
 							assert("bad task type" == 0);
@@ -543,7 +663,16 @@ int main(int, char**)
 					}
 					break;
 				case WorkResultType::stop:
+					break;
 				case WorkResultType::fail:
+					if (!auto_paths.empty()) {
+						std::string path(auto_paths.top());
+						w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
+						auto_paths.pop();
+						working = true;
+					} else {
+						auto_detect = false;
+					}
 					break;
 				default:
 					assert("bad result type" == 0);
@@ -605,6 +734,9 @@ int main(int, char**)
 			case MenuId::start:
 				ImGui::Begin("Main menu placeholder");
 				{
+					if (ImGui::Button(TXT(TextId::btn_about)))
+						show_about = true;
+
 					if (ImGui::Button(TXT(TextId::btn_editor)))
 						menu_id = MenuId::editor;
 
@@ -633,6 +765,7 @@ int main(int, char**)
 			ImGui::SetWindowPos(ImVec2());
 			ImGui::TextWrapped("Copyright 2016-%d Folkert van Verseveld\n", year_start);
 			ImGui::TextWrapped(TXT(TextId::about));
+			ImGui::TextWrapped("Using OpenGL version: %d.%d", major, minor);
 
 			if (ImGui::Button(TXT(TextId::btn_back)))
 				show_about = false;
@@ -641,10 +774,35 @@ int main(int, char**)
 
 		// Rendering
 		ImGui::Render();
+
 		glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		// do our stuff
+		switch (menu_id) {
+			case MenuId::config:
+				break;
+			case MenuId::start:
+			{
+				glUseProgram(prog.handle);
+				glEnableVertexAttribArray(attr_pos);
+				const GLfloat vtx[] = {
+					 0.0,  0.8,
+					-0.8, -0.8,
+					 0.8, -0.8,
+				};
+				glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 0, vtx);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+				glDisableVertexAttribArray(attr_pos);
+				break;
+			}
+			case MenuId::editor:
+				break;
+		}
+
+		// do imgui stuff
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		SDL_GL_SwapWindow(window);
 	}
 
