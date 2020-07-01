@@ -12,10 +12,11 @@
 
 #include "prodcons.hpp"
 #include "lang.hpp"
-#include "fs.hpp"
+#include "drs.hpp"
+#include "math.hpp"
 
 #include <cstdio>
-#include <SDL2/SDL.h>
+#include <ctime>
 
 #include <atomic>
 #include <string>
@@ -23,9 +24,21 @@
 #include <variant>
 #include <utility>
 #include <memory>
+#include <future>
+#include <algorithm>
+
+#include <SDL2/SDL.h>
 
 #define FDLG_CHOOSE_DIR "Fdlg Choose AoE dir"
 #define MSG_INIT "Msg Init"
+
+#ifdef max
+#undef max
+#endif
+
+#ifdef min
+#undef min
+#endif
 
 static const SDL_Rect dim_lgy[] = {
 	{0, 0, 640, 480},
@@ -62,6 +75,14 @@ using namespace gl;
 static bool show_debug;
 static bool fs_has_root;
 static std::atomic_bool running;
+
+enum class MenuId {
+	config,
+	start,
+	editor,
+};
+
+MenuId menu_id = MenuId::config;
 
 enum class WorkTaskType {
 	stop,
@@ -112,15 +133,15 @@ namespace genie {
 
 class Assets final {
 public:
-	std::vector<std::unique_ptr<fs::Blob>> blobs;
+	std::vector<std::unique_ptr<DRS>> blobs;
 } assets;
 
 }
 
 class Worker final {
 public:
-	ConcurrentChannel<WorkTask> tasks;
-	ConcurrentChannel<WorkResult> results;
+	ConcurrentChannel<WorkTask> tasks; // in
+	ConcurrentChannel<WorkResult> results; // out
 
 	std::mutex mut;
 	WorkerProgress p;
@@ -189,7 +210,7 @@ private:
 	void check_root(const std::pair<std::string, std::string> &item) {
 #define COUNT 5
 
-		genie::fs::iofd fd[COUNT];
+		genie::iofd fd[COUNT];
 		// windows doesn't care about case sensitivity, but we need to make sure this also works on *n*x
 		std::string fnames[COUNT] = {
 			"Border.drs",
@@ -198,27 +219,47 @@ private:
 			"sounds.drs",
 			"Terrain.drs"
 		};
-		start(4);
 
+		struct ResChk final {
+			genie::res_id id;
+			unsigned type;
+		};
+
+		// just list some important assests to take an educated guess if everything looks fine
+		const std::vector<std::vector<ResChk>> res = {
+			{ // border
+				{20000, 2}, {20001, 2}, {20002, 2}, {20003, 2}, {20004, 2}, {20006, 2},
+			},{ // graphics
+				{230, 2}, {254, 2}, {280, 2}, {418, 2}, {425, 2}, {463, 2},
+			},{ // interface
+				{50057, 0}, {50058, 0}, {50060, 0}, {50061, 0}, {50721, 2}, {50731, 2}, {50300, 3}, {50302, 3}, {50303, 3}, {50320, 3}, {50321, 3},
+			},{ // sounds
+				{5036, 3}, {5092, 3}, {5107, 3},
+			},{ // terrain
+				{15000, 2}, {15001, 2}, {15002, 2}, {15003, 2},
+			}
+		};
+
+		start(2);
 		set_desc(TXT(TextId::work_drs));
 
 		try {
 			for (unsigned i = 0; i < COUNT; ++i) {
-				std::string path(genie::fs::drs_path(item.first, fnames[i]));
-				if ((fd[i] = genie::fs::open(path.c_str())) == genie::fs::fd_invalid) {
+				std::string path(genie::drs_path(item.first, fnames[i]));
+				if ((fd[i] = genie::open(path.c_str())) == genie::fd_invalid) {
 					for (unsigned j = 0; j < i; ++j)
-						genie::fs::close(fd[j]);
+						genie::close(fd[j]);
 
 					throw std::runtime_error(path);
 				}
 			}
-		} catch (std::runtime_error &e) {
+		} catch (std::runtime_error&) {
 			try {
 				for (unsigned i = 0; i < COUNT; ++i) {
-					std::string path(genie::fs::drs_path(item.second, fnames[i]));
-					if ((fd[i] = genie::fs::open(path.c_str())) == genie::fs::fd_invalid) {
+					std::string path(genie::drs_path(item.second, fnames[i]));
+					if ((fd[i] = genie::open(path.c_str())) == genie::fd_invalid) {
 						for (unsigned j = 0; j < i; ++j)
-							genie::fs::close(fd[j]);
+							genie::close(fd[j]);
 
 						throw std::runtime_error(path);
 					}
@@ -227,17 +268,16 @@ private:
 				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
 				return;
 			}
-
 		}
 
 		genie::assets.blobs.clear();
 
 		for (unsigned i = 0; i < COUNT; ++i) {
 			try {
-				genie::assets.blobs.emplace_back(new genie::fs::Blob(fnames[i], fd[i], i != 3));
+				genie::assets.blobs.emplace_back(new genie::DRS(fnames[i], fd[i], i != 3));
 			} catch (std::runtime_error &e) {
 				for (unsigned j = i + 1; j < COUNT; ++j)
-					genie::fs::close(fd[j]);
+					genie::close(fd[j]);
 
 				genie::assets.blobs.clear();
 				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
@@ -246,20 +286,21 @@ private:
 		}
 
 		++p.step;
-
 		set_desc("Verifying data resource sets");
-		Sleep(1000);
-		++p.step;
 
-		set_desc("Looking for game campaigns");
-		Sleep(1000);
-		++p.step;
+		for (unsigned i = 0; i < res.size(); ++i) {
+			genie::io::DrsItem dummy;
 
-		set_desc("Looking for localisation");
-		Sleep(1000);
-		++p.step;
+			const std::vector<ResChk> &l = res[i];
+			for (auto &r : l)
+				if (!genie::assets.blobs[i]->open_item(dummy, r.id, (genie::DrsType)r.type)) {
+					done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_no_drs_item, (unsigned)r.id));
+					return;
+				}
+		}
 
-		done(WorkTaskType::check_root, WorkResultType::fail, "Cannot find game data");
+		++p.step;
+		done(WorkTaskType::check_root, WorkResultType::success, TXT(TextId::work_drs_success));
 #undef COUNT
 	}
 };
@@ -307,6 +348,7 @@ int main(int, char**)
 	SDL_GL_MakeCurrent(window, gl_context);
 	SDL_GL_SetSwapInterval(1); // Enable vsync
 
+	// resizing is OK, but not too small please
 	SDL_SetWindowMinimumSize(window, dim_lgy[0].w, dim_lgy[0].h);
 
 	// Initialize OpenGL loader
@@ -331,10 +373,14 @@ int main(int, char**)
 		return 1;
 	}
 
+	time_t t_start = time(NULL);
+	struct tm *tm_start = localtime(&t_start);
+	int year_start = std::max(tm_start->tm_year, 2020);
+
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO(); (void)io;
+	ImGuiIO &io = ImGui::GetIO();
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
@@ -369,8 +415,6 @@ int main(int, char**)
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	auto fd = igfd::ImGuiFileDialog::Instance();
-
-	static const char *buttons[] = {"Alright", NULL};
 
 	bool fs_choose_root = false;
 	Worker w_bkg;
@@ -427,6 +471,14 @@ int main(int, char**)
 			}
 		}
 
+		// engine display stub
+		switch (menu_id) {
+			case MenuId::config: break;
+			case MenuId::start:
+			case MenuId::editor:
+				break;
+		}
+
 		// Start the Dear ImGui frame
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplSDL2_NewFrame(window);
@@ -472,6 +524,7 @@ int main(int, char**)
 		}
 
 		static int lang_current = 0;
+		static bool show_about = false;
 		bool working = w_bkg.progress(p);
 
 		std::optional<WorkResult> res = w_bkg.results.try_consume();
@@ -499,39 +552,92 @@ int main(int, char**)
 			bkg_result = res->what;
 		}
 
-		ImGui::Begin("Startup configuration", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus);
-		{
+		switch (menu_id) {
+			case MenuId::config:
+				ImGui::Begin("Startup configuration", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus);
+				{
+					ImGui::SetWindowSize(io.DisplaySize);
+					ImGui::SetWindowPos(ImVec2());
+
+					if (ImGui::Button(TXT(TextId::btn_about)))
+						show_about = true;
+
+					ImGui::TextWrapped(TXT(TextId::hello));
+
+					lang_current = int(lang);
+					ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
+					lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
+
+					if (!working && ImGui::Button(TXT(TextId::set_game_dir)))
+						fd->OpenDialog(FDLG_CHOOSE_DIR, TXT(TextId::dlg_game_dir), 0, ".");
+
+					if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !working) {
+						if (fd->IsOk == true) {
+							std::string fname(fd->GetFilepathName()), path(fd->GetCurrentPath());
+							printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
+
+							fs_has_root = false;
+							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
+						}
+
+						fd->CloseDialog(FDLG_CHOOSE_DIR);
+					}
+
+					if (working && p.total) {
+						ImGui::TextUnformatted(p.desc.c_str());
+						ImGui::ProgressBar(float(p.step) / p.total);
+					}
+
+					if (!bkg_result.empty())
+						ImGui::TextUnformatted(bkg_result.c_str());
+
+					if (ImGui::Button(TXT(TextId::btn_quit)))
+						running = false;
+
+					if (fs_has_root) {
+						ImGui::SameLine();
+						if (ImGui::Button(TXT(TextId::btn_startup)))
+							menu_id = MenuId::start;
+					}
+				}
+				ImGui::End();
+				break;
+			case MenuId::start:
+				ImGui::Begin("Main menu placeholder");
+				{
+					if (ImGui::Button(TXT(TextId::btn_editor)))
+						menu_id = MenuId::editor;
+
+					if (ImGui::Button(TXT(TextId::btn_quit)))
+						running = false;
+
+					lang_current = int(lang);
+					ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
+					lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
+				}
+				ImGui::End();
+				break;
+			case MenuId::editor:
+				ImGui::Begin("Editor menu placeholder");
+				{
+					if (ImGui::Button(TXT(TextId::btn_back)))
+						menu_id = MenuId::start;
+				}
+				ImGui::End();
+				break;
+		}
+
+		if (show_about) {
+			ImGui::Begin("About", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 			ImGui::SetWindowSize(io.DisplaySize);
 			ImGui::SetWindowPos(ImVec2());
-			ImGui::TextWrapped(TXT(TextId::hello));
+			ImGui::TextWrapped("Copyright 2016-%d Folkert van Verseveld\n", year_start);
+			ImGui::TextWrapped(TXT(TextId::about));
 
-			lang_current = int(lang);
-			ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
-			lang = LangId(lang_current);
-
-			if (!fs_has_root && !working && ImGui::Button(TXT(TextId::set_game_dir)))
-				fd->OpenDialog(FDLG_CHOOSE_DIR, TXT(TextId::dlg_game_dir), 0, ".");
-
-			if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !working) {
-				if (fd->IsOk == true) {
-					std::string fname(fd->GetFilepathName()), path(fd->GetCurrentPath());
-					printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
-
-					w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
-				}
-
-				fd->CloseDialog(FDLG_CHOOSE_DIR);
-			}
-
-			if (working && p.total) {
-				ImGui::TextUnformatted(p.desc.c_str());
-				ImGui::ProgressBar(float(p.step) / p.total);
-			}
-
-			if (!bkg_result.empty())
-				ImGui::TextUnformatted(bkg_result.c_str());
+			if (ImGui::Button(TXT(TextId::btn_back)))
+				show_about = false;
+			ImGui::End();
 		}
-		ImGui::End();
 
 		// Rendering
 		ImGui::Render();
@@ -542,8 +648,16 @@ int main(int, char**)
 		SDL_GL_SwapWindow(window);
 	}
 
+	// try to stop worker
+	// for whatever reason, it may be busy for a long time (e.g. blocking socket call)
+	// in that case, wait up to 3 seconds
 	w_bkg.tasks.stop();
-	t_bkg.join();
+	auto future = std::async(std::launch::async, &std::thread::join, &t_bkg);
+	if (future.wait_for(std::chrono::seconds(3)) == std::future_status::timeout)
+		_Exit(0); // worker still busy, dirty exit
+
+	// disable saving imgui.ini
+	io.IniFilename = NULL;
 
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();

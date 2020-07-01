@@ -10,6 +10,7 @@ endif()
 
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(GLM REQUIRED)
 
 if(LINUX)
 	set(INCLUDE_WINDOWS "")

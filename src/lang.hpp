@@ -20,10 +20,22 @@ enum class TextId {
 	title,
 	language,
 	hello,
+	about,
 	set_game_dir,
 	dlg_game_dir,
+	// buttons
+	btn_quit,
+	btn_back,
+	btn_about,
+	btn_startup,
+	btn_editor,
+	// tasks
+	work_drs_success,
 	work_drs, // check_root: find drs
+	// errors
 	err_drs_path,
+	err_drs_hdr,
+	err_no_drs_item,
 	max,
 };
 

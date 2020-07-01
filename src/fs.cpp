@@ -2,6 +2,7 @@
 #include "fs.hpp"
 
 #include "os_macros.hpp"
+#include "string.hpp"
 
 #include <cstdlib>
 #include <fstream>
@@ -24,20 +25,9 @@
 
 namespace genie {
 
-namespace fs {
-
 std::string drs_path(const std::string &root, const std::string &fname) {
 	return root + dir_sep + "data" + dir_sep + fname;
 }
-
-Blob::Blob(Blob &&b)
-	: name(b.name), fd(b.fd)
-#if windows
-	, fm(b.fm)
-#else
-	, st(b.st)
-#endif
-	, data(b.data), size(b.size), map(b.map) {}
 
 #if windows
 Blob::Blob(const std::string &name, iofd fd, bool map) : name(name), fd(fd), fm(fd_invalid), map(map) {
@@ -99,7 +89,21 @@ int (close)(iofd fd) {
 }
 #else
 int (open)(const std::string &name) {
-	return ::open(name.c_str(), O_RDONLY);
+	// unix is case-sensitive, so open may fail where it succeeds on windows
+	// try real name first, then fall back to lowercase and uppercase
+	int fd;
+
+	if ((fd = ::open(name.c_str(), O_RDONLY)) != FD_INVALID)
+		return fd;
+
+	std::string path(name);
+	tolower(path);
+
+	if ((fd = ::open(path.c_str(), O_RDONLY)) != FD_INVALID)
+		return fd;
+
+	toupper(path);
+	return ::open(path.c_str(), O_RDONLY);
 }
 
 int (close)(iofd fd) {
@@ -138,7 +142,5 @@ Blob::~Blob() {
 	::close(fd);
 }
 #endif
-
-}
 
 }

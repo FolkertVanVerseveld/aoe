@@ -19,8 +19,6 @@
 
 namespace genie {
 
-namespace fs {
-
 #if windows
 static constexpr char dir_sep = '\\';
 static constexpr HANDLE fd_invalid = NULL;
@@ -47,7 +45,6 @@ public:
 
 	Blob(const std::string &name, iofd fd, bool map);
 	Blob(const Blob&) = delete;
-	Blob(Blob&&);
 	~Blob();
 
 	const void *get() const { return data; }
@@ -57,7 +54,5 @@ public:
 std::string drs_path(const std::string &root, const std::string &fname);
 iofd (open)(const std::string&);
 int (close)(iofd);
-
-}
 
 }
