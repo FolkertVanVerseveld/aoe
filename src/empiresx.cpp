@@ -17,6 +17,7 @@
 
 #include <cstdio>
 #include <ctime>
+#include <inttypes.h>
 
 #include <atomic>
 #include <string>
@@ -120,22 +121,29 @@ public:
 	}
 } shader_vtx(R"glsl(
 #version 120
+
 attribute vec2 coord2d;
+attribute vec3 col;
+varying vec3 frag_col;
+
 void main(void)
 {
 	gl_Position = vec4(coord2d, 0.0, 1.0);
+	frag_col = col;
 }
 )glsl", GL_VERTEX_SHADER)
 , shader_frag(R"glsl(
 #version 120
-void main(void) {
-	gl_FragColor[0] = 0.0;
-	gl_FragColor[1] = 0.0;
-	gl_FragColor[2] = 1.0;
+
+varying vec3 frag_col;
+
+void main(void)
+{
+	gl_FragColor = vec4(frag_col.rgb, 1.0);
 }
 )glsl", GL_FRAGMENT_SHADER);
 
-static GLint attr_pos;
+static GLint attr_pos, attr_col;
 
 class ShaderProgram final {
 public:
@@ -390,6 +398,10 @@ private:
 		set_desc("Verifying data resource sets");
 
 		for (unsigned i = 0; i < res.size(); ++i) {
+			if (genie::assets.blobs[i]->empty()) {
+				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_empty, fnames[i].c_str()));
+				return;
+			}
 			genie::io::DrsItem dummy;
 
 			const std::vector<ResChk> &l = res[i];
@@ -546,13 +558,12 @@ int main(int, char**)
 
 	ShaderProgram prog(shader_vtx.handle, shader_frag.handle);
 	attr_pos = glGetAttribLocation(prog.handle, "coord2d");
+	attr_col = glGetAttribLocation(prog.handle, "col");
 
-	if (attr_pos == -1) {
+	if (attr_pos == -1 || attr_col == -1) {
 		fputs("fatal error: glGetAttribLocation\n", stderr);
 		abort();
 	}
-
-	glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 
 	// Main loop
 	while (running)
@@ -606,33 +617,81 @@ int main(int, char**)
 		ImGui_ImplSDL2_NewFrame(window);
 		ImGui::NewFrame();
 
+		// disable saving imgui.ini
+		io.IniFilename = NULL;
+
 		if (show_debug) {
 			// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
 			if (show_demo_window)
 				ImGui::ShowDemoWindow(&show_demo_window);
 
-			ImGui::Begin("Debug control");
-			{
+			if (ImGui::Begin("Debug control")) {
 				ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
 				ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 				ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
 
-				static int current_fault = 0;
-				static const char *fault_types[] = {"Segmentation violation", "NULL dereference", "_Exit", "exit", "abort", "std::terminate", "throw int"};
+				if (ImGui::BeginTabBar("dbgtabs")) {
+					if (fs_has_root && ImGui::BeginTabItem("DRS view")) {
+						static int current_drs = 0;
 
-				ImGui::Combo("Fault type", &current_fault, fault_types, IM_ARRAYSIZE(fault_types));
+						ImGui::SliderInt("container", &current_drs, 0, genie::assets.blobs.size() - 1);
+						current_drs = genie::clamp<int>(0, current_drs, genie::assets.blobs.size() - 1);
 
-				if (ImGui::Button("Oops")) {
-					switch (current_fault) {
-						default: raise(SIGSEGV); break;
-						// NULL dereferencing directly is usually optimised out in modern compilers, so use a trick to bypass this...
-						case 1: { int *p = (int*)1; -1[p]++; } break;
-						case 2: _Exit(1); break;
-						case 3: exit(1); break;
-						case 4: abort(); break;
-						case 5: std::terminate(); break;
-						case 6: throw 42; break;
+						const genie::DRS &drs = *genie::assets.blobs[current_drs].get();
+						static int current_list = 0;
+
+						if (drs.size() > 1) {
+							size_t max = drs.size() - 1;
+							ImGui::SliderInt("list", &current_list, 0, max);
+							current_list = genie::clamp<int>(0, current_list, max);
+						} else {
+							current_list = 0;
+						}
+
+						genie::DrsList lst(drs[current_list]);
+
+						const char *drs_type = "???";
+
+						switch (lst.type) {
+							case 0x62696e61: drs_type = "various"; break;
+							case 0x73687020: drs_type = "shape"; break;
+							case 0x736c7020: drs_type = "shape list"; break;
+							case 0x77617620: drs_type = "audio"; break;
+						}
+
+						ImGui::Text("Type  : %s (%" PRIX32 ")\nOffset: %" PRIX32 "\nItems : %" PRIu32, drs_type, lst.type, lst.offset, lst.size);
+
+						static int current_item = 0;
+						ImGui::InputInt("item", &current_item);
+						current_item = genie::clamp<int>(0, current_item, lst.size - 1);
+
+						genie::DrsItem item(lst[current_item]);
+
+						ImGui::Text("id    : %" PRIu32 "\noffset: %" PRIX32 "\nsize  : %" PRIX32, item.id, item.offset, item.size);
+
+						ImGui::EndTabItem();
 					}
+					if (ImGui::BeginTabItem("Crash")) {
+						static int current_fault = 0;
+						static const char *fault_types[] = {"Segmentation violation", "NULL dereference", "_Exit", "exit", "abort", "std::terminate", "throw int"};
+
+						ImGui::Combo("Fault type", &current_fault, fault_types, IM_ARRAYSIZE(fault_types));
+
+						if (ImGui::Button("Oops")) {
+							switch (current_fault) {
+								default: raise(SIGSEGV); break;
+								// NULL dereferencing directly is usually optimised out in modern compilers, so use a trick to bypass this...
+								case 1: { int *p = (int*)1; -1[p]++; } break;
+								case 2: _Exit(1); break;
+								case 3: exit(1); break;
+								case 4: abort(); break;
+								case 5: std::terminate(); break;
+								case 6: throw 42; break;
+							}
+						}
+						ImGui::EndTabItem();
+					}
+					ImGui::EndTabBar();
 				}
 			}
 			ImGui::End();
@@ -776,6 +835,7 @@ int main(int, char**)
 		ImGui::Render();
 
 		glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// do our stuff
@@ -786,13 +846,16 @@ int main(int, char**)
 			{
 				glUseProgram(prog.handle);
 				glEnableVertexAttribArray(attr_pos);
+				glEnableVertexAttribArray(attr_col);
 				const GLfloat vtx[] = {
-					 0.0,  0.8,
-					-0.8, -0.8,
-					 0.8, -0.8,
+					 0.0,  0.8, 1.0, 1.0, 0.0,
+					-0.8, -0.8, 0.0, 0.0, 1.0,
+					 0.8, -0.8, 1.0, 0.0, 0.0,
 				};
-				glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 0, vtx);
+				glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), vtx);
+				glVertexAttribPointer(attr_col, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &vtx[2]);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
+				glDisableVertexAttribArray(attr_col);
 				glDisableVertexAttribArray(attr_pos);
 				break;
 			}
@@ -813,9 +876,6 @@ int main(int, char**)
 	auto future = std::async(std::launch::async, &std::thread::join, &t_bkg);
 	if (future.wait_for(std::chrono::seconds(3)) == std::future_status::timeout)
 		_Exit(0); // worker still busy, dirty exit
-
-	// disable saving imgui.ini
-	io.IniFilename = NULL;
 
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();

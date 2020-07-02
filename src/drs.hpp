@@ -4,6 +4,9 @@
 #include "types.hpp"
 #include "fs.hpp"
 
+#include <cassert>
+#include <variant>
+
 namespace genie {
 
 // low-level legacy stuff, don't touch this
@@ -257,6 +260,36 @@ enum class DrsType {
 	wave,
 };
 
+class DRS;
+
+class DrsItem final {
+public:
+	uint32_t id;
+	uint32_t type;
+	uint32_t offset;
+	const void *ptr;
+	uint32_t size;
+
+	DrsItem(uint32_t id, uint32_t type, uint32_t offset, const void *data, uint32_t size)
+		: id(id), type(type), offset(offset), ptr(data), size(size) {}
+};
+
+class DrsList final {
+	const DRS &drs;
+	unsigned pos;
+public:
+	uint32_t type;
+	uint32_t offset;
+	uint32_t size;
+
+	DrsList(const DRS &ref, unsigned pos);
+	DrsList(const DrsList&) = default;
+
+	const DrsItem operator[](unsigned pos) const noexcept;
+
+	constexpr bool empty() const noexcept { return size == 0; }
+};
+
 class DRS final {
 public:
 	Blob blob;
@@ -265,7 +298,14 @@ public:
 	DRS(const std::string &name, iofd fd, bool map);
 
 	/** Try to load the specified game asset using the specified type and unique identifier */
-	bool open_item(io::DrsItem &item, res_id id, DrsType type);
+	bool open_item(io::DrsItem &item, res_id id, DrsType type) const;
+
+	const DrsList operator[](unsigned pos) const noexcept {
+		return DrsList(*this, pos);
+	}
+
+	constexpr size_t size() const noexcept { return hdr->nlist; }
+	constexpr bool empty() const noexcept { return size() == 0; }
 };
 
 }

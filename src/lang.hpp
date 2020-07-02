@@ -35,6 +35,7 @@ enum class TextId {
 	// errors
 	err_drs_path,
 	err_drs_hdr,
+	err_drs_empty,
 	err_no_drs_item,
 	max,
 };

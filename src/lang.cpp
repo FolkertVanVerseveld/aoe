@@ -45,6 +45,7 @@ static std::vector<std::vector<const char*>> txts = {
 		// errors
 		"Cannot find data resource set \"%s\"",
 		"Bad DRS file \"%s\": invalid header",
+		"DRS file \"%s\" must have at least one list",
 		"Could not find DRS item %u",
 	},
 	// Chinese
@@ -69,6 +70,7 @@ static std::vector<std::vector<const char*>> txts = {
 		// foutmeldingen
 		"Data resource set \"%s\" kan niet gevonden worden",
 		"Fout in DRS \"%s\": onjuiste header",
+		"Fout in DRS \"%s\": geen lijsten",
 		"DRS nummer %u niet gevonden",
 	},
 	// Deutsch
@@ -91,6 +93,7 @@ static std::vector<std::vector<const char*>> txts = {
 		// Fehlers
 		"Datenressourcensatz \"%s\" kann nicht gefunden werden",
 		"Beschädigte DRS-Datei \"%s\": ungültiger Header",
+		"Beschädigte DRS-Datei \"%s\": leere Liste",
 		"DRS nummer %u nicht gefunden"
 	},
 	// 日本語
