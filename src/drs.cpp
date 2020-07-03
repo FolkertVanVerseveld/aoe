@@ -1,5 +1,7 @@
 /* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 
+#pragma warning (disable: 4996)
+
 #include "drs.hpp"
 
 #include <stdexcept>
@@ -9,6 +11,8 @@
 #include <inttypes.h>
 
 namespace genie {
+
+std::string game_dir;
 
 DrsList::DrsList(const DRS &ref, unsigned pos) : drs(ref), pos(pos) {
 	const io::DrsList *list = (io::DrsList*)&drs.hdr[1];
@@ -61,7 +65,33 @@ bool DRS::open_item(DrsItem &item, res_id id, DrsType drs_type) const noexcept {
 	return false;
 }
 
-DialogSettings DRS::open_dlg(res_id id) const {
+void io::Slp::reset(void *data, size_t size) {
+	if (size < sizeof(io::SlpHdr))
+		throw std::runtime_error("Slp data too small");
+
+	hdr = (io::SlpHdr*)data;
+	info = (io::SlpFrameInfo*)&hdr[1];
+	this->size = size;
+}
+
+Image::Image() : id(0), idx(0), surf(nullptr, &SDL_FreeSurface), hotx(0), hoty(0) {}
+
+Animation::Animation(res_id id, const DRS &drs) : slp(drs.open_slp(id)), size(0), images(), id(id), image_count(0), dynamic(false) {
+	if (memcmp(slp.hdr->version, "2.0N", 4))
+		throw std::runtime_error("Could not load animation: bad header");
+
+	images.reset(new Image[image_count = slp.hdr->frame_count]);
+
+	// stub
+}
+
+bool operator<(const Animation &lhs, const Animation &rhs) { return lhs.id < rhs.id; }
+bool operator<(const Image &lhs, const Image &rhs) { return lhs.id < rhs.id; }
+
+Dialog::Dialog(res_id id, DialogSettings &&cfg, const DRS &drs)
+	: id(id), drs(drs), cfg(cfg), pal(drs.open_pal(this->cfg.pal), &SDL_FreePalette) {}
+
+Dialog DRS::open_dlg(res_id id) const {
 	DrsItem item;
 
 	if (!open_item(item, id, DrsType::binary))
@@ -150,7 +180,16 @@ DialogSettings DRS::open_dlg(res_id id) const {
 		bkg.state[i] = state_col[i];
 	}
 
-	return bkg;
+	return Dialog(id, std::move(bkg), *this);
+}
+
+io::Slp DRS::open_slp(res_id id) const {
+	DrsItem item;
+
+	if (!open_item(item, id, DrsType::slp))
+		throw std::runtime_error(std::string("Could not load shape list ") + std::to_string(id));
+
+	return io::Slp(item.data, item.size);
 }
 
 SDL_Palette *DRS::open_pal(res_id id) const {

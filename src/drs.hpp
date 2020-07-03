@@ -9,10 +9,15 @@
 #include <vector>
 #include <variant>
 #include <optional>
+#include <string>
 
+#include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_pixels.h>
+#include <SDL2/SDL_surface.h>
 
 namespace genie {
+
+extern std::string game_dir;
 
 // low-level legacy stuff, don't touch this
 namespace io {
@@ -61,7 +66,7 @@ struct SlpFrameInfo final {
 	int32_t hotspot_y;
 };
 
-constexpr int16_t invalid_edge = INT16_MIN;
+static constexpr int16_t invalid_edge = INT16_MIN;
 
 /** Game specific image file format subimage boundaries. */
 struct SlpFrameRowEdge final {
@@ -73,15 +78,12 @@ struct SlpFrameRowEdge final {
 struct Slp final {
 	io::SlpHdr *hdr;
 	io::SlpFrameInfo *info;
+	size_t size;
 
-	Slp() : hdr(NULL), info(NULL) {}
+	Slp() : hdr(NULL), info(NULL), size(0) {}
+	Slp(void *data, size_t size) { reset(data, size); }
 
-	Slp(void *data) { reset(data); }
-
-	void reset(void *data) {
-		hdr = (io::SlpHdr*)data;
-		info = (io::SlpFrameInfo*)((char*)data + sizeof(io::SlpHdr));
-	}
+	void reset(void *data, size_t size);
 };
 
 }
@@ -312,6 +314,50 @@ struct DialogSettings final {
 	uint8_t state[6];
 };
 
+class DRS;
+
+class Image final {
+public:
+	res_id id;
+	unsigned idx;
+	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> surf;
+	int hotx, hoty;
+
+	Image(); // construct invalid image
+	Image(res_id id, unsigned subimage, SDL_Palette *pal, const DRS &drs, size_t size);
+
+	Image(const Image&) = delete;
+	Image(Image&&) = default;
+
+	friend bool operator<(const Image &lhs, const Image &rhs);
+};
+
+class Animation final {
+public:
+	const io::Slp slp;
+	size_t size;
+	std::unique_ptr<Image[]> images;
+	res_id id;
+	unsigned image_count;
+	bool dynamic;
+
+	Animation(res_id id, const DRS &drs);
+
+	Image &subimage(unsigned index, unsigned player=0);
+
+	friend bool operator<(const Animation &lhs, const Animation &rhs);
+};
+
+class Dialog final {
+public:
+	res_id id;
+	const DRS &drs;
+	DialogSettings cfg;
+	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal;
+
+	Dialog(res_id id, DialogSettings &&cfg, const DRS &drs);
+};
+
 class DRS final {
 public:
 	Blob blob;
@@ -322,7 +368,10 @@ public:
 	/** Try to load the specified game asset using the specified type and unique identifier */
 	bool open_item(DrsItem &item, res_id id, DrsType type) const noexcept;
 
-	DialogSettings open_dlg(res_id id) const;
+	Dialog open_dlg(res_id id) const;
+	io::Slp open_slp(res_id id) const;
+	Image open_image(res_id id) const;
+	Animation open_anim(res_id id) const { return Animation(id, *this); }
 	SDL_Palette *open_pal(res_id id) const;
 
 	const DrsList operator[](unsigned pos) const noexcept {

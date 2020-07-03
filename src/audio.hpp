@@ -30,13 +30,25 @@ enum class MusicId {
 	start,
 	win,
 	lost,
-	game // track1-10
+	game, // track1-10
+	track1 = 4,
+	track2,
+	track3,
+	track4,
+	track5,
+	track6,
+	track7,
+	track8,
+	track9,
 };
+
+static constexpr unsigned msc_count = 13;
+
+extern const char *msc_names[msc_count];
 
 static constexpr int sfx_max_volume = MIX_MAX_VOLUME;
 
 extern class Jukebox final {
-	int playing;
 	MusicId id;
 	std::map<DrsId, Sfx> cache;
 public:
@@ -47,12 +59,21 @@ public:
 
 	int is_playing(MusicId &id); /**< 1=true, 0=false, -1=error */
 	int sfx(DrsId id, int loops=0, int channel=-1);
-	int play(MusicId id);
+	void play(MusicId id, int loops=0);
 	void stop();
 	void stop(int channel);
 
+	int msc_volume() const noexcept;
+	int msc_volume(int v);
+
 	int sfx_volume() const noexcept;
 	int sfx_volume(int v, int ch=-1);
+
+	bool sfx_enabled() const noexcept;
+	bool sfx(bool);
+
+	bool msc_enabled() const noexcept;
+	bool msc(bool);
 
 	void next();
 } jukebox;

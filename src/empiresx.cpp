@@ -1,7 +1,11 @@
- // dear imgui: standalone example application for SDL2 + OpenGL
+/* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+
+// dear imgui: standalone example application for SDL2 + OpenGL
  // If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
  // (SDL is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
  // (GL3W is a helper library to access OpenGL functions since there is no standard header to access modern OpenGL functions easily. Alternatives are GLEW, Glad, etc.)
+
+#pragma warning (disable: 4996)
 
 #define IMGUI_INCLUDE_IMGUI_USER_H 1
 
@@ -356,6 +360,8 @@ private:
 		start(2);
 		set_desc(TXT(TextId::work_drs));
 
+		std::string dir(item.first);
+
 		try {
 			for (unsigned i = 0; i < COUNT; ++i) {
 				std::string path(genie::drs_path(item.first, fnames[i]));
@@ -372,6 +378,8 @@ private:
 				return;
 			}
 			try {
+				dir = item.second;
+
 				for (unsigned i = 0; i < COUNT; ++i) {
 					std::string path(genie::drs_path(item.second, fnames[i]));
 					if ((fd[i] = genie::open(path.c_str())) == genie::fd_invalid) {
@@ -421,6 +429,7 @@ private:
 		}
 
 		++p.step;
+		genie::game_dir = dir;
 		done(WorkTaskType::check_root, WorkResultType::success, TXT(TextId::work_drs_success));
 #undef COUNT
 	}
@@ -436,6 +445,7 @@ enum class BinType {
 	palette,
 	blob,
 	text,
+	shapelist,
 };
 
 static const char *bin_types[] = {
@@ -444,6 +454,7 @@ static const char *bin_types[] = {
 	"color palette",
 	"binary data",
 	"text",
+	"shape list",
 };
 
 class DrsView final {
@@ -451,7 +462,7 @@ public:
 	int current_drs, current_list, current_item, channel, dialog_mode, lookup_id;
 	bool looping, autoplay;
 	genie::io::DrsItem item;
-	std::variant<std::nullopt_t, BinType, genie::DialogSettings, SDL_Palette*> resdata;
+	std::variant<std::nullopt_t, BinType, genie::Dialog, SDL_Palette*, genie::Animation, genie::io::Slp> resdata;
 	genie::DrsItem res;
 
 	DrsView() : current_drs(-1), current_list(-1), current_item(-1), channel(-1), dialog_mode(0), lookup_id(0), looping(true), autoplay(true), item(), resdata(std::nullopt), res() {}
@@ -470,16 +481,17 @@ public:
 	}
 
 	void show() {
+#pragma warning (push)
+#pragma warning (disable: 4267)
 		int old_drs = current_drs, old_list = current_list, old_item = current_item;
+		bool found = false;
 
 		ImGui::InputInt("##lookup", &lookup_id);
 		ImGui::SameLine();
 		if (ImGui::Button("lookup")) {
-			bool found = false;
 
 			for (unsigned i = 0; !found && i < genie::assets.blobs.size(); ++i) {
 				const genie::DRS &drs = *genie::assets.blobs[i].get();
-				genie::DrsItem item;
 
 				for (unsigned j = 0; !found && j < drs.size(); ++j) {
 					genie::DrsList lst(drs[j]);
@@ -517,10 +529,10 @@ public:
 		const char *str_drs_type = "???";
 
 		switch (lst.type) {
-			case genie::drs_type_bin: drs_type = genie::DrsType::binary; str_drs_type = "various"; break;
-			case genie::drs_type_shp: drs_type = genie::DrsType::shape; str_drs_type = "shape"; break;
-			case genie::drs_type_slp: drs_type = genie::DrsType::slp; str_drs_type = "shape list"; break;
-			case genie::drs_type_wav: drs_type = genie::DrsType::wave; str_drs_type = "audio"; break;
+			case genie::drs_type_bin: drs_type = genie::DrsType::binary; str_drs_type = "various"   ; break;
+			case genie::drs_type_shp: drs_type = genie::DrsType::shape ; str_drs_type = "shape"     ; break;
+			case genie::drs_type_slp: drs_type = genie::DrsType::slp   ; str_drs_type = "shape list"; break;
+			case genie::drs_type_wav: drs_type = genie::DrsType::wave  ; str_drs_type = "audio"     ; break;
 		}
 
 		ImGui::Text("Type  : %" PRIX32 " %s\nOffset: %" PRIX32 "\nItems : %" PRIu32, lst.type, str_drs_type, lst.offset, lst.size);
@@ -532,7 +544,7 @@ public:
 
 		ImGui::Text("id    : %" PRIu32 "\noffset: %" PRIX32 "\nsize  : %" PRIX32, item.id, item.offset, item.size);
 
-		if (old_drs != current_drs || old_list != current_list || old_item != current_item) {
+		if (old_drs != current_drs || old_list != current_list || old_item != current_item || found) {
 			if (channel != -1) {
 				genie::jukebox.stop(channel);
 				channel = -1;
@@ -563,7 +575,7 @@ public:
 					}
 					if (strncmp(str, "backgrou", 8) == 0) {
 						try {
-							resdata.emplace<genie::DialogSettings>(drs.open_dlg(item.id));
+							resdata.emplace<genie::Dialog>(drs.open_dlg(item.id));
 						} catch (std::runtime_error&) {
 							resdata.emplace<BinType>(BinType::dialog);
 						}
@@ -580,6 +592,17 @@ public:
 					resdata.emplace<BinType>(looks_binary ? BinType::blob : BinType::text);
 					break;
 				}
+				case genie::drs_type_slp:
+					try {
+						resdata.emplace<genie::Animation>(drs.open_anim(item.id));
+					} catch (std::runtime_error&) {
+						try {
+							resdata.emplace<genie::io::Slp>(drs.open_slp(item.id));
+						} catch (std::runtime_error&) {
+							resdata.emplace<BinType>(BinType::shapelist);
+						}
+					}
+					break;
 				case genie::drs_type_wav:
 					if (autoplay)
 						channel = genie::jukebox.sfx((genie::DrsId)item.id, looping ? -1 : 0);
@@ -588,9 +611,9 @@ public:
 		}
 
 		switch (lst.type) {
-			case genie::drs_type_bin: {
+			case genie::drs_type_bin:
 				switch (resdata.index()) {
-					case 1: {
+					case 1: { // BinType
 						BinType type = std::get<BinType>(resdata);
 
 						ImGui::Text("Type: %s", bin_types[(unsigned)type]);
@@ -607,43 +630,66 @@ public:
 							case BinType::bitmap:
 								ImGui::TextUnformatted("bitmap");
 								break;
+							case BinType::shapelist:
+								ImGui::TextUnformatted("unknown shape list");
+								break;
 						}
 						break;
 					}
-					case 2: {
-						ImGui::TextUnformatted("Type: dialog");
+					case 2: { // Dialog
+						ImGui::Text("Type: %s", bin_types[(unsigned)BinType::dialog]);
 
 						if (ImGui::TreeNode("Raw")) {
 							ImGui::TextWrapped("%.*s", (int)res.size, (const char*)res.data);
 							ImGui::TreePop();
 						}
 
-						genie::DialogSettings &dlg = std::get<genie::DialogSettings>(resdata);
-						ImGui::Combo("Display mode", &dialog_mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy));
+						genie::Dialog &dlg = std::get<genie::Dialog>(resdata);
 
 						if (ImGui::TreeNode("Preview")) {
-							ImGui::TextUnformatted("work in progress");
+							int old_dialog_mode = dialog_mode;
+							ImGui::Combo("Display mode", &dialog_mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy));
+
+							if (old_dialog_mode != dialog_mode) {
+								// TODO change preview
+							}
+
 							ImGui::TreePop();
 						}
 
-						ImGui::Text("Palette: %" PRIu16 "\nCursor : %" PRIu16 "\nShade  : %d\nButton : %" PRIu16 "\nPopup  : %" PRIu16, dlg.pal, dlg.cursor, dlg.shade, dlg.btn, dlg.popup);
+						auto &cfg = dlg.cfg;
+
+						if (ImGui::TreeNode("Palette")) {
+							ImGui::Text("ID: %" PRIu16, cfg.pal);
+							ImGui::ColorPalette(dlg.pal.get());
+							ImGui::TreePop();
+						}
+
+						ImGui::Text("Cursor : %" PRIu16 "\nShade  : %d\nButton : %" PRIu16 "\nPopup  : %" PRIu16, cfg.cursor, cfg.shade, cfg.btn, cfg.popup);
 						break;
 					}
-					case 3: {
-						ImGui::TextUnformatted("Type: palette");
+					case 3: { // SDL_Palette*
+						ImGui::Text("Type: %s", bin_types[(unsigned)BinType::palette]);
 
 						SDL_Palette *pal = std::get<SDL_Palette*>(resdata);
-
-						for (unsigned y = 0, i = 0; y < 16; ++y) {
-							for (unsigned x = 0; x < 16; ++x, ++i)
-								ImGui::PixelBox(IM_COL32(pal->colors[i].r, pal->colors[i].g, pal->colors[i].b, pal->colors[i].a));
-							ImGui::NewLine();
-						}
+						ImGui::ColorPalette(pal);
 						break;
 					}
 				}
 				break;
-			}
+			case genie::drs_type_slp:
+				switch (resdata.index()) {
+					case 4: { // genie::Animation
+						genie::Animation &anim = std::get<genie::Animation>(resdata);
+						// TODO remove id and size if they are confirmed to be read properly
+						ImGui::Text("Type  : animation\nId    : %" PRIu16 "\nSize  : %llu\nImages: %u\nDynamic: %s", anim.id, (unsigned long long)anim.size, anim.image_count, anim.dynamic ? "yes" : "no");
+						break;
+					}
+					case 5: // genie::io::Slp
+						ImGui::Text("Type: shape list\nSize: %llu", (unsigned long long)std::get<genie::io::Slp>(resdata).size);
+						break;
+				}
+				break;
 			case genie::drs_type_wav:
 				if (channel != -1 && !Mix_Playing(channel))
 					channel = -1;
@@ -661,6 +707,7 @@ public:
 				ImGui::Checkbox("autoplay", &autoplay);
 				break;
 		}
+#pragma warning (pop)
 	}
 };
 
@@ -794,342 +841,386 @@ int main(int, char**)
 	WorkerProgress p = { 0 };
 	std::string bkg_result;
 
-	std::stack<const char*> auto_paths;
+	// some stuff needs to be cleaned up before we shut down, so we need another scope here
+	{
+		std::stack<const char*> auto_paths;
 #if windows
-	auto_paths.emplace("C:\\Program Files (x86)\\Microsoft Games\\Age of Empires");
-	auto_paths.emplace("C:\\Program Files\\Microsoft Games\\Age of Empires");
+		auto_paths.emplace("C:\\Program Files (x86)\\Microsoft Games\\Age of Empires");
+		auto_paths.emplace("C:\\Program Files\\Microsoft Games\\Age of Empires");
 #else
-	auto_paths.emplace("/media/cdrom");
+		auto_paths.emplace("/media/cdrom");
 #endif
 
-	if (!auto_paths.empty()) {
-		auto_detect = true;
-		std::string path(auto_paths.top());
-		w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
-		auto_paths.pop();
-	}
+		if (!auto_paths.empty()) {
+			auto_detect = true;
+			std::string path(auto_paths.top());
+			w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
+			auto_paths.pop();
+		}
 
-	// while our worker thread is auto detecting, we can setup the shaders
-	shader_vtx.compile();
-	shader_frag.compile();
+		// while our worker thread is auto detecting, we can setup the shaders
+		shader_vtx.compile();
+		shader_frag.compile();
 
-	ShaderProgram prog(shader_vtx.handle, shader_frag.handle);
-	attr_pos = glGetAttribLocation(prog.handle, "coord2d");
-	attr_col = glGetAttribLocation(prog.handle, "col");
+		ShaderProgram prog(shader_vtx.handle, shader_frag.handle);
+		attr_pos = glGetAttribLocation(prog.handle, "coord2d");
+		attr_col = glGetAttribLocation(prog.handle, "col");
 
-	if (attr_pos == -1 || attr_col == -1) {
-		fputs("fatal error: glGetAttribLocation\n", stderr);
-		abort();
-	}
+		if (attr_pos == -1 || attr_col == -1) {
+			fputs("fatal error: glGetAttribLocation\n", stderr);
+			abort();
+		}
 
-	DrsView drsview;
+		DrsView drsview;
 
-	// Main loop
-	while (running)
-	{
-		// Poll and handle events (inputs, window resize, etc.)
-		// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-		// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-		// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-		// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-		SDL_Event event;
-		while (SDL_PollEvent(&event))
+		// Main loop
+		while (running)
 		{
-			bool munched, p;
+			// Poll and handle events (inputs, window resize, etc.)
+			// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+			// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
+			// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
+			// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+			SDL_Event event;
+			while (SDL_PollEvent(&event))
+			{
+				bool munched, p;
 
-			// check if imgui munches event
-			switch (event.type) {
-			case SDL_MOUSEWHEEL:
-			case SDL_MOUSEBUTTONDOWN:
-			case SDL_MOUSEBUTTONUP:
-				p = ImGui_ImplSDL2_ProcessEvent(&event);
-				munched = p && io.WantCaptureMouse;
-				break;
-			case SDL_TEXTINPUT:
-			case SDL_KEYDOWN:
-			case SDL_KEYUP:
-				p = ImGui_ImplSDL2_ProcessEvent(&event);
-				munched = p && io.WantCaptureKeyboard;
-				break;
-			default:
-				munched = ImGui_ImplSDL2_ProcessEvent(&event);
-				break;
-			}
-
-			if (event.type == SDL_QUIT)
-				running = false;
-			if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-				running = false;
-
-			if (!munched) {
+				// check if imgui munches event
 				switch (event.type) {
+				case SDL_MOUSEWHEEL:
+				case SDL_MOUSEBUTTONDOWN:
+				case SDL_MOUSEBUTTONUP:
+					p = ImGui_ImplSDL2_ProcessEvent(&event);
+					munched = p && io.WantCaptureMouse;
+					break;
+				case SDL_TEXTINPUT:
+				case SDL_KEYDOWN:
 				case SDL_KEYUP:
-					if (event.key.keysym.sym == SDLK_BACKQUOTE)
-						show_debug = !show_debug;
-					break;
-				}
-			}
-		}
-
-		// Start the Dear ImGui frame
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplSDL2_NewFrame(window);
-		ImGui::NewFrame();
-
-		// disable saving imgui.ini
-		io.IniFilename = NULL;
-
-		if (show_debug) {
-			// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-			if (show_demo_window)
-				ImGui::ShowDemoWindow(&show_demo_window);
-
-			if (ImGui::Begin("Debug control")) {
-				ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-				ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-				ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-
-				if (ImGui::BeginTabBar("dbgtabs")) {
-					if (fs_has_root && ImGui::BeginTabItem("DRS view")) {
-						drsview.show();
-						ImGui::EndTabItem();
-					}
-					if (ImGui::BeginTabItem("Audio")) {
-						int opened, freq, ch, used;
-						Uint16 fmt;
-						opened = Mix_QuerySpec(&freq, &fmt, &ch);
-						used = Mix_Playing(-1);
-
-						if (opened <= 0) {
-							ImGui::TextUnformatted("System disabled");
-						} else {
-							char *str = "???";
-
-							switch (fmt) {
-								case AUDIO_U8: str = "U8"; break;
-								case AUDIO_S8: str = "S8"; break;
-								case AUDIO_U16LSB: str = "U16LSB"; break;
-								case AUDIO_S16LSB: str = "S16LSB"; break;
-								case AUDIO_U16MSB: str = "U16MSB"; break;
-								case AUDIO_S16MSB: str = "S16MSB"; break;
-							}
-
-							ImGui::Text("Currently used channels: %d\n\nConfiguration:\nSystems: %d\nFrequency: %dHz\nChannels: %d\nFormat: %s", used, opened, freq, ch, str);
-						}
-
-						static float vol = 100.0f;
-						int old_vol = genie::jukebox.sfx_volume(), new_vol;
-
-						vol = old_vol * 100.0f / genie::sfx_max_volume;
-						ImGui::SliderFloat("Sfx volume", &vol, 0, 100.0f, "%.0f");
-
-						vol = genie::clamp(0.0f, vol, 100.0f);
-						new_vol = vol * genie::sfx_max_volume / 100.0f;
-
-						if (old_vol != new_vol)
-							genie::jukebox.sfx_volume(new_vol);
-
-						if (ImGui::Button("Panic"))
-							genie::jukebox.stop(-1);
-
-						ImGui::EndTabItem();
-					}
-					if (ImGui::BeginTabItem("Crash")) {
-						static int current_fault = 0;
-						static const char *fault_types[] = {"Segmentation violation", "NULL dereference", "_Exit", "exit", "abort", "std::terminate", "throw int"};
-
-						ImGui::Combo("Fault type", &current_fault, fault_types, IM_ARRAYSIZE(fault_types));
-
-						if (ImGui::Button("Oops")) {
-							switch (current_fault) {
-								default: raise(SIGSEGV); break;
-								// NULL dereferencing directly is usually optimised out in modern compilers, so use a trick to bypass this...
-								case 1: { int *p = (int*)1; -1[p]++; } break;
-								case 2: _Exit(1); break;
-								case 3: exit(1); break;
-								case 4: abort(); break;
-								case 5: std::terminate(); break;
-								case 6: throw 42; break;
-							}
-						}
-						ImGui::EndTabItem();
-					}
-					ImGui::EndTabBar();
-				}
-			}
-			ImGui::End();
-		}
-
-		static int lang_current = 0;
-		static bool show_about = false;
-		bool working = w_bkg.progress(p);
-
-		// munch all results
-		for (std::optional<WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
-			switch (res->type) {
-				case WorkResultType::success:
-					switch (res->task_type) {
-						case WorkTaskType::stop:
-							break;
-						case WorkTaskType::check_root:
-							fs_has_root = true;
-							// start game automatically on auto detect
-							if (auto_detect) {
-								auto_detect = false;
-								menu_id = MenuId::start;
-							}
-							break;
-						default:
-							assert("bad task type" == 0);
-							break;
-					}
-					break;
-				case WorkResultType::stop:
-					break;
-				case WorkResultType::fail:
-					if (!auto_paths.empty()) {
-						std::string path(auto_paths.top());
-						w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
-						auto_paths.pop();
-						working = true;
-					} else {
-						auto_detect = false;
-					}
+					p = ImGui_ImplSDL2_ProcessEvent(&event);
+					munched = p && io.WantCaptureKeyboard;
 					break;
 				default:
-					assert("bad result type" == 0);
+					munched = ImGui_ImplSDL2_ProcessEvent(&event);
 					break;
+				}
+
+				if (event.type == SDL_QUIT)
+					running = false;
+				if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
+					running = false;
+
+				if (!munched) {
+					switch (event.type) {
+					case SDL_KEYUP:
+						if (event.key.keysym.sym == SDLK_BACKQUOTE)
+							show_debug = !show_debug;
+						break;
+					}
+				}
 			}
-			bkg_result = res->what;
-		}
 
-		switch (menu_id) {
-			case MenuId::config:
-				ImGui::Begin("Startup configuration", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus);
-				{
-					ImGui::SetWindowSize(io.DisplaySize);
-					ImGui::SetWindowPos(ImVec2());
+			// Start the Dear ImGui frame
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplSDL2_NewFrame(window);
+			ImGui::NewFrame();
 
-					if (ImGui::Button(TXT(TextId::btn_about)))
-						show_about = true;
+			// disable saving imgui.ini
+			io.IniFilename = NULL;
 
-					ImGui::TextWrapped(TXT(TextId::hello));
+			if (show_debug) {
+				// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+				if (show_demo_window)
+					ImGui::ShowDemoWindow(&show_demo_window);
 
-					lang_current = int(lang);
-					ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
-					lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
+				if (ImGui::Begin("Debug control")) {
+					ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+					ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+					ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
 
-					if (!working && ImGui::Button(TXT(TextId::set_game_dir)))
-						fd->OpenDialog(FDLG_CHOOSE_DIR, TXT(TextId::dlg_game_dir), 0, ".");
+					if (ImGui::BeginTabBar("dbgtabs")) {
+						if (fs_has_root && ImGui::BeginTabItem("DRS view")) {
+							drsview.show();
+							ImGui::EndTabItem();
+						}
+						if (ImGui::BeginTabItem("Audio")) {
+							int opened, freq, ch, used;
+							Uint16 fmt;
+							opened = Mix_QuerySpec(&freq, &fmt, &ch);
+							used = Mix_Playing(-1);
 
-					if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !working) {
-						if (fd->IsOk == true) {
-							std::string fname(fd->GetFilepathName()), path(fd->GetCurrentPath());
-							printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
+							if (opened <= 0) {
+								ImGui::TextUnformatted("System disabled");
+							} else {
+								char *str = "???";
 
-							fs_has_root = false;
-							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
+								switch (fmt) {
+									case AUDIO_U8: str = "U8"; break;
+									case AUDIO_S8: str = "S8"; break;
+									case AUDIO_U16LSB: str = "U16LSB"; break;
+									case AUDIO_S16LSB: str = "S16LSB"; break;
+									case AUDIO_U16MSB: str = "U16MSB"; break;
+									case AUDIO_S16MSB: str = "S16MSB"; break;
+								}
+
+								ImGui::Text("Currently used channels: %d\n\nConfiguration:\nSystems: %d\nFrequency: %dHz\nChannels: %d\nFormat: %s", used, opened, freq, ch, str);
+							}
+
+							static bool sfx_on, msc_on;
+							sfx_on = genie::jukebox.sfx_enabled();
+							msc_on = genie::jukebox.msc_enabled();
+
+							// enable/disable audio
+							if (ImGui::Checkbox("Sfx", &sfx_on))
+								genie::jukebox.sfx(sfx_on);
+							ImGui::SameLine();
+							if (ImGui::Checkbox("Music", &msc_on))
+								genie::jukebox.msc(msc_on);
+
+							// volume control
+							static float sfx_vol = 100.0f, msc_vol = 100.0f;
+							int old_vol = genie::jukebox.sfx_volume(), new_vol;
+
+							sfx_vol = old_vol * 100.0f / genie::sfx_max_volume;
+							ImGui::SliderFloat("Sfx volume", &sfx_vol, 0, 100.0f, "%.0f");
+
+							sfx_vol = genie::clamp(0.0f, sfx_vol, 100.0f);
+							new_vol = sfx_vol * genie::sfx_max_volume / 100.0f;
+
+							if (old_vol != new_vol)
+								genie::jukebox.sfx_volume(new_vol);
+
+							old_vol = genie::jukebox.msc_volume();
+							msc_vol = old_vol * 100.0f / genie::sfx_max_volume;
+							ImGui::SliderFloat("Music volume", &msc_vol, 0, 100.0f, "%.0f");
+
+							msc_vol = genie::clamp(0.0f, msc_vol, 100.0f);
+							new_vol = msc_vol * genie::sfx_max_volume / 100.0f;
+
+							if (old_vol != new_vol)
+								genie::jukebox.msc_volume(new_vol);
+
+							// show list of music files
+							static int music_id = 0;
+							genie::MusicId id;
+
+							if (genie::jukebox.is_playing(id) == 1)
+								music_id = (int)id;
+							else
+								music_id = 0;
+
+							if (ImGui::Combo("Background tune", &music_id, genie::msc_names, genie::msc_count)) {
+								id = (genie::MusicId)music_id;
+								genie::jukebox.play(id);
+							}
+
+							if (ImGui::Button("Panic")) {
+								genie::jukebox.stop(-1);
+								genie::jukebox.stop();
+							}
+
+							ImGui::EndTabItem();
+						}
+						if (ImGui::BeginTabItem("Crash")) {
+							static int current_fault = 0;
+							static const char *fault_types[] = {"Segmentation violation", "NULL dereference", "_Exit", "exit", "abort", "std::terminate", "throw int"};
+
+							ImGui::Combo("Fault type", &current_fault, fault_types, IM_ARRAYSIZE(fault_types));
+
+							if (ImGui::Button("Oops")) {
+								switch (current_fault) {
+									default: raise(SIGSEGV); break;
+									// NULL dereferencing directly is usually optimised out in modern compilers, so use a trick to bypass this...
+									case 1: { int *p = (int*)1; -1[p]++; } break;
+									case 2: _Exit(1); break;
+									case 3: exit(1); break;
+									case 4: abort(); break;
+									case 5: std::terminate(); break;
+									case 6: throw 42; break;
+								}
+							}
+							ImGui::EndTabItem();
+						}
+						ImGui::EndTabBar();
+					}
+				}
+				ImGui::End();
+			}
+
+			static int lang_current = 0;
+			static bool show_about = false;
+			bool working = w_bkg.progress(p);
+
+			// munch all results
+			for (std::optional<WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
+				switch (res->type) {
+					case WorkResultType::success:
+						switch (res->task_type) {
+							case WorkTaskType::stop:
+								break;
+							case WorkTaskType::check_root:
+								fs_has_root = true;
+								// start game automatically on auto detect
+								if (auto_detect) {
+									auto_detect = false;
+									menu_id = MenuId::start;
+									genie::jukebox.play(genie::MusicId::start);
+								}
+								break;
+							default:
+								assert("bad task type" == 0);
+								break;
+						}
+						break;
+					case WorkResultType::stop:
+						break;
+					case WorkResultType::fail:
+						if (!auto_paths.empty()) {
+							std::string path(auto_paths.top());
+							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
+							auto_paths.pop();
+							working = true;
+						} else {
+							auto_detect = false;
+						}
+						break;
+					default:
+						assert("bad result type" == 0);
+						break;
+				}
+				bkg_result = res->what;
+			}
+
+			switch (menu_id) {
+				case MenuId::config:
+					ImGui::Begin("Startup configuration", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus);
+					{
+						ImGui::SetWindowSize(io.DisplaySize);
+						ImGui::SetWindowPos(ImVec2());
+
+						if (ImGui::Button(TXT(TextId::btn_about)))
+							show_about = true;
+
+						ImGui::TextWrapped(TXT(TextId::hello));
+
+						lang_current = int(lang);
+						ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
+						lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
+
+						if (!working && ImGui::Button(TXT(TextId::set_game_dir)))
+							fd->OpenDialog(FDLG_CHOOSE_DIR, TXT(TextId::dlg_game_dir), 0, ".");
+
+						if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !working) {
+							if (fd->IsOk == true) {
+								std::string fname(fd->GetFilepathName()), path(fd->GetCurrentPath());
+								printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
+
+								fs_has_root = false;
+								w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
+							}
+
+							fd->CloseDialog(FDLG_CHOOSE_DIR);
 						}
 
-						fd->CloseDialog(FDLG_CHOOSE_DIR);
+						if (working && p.total) {
+							ImGui::TextUnformatted(p.desc.c_str());
+							ImGui::ProgressBar(float(p.step) / p.total);
+						}
+
+						if (!bkg_result.empty())
+							ImGui::TextUnformatted(bkg_result.c_str());
+
+						if (ImGui::Button(TXT(TextId::btn_quit)))
+							running = false;
+
+						if (fs_has_root) {
+							ImGui::SameLine();
+							if (ImGui::Button(TXT(TextId::btn_startup))) {
+								menu_id = MenuId::start;
+								genie::jukebox.play(genie::MusicId::start);
+							}
+						}
 					}
+					ImGui::End();
+					break;
+				case MenuId::start:
+					ImGui::Begin("Main menu placeholder");
+					{
+						if (ImGui::Button(TXT(TextId::btn_about)))
+							show_about = true;
 
-					if (working && p.total) {
-						ImGui::TextUnformatted(p.desc.c_str());
-						ImGui::ProgressBar(float(p.step) / p.total);
+						if (ImGui::Button(TXT(TextId::btn_editor)))
+							menu_id = MenuId::editor;
+
+						if (ImGui::Button(TXT(TextId::btn_quit)))
+							running = false;
+
+						lang_current = int(lang);
+						ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
+						lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
 					}
-
-					if (!bkg_result.empty())
-						ImGui::TextUnformatted(bkg_result.c_str());
-
-					if (ImGui::Button(TXT(TextId::btn_quit)))
-						running = false;
-
-					if (fs_has_root) {
-						ImGui::SameLine();
-						if (ImGui::Button(TXT(TextId::btn_startup)))
+					ImGui::End();
+					break;
+				case MenuId::editor:
+					ImGui::Begin("Editor menu placeholder");
+					{
+						if (ImGui::Button(TXT(TextId::btn_back)))
 							menu_id = MenuId::start;
 					}
-				}
-				ImGui::End();
-				break;
-			case MenuId::start:
-				ImGui::Begin("Main menu placeholder");
-				{
-					if (ImGui::Button(TXT(TextId::btn_about)))
-						show_about = true;
-
-					if (ImGui::Button(TXT(TextId::btn_editor)))
-						menu_id = MenuId::editor;
-
-					if (ImGui::Button(TXT(TextId::btn_quit)))
-						running = false;
-
-					lang_current = int(lang);
-					ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
-					lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
-				}
-				ImGui::End();
-				break;
-			case MenuId::editor:
-				ImGui::Begin("Editor menu placeholder");
-				{
-					if (ImGui::Button(TXT(TextId::btn_back)))
-						menu_id = MenuId::start;
-				}
-				ImGui::End();
-				break;
-		}
-
-		if (show_about) {
-			ImGui::Begin("About", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-			ImGui::SetWindowSize(io.DisplaySize);
-			ImGui::SetWindowPos(ImVec2());
-			ImGui::TextWrapped("Copyright 2016-%d Folkert van Verseveld\n", year_start);
-			ImGui::TextWrapped(TXT(TextId::about));
-			ImGui::TextWrapped("Using OpenGL version: %d.%d", major, minor);
-
-			if (ImGui::Button(TXT(TextId::btn_back)))
-				show_about = false;
-			ImGui::End();
-		}
-
-		// Rendering
-		ImGui::Render();
-
-		glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		// do our stuff
-		switch (menu_id) {
-			case MenuId::config:
-				break;
-			case MenuId::start:
-			{
-				glUseProgram(prog.handle);
-				glEnableVertexAttribArray(attr_pos);
-				glEnableVertexAttribArray(attr_col);
-				const GLfloat vtx[] = {
-					 0.0,  0.8, 1.0, 1.0, 0.0,
-					-0.8, -0.8, 0.0, 0.0, 1.0,
-					 0.8, -0.8, 1.0, 0.0, 0.0,
-				};
-				glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), vtx);
-				glVertexAttribPointer(attr_col, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &vtx[2]);
-				glDrawArrays(GL_TRIANGLES, 0, 3);
-				glDisableVertexAttribArray(attr_col);
-				glDisableVertexAttribArray(attr_pos);
-				break;
+					ImGui::End();
+					break;
 			}
-			case MenuId::editor:
-				break;
+
+			if (show_about) {
+				ImGui::Begin("About", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+				ImGui::SetWindowSize(io.DisplaySize);
+				ImGui::SetWindowPos(ImVec2());
+				ImGui::TextWrapped("Copyright 2016-%d Folkert van Verseveld\n", year_start);
+				ImGui::TextWrapped(TXT(TextId::about));
+				ImGui::TextWrapped("Using OpenGL version: %d.%d", major, minor);
+
+				if (ImGui::Button(TXT(TextId::btn_back)))
+					show_about = false;
+				ImGui::End();
+			}
+
+			// Rendering
+			ImGui::Render();
+
+			glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+			glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			// do our stuff
+			switch (menu_id) {
+				case MenuId::config:
+					break;
+				case MenuId::start:
+				{
+					glUseProgram(prog.handle);
+					glEnableVertexAttribArray(attr_pos);
+					glEnableVertexAttribArray(attr_col);
+					const GLfloat vtx[] = {
+						 0.0,  0.8, 1.0, 1.0, 0.0,
+						-0.8, -0.8, 0.0, 0.0, 1.0,
+						 0.8, -0.8, 1.0, 0.0, 0.0,
+					};
+					glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), vtx);
+					glVertexAttribPointer(attr_col, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &vtx[2]);
+					glDrawArrays(GL_TRIANGLES, 0, 3);
+					glDisableVertexAttribArray(attr_col);
+					glDisableVertexAttribArray(attr_pos);
+					break;
+				}
+				case MenuId::editor:
+					break;
+			}
+
+			// do imgui stuff
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+			SDL_GL_SwapWindow(window);
 		}
-
-		// do imgui stuff
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-		SDL_GL_SwapWindow(window);
 	}
 
 	// try to stop worker

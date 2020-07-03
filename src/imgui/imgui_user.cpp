@@ -3,6 +3,7 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "imgui_user.h"
 
 namespace ImGui {
 
@@ -26,6 +27,14 @@ IMGUI_API void PixelBox(ImU32 col, const ImVec2 &size) {
 	ImU32 text_col = GetColorU32(ImGuiCol_Text);
 	window->DrawList->AddRectFilled(bb.Min, bb.Max, col);
 	SameLine(0, style.FramePadding.x);
+}
+
+IMGUI_API void ColorPalette(SDL_Palette *pal, const ImVec2 &pxsize) {
+	for (unsigned y = 0, i = 0, n = pal->ncolors; y < 16; ++y) {
+		for (unsigned x = 0; x < 16 && i < n; ++x, ++i)
+			ImGui::PixelBox(IM_COL32(pal->colors[i].r, pal->colors[i].g, pal->colors[i].b, pal->colors[i].a), pxsize);
+		ImGui::NewLine();
+	}
 }
 
 }

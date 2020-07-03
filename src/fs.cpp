@@ -28,6 +28,9 @@ namespace genie {
 std::string drs_path(const std::string &root, const std::string &fname) {
 	return root + dir_sep + "data" + dir_sep + fname;
 }
+std::string msc_path(const std::string &root, const std::string &fname) {
+	return root + dir_sep + "sound" + dir_sep + fname;
+}
 
 #if windows
 Blob::Blob(const std::string &name, iofd fd, bool map) : name(name), fd(fd), fm(fd_invalid), map(map) {
@@ -90,12 +93,13 @@ int (close)(iofd fd) {
 #else
 int (open)(const std::string &name) {
 	// unix is case-sensitive, so open may fail where it succeeds on windows
-	// try real name first, then fall back to lowercase and uppercase
+	// try real name first, then fall back to lowercase and uppercas
 	int fd;
 
 	if ((fd = ::open(name.c_str(), O_RDONLY)) != FD_INVALID)
 		return fd;
 
+	// FIXME apply lowercase and uppercase only to basename
 	std::string path(name);
 	tolower(path);
 

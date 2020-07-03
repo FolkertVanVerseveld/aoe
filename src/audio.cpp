@@ -2,6 +2,8 @@
 
 #include "audio.hpp"
 
+#include "fs.hpp"
+
 #include <SDL2/SDL_rwops.h>
 
 #include <cassert>
@@ -12,20 +14,48 @@
 
 namespace genie {
 
+extern std::string game_dir;
+
+const char *msc_names[msc_count] = {
+	"",
+	"open",
+	"win",
+	"loss",
+	"track1",
+	"track2",
+	"track3",
+	"track4",
+	"track5",
+	"track6",
+	"track7",
+	"track8",
+	"track9",
+};
+
+/*
+"cave",
+"death",
+"battle",
+"gamelan",
+"party",
+"rain",
+"hunt",
+"thunder",
+"wally",
+"gray sky",
+*/
+
 /** Ensures all mix music calls are thread safe*/
 std::recursive_mutex sfx_mut;
 
 Jukebox jukebox;
 Mix_Music *music;
 unsigned music_game_pos = 1;
-int sfx_vol = MIX_MAX_VOLUME;
+int playing;
 
-static void music_done() {
-	std::lock_guard<std::recursive_mutex> lock(sfx_mut);
-
-	if (music)
-		jukebox.next();
-}
+// don't touch these as they cannot be changed directly
+static bool msc_on = true, sfx_on = true;
+static int sfx_vol = MIX_MAX_VOLUME, msc_vol = MIX_MAX_VOLUME;
 
 static void music_stop() {
 	if (music) {
@@ -33,7 +63,20 @@ static void music_stop() {
 		Mix_FreeMusic(music);
 		Mix_HookMusicFinished(NULL);
 		music = NULL;
+		playing = -1;
 	}
+}
+
+static void music_done() {
+	std::lock_guard<std::recursive_mutex> lock(sfx_mut);
+
+	if (playing != 1) {
+		music_stop();
+		return;
+	}
+
+	if (music)
+		jukebox.next();
 }
 
 Sfx::Sfx(DrsId id) : Sfx(id, NULL) {
@@ -60,7 +103,7 @@ int Sfx::play(int loops, int channel) {
 	return Mix_PlayChannel(channel, clip.get(), loops);
 }
 
-Jukebox::Jukebox() : playing(0), id(MusicId::none), cache() {}
+Jukebox::Jukebox() : id(MusicId::none), cache() {}
 Jukebox::~Jukebox() { close(); }
 
 void Jukebox::close() {
@@ -84,6 +127,9 @@ void Jukebox::stop() {
 }
 
 int Jukebox::sfx(DrsId id, int loops, int channel) {
+	if (!sfx_on)
+		return -1;
+
 	auto search = cache.find(id);
 
 	if (search == cache.end()) {
@@ -96,16 +142,102 @@ int Jukebox::sfx(DrsId id, int loops, int channel) {
 	}
 }
 
+void Jukebox::play(MusicId id, int loops) {
+	if (!msc_on)
+		return;
+
+	std::lock_guard<std::recursive_mutex> lock(sfx_mut);
+
+	music_stop();
+	playing = 0;
+
+	if (id == MusicId::none)
+		return;
+
+	std::string name;
+
+	switch (id) {
+		case MusicId::start: name = "open.mid"; break;
+		case MusicId::win: name = "won.mid"; break;
+		case MusicId::lost: name = "lost.mid"; break;
+		default:
+			music_game_pos = (unsigned)id - (unsigned)MusicId::track1 + 1;
+			name = "music" + std::to_string(music_game_pos) + ".mid";
+			break;
+	}
+
+	assert(!name.empty());
+
+	std::string path(genie::msc_path(genie::game_dir, name));
+
+	if (!(music = Mix_LoadMUS(path.c_str()))) {
+		this->id = MusicId::none;
+		playing = -1;
+		return;
+	}
+
+	Mix_HookMusicFinished(music_done);
+	if (Mix_PlayMusic(music, loops) != -1) {
+		this->id = id;
+		playing = 1;
+	}
+}
+
+void Jukebox::next() {
+	std::lock_guard<std::recursive_mutex> lock(sfx_mut);
+
+	music_stop();
+	playing = 0;
+
+	if (!msc_on || id < MusicId::game)
+		return;
+
+	if (++music_game_pos >= 10)
+		music_game_pos = 1;
+	else if (music_game_pos < 1)
+		music_game_pos = 1;
+
+	std::string path(genie::msc_path(genie::game_dir, "music" + std::to_string(music_game_pos) + ".mid"));
+
+	if ((music = Mix_LoadMUS(path.c_str())) != NULL) {
+		Mix_HookMusicFinished(music_done);
+		Mix_PlayMusic(music, 0);
+		this->id = (MusicId)((unsigned)MusicId::game + music_game_pos - 1);
+		playing = 1;
+	}
+}
+
 void Jukebox::stop(int channel) {
 	std::lock_guard<std::recursive_mutex> lock(sfx_mut);
 	Mix_HaltChannel(channel);
 }
 
 int Jukebox::sfx_volume() const noexcept { return sfx_vol; }
+int Jukebox::msc_volume() const noexcept { return msc_vol; }
 
 int Jukebox::sfx_volume(int v, int ch) {
-	sfx_vol = v;
+	if (ch == -1)
+		sfx_vol = v;
 	return Mix_Volume(ch, v);
+}
+
+int Jukebox::msc_volume(int v) {
+	msc_vol = v;
+	return Mix_VolumeMusic(v);
+}
+
+bool Jukebox::sfx_enabled() const noexcept { return sfx_on; }
+
+bool Jukebox::sfx(bool v) {
+	if (!v) stop(-1);
+	return sfx_on = v;
+}
+
+bool Jukebox::msc_enabled() const noexcept { return msc_on; }
+
+bool Jukebox::msc(bool v) {
+	if (!v) stop();
+	return msc_on = v;
 }
 
 }
