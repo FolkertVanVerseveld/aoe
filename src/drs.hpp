@@ -5,7 +5,12 @@
 #include "fs.hpp"
 
 #include <cassert>
+#include <memory>
+#include <vector>
 #include <variant>
+#include <optional>
+
+#include <SDL2/SDL_pixels.h>
 
 namespace genie {
 
@@ -229,12 +234,12 @@ enum class DrsId {
 	/* dialogs/screen menus */
 	menu_start = 50051,
 	/* sfx */
+	game = 5036,
 	button4 = 50300,
 	chat = 50302,
 	error = 50303,
 	win = 50320,
 	lost = 50321,
-	game = 5036,
 	/* hud */
 	// icons
 	buildings1 = 50704,
@@ -258,20 +263,23 @@ enum class DrsType {
 	shape,
 	slp,
 	wave,
+	max,
 };
+
+static constexpr uint32_t drs_type_bin = 0x62696e61;
+static constexpr uint32_t drs_type_shp = 0x73687020;
+static constexpr uint32_t drs_type_slp = 0x736c7020;
+static constexpr uint32_t drs_type_wav = 0x77617620;
+
+static constexpr char *JASC_PAL = "JASC-PAL\r\n0100\r\n";
+
+extern const uint32_t drs_types[4];
 
 class DRS;
 
-class DrsItem final {
-public:
-	uint32_t id;
-	uint32_t type;
-	uint32_t offset;
-	const void *ptr;
+struct DrsItem final {
+	void *data;
 	uint32_t size;
-
-	DrsItem(uint32_t id, uint32_t type, uint32_t offset, const void *data, uint32_t size)
-		: id(id), type(type), offset(offset), ptr(data), size(size) {}
 };
 
 class DrsList final {
@@ -285,9 +293,23 @@ public:
 	DrsList(const DRS &ref, unsigned pos);
 	DrsList(const DrsList&) = default;
 
-	const DrsItem operator[](unsigned pos) const noexcept;
+	const io::DrsItem &operator[](unsigned pos) const noexcept;
 
 	constexpr bool empty() const noexcept { return size == 0; }
+};
+
+struct DialogSettings final {
+	res_id bmp[3]; /**< background_files (e.g. 640x480, 800x600 and 1024x768 resources) */
+	res_id pal; /**< palette_file (e.g. what color palette to use for bmp */
+	res_id cursor; /**< mouse image table */
+	int shade;
+	res_id btn;
+	res_id popup;
+	int pos, col;
+	uint8_t bevel[6];
+	uint8_t text[6];
+	uint8_t focus[6];
+	uint8_t state[6];
 };
 
 class DRS final {
@@ -298,7 +320,10 @@ public:
 	DRS(const std::string &name, iofd fd, bool map);
 
 	/** Try to load the specified game asset using the specified type and unique identifier */
-	bool open_item(io::DrsItem &item, res_id id, DrsType type) const;
+	bool open_item(DrsItem &item, res_id id, DrsType type) const noexcept;
+
+	DialogSettings open_dlg(res_id id) const;
+	SDL_Palette *open_pal(res_id id) const;
 
 	const DrsList operator[](unsigned pos) const noexcept {
 		return DrsList(*this, pos);
@@ -307,5 +332,10 @@ public:
 	constexpr size_t size() const noexcept { return hdr->nlist; }
 	constexpr bool empty() const noexcept { return size() == 0; }
 };
+
+extern class Assets final {
+public:
+	std::vector<std::unique_ptr<DRS>> blobs;
+} assets;
 
 }

@@ -3,6 +3,8 @@
  // (SDL is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
  // (GL3W is a helper library to access OpenGL functions since there is no standard header to access modern OpenGL functions easily. Alternatives are GLEW, Glad, etc.)
 
+#define IMGUI_INCLUDE_IMGUI_USER_H 1
+
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl.h"
 #include "imgui/imgui_impl_opengl3.h"
@@ -14,9 +16,12 @@
 #include "lang.hpp"
 #include "drs.hpp"
 #include "math.hpp"
+#include "audio.hpp"
 
 #include <cstdio>
 #include <ctime>
+#include <cstring>
+#include <cmath>
 #include <inttypes.h>
 
 #include <atomic>
@@ -34,6 +39,8 @@
 #include <signal.h>
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_pixels.h>
+#include <SDL2/SDL_mixer.h>
 
 #define FDLG_CHOOSE_DIR "Fdlg Choose AoE dir"
 #define MSG_INIT "Msg Init"
@@ -50,6 +57,10 @@ static const SDL_Rect dim_lgy[] = {
 	{0, 0, 640, 480},
 	{0, 0, 800, 600},
 	{0, 0, 1024, 768},
+};
+
+static const char *str_dim_lgy[] = {
+	"640x480", "800x600", "1024x768",
 };
 
 #pragma warning(disable : 26812)
@@ -236,10 +247,7 @@ struct WorkInterrupt final {
 
 namespace genie {
 
-class Assets final {
-public:
-	std::vector<std::unique_ptr<DRS>> blobs;
-} assets;
+Assets assets;
 
 }
 
@@ -402,7 +410,7 @@ private:
 				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_empty, fnames[i].c_str()));
 				return;
 			}
-			genie::io::DrsItem dummy;
+			genie::DrsItem dummy;
 
 			const std::vector<ResChk> &l = res[i];
 			for (auto &r : l)
@@ -421,6 +429,240 @@ private:
 static void worker_init(Worker &w, int &status) {
 	status = w.run();
 }
+
+enum class BinType {
+	dialog,
+	bitmap,
+	palette,
+	blob,
+	text,
+};
+
+static const char *bin_types[] = {
+	"screen menu/dialog",
+	"bitmap",
+	"color palette",
+	"binary data",
+	"text",
+};
+
+class DrsView final {
+public:
+	int current_drs, current_list, current_item, channel, dialog_mode, lookup_id;
+	bool looping, autoplay;
+	genie::io::DrsItem item;
+	std::variant<std::nullopt_t, BinType, genie::DialogSettings, SDL_Palette*> resdata;
+	genie::DrsItem res;
+
+	DrsView() : current_drs(-1), current_list(-1), current_item(-1), channel(-1), dialog_mode(0), lookup_id(0), looping(true), autoplay(true), item(), resdata(std::nullopt), res() {}
+	~DrsView() {
+		reset();
+	}
+
+	void reset() {
+		res.data = nullptr;
+
+		switch (resdata.index()) {
+			case 3: SDL_FreePalette(std::get<SDL_Palette*>(resdata)); break;
+		}
+
+		resdata.emplace<std::nullopt_t>(std::nullopt);
+	}
+
+	void show() {
+		int old_drs = current_drs, old_list = current_list, old_item = current_item;
+
+		ImGui::InputInt("##lookup", &lookup_id);
+		ImGui::SameLine();
+		if (ImGui::Button("lookup")) {
+			bool found = false;
+
+			for (unsigned i = 0; !found && i < genie::assets.blobs.size(); ++i) {
+				const genie::DRS &drs = *genie::assets.blobs[i].get();
+				genie::DrsItem item;
+
+				for (unsigned j = 0; !found && j < drs.size(); ++j) {
+					genie::DrsList lst(drs[j]);
+
+					for (unsigned k = 0; k < lst.size; ++k)
+						if (lst[k].id == lookup_id) {
+							found = true;
+							current_drs = i;
+							current_list = j;
+							current_item = k;
+							break;
+						}
+				}
+			}
+		}
+
+		float start = ImGui::GetCursorPosY();
+		ImGui::SliderInt("container", &current_drs, 0, genie::assets.blobs.size() - 1);
+		float h = ImGui::GetCursorPosY() - start;
+		current_drs = genie::clamp<int>(0, current_drs, genie::assets.blobs.size() - 1);
+
+		const genie::DRS &drs = *genie::assets.blobs[current_drs].get();
+
+		if (drs.size() > 1) {
+			size_t max = drs.size() - 1;
+			ImGui::SliderInt("list", &current_list, 0, max);
+			current_list = genie::clamp<int>(0, current_list, max);
+		} else {
+			current_list = 0;
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + h);
+		}
+
+		genie::DrsList lst(drs[current_list]);
+		genie::DrsType drs_type = genie::DrsType::binary;
+		const char *str_drs_type = "???";
+
+		switch (lst.type) {
+			case genie::drs_type_bin: drs_type = genie::DrsType::binary; str_drs_type = "various"; break;
+			case genie::drs_type_shp: drs_type = genie::DrsType::shape; str_drs_type = "shape"; break;
+			case genie::drs_type_slp: drs_type = genie::DrsType::slp; str_drs_type = "shape list"; break;
+			case genie::drs_type_wav: drs_type = genie::DrsType::wave; str_drs_type = "audio"; break;
+		}
+
+		ImGui::Text("Type  : %" PRIX32 " %s\nOffset: %" PRIX32 "\nItems : %" PRIu32, lst.type, str_drs_type, lst.offset, lst.size);
+
+		ImGui::InputInt("item", &current_item);
+		current_item = genie::clamp<int>(0, current_item, lst.size - 1);
+
+		item = lst[current_item];
+
+		ImGui::Text("id    : %" PRIu32 "\noffset: %" PRIX32 "\nsize  : %" PRIX32, item.id, item.offset, item.size);
+
+		if (old_drs != current_drs || old_list != current_list || old_item != current_item) {
+			if (channel != -1) {
+				genie::jukebox.stop(channel);
+				channel = -1;
+			}
+
+			reset();
+			bool loaded = lst.type != genie::drs_type_wav && drs.open_item(res, item.id, drs_type);
+
+			switch (lst.type) {
+				case genie::drs_type_bin: {
+					if (res.size < 8) {
+						resdata.emplace<BinType>(BinType::blob);
+						break;
+					}
+					const char *str = (const char*)res.data;
+
+					if (str[0] == 'B' && str[1] == 'M') {
+						resdata.emplace<BinType>(BinType::bitmap);
+						break;
+					}
+					if (strncmp(str, "JASC-PAL", 8) == 0) {
+						try {
+							resdata.emplace<SDL_Palette*>(drs.open_pal(item.id));
+						} catch (std::runtime_error&) {
+							resdata.emplace<BinType>(BinType::palette);
+						}
+						break;
+					}
+					if (strncmp(str, "backgrou", 8) == 0) {
+						try {
+							resdata.emplace<genie::DialogSettings>(drs.open_dlg(item.id));
+						} catch (std::runtime_error&) {
+							resdata.emplace<BinType>(BinType::dialog);
+						}
+						break;
+					}
+					bool looks_binary = false;
+
+					for (unsigned i = 0; i < 8; ++i)
+						if (!isprint((unsigned char)str[i])) {
+							looks_binary = true;
+							break;
+						}
+
+					resdata.emplace<BinType>(looks_binary ? BinType::blob : BinType::text);
+					break;
+				}
+				case genie::drs_type_wav:
+					if (autoplay)
+						channel = genie::jukebox.sfx((genie::DrsId)item.id, looping ? -1 : 0);
+					break;
+			}
+		}
+
+		switch (lst.type) {
+			case genie::drs_type_bin: {
+				switch (resdata.index()) {
+					case 1: {
+						BinType type = std::get<BinType>(resdata);
+
+						ImGui::Text("Type: %s", bin_types[(unsigned)type]);
+
+						switch (type) {
+							case BinType::blob:
+								ImGui::TextUnformatted("unknown binary blob");
+								break;
+							case BinType::dialog:
+							case BinType::palette:
+							case BinType::text:
+								ImGui::TextWrapped("%.*s", (int)res.size, (const char*)res.data);
+								break;
+							case BinType::bitmap:
+								ImGui::TextUnformatted("bitmap");
+								break;
+						}
+						break;
+					}
+					case 2: {
+						ImGui::TextUnformatted("Type: dialog");
+
+						if (ImGui::TreeNode("Raw")) {
+							ImGui::TextWrapped("%.*s", (int)res.size, (const char*)res.data);
+							ImGui::TreePop();
+						}
+
+						genie::DialogSettings &dlg = std::get<genie::DialogSettings>(resdata);
+						ImGui::Combo("Display mode", &dialog_mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy));
+
+						if (ImGui::TreeNode("Preview")) {
+							ImGui::TextUnformatted("work in progress");
+							ImGui::TreePop();
+						}
+
+						ImGui::Text("Palette: %" PRIu16 "\nCursor : %" PRIu16 "\nShade  : %d\nButton : %" PRIu16 "\nPopup  : %" PRIu16, dlg.pal, dlg.cursor, dlg.shade, dlg.btn, dlg.popup);
+						break;
+					}
+					case 3: {
+						ImGui::TextUnformatted("Type: palette");
+
+						SDL_Palette *pal = std::get<SDL_Palette*>(resdata);
+
+						for (unsigned y = 0, i = 0; y < 16; ++y) {
+							for (unsigned x = 0; x < 16; ++x, ++i)
+								ImGui::PixelBox(IM_COL32(pal->colors[i].r, pal->colors[i].g, pal->colors[i].b, pal->colors[i].a));
+							ImGui::NewLine();
+						}
+						break;
+					}
+				}
+				break;
+			}
+			case genie::drs_type_wav:
+				if (channel != -1 && !Mix_Playing(channel))
+					channel = -1;
+
+				if (ImGui::Button(channel != -1 ? "stop" : "play"))
+					if (channel == -1) {
+						channel = genie::jukebox.sfx((genie::DrsId)item.id, looping ? -1 : 0);
+					} else {
+						genie::jukebox.stop(channel);
+						channel = -1;
+					}
+				ImGui::SameLine();
+				ImGui::Checkbox("loop", &looping);
+				ImGui::SameLine();
+				ImGui::Checkbox("autoplay", &autoplay);
+				break;
+		}
+	}
+};
 
 // Main code
 int main(int, char**)
@@ -489,6 +731,21 @@ int main(int, char**)
 	time_t t_start = time(NULL);
 	struct tm *tm_start = localtime(&t_start);
 	int year_start = std::max(tm_start->tm_year, 2020);
+
+	if (Mix_Init(0) == -1) {
+		fprintf(stderr, "fatal error: mix_init: %s\n", Mix_GetError());
+		return 1;
+	}
+
+	int frequency = 44100;
+	Uint32 format = MIX_DEFAULT_FORMAT;
+	int channels = 2;
+	int chunksize = 1024;
+
+	if (Mix_OpenAudio(frequency, format, channels, chunksize)) {
+		fprintf(stderr, "fatal error: mix_openaudio: %s\n", Mix_GetError());
+		return 1;
+	}
 
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
@@ -565,6 +822,8 @@ int main(int, char**)
 		abort();
 	}
 
+	DrsView drsview;
+
 	// Main loop
 	while (running)
 	{
@@ -632,42 +891,46 @@ int main(int, char**)
 
 				if (ImGui::BeginTabBar("dbgtabs")) {
 					if (fs_has_root && ImGui::BeginTabItem("DRS view")) {
-						static int current_drs = 0;
+						drsview.show();
+						ImGui::EndTabItem();
+					}
+					if (ImGui::BeginTabItem("Audio")) {
+						int opened, freq, ch, used;
+						Uint16 fmt;
+						opened = Mix_QuerySpec(&freq, &fmt, &ch);
+						used = Mix_Playing(-1);
 
-						ImGui::SliderInt("container", &current_drs, 0, genie::assets.blobs.size() - 1);
-						current_drs = genie::clamp<int>(0, current_drs, genie::assets.blobs.size() - 1);
-
-						const genie::DRS &drs = *genie::assets.blobs[current_drs].get();
-						static int current_list = 0;
-
-						if (drs.size() > 1) {
-							size_t max = drs.size() - 1;
-							ImGui::SliderInt("list", &current_list, 0, max);
-							current_list = genie::clamp<int>(0, current_list, max);
+						if (opened <= 0) {
+							ImGui::TextUnformatted("System disabled");
 						} else {
-							current_list = 0;
+							char *str = "???";
+
+							switch (fmt) {
+								case AUDIO_U8: str = "U8"; break;
+								case AUDIO_S8: str = "S8"; break;
+								case AUDIO_U16LSB: str = "U16LSB"; break;
+								case AUDIO_S16LSB: str = "S16LSB"; break;
+								case AUDIO_U16MSB: str = "U16MSB"; break;
+								case AUDIO_S16MSB: str = "S16MSB"; break;
+							}
+
+							ImGui::Text("Currently used channels: %d\n\nConfiguration:\nSystems: %d\nFrequency: %dHz\nChannels: %d\nFormat: %s", used, opened, freq, ch, str);
 						}
 
-						genie::DrsList lst(drs[current_list]);
+						static float vol = 100.0f;
+						int old_vol = genie::jukebox.sfx_volume(), new_vol;
 
-						const char *drs_type = "???";
+						vol = old_vol * 100.0f / genie::sfx_max_volume;
+						ImGui::SliderFloat("Sfx volume", &vol, 0, 100.0f, "%.0f");
 
-						switch (lst.type) {
-							case 0x62696e61: drs_type = "various"; break;
-							case 0x73687020: drs_type = "shape"; break;
-							case 0x736c7020: drs_type = "shape list"; break;
-							case 0x77617620: drs_type = "audio"; break;
-						}
+						vol = genie::clamp(0.0f, vol, 100.0f);
+						new_vol = vol * genie::sfx_max_volume / 100.0f;
 
-						ImGui::Text("Type  : %s (%" PRIX32 ")\nOffset: %" PRIX32 "\nItems : %" PRIu32, drs_type, lst.type, lst.offset, lst.size);
+						if (old_vol != new_vol)
+							genie::jukebox.sfx_volume(new_vol);
 
-						static int current_item = 0;
-						ImGui::InputInt("item", &current_item);
-						current_item = genie::clamp<int>(0, current_item, lst.size - 1);
-
-						genie::DrsItem item(lst[current_item]);
-
-						ImGui::Text("id    : %" PRIu32 "\noffset: %" PRIX32 "\nsize  : %" PRIX32, item.id, item.offset, item.size);
+						if (ImGui::Button("Panic"))
+							genie::jukebox.stop(-1);
 
 						ImGui::EndTabItem();
 					}
@@ -881,6 +1144,8 @@ int main(int, char**)
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
+
+	Mix_Quit();
 
 	SDL_GL_DeleteContext(gl_context);
 	SDL_DestroyWindow(window);
