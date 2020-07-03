@@ -457,18 +457,89 @@ static const char *bin_types[] = {
 	"shape list",
 };
 
+class PreviewImage final {
+public:
+	SDL_Rect bnds;
+	int hotx, hoty;
+	GLfloat s0, t0, s1, t1;
+
+	PreviewImage(const SDL_Rect &bnds, int hotx, int hoty, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1)
+		: bnds(bnds), hotx(hotx), hoty(hoty), s0(s0), t0(t0), s1(s1), t1(t1) {}
+};
+
+// TODO maak dit generieker voor gfx subsystem
+class Preview final {
+public:
+	GLuint tex;
+	SDL_Rect bnds; // x,y are hotspot x and y. w,h are size
+
+	Preview() : tex(0), bnds() {
+		glGenTextures(1, &tex);
+		if (!tex)
+			throw std::runtime_error("Cannot create preview texture");
+	}
+
+	Preview(const Preview&) = delete;
+
+	~Preview() {
+		glDeleteTextures(1, &tex);
+	}
+
+	void load(const genie::Image &img, const SDL_Palette *pal) {
+		if (img.bnds.w <= 0 || img.bnds.h <= 0)
+			throw std::runtime_error("invalid image boundaries");
+
+		std::vector<uint32_t> pixels((long long)img.bnds.w * img.bnds.h);
+		bnds = img.bnds;
+
+		// TODO support SDL_Surface
+		const std::vector<uint8_t> &data = std::get<std::vector<uint8_t>>(img.surf);
+
+		// convert
+		for (int y = 0; y < bnds.h; ++y)
+			for (int x = 0; x < bnds.w; ++x) {
+				unsigned long long pos = (unsigned long long)y * bnds.w + x;
+				SDL_Color *col = &pal->colors[data[pos]];
+				pixels[pos] = IM_COL32(col->r, col->g, col->b, pos ? col->a : 0);
+			}
+
+		GLuint old_tex;
+		glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint*)&old_tex);
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#ifdef GL_UNPACK_ROW_LENGTH
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bnds.w, bnds.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+		glBindTexture(GL_TEXTURE_2D, old_tex);
+	}
+
+	void show() {
+		if (bnds.w && bnds.h)
+			ImGui::Image((ImTextureID)tex, ImVec2(bnds.w, bnds.h));
+		else
+			ImGui::TextUnformatted("(no image data)");
+	}
+};
+
 class DrsView final {
 public:
-	int current_drs, current_list, current_item, channel, dialog_mode, lookup_id;
-	bool looping, autoplay;
+	int current_drs, current_list, current_item, current_image, current_player, current_palette, channel, dialog_mode, lookup_id;
+	bool looping, autoplay, preview_changed;
 	genie::io::DrsItem item;
 	std::variant<std::nullopt_t, BinType, genie::Dialog, SDL_Palette*, genie::Animation, genie::io::Slp> resdata;
+	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal;
 	genie::DrsItem res;
+	Preview preview;
 
-	DrsView() : current_drs(-1), current_list(-1), current_item(-1), channel(-1), dialog_mode(0), lookup_id(0), looping(true), autoplay(true), item(), resdata(std::nullopt), res() {}
-	~DrsView() {
-		reset();
-	}
+	DrsView()
+		: current_drs(-1), current_list(-1), current_item(-1), current_image(-1), current_player(-1), current_palette(-1)
+		, channel(-1), dialog_mode(0), lookup_id(0), looping(true), autoplay(true), preview_changed(true)
+		, item(), resdata(std::nullopt), pal(nullptr, SDL_FreePalette), res(), preview() {}
+
+	DrsView(const DrsView&) = delete;
+	~DrsView() { reset(); }
 
 	void reset() {
 		res.data = nullptr;
@@ -483,6 +554,12 @@ public:
 	void show() {
 #pragma warning (push)
 #pragma warning (disable: 4267)
+		// setup stuff, this cannot be done in the ctor as genie::assets.blobs are undefined in the ctor
+		if (current_palette == -1) {
+			pal.reset(genie::assets.blobs[2]->open_pal((unsigned)genie::DrsId::palette));
+			current_palette = (int)genie::DrsId::palette;
+		}
+
 		int old_drs = current_drs, old_list = current_list, old_item = current_item;
 		bool found = false;
 
@@ -545,6 +622,8 @@ public:
 		ImGui::Text("id    : %" PRIu32 "\noffset: %" PRIX32 "\nsize  : %" PRIX32, item.id, item.offset, item.size);
 
 		if (old_drs != current_drs || old_list != current_list || old_item != current_item || found) {
+			preview_changed = true;
+
 			if (channel != -1) {
 				genie::jukebox.stop(channel);
 				channel = -1;
@@ -654,6 +733,7 @@ public:
 								// TODO change preview
 							}
 
+							preview.show();
 							ImGui::TreePop();
 						}
 
@@ -681,13 +761,48 @@ public:
 				switch (resdata.index()) {
 					case 4: { // genie::Animation
 						genie::Animation &anim = std::get<genie::Animation>(resdata);
-						// TODO remove id and size if they are confirmed to be read properly
-						ImGui::Text("Type  : animation\nId    : %" PRIu16 "\nSize  : %llu\nImages: %u\nDynamic: %s", anim.id, (unsigned long long)anim.size, anim.image_count, anim.dynamic ? "yes" : "no");
+						ImGui::Text("Type  : animation\nImages: %u\nDynamic: %s", anim.image_count, anim.dynamic ? "yes" : "no");
+
+						int old_image = current_image, old_player = current_player;
+
+						if (anim.image_count > 1) {
+							ImGui::SliderInt("image", &current_image, 0, anim.image_count - 1);
+							current_image = genie::clamp<int>(0, current_image, anim.image_count - 1);
+						}
+
+						if (anim.dynamic) {
+							ImGui::SliderInt("player", &current_player, 0, genie::io::max_players - 1);
+							current_player = genie::clamp<int>(0, current_player, genie::io::max_players - 1);
+						} else {
+							current_player = 0;
+						}
+
+						if (old_image != current_image || old_player != current_player)
+							preview_changed = true;
+
+						if (anim.image_count) {
+							auto &img = anim.subimage(current_image, current_player);
+
+							ImGui::Text("Size: %dx%d\nCenter: %d,%d", img.bnds.w, img.bnds.h, img.bnds.x, img.bnds.y);
+
+							if (ImGui::TreeNode("preview")) {
+								if (preview_changed && anim.image_count) {
+									preview.load(anim.subimage(current_image, current_player), pal.get());
+									preview_changed = false;
+								}
+
+								preview.show();
+								ImGui::TreePop();
+							}
+						}
 						break;
 					}
-					case 5: // genie::io::Slp
-						ImGui::Text("Type: shape list\nSize: %llu", (unsigned long long)std::get<genie::io::Slp>(resdata).size);
+					case 5: { // genie::io::Slp
+						genie::io::Slp &slp = std::get<genie::io::Slp>(resdata);
+						ImGui::Text("Type  : shape list\nSize  : %llu\nFrames: %" PRId32 "\ninvalid frame data", (unsigned long long)slp.size, slp.hdr->frame_count);
+						// don't show data as it's corrupt anyway
 						break;
+					}
 				}
 				break;
 			case genie::drs_type_wav:
@@ -761,7 +876,7 @@ int main(int, char**)
 	glbinding::Binding::initialize();
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING3)
 	bool err = false;
-	glbinding::initialize([](const char* name) { return (glbinding::ProcAddress)SDL_GL_GetProcAddress(name); });
+	glbinding::initialize([](const char *name) { return (glbinding::ProcAddress)SDL_GL_GetProcAddress(name); });
 #else
 	bool err = false; // If you use IMGUI_IMPL_OPENGL_LOADER_CUSTOM, your loader is likely to requires some form of initialization.
 #endif
@@ -952,7 +1067,7 @@ int main(int, char**)
 							if (opened <= 0) {
 								ImGui::TextUnformatted("System disabled");
 							} else {
-								char *str = "???";
+								const char *str = "???";
 
 								switch (fmt) {
 									case AUDIO_U8: str = "U8"; break;

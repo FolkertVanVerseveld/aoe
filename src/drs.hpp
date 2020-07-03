@@ -5,6 +5,7 @@
 #include "fs.hpp"
 
 #include <cassert>
+
 #include <memory>
 #include <vector>
 #include <variant>
@@ -40,7 +41,7 @@ struct DrsList final {
 	uint32_t size;   /**< Size in bytes. */
 };
 
-/** Raw uncompressed game asset. */
+/** Raw game asset. */
 struct DrsItem final {
 	uint32_t id;     /**< Unique resource identifier. */
 	uint32_t offset; /**< Raw file offset. */
@@ -243,6 +244,7 @@ enum class DrsId {
 	win = 50320,
 	lost = 50321,
 	/* hud */
+	palette = 50500,
 	// icons
 	buildings1 = 50704,
 	buildings2 = 50705,
@@ -316,18 +318,23 @@ struct DialogSettings final {
 
 class DRS;
 
+/** Most generic graphical asset loaded as shape, shape list or plain bitmap */
 class Image final {
 public:
 	res_id id;
 	unsigned idx;
-	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> surf;
-	int hotx, hoty;
+	std::variant<std::nullopt_t, std::vector<uint8_t>, std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)>> surf;
+	SDL_Rect bnds; // x,y are hotspot x and y. w and h are surf->w, surf->h
+	bool dynamic;
 
 	Image(); // construct invalid image
-	Image(res_id id, unsigned subimage, SDL_Palette *pal, const DRS &drs, size_t size);
+	Image(res_id id, unsigned subimage, const DRS &drs, size_t size, unsigned player=0);
+	Image(res_id id, const io::Slp &slp, unsigned idx, size_t size, unsigned player=0);
 
 	Image(const Image&) = delete;
 	Image(Image&&) = default;
+
+	bool load(const io::Slp &slp, unsigned idx, unsigned player=0);
 
 	friend bool operator<(const Image &lhs, const Image &rhs);
 };
@@ -343,7 +350,7 @@ public:
 
 	Animation(res_id id, const DRS &drs);
 
-	Image &subimage(unsigned index, unsigned player=0);
+	const Image &subimage(unsigned index, unsigned player=0) const;
 
 	friend bool operator<(const Animation &lhs, const Animation &rhs);
 };
@@ -354,6 +361,7 @@ public:
 	const DRS &drs;
 	DialogSettings cfg;
 	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal;
+	// TODO cache image
 
 	Dialog(res_id id, DialogSettings &&cfg, const DRS &drs);
 };

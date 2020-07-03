@@ -74,7 +74,279 @@ void io::Slp::reset(void *data, size_t size) {
 	this->size = size;
 }
 
-Image::Image() : id(0), idx(0), surf(nullptr, &SDL_FreeSurface), hotx(0), hoty(0) {}
+Image::Image() : id(0), idx(0), surf(std::nullopt), bnds(), dynamic(false) {}
+
+Image::Image(res_id id, unsigned idx, const DRS &drs, size_t size, unsigned p)
+	: Image(id, drs.open_slp(id), idx, size, p) {}
+
+Image::Image(res_id id, const io::Slp &slp, unsigned idx, size_t size, unsigned p)
+	: id(id), idx(idx), surf(std::nullopt), dynamic(load(slp, idx, p)) {}
+
+#pragma warning (disable: 26451)
+
+static unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
+{
+	const unsigned char *ptr = *cmd;
+	unsigned v = *ptr >> n;
+	if (!v)
+		v = *(++ptr);
+	*cmd = ptr;
+	return v;
+}
+
+bool Image::load(const io::Slp &slp, unsigned idx, unsigned player) {
+	bool dynamic = false;
+	const io::SlpFrameInfo *info = &slp.info[idx];
+
+	bnds.x = info->hotspot_x;
+	bnds.y = info->hotspot_y;
+
+	surf.emplace<std::vector<uint8_t>>(info->width * info->height);
+
+	auto &pixels = std::get<std::vector<uint8_t>>(surf);
+
+	const io::SlpFrameRowEdge *edge = (const io::SlpFrameRowEdge*)((const char*)slp.hdr + info->outline_table_offset);
+	const unsigned char *cmd = (const unsigned char*)((const char*)slp.hdr + info->cmd_table_offset + 4 * info->height);
+
+	for (int y = 0, h = info->height; y < h; ++y, ++edge) {
+		if (edge->left_space == io::invalid_edge || edge->right_space == io::invalid_edge)
+			continue;
+
+		int line_size = info->width - edge->left_space - edge->right_space;
+
+		// fill line with random data so any incorrect data is shown as garbled data
+		for (int x = edge->left_space, w = x + line_size, p = info->width; x < w; ++x)
+			pixels[y * p + x] = rand();
+
+		for (int i = edge->left_space, x = i, w = x + line_size, p = info->width; i <= w; ++i, ++cmd) {
+			unsigned command = *cmd & 0xf, count;
+
+			// TODO figure out if lesser skip behaves different compared to aoe2
+
+			switch (*cmd) {
+			case 0x03:
+				for (count = *++cmd; count; --count)
+					pixels[y * p + x++] = 0;
+				continue;
+			case 0xF7: pixels[y * p + x++] = cmd[1];
+			case 0xE7: pixels[y * p + x++] = cmd[1];
+			case 0xD7: pixels[y * p + x++] = cmd[1];
+			case 0xC7: pixels[y * p + x++] = cmd[1];
+			case 0xB7: pixels[y * p + x++] = cmd[1];
+				// dup 10
+			case 0xA7: pixels[y * p + x++] = cmd[1];
+			case 0x97: pixels[y * p + x++] = cmd[1];
+			case 0x87: pixels[y * p + x++] = cmd[1];
+			case 0x77: pixels[y * p + x++] = cmd[1];
+			case 0x67: pixels[y * p + x++] = cmd[1];
+			case 0x57: pixels[y * p + x++] = cmd[1];
+			case 0x47: pixels[y * p + x++] = cmd[1];
+			case 0x37: pixels[y * p + x++] = cmd[1];
+			case 0x27: pixels[y * p + x++] = cmd[1];
+			case 0x17: pixels[y * p + x++] = cmd[1];
+				++cmd;
+				continue;
+				// player color fill
+			case 0xF6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 15
+			case 0xE6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 14
+			case 0xD6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 13
+			case 0xC6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 12
+			case 0xB6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 11
+			case 0xA6: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 10
+			case 0x96: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 9
+			case 0x86: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 8
+			case 0x76: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 7
+			case 0x66: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 6
+			case 0x56: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 5
+			case 0x46: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 4
+			case 0x36: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 3
+			case 0x26: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 2
+			case 0x16: pixels[y * p + x++] = *++cmd + 0x10 * (player + 1); // player fill 1
+				dynamic = true;
+				continue;
+				// XXX pixel count if lower_nibble == 4: 1 + cmd >> 2
+			case 0xfc: pixels[y * p + x++] = *++cmd; // fill 63
+			case 0xf8: pixels[y * p + x++] = *++cmd; // fill 62
+			case 0xf4: pixels[y * p + x++] = *++cmd; // fill 61
+			case 0xf0: pixels[y * p + x++] = *++cmd; // fill 60
+			case 0xec: pixels[y * p + x++] = *++cmd; // fill 59
+			case 0xe8: pixels[y * p + x++] = *++cmd; // fill 58
+			case 0xe4: pixels[y * p + x++] = *++cmd; // fill 57
+			case 0xe0: pixels[y * p + x++] = *++cmd; // fill 56
+			case 0xdc: pixels[y * p + x++] = *++cmd; // fill 55
+			case 0xd8: pixels[y * p + x++] = *++cmd; // fill 54
+			case 0xd4: pixels[y * p + x++] = *++cmd; // fill 53
+			case 0xd0: pixels[y * p + x++] = *++cmd; // fill 52
+			case 0xcc: pixels[y * p + x++] = *++cmd; // fill 51
+			case 0xc8: pixels[y * p + x++] = *++cmd; // fill 50
+			case 0xc4: pixels[y * p + x++] = *++cmd; // fill 49
+			case 0xc0: pixels[y * p + x++] = *++cmd; // fill 48
+			case 0xbc: pixels[y * p + x++] = *++cmd; // fill 47
+			case 0xb8: pixels[y * p + x++] = *++cmd; // fill 46
+			case 0xb4: pixels[y * p + x++] = *++cmd; // fill 45
+			case 0xb0: pixels[y * p + x++] = *++cmd; // fill 44
+			case 0xac: pixels[y * p + x++] = *++cmd; // fill 43
+			case 0xa8: pixels[y * p + x++] = *++cmd; // fill 42
+			case 0xa4: pixels[y * p + x++] = *++cmd; // fill 41
+			case 0xa0: pixels[y * p + x++] = *++cmd; // fill 40
+			case 0x9c: pixels[y * p + x++] = *++cmd; // fill 39
+			case 0x98: pixels[y * p + x++] = *++cmd; // fill 38
+			case 0x94: pixels[y * p + x++] = *++cmd; // fill 37
+			case 0x90: pixels[y * p + x++] = *++cmd; // fill 36
+			case 0x8c: pixels[y * p + x++] = *++cmd; // fill 35
+			case 0x88: pixels[y * p + x++] = *++cmd; // fill 34
+			case 0x84: pixels[y * p + x++] = *++cmd; // fill 33
+			case 0x80: pixels[y * p + x++] = *++cmd; // fill 32
+			case 0x7c: pixels[y * p + x++] = *++cmd; // fill 31
+			case 0x78: pixels[y * p + x++] = *++cmd; // fill 30
+			case 0x74: pixels[y * p + x++] = *++cmd; // fill 29
+			case 0x70: pixels[y * p + x++] = *++cmd; // fill 28
+			case 0x6c: pixels[y * p + x++] = *++cmd; // fill 27
+			case 0x68: pixels[y * p + x++] = *++cmd; // fill 26
+			case 0x64: pixels[y * p + x++] = *++cmd; // fill 25
+			case 0x60: pixels[y * p + x++] = *++cmd; // fill 24
+			case 0x5c: pixels[y * p + x++] = *++cmd; // fill 23
+			case 0x58: pixels[y * p + x++] = *++cmd; // fill 22
+			case 0x54: pixels[y * p + x++] = *++cmd; // fill 21
+			case 0x50: pixels[y * p + x++] = *++cmd; // fill 20
+			case 0x4c: pixels[y * p + x++] = *++cmd; // fill 19
+			case 0x48: pixels[y * p + x++] = *++cmd; // fill 18
+			case 0x44: pixels[y * p + x++] = *++cmd; // fill 17
+			case 0x40: pixels[y * p + x++] = *++cmd; // fill 16
+			case 0x3c: pixels[y * p + x++] = *++cmd; // fill 15
+			case 0x38: pixels[y * p + x++] = *++cmd; // fill 14
+			case 0x34: pixels[y * p + x++] = *++cmd; // fill 13
+			case 0x30: pixels[y * p + x++] = *++cmd; // fill 12
+			case 0x2c: pixels[y * p + x++] = *++cmd; // fill 11
+			case 0x28: pixels[y * p + x++] = *++cmd; // fill 10
+			case 0x24: pixels[y * p + x++] = *++cmd; // fill 9
+			case 0x20: pixels[y * p + x++] = *++cmd; // fill 8
+			case 0x1c: pixels[y * p + x++] = *++cmd; // fill 7
+			case 0x18: pixels[y * p + x++] = *++cmd; // fill 6
+			case 0x14: pixels[y * p + x++] = *++cmd; // fill 5
+			case 0x10: pixels[y * p + x++] = *++cmd; // fill 4
+			case 0x0c: pixels[y * p + x++] = *++cmd; // fill 3
+			case 0x08: pixels[y * p + x++] = *++cmd; // fill 2
+			case 0x04: pixels[y * p + x++] = *++cmd; // fill 1
+				continue;
+			case 0xfd: pixels[y * p + x++] = 0; // skip 63
+			case 0xf9: pixels[y * p + x++] = 0; // skip 62
+			case 0xf5: pixels[y * p + x++] = 0; // skip 61
+			case 0xf1: pixels[y * p + x++] = 0; // skip 60
+			case 0xed: pixels[y * p + x++] = 0; // skip 59
+			case 0xe9: pixels[y * p + x++] = 0; // skip 58
+			case 0xe5: pixels[y * p + x++] = 0; // skip 57
+			case 0xe1: pixels[y * p + x++] = 0; // skip 56
+			case 0xdd: pixels[y * p + x++] = 0; // skip 55
+			case 0xd9: pixels[y * p + x++] = 0; // skip 54
+			case 0xd5: pixels[y * p + x++] = 0; // skip 53
+			case 0xd1: pixels[y * p + x++] = 0; // skip 52
+			case 0xcd: pixels[y * p + x++] = 0; // skip 51
+			case 0xc9: pixels[y * p + x++] = 0; // skip 50
+			case 0xc5: pixels[y * p + x++] = 0; // skip 49
+			case 0xc1: pixels[y * p + x++] = 0; // skip 48
+			case 0xbd: pixels[y * p + x++] = 0; // skip 47
+			case 0xb9: pixels[y * p + x++] = 0; // skip 46
+			case 0xb5: pixels[y * p + x++] = 0; // skip 45
+			case 0xb1: pixels[y * p + x++] = 0; // skip 44
+			case 0xad: pixels[y * p + x++] = 0; // skip 43
+			case 0xa9: pixels[y * p + x++] = 0; // skip 42
+			case 0xa5: pixels[y * p + x++] = 0; // skip 41
+			case 0xa1: pixels[y * p + x++] = 0; // skip 40
+			case 0x9d: pixels[y * p + x++] = 0; // skip 39
+			case 0x99: pixels[y * p + x++] = 0; // skip 38
+			case 0x95: pixels[y * p + x++] = 0; // skip 37
+			case 0x91: pixels[y * p + x++] = 0; // skip 36
+			case 0x8d: pixels[y * p + x++] = 0; // skip 35
+			case 0x89: pixels[y * p + x++] = 0; // skip 34
+			case 0x85: pixels[y * p + x++] = 0; // skip 33
+			case 0x81: pixels[y * p + x++] = 0; // skip 32
+			case 0x7d: pixels[y * p + x++] = 0; // skip 31
+			case 0x79: pixels[y * p + x++] = 0; // skip 30
+			case 0x75: pixels[y * p + x++] = 0; // skip 29
+			case 0x71: pixels[y * p + x++] = 0; // skip 28
+			case 0x6d: pixels[y * p + x++] = 0; // skip 27
+			case 0x69: pixels[y * p + x++] = 0; // skip 26
+			case 0x65: pixels[y * p + x++] = 0; // skip 25
+			case 0x61: pixels[y * p + x++] = 0; // skip 24
+			case 0x5d: pixels[y * p + x++] = 0; // skip 23
+			case 0x59: pixels[y * p + x++] = 0; // skip 22
+			case 0x55: pixels[y * p + x++] = 0; // skip 21
+			case 0x51: pixels[y * p + x++] = 0; // skip 20
+			case 0x4d: pixels[y * p + x++] = 0; // skip 19
+			case 0x49: pixels[y * p + x++] = 0; // skip 18
+			case 0x45: pixels[y * p + x++] = 0; // skip 17
+			case 0x41: pixels[y * p + x++] = 0; // skip 16
+			case 0x3d: pixels[y * p + x++] = 0; // skip 15
+			case 0x39: pixels[y * p + x++] = 0; // skip 14
+			case 0x35: pixels[y * p + x++] = 0; // skip 13
+			case 0x31: pixels[y * p + x++] = 0; // skip 12
+			case 0x2d: pixels[y * p + x++] = 0; // skip 11
+			case 0x29: pixels[y * p + x++] = 0; // skip 10
+			case 0x25: pixels[y * p + x++] = 0; // skip 9
+			case 0x21: pixels[y * p + x++] = 0; // skip 8
+			case 0x1d: pixels[y * p + x++] = 0; // skip 7
+			case 0x19: pixels[y * p + x++] = 0; // skip 6
+			case 0x15: pixels[y * p + x++] = 0; // skip 5
+			case 0x11: pixels[y * p + x++] = 0; // skip 4
+			case 0x0d: pixels[y * p + x++] = 0; // skip 3
+			case 0x09: pixels[y * p + x++] = 0; // skip 2
+			case 0x05: pixels[y * p + x++] = 0; // skip 1
+				continue;
+			}
+
+			switch (command) {
+			case 0x0f:
+				i = w;
+				break;
+			case 0x0a:
+				count = cmd_or_next(&cmd, 4);
+				for (++cmd; count; --count) {
+					pixels[y * p + x++] = *cmd + 0x10 * (player + 1);
+				}
+				dynamic = true;
+				break;
+			case 0x07:
+				count = cmd_or_next(&cmd, 4);
+				//dbgf("fill: %u pixels\n", count);
+				for (++cmd; count; --count) {
+					//dbgf(" %x", (unsigned)(*cmd) & 0xff);
+					pixels[y * p + x++] = *cmd;
+				}
+				break;
+			case 0x02:
+				count = ((*cmd & 0xf0) << 4) + cmd[1];
+				for (++cmd; count; --count)
+					pixels[y * p + x++] = *++cmd;
+				break;
+			default:
+				printf("unknown cmd at %X: %X, %X\n",
+					(unsigned)(cmd - (const unsigned char*)slp.hdr),
+					 *cmd, command
+				);
+				// dump some more bytes
+				for (size_t i = 0; i < 16; ++i)
+					printf(" %02hhX", *((const unsigned char*)cmd + i));
+				puts("");
+#if 1
+				while (*cmd != 0xf)
+					++cmd;
+				i = w;
+#endif
+				break;
+			}
+		}
+
+#if 0
+		while (cmd[-1] != 0xff)
+			++cmd;
+#endif
+	}
+
+	bnds.w = info->width;
+	bnds.h = info->height;
+	return false;
+}
 
 Animation::Animation(res_id id, const DRS &drs) : slp(drs.open_slp(id)), size(0), images(), id(id), image_count(0), dynamic(false) {
 	if (memcmp(slp.hdr->version, "2.0N", 4))
@@ -82,7 +354,27 @@ Animation::Animation(res_id id, const DRS &drs) : slp(drs.open_slp(id)), size(0)
 
 	images.reset(new Image[image_count = slp.hdr->frame_count]);
 
-	// stub
+	for (int i = 0, n = slp.hdr->frame_count; i < n; ++i)
+		if (images[i].load(slp, i)) {
+			dynamic = true;
+			break;
+		}
+
+	// use custom parsing if dynamic
+	if (!dynamic)
+		return;
+
+	images.reset(new Image[image_count * io::max_players]);
+
+	for (unsigned p = 0; p < io::max_players; ++p)
+		for (unsigned i = 0; i < image_count; ++i)
+			images[(unsigned long long)p * image_count + i].load(slp, i, p);
+}
+
+
+const Image &Animation::subimage(unsigned index, unsigned player) const {
+	return dynamic ? images[(player % io::max_players) * (unsigned long long)image_count + index % this->image_count]
+		: images[index % this->image_count];
 }
 
 bool operator<(const Animation &lhs, const Animation &rhs) { return lhs.id < rhs.id; }
