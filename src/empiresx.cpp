@@ -58,6 +58,13 @@
 #undef min
 #endif
 
+namespace genie {
+
+GLint max_texture_size;
+std::thread::id t_main;
+
+}
+
 static const SDL_Rect dim_lgy[] = {
 	{0, 0, 640, 480},
 	{0, 0, 800, 600},
@@ -332,12 +339,33 @@ private:
 	void load_menu(WorkTask &task) {
 		MenuId id = std::get<MenuId>(task.data);
 
+		start(2);
+
+		// find corresponding dialog
+		const genie::res_id dlg_ids[] = {
+			-1,
+			(unsigned)genie::DrsId::menu_start,
+			(unsigned)genie::DrsId::menu_editor,
+		};
+		genie::Dialog dlg(genie::assets.blobs[2]->open_dlg(dlg_ids[(unsigned)id]));
+		++p.step;
+
+		dlg.set_bkg(0);
+		genie::Animation &anim = *dlg.bkganim.get();
+
+		genie::TextureBuilder bld;
+		bld.emplace(anim.subimage(0), dlg.pal.get());
+		genie::Texture tex(bld);
+
 		switch (id) {
-			case MenuId::start:
-				start(1);
+			case MenuId::start: {
 				genie::jukebox.play(genie::MusicId::start);
 				++p.step;
 				done(task, WorkResultType::success);
+				break;
+			}
+			default:
+				done(task, WorkResultType::fail);
 				break;
 		}
 	}
@@ -495,24 +523,9 @@ public:
 	}
 
 	void load(const genie::Image &img, const SDL_Palette *pal) {
-		if (img.bnds.w <= 0 || img.bnds.h <= 0)
-			throw std::runtime_error("invalid image boundaries");
-
-		std::vector<uint32_t> pixels((long long)img.bnds.w * img.bnds.h);
-		bnds = img.bnds;
-
-		// TODO support SDL_Surface
-		const std::vector<uint8_t> &data = std::get<std::vector<uint8_t>>(img.surf);
-
+		genie::SubImagePreview preview(img, pal);
+		bnds = preview.bnds;
 		alt = "";
-
-		// convert
-		for (int y = 0; y < bnds.h; ++y)
-			for (int x = 0; x < bnds.w; ++x) {
-				unsigned long long pos = (unsigned long long)y * bnds.w + x;
-				SDL_Color *col = &pal->colors[data[pos]];
-				pixels[pos] = IM_COL32(col->r, col->g, col->b, data[pos] ? col->a : 0);
-			}
 
 		GLuint old_tex;
 		glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint*)&old_tex);
@@ -522,7 +535,7 @@ public:
 #ifdef GL_UNPACK_ROW_LENGTH
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bnds.w, bnds.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bnds.w, bnds.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, preview.pixels.data());
 		glBindTexture(GL_TEXTURE_2D, old_tex);
 	}
 
@@ -861,6 +874,7 @@ public:
 // Main code
 int main(int, char**)
 {
+	genie::t_main = std::this_thread::get_id();
 	// Setup SDL
 	// (Some versions of SDL before <2.0.10 appears to have performance/stalling issues on a minority of Windows systems,
 	// depending on whether SDL_INIT_GAMECONTROLLER is enabled or disabled.. updating to latest version of SDL is recommended!)
@@ -921,6 +935,13 @@ int main(int, char**)
 	GLint major, minor;
 	glGetIntegerv(GL_MAJOR_VERSION, &major);
 	glGetIntegerv(GL_MINOR_VERSION, &minor);
+	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &genie::max_texture_size);
+
+	if (genie::max_texture_size < 64) {
+		GLint def = 1024;
+		fprintf(stderr, "bogus max texture size: %d\nusing default: %d\n", genie::max_texture_size, def);
+		genie::max_texture_size = def;
+	}
 
 	time_t t_start = time(NULL);
 	struct tm *tm_start = localtime(&t_start);

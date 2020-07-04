@@ -236,6 +236,7 @@ enum class DrsId {
 	clubman_stand = 425,
 	/* dialogs/screen menus */
 	menu_start = 50051,
+	menu_editor = 50054,
 	/* sfx */
 	game = 5036,
 	button4 = 50300,
@@ -363,11 +364,12 @@ public:
 	const DRS &drs;
 	DialogSettings cfg;
 	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal;
-	// TODO cache image
 	int bkgmode;
 	std::unique_ptr<Animation> bkganim;
 
 	Dialog(res_id id, DialogSettings &&cfg, const DRS &drs, int bkgmode=-1);
+	Dialog(const Dialog&) = delete;
+	Dialog(Dialog&&) = default;
 
 	void set_bkg(int bkgmode);
 };
