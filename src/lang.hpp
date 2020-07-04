@@ -32,6 +32,7 @@ enum class TextId {
 	// tasks
 	work_drs_success,
 	work_drs, // check_root: find drs
+	work_load_menu,
 	// errors
 	err_drs_path,
 	err_drs_hdr,

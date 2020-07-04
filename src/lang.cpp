@@ -42,6 +42,7 @@ static std::vector<std::vector<const char*>> txts = {
 		// tasks
 		"Game configured successfully",
 		"Looking for data resource sets",
+		"Loading...",
 		// errors
 		"Cannot find data resource set \"%s\"",
 		"Bad DRS file \"%s\": invalid header",
@@ -67,6 +68,7 @@ static std::vector<std::vector<const char*>> txts = {
 		// taken
 		"Spelconfiguratie voltooid",
 		"Data resource sets zoeken",
+		"Laden...",
 		// foutmeldingen
 		"Data resource set \"%s\" kan niet gevonden worden",
 		"Fout in DRS \"%s\": onjuiste header",
@@ -90,6 +92,7 @@ static std::vector<std::vector<const char*>> txts = {
 		// Taken
 		"Konfiguration erfüllt",
 		"Datenressourcensätzen suchen",
+		"Laden...",
 		// Fehlers
 		"Datenressourcensatz \"%s\" kann nicht gefunden werden",
 		"Beschädigte DRS-Datei \"%s\": ungültiger Header",

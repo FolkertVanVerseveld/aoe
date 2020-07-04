@@ -314,6 +314,12 @@ bool Image::load(const io::Slp &slp, unsigned idx, unsigned player) {
 					pixels[y * p + x++] = *cmd;
 				}
 				break;
+			case 0x06:
+				count = cmd_or_next(&cmd, 4);
+
+				for (; count; --count)
+					pixels[y * p + x++] = *++cmd + 0x10 * (player + 1);
+				break;
 			case 0x02:
 				count = ((*cmd & 0xf0) << 4) + cmd[1];
 				for (++cmd; count; --count)
@@ -345,7 +351,7 @@ bool Image::load(const io::Slp &slp, unsigned idx, unsigned player) {
 
 	bnds.w = info->width;
 	bnds.h = info->height;
-	return false;
+	return dynamic;
 }
 
 Animation::Animation(res_id id, const DRS &drs) : slp(drs.open_slp(id)), size(0), images(), id(id), image_count(0), dynamic(false) {
@@ -380,8 +386,22 @@ const Image &Animation::subimage(unsigned index, unsigned player) const {
 bool operator<(const Animation &lhs, const Animation &rhs) { return lhs.id < rhs.id; }
 bool operator<(const Image &lhs, const Image &rhs) { return lhs.id < rhs.id; }
 
-Dialog::Dialog(res_id id, DialogSettings &&cfg, const DRS &drs)
-	: id(id), drs(drs), cfg(cfg), pal(drs.open_pal(this->cfg.pal), &SDL_FreePalette) {}
+Dialog::Dialog(res_id id, DialogSettings &&cfg, const DRS &drs, int bkgmode)
+	: id(id), drs(drs), cfg(cfg), pal(drs.open_pal(this->cfg.pal), &SDL_FreePalette), bkgmode(bkgmode), bkganim(nullptr)
+{
+	set_bkg(bkgmode);
+}
+
+void Dialog::set_bkg(int bkgmode) {
+	if (bkgmode == -1) {
+		bkganim.reset();
+		this->bkgmode = bkgmode;
+		return;
+	}
+
+	assert(bkgmode < 3);
+	bkganim.reset(new Animation(std::move(drs.open_anim(cfg.bmp[bkgmode]))));
+}
 
 Dialog DRS::open_dlg(res_id id) const {
 	DrsItem item;
@@ -524,6 +544,33 @@ SDL_Palette *DRS::open_pal(res_id id) const {
 	}
 
 	return p;
+}
+
+bool Assets::open_item(DrsItem &item, res_id id, DrsType type) const noexcept {
+	for (auto &b : blobs)
+		if (b->open_item(item, id, type))
+			return true;
+
+	return false;
+}
+
+bool Assets::open_item(DrsItem &item, res_id id, DrsType type, unsigned &pos) const noexcept {
+	for (unsigned i = 0, n = blobs.size(); i < n; ++i)
+		if (blobs[i]->open_item(item, id, type)) {
+			pos = i;
+			return true;
+		}
+
+	return false;
+}
+
+SDL_Palette *Assets::open_pal(res_id id) const {
+	DrsItem item; unsigned pos;
+
+	if (!open_item(item, id, DrsType::binary, pos))
+		throw std::runtime_error(std::string("Could not load palette ") + std::to_string(id));
+
+	return blobs[pos]->open_pal(id);
 }
 
 }

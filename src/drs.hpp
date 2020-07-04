@@ -349,6 +349,8 @@ public:
 	bool dynamic;
 
 	Animation(res_id id, const DRS &drs);
+	Animation(const Animation&) = delete;
+	Animation(Animation&&) = default;
 
 	const Image &subimage(unsigned index, unsigned player=0) const;
 
@@ -362,8 +364,12 @@ public:
 	DialogSettings cfg;
 	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal;
 	// TODO cache image
+	int bkgmode;
+	std::unique_ptr<Animation> bkganim;
 
-	Dialog(res_id id, DialogSettings &&cfg, const DRS &drs);
+	Dialog(res_id id, DialogSettings &&cfg, const DRS &drs, int bkgmode=-1);
+
+	void set_bkg(int bkgmode);
 };
 
 class DRS final {
@@ -393,6 +399,11 @@ public:
 extern class Assets final {
 public:
 	std::vector<std::unique_ptr<DRS>> blobs;
+
+	bool open_item(DrsItem &item, res_id id, DrsType type) const noexcept;
+	bool open_item(DrsItem &item, res_id id, DrsType type, unsigned &pos) const noexcept;
+
+	SDL_Palette *open_pal(res_id id) const;
 } assets;
 
 }

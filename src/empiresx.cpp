@@ -21,6 +21,7 @@
 #include "drs.hpp"
 #include "math.hpp"
 #include "audio.hpp"
+#include "graphics.hpp"
 
 #include <cstdio>
 #include <ctime>
@@ -138,8 +139,8 @@ public:
 #version 120
 
 attribute vec2 coord2d;
-attribute vec3 col;
-varying vec3 frag_col;
+attribute vec4 col;
+varying vec4 frag_col;
 
 void main(void)
 {
@@ -150,11 +151,11 @@ void main(void)
 , shader_frag(R"glsl(
 #version 120
 
-varying vec3 frag_col;
+varying vec4 frag_col;
 
 void main(void)
 {
-	gl_FragColor = vec4(frag_col.rgb, 1.0);
+	gl_FragColor = vec4(frag_col.rgba);
 }
 )glsl", GL_FRAGMENT_SHADER);
 
@@ -207,6 +208,7 @@ MenuId menu_id = MenuId::config;
 enum class WorkTaskType {
 	stop,
 	check_root,
+	load_menu,
 };
 
 using FdlgItem = std::pair<std::string, std::string>;
@@ -214,7 +216,7 @@ using FdlgItem = std::pair<std::string, std::string>;
 class WorkTask final {
 public:
 	WorkTaskType type;
-	std::variant<std::nullopt_t, FdlgItem> data;
+	std::variant<std::nullopt_t, FdlgItem, MenuId> data;
 
 	WorkTask(WorkTaskType t) : type(t), data(std::nullopt) {}
 
@@ -230,12 +232,12 @@ enum class WorkResultType {
 
 class WorkResult final {
 public:
-	WorkTaskType task_type;
+	WorkTask task;
 	WorkResultType type;
 	std::string what;
 
-	WorkResult(WorkTaskType tt, WorkResultType rt) : task_type(tt), type(rt), what() {}
-	WorkResult(WorkTaskType tt, WorkResultType rt, const std::string &what) : task_type(tt), type(rt), what(what) {}
+	WorkResult(const WorkTask &task, WorkResultType rt) : task(task), type(rt), what() {}
+	WorkResult(const WorkTask &task, WorkResultType rt, const std::string &what) : task(task), type(rt), what(what) {}
 };
 
 struct WorkerProgress final {
@@ -274,7 +276,10 @@ public:
 					case WorkTaskType::stop:
 						continue;
 					case WorkTaskType::check_root:
-						check_root(std::get<std::pair<std::string, std::string>>(task.data));
+						check_root(std::get<FdlgItem>(task.data));
+						break;
+					case WorkTaskType::load_menu:
+						load_menu(task);
 						break;
 					default:
 						assert("bad task type" == 0);
@@ -324,7 +329,20 @@ private:
 		results.produce(args...);
 	}
 
-	void check_root(const std::pair<std::string, std::string> &item) {
+	void load_menu(WorkTask &task) {
+		MenuId id = std::get<MenuId>(task.data);
+
+		switch (id) {
+			case MenuId::start:
+				start(1);
+				genie::jukebox.play(genie::MusicId::start);
+				++p.step;
+				done(task, WorkResultType::success);
+				break;
+		}
+	}
+
+	void check_root(const FdlgItem &item) {
 #define COUNT 5
 
 		genie::iofd fd[COUNT];
@@ -349,7 +367,7 @@ private:
 			},{ // graphics
 				{230, 2}, {254, 2}, {280, 2}, {418, 2}, {425, 2}, {463, 2},
 			},{ // interface
-				{50057, 0}, {50058, 0}, {50060, 0}, {50061, 0}, {50721, 2}, {50731, 2}, {50300, 3}, {50302, 3}, {50303, 3}, {50320, 3}, {50321, 3},
+				{50057, 0}, {50058, 0}, {50060, 0}, {50061, 0}, {50721, 2}, {50731, 2}, {50300, 3}, {50302, 3}, {50303, 3}, {50320, 3}, {50321, 3}, {50500, 0},
 			},{ // sounds
 				{5036, 3}, {5092, 3}, {5107, 3},
 			},{ // terrain
@@ -457,23 +475,14 @@ static const char *bin_types[] = {
 	"shape list",
 };
 
-class PreviewImage final {
-public:
-	SDL_Rect bnds;
-	int hotx, hoty;
-	GLfloat s0, t0, s1, t1;
-
-	PreviewImage(const SDL_Rect &bnds, int hotx, int hoty, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1)
-		: bnds(bnds), hotx(hotx), hoty(hoty), s0(s0), t0(t0), s1(s1), t1(t1) {}
-};
-
-// TODO maak dit generieker voor gfx subsystem
+// TODO maak dit generieker voor gfx subsystem -> dat wordt texture & texturebuilder dus
 class Preview final {
 public:
 	GLuint tex;
 	SDL_Rect bnds; // x,y are hotspot x and y. w,h are size
+	std::string alt;
 
-	Preview() : tex(0), bnds() {
+	Preview() : tex(0), bnds(), alt() {
 		glGenTextures(1, &tex);
 		if (!tex)
 			throw std::runtime_error("Cannot create preview texture");
@@ -495,12 +504,14 @@ public:
 		// TODO support SDL_Surface
 		const std::vector<uint8_t> &data = std::get<std::vector<uint8_t>>(img.surf);
 
+		alt = "";
+
 		// convert
 		for (int y = 0; y < bnds.h; ++y)
 			for (int x = 0; x < bnds.w; ++x) {
 				unsigned long long pos = (unsigned long long)y * bnds.w + x;
 				SDL_Color *col = &pal->colors[data[pos]];
-				pixels[pos] = IM_COL32(col->r, col->g, col->b, pos ? col->a : 0);
+				pixels[pos] = IM_COL32(col->r, col->g, col->b, data[pos] ? col->a : 0);
 			}
 
 		GLuint old_tex;
@@ -516,10 +527,10 @@ public:
 	}
 
 	void show() {
-		if (bnds.w && bnds.h)
-			ImGui::Image((ImTextureID)tex, ImVec2(bnds.w, bnds.h));
+		if (!bnds.w || !bnds.h || !alt.empty())
+			ImGui::TextUnformatted(alt.empty() ? "(no image data)" : alt.c_str());
 		else
-			ImGui::TextUnformatted("(no image data)");
+			ImGui::Image((ImTextureID)tex, ImVec2(bnds.w, bnds.h));
 	}
 };
 
@@ -729,8 +740,18 @@ public:
 							int old_dialog_mode = dialog_mode;
 							ImGui::Combo("Display mode", &dialog_mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy));
 
-							if (old_dialog_mode != dialog_mode) {
-								// TODO change preview
+							if (old_dialog_mode != dialog_mode)
+								preview_changed = true;
+
+							if (preview_changed) {
+								try {
+									dlg.set_bkg(dialog_mode);
+									auto &anim = *dlg.bkganim.get();
+									preview.load(anim.subimage(0), dlg.pal.get());
+								} catch (std::runtime_error&) {
+									preview.alt = "(invalid image data)";
+								}
+								preview_changed = false;
 							}
 
 							preview.show();
@@ -785,8 +806,19 @@ public:
 
 							ImGui::Text("Size: %dx%d\nCenter: %d,%d", img.bnds.w, img.bnds.h, img.bnds.x, img.bnds.y);
 
-							if (ImGui::TreeNode("preview")) {
-								if (preview_changed && anim.image_count) {
+							if (anim.image_count && ImGui::TreeNode("Preview")) {
+								int old_palette = current_palette;
+								ImGui::InputInt("Palette", &current_palette);
+								if (old_palette != current_palette) {
+									try {
+										pal.reset(genie::assets.open_pal(current_palette));
+										preview_changed = true;
+									} catch (std::runtime_error&) {
+										current_palette = old_palette;
+									}
+								}
+
+								if (preview_changed) {
 									preview.load(anim.subimage(current_image, current_player), pal.get());
 									preview_changed = false;
 								}
@@ -1170,7 +1202,7 @@ int main(int, char**)
 			for (std::optional<WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
 				switch (res->type) {
 					case WorkResultType::success:
-						switch (res->task_type) {
+						switch (res->task.type) {
 							case WorkTaskType::stop:
 								break;
 							case WorkTaskType::check_root:
@@ -1178,9 +1210,11 @@ int main(int, char**)
 								// start game automatically on auto detect
 								if (auto_detect) {
 									auto_detect = false;
-									menu_id = MenuId::start;
-									genie::jukebox.play(genie::MusicId::start);
+									w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
 								}
+								break;
+							case WorkTaskType::load_menu:
+								menu_id = std::get<MenuId>(res->task.data);
 								break;
 							default:
 								assert("bad task type" == 0);
@@ -1305,6 +1339,8 @@ int main(int, char**)
 			glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 			glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 			glClear(GL_COLOR_BUFFER_BIT);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			// do our stuff
 			switch (menu_id) {
@@ -1316,12 +1352,12 @@ int main(int, char**)
 					glEnableVertexAttribArray(attr_pos);
 					glEnableVertexAttribArray(attr_col);
 					const GLfloat vtx[] = {
-						 0.0,  0.8, 1.0, 1.0, 0.0,
-						-0.8, -0.8, 0.0, 0.0, 1.0,
-						 0.8, -0.8, 1.0, 0.0, 0.0,
+						 0.0,  0.8, 1.0, 1.0, 0.0, 0.5,
+						-0.8, -0.8, 0.0, 0.0, 1.0, 1.0,
+						 0.8, -0.8, 1.0, 0.0, 0.0, 0.25,
 					};
-					glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), vtx);
-					glVertexAttribPointer(attr_col, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &vtx[2]);
+					glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), vtx);
+					glVertexAttribPointer(attr_col, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), &vtx[2]);
 					glDrawArrays(GL_TRIANGLES, 0, 3);
 					glDisableVertexAttribArray(attr_col);
 					glDisableVertexAttribArray(attr_pos);
