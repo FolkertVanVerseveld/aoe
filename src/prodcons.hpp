@@ -65,6 +65,6 @@ public:
 
 		can_produce.notify_all();
 
-		return v;
+		return std::move(v);
 	}
 };

@@ -47,6 +47,10 @@
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_mixer.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #define FDLG_CHOOSE_DIR "Fdlg Choose AoE dir"
 #define MSG_INIT "Msg Init"
 
@@ -145,28 +149,37 @@ public:
 } shader_vtx(R"glsl(
 #version 120
 
+uniform mat4 mvp;
+
 attribute vec2 coord2d;
+attribute vec2 uv;
 attribute vec4 col;
+
+varying vec2 frag_uv;
 varying vec4 frag_col;
 
 void main(void)
 {
-	gl_Position = vec4(coord2d, 0.0, 1.0);
+	gl_Position = mvp * vec4(coord2d, 0.0, 1.0);
 	frag_col = col;
+	frag_uv = uv;
 }
 )glsl", GL_VERTEX_SHADER)
 , shader_frag(R"glsl(
 #version 120
 
+uniform sampler2D tex;
+
+varying vec2 frag_uv;
 varying vec4 frag_col;
 
 void main(void)
 {
-	gl_FragColor = vec4(frag_col.rgba);
+	gl_FragColor = frag_col * texture2D(tex, frag_uv.st);
 }
 )glsl", GL_FRAGMENT_SHADER);
 
-static GLint attr_pos, attr_col;
+static GLint attr_pos, attr_col, uni_mvp;
 
 class ShaderProgram final {
 public:
@@ -902,6 +915,43 @@ public:
 	}
 };
 
+static void display(ShaderProgram &prog) {
+	if (menu_id != MenuId::config) {
+
+	}
+
+	switch (menu_id) {
+		case MenuId::config:
+			break;
+		case MenuId::start:
+		{
+			float move = sinf((float)SDL_GetTicks() / 1000.0f * (2 * M_PI) / 5.0f);
+			float angle = SDL_GetTicks() / 1000.0 * 45;
+
+			glm::vec3 axis_z(0, 0, 1);
+			glm::mat4 mvp = glm::translate(glm::mat4(1.0f), glm::vec3(move, 0.0, 0.0)) * glm::rotate(glm::mat4(1.0f), glm::radians(angle), axis_z);
+
+			glUseProgram(prog.handle);
+			glUniformMatrix4fv(uni_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
+			glEnableVertexAttribArray(attr_pos);
+			glEnableVertexAttribArray(attr_col);
+			const GLfloat vtx[] = {
+					 0.0,  0.8, 1.0, 1.0, 0.0, 0.5,
+					-0.8, -0.8, 0.0, 0.0, 1.0, 1.0,
+					 0.8, -0.8, 1.0, 0.0, 0.0, 0.25,
+			};
+			glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), vtx);
+			glVertexAttribPointer(attr_col, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), &vtx[2]);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+			glDisableVertexAttribArray(attr_col);
+			glDisableVertexAttribArray(attr_pos);
+			break;
+		}
+		case MenuId::editor:
+			break;
+	}
+}
+
 // Main code
 int main(int, char**)
 {
@@ -1065,9 +1115,14 @@ int main(int, char**)
 		ShaderProgram prog(shader_vtx.handle, shader_frag.handle);
 		attr_pos = glGetAttribLocation(prog.handle, "coord2d");
 		attr_col = glGetAttribLocation(prog.handle, "col");
+		uni_mvp = glGetUniformLocation(prog.handle, "mvp");
 
 		if (attr_pos == -1 || attr_col == -1) {
 			fputs("fatal error: glGetAttribLocation\n", stderr);
+			abort();
+		}
+		if (uni_mvp == -1) {
+			fputs("fatal error: glGetUniformLocation\n", stderr);
 			abort();
 		}
 
@@ -1407,29 +1462,7 @@ int main(int, char**)
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			// do our stuff
-			switch (menu_id) {
-				case MenuId::config:
-					break;
-				case MenuId::start:
-				{
-					glUseProgram(prog.handle);
-					glEnableVertexAttribArray(attr_pos);
-					glEnableVertexAttribArray(attr_col);
-					const GLfloat vtx[] = {
-						 0.0,  0.8, 1.0, 1.0, 0.0, 0.5,
-						-0.8, -0.8, 0.0, 0.0, 1.0, 1.0,
-						 0.8, -0.8, 1.0, 0.0, 0.0, 0.25,
-					};
-					glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), vtx);
-					glVertexAttribPointer(attr_col, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), &vtx[2]);
-					glDrawArrays(GL_TRIANGLES, 0, 3);
-					glDisableVertexAttribArray(attr_col);
-					glDisableVertexAttribArray(attr_pos);
-					break;
-				}
-				case MenuId::editor:
-					break;
-			}
+			display(prog);
 
 			// do imgui stuff
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
