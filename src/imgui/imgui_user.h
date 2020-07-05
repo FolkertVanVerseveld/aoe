@@ -6,5 +6,6 @@ namespace ImGui {
 
 IMGUI_API void PixelBox(ImU32 col, const ImVec2 &size = ImVec2(0, 0));
 IMGUI_API void ColorPalette(SDL_Palette *pal, const ImVec2 &pxsize = ImVec2(0, 0));
+IMGUI_API bool SliderInputInt(const char *label, int *v, int v_min, int v_max, const char *format = "%d");
 
 }

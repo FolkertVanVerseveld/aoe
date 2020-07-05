@@ -264,15 +264,46 @@ Assets assets;
 
 }
 
+enum class GLcmdType {
+	stop,
+};
+
+struct GLcmd final {
+	GLcmdType type;
+
+	GLcmd(GLcmdType type) : type(type) {}
+};
+
+enum class GLcmdResultType {
+	stop,
+	error,
+};
+
+struct GLcmdResult final {
+	GLcmdResultType type;
+
+	GLcmdResult(GLcmdResultType type) : type(type) {}
+};
+
+/** OpenGL wrapper such that our main worker call do OpenGL stuff while running on another thread. */
+class GLchannel final {
+public:
+	ConcurrentChannel<GLcmd> cmds;
+	ConcurrentChannel<GLcmdResult> results;
+
+	GLchannel() : cmds(GLcmdType::stop, 10), results(GLcmdResultType::stop, 10) {}
+};
+
 class Worker final {
 public:
 	ConcurrentChannel<WorkTask> tasks; // in
 	ConcurrentChannel<WorkResult> results; // out
+	GLchannel &ch;
 
 	std::mutex mut;
 	WorkerProgress p;
 
-	Worker() : tasks(WorkTaskType::stop, 10), results(WorkResult{ WorkTaskType::stop, WorkResultType::stop }, 10), mut(), p() {}
+	Worker(GLchannel &ch) : tasks(WorkTaskType::stop, 10), results(WorkResult{ WorkTaskType::stop, WorkResultType::stop }, 10), ch(ch), mut(), p() {}
 
 	int run() {
 		try {
@@ -610,7 +641,7 @@ public:
 		}
 
 		float start = ImGui::GetCursorPosY();
-		ImGui::SliderInt("container", &current_drs, 0, genie::assets.blobs.size() - 1);
+		ImGui::SliderInputInt("container", &current_drs, 0, genie::assets.blobs.size() - 1);
 		float h = ImGui::GetCursorPosY() - start;
 		current_drs = genie::clamp<int>(0, current_drs, genie::assets.blobs.size() - 1);
 
@@ -618,7 +649,7 @@ public:
 
 		if (drs.size() > 1) {
 			size_t max = drs.size() - 1;
-			ImGui::SliderInt("list", &current_list, 0, max);
+			ImGui::SliderInputInt("list", &current_list, 0, max);
 			current_list = genie::clamp<int>(0, current_list, max);
 		} else {
 			current_list = 0;
@@ -800,12 +831,12 @@ public:
 						int old_image = current_image, old_player = current_player;
 
 						if (anim.image_count > 1) {
-							ImGui::SliderInt("image", &current_image, 0, anim.image_count - 1);
+							ImGui::SliderInputInt("image", &current_image, 0, anim.image_count - 1);
 							current_image = genie::clamp<int>(0, current_image, anim.image_count - 1);
 						}
 
 						if (anim.dynamic) {
-							ImGui::SliderInt("player", &current_player, 0, genie::io::max_players - 1);
+							ImGui::SliderInputInt("player", &current_player, 0, genie::io::max_players - 1);
 							current_player = genie::clamp<int>(0, current_player, genie::io::max_players - 1);
 						} else {
 							current_player = 0;
@@ -1002,7 +1033,8 @@ int main(int, char**)
 	auto fd = igfd::ImGuiFileDialog::Instance();
 
 	bool fs_choose_root = false, auto_detect = false;
-	Worker w_bkg;
+	GLchannel glch;
+	Worker w_bkg(glch);
 	int err_bkg;
 
 	std::thread t_bkg(worker_init, std::ref(w_bkg), std::ref(err_bkg));
@@ -1213,6 +1245,17 @@ int main(int, char**)
 					}
 				}
 				ImGui::End();
+			}
+
+			// munch all OpenGL commands
+			for (std::optional<GLcmd> cmd; cmd = glch.cmds.try_consume(), cmd.has_value();) {
+				switch (cmd->type) {
+					case GLcmdType::stop:
+						break;
+					default:
+						assert("bad opengl command" == 0);
+						break;
+				}
 			}
 
 			static int lang_current = 0;
