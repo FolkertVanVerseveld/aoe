@@ -5,8 +5,10 @@
 #include <vector>
 #include <algorithm>
 #include <memory>
+#include <set>
 
-#include <GL/gl3w.h>
+#include <SDL2/SDL_opengl.h>
+//#include <GL/gl3w.h>
 
 #include "drs.hpp"
 
@@ -25,13 +27,19 @@ extern GLint max_texture_size;
 /** Single image in texture */
 class SubImage final {
 public:
-	GLuint tex; // just for convenience. Texture keeps track of tex's lifecycle.
+	mutable GLuint tex; // just for convenience. Texture keeps track of tex's lifecycle.
 	SDL_Rect bnds; // x,y are top & left. w,h are size
+	unsigned id; // for tilesheet to keep track of reordered images
 	int hotx, hoty;
 	GLfloat s0, t0, s1, t1;
 
-	SubImage(GLuint tex, const SDL_Rect &bnds, int hotx, int hoty, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1)
-		: tex(tex), bnds(bnds), hotx(hotx), hoty(hoty), s0(s0), t0(t0), s1(s1), t1(t1) {}
+	SubImage(unsigned id) : tex(0), bnds(), id(id), hotx(0), hoty(0), s0(0), t0(0), s1(0), t1(0) {}
+
+	SubImage(GLuint tex, const SDL_Rect &bnds, unsigned id, int hotx, int hoty, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1)
+		: tex(tex), bnds(bnds), id(id), hotx(hotx), hoty(hoty), s0(s0), t0(t0), s1(s1), t1(t1) {}
+
+	friend bool operator<(const SubImage &lhs, unsigned id) { return lhs.id < id; }
+	friend bool operator<(const SubImage &lhs, const SubImage &rhs) { return lhs.id < rhs.id; }
 };
 
 class TilesheetBuilder;
@@ -39,9 +47,10 @@ class TilesheetBuilder;
 class Tilesheet final {
 public:
 	SDL_Rect bnds; // x,y are cursor for next texture to place. w,h are bounds
-	std::vector<SubImage> images;
+	std::set<SubImage> images;
+	std::vector<uint32_t> pixels; // RGBA
 
-	Tilesheet() : bnds(), images() {}
+	Tilesheet() : bnds(), images(), pixels() {}
 
 	/**
 	 * Munch all SubImagePreviews from TextureBuilder and limit texture size to \a max.
@@ -52,6 +61,8 @@ public:
 
 	/** Dump contents to OpenGL texture. This must be run on the OpenGL thread. */
 	void write(GLuint tex);
+
+	const SubImage &operator[](unsigned id) const { return *images.find(id); }
 };
 
 /** Single image used for texture builder. */
@@ -83,7 +94,7 @@ public:
 		auto t = tiles.emplace_back(tiles.size(), args...);
 		w = std::max(w, t.bnds.w);
 		h = std::max(h, t.bnds.h);
-		minarea += t.bnds.w * t.bnds.h;
+		minarea += (size_t)((long long)t.bnds.w * t.bnds.h);
 		sorted = false;
 		return t;
 	}
@@ -96,11 +107,10 @@ public:
 	GLuint tex;
 	Tilesheet ts;
 
-	Texture() : tex(0), ts() {}
-	Texture(Tilesheet&&);
-	Texture(GLuint tex, Tilesheet&&);
+	Texture();
 
 	Texture(const Texture&) = delete;
+	Texture(Texture &&t) noexcept : tex(t.tex), ts(t.ts) {}
 
 	~Texture();
 

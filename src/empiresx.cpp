@@ -11,7 +11,7 @@
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl.h"
-#include "imgui/imgui_impl_opengl3.h"
+#include "imgui/imgui_impl_opengl2.h"
 
 // addons
 #include "imgui/ImGuiFileDialog.h"
@@ -80,138 +80,6 @@ static const char *str_dim_lgy[] = {
 };
 
 #pragma warning(disable : 26812)
-
-// About Desktop OpenGL function loaders:
-//  Modern desktop OpenGL doesn't have a standard portable header file to load OpenGL function pointers.
-//  Helper libraries are often used for this purpose! Here we are supporting a few common ones (gl3w, glew, glad).
-//  You may use another loader/header of your choice (glext, glLoadGen, etc.), or chose to manually implement your own.
-#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
-#include <GL/gl3w.h>            // Initialize with gl3wInit()
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
-#include <GL/glew.h>            // Initialize with glewInit()
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
-#include <glad/glad.h>          // Initialize with gladLoadGL()
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING2)
-#define GLFW_INCLUDE_NONE       // GLFW including OpenGL headers causes ambiguity or multiple definition errors.
-#include <glbinding/Binding.h>  // Initialize with glbinding::Binding::initialize()
-#include <glbinding/gl/gl.h>
-using namespace gl;
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING3)
-#define GLFW_INCLUDE_NONE       // GLFW including OpenGL headers causes ambiguity or multiple definition errors.
-#include <glbinding/glbinding.h>// Initialize with glbinding::initialize()
-#include <glbinding/gl/gl.h>
-using namespace gl;
-#else
-#include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
-#endif
-
-#if __APPLE__
-// GL 3.2 Core + GLSL 150
-const char *glsl_version = "#version 150";
-#else
-// GL 3.0 + GLSL 130
-const char *glsl_version = "#version 130";
-#endif
-
-class Shader final {
-public:
-	const GLchar *src;
-	GLuint handle;
-	GLenum type;
-
-	Shader(const GLchar *src, GLenum type) : src(src), handle(0), type(type) {}
-
-	void compile() {
-		const GLchar *srclist[] = {src};
-		handle = glCreateShader(type);
-		if (!handle) {
-			fputs("fatal error: glCreateShader\n", stderr);
-			abort();
-		}
-		glShaderSource(handle, 1, srclist, NULL);
-		glCompileShader(handle);
-
-		GLint status, length;
-		glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
-		glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &length);
-
-		if (length > 0) {
-			std::string msg(length, 0);
-			glGetShaderInfoLog(handle, length, NULL, (GLchar*)msg.data());
-			fprintf((GLboolean)status == GL_FALSE ? stderr : stdout, "%s\n", msg.c_str());
-		}
-
-		if ((GLboolean)status == GL_FALSE) {
-			fprintf(stderr, "fatal error: glCompileShader type %u\n", type);
-			abort();
-		}
-	}
-} shader_vtx(R"glsl(
-#version 120
-
-uniform mat4 mvp;
-
-attribute vec3 pos;
-attribute vec2 uv;
-attribute vec4 col;
-
-varying vec2 frag_uv;
-varying vec4 frag_col;
-
-void main(void)
-{
-	gl_Position = mvp * vec4(pos, 1.0);
-	frag_col = col;
-	frag_uv = uv;
-}
-)glsl", GL_VERTEX_SHADER)
-, shader_frag(R"glsl(
-#version 120
-
-uniform sampler2D tex;
-
-varying vec2 frag_uv;
-varying vec4 frag_col;
-
-void main(void)
-{
-	gl_FragColor = frag_col * texture2D(tex, frag_uv.st);
-}
-)glsl", GL_FRAGMENT_SHADER);
-
-static GLint attr_pos, attr_col, attr_uv, uni_mvp, uni_tex;
-
-class ShaderProgram final {
-public:
-	GLuint vtx, frag;
-	GLuint handle;
-
-	ShaderProgram(GLuint vtx, GLuint frag) : vtx(vtx), frag(frag), handle(0) {
-		if (!(handle = glCreateProgram())) {
-			fputs("fatal error: glCreateProgram\n", stderr);
-			abort();
-		}
-
-		glAttachShader(handle, vtx);
-		glAttachShader(handle, frag);
-		glLinkProgram(handle);
-
-		GLint status, length;
-		glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
-		glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &length);
-
-		if (length > 0) {
-			std::string msg(length, 0);
-			glGetShaderInfoLog(handle, length, NULL, (GLchar*)msg.data());
-			fprintf((GLboolean)status == GL_FALSE ? stderr : stdout, "%s\n", msg.c_str());
-		}
-
-		if ((GLboolean)status == GL_FALSE) {
-			fputs("fatal error: glLinkProgram\n", stderr);
-			abort();
-		}
-	}
-};
 
 static bool show_debug;
 static bool fs_has_root;
@@ -404,14 +272,18 @@ private:
 		genie::Dialog dlg(genie::assets.blobs[2]->open_dlg(dlg_ids[(unsigned)id]));
 		++p.step;
 
-		dlg.set_bkg(0);
-		genie::Animation &anim = *dlg.bkganim.get();
-
 		genie::TilesheetBuilder bld;
-		bld.emplace(anim.subimage(0), dlg.pal.get());
-		genie::Tilesheet ts(bld);
 
-		ch.cmds.produce(GLcmdType::set_bkg, std::move(ts));
+		// add all backgrounds
+		for (int i = 0; i < 3; ++i) {
+			dlg.set_bkg(i);
+			genie::Animation &anim = *dlg.bkganim.get();
+			bld.emplace(anim.subimage(0), dlg.pal.get());
+		}
+
+		// send back to main thread
+		genie::Tilesheet ts(bld);
+		ch.cmds.produce(GLcmdType::set_bkg, ts);
 
 		++p.step;
 		set_desc("Loading menu music");
@@ -930,73 +802,29 @@ public:
 	}
 };
 
-static void display(ShaderProgram &prog, genie::Texture &tex_bkg) {
-	glUseProgram(prog.handle);
+static void display(genie::Texture &tex_bkg) {
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, 1024, 1024, 0, -1, 1);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glColor3f(1.0f, 1.0f, 1.0f);
+	glEnable(GL_TEXTURE_2D);
 
 	if (menu_id != MenuId::config && tex_bkg.tex) {
-		glm::mat4 mvp = glm::ortho(0, tex_bkg.ts.bnds.w, tex_bkg.ts.bnds.h, 0, -1, 1);
-
-		glUniform1i(uni_tex, 0);
-		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
 
-		glUniformMatrix4fv(uni_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
-		glEnableVertexAttribArray(attr_pos);
-		glEnableVertexAttribArray(attr_col);
-		glEnableVertexAttribArray(attr_uv);
+		const genie::SubImage &img = tex_bkg.ts[2];
 
-		const GLfloat bkg[] = {
-			0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,
-			640, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
-			0.0, 800, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-
-			0.0, 800, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-			640, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
-			0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,
-		};
-
-		glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), bkg);
-		glVertexAttribPointer(attr_col, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), &bkg[4]);
-		glVertexAttribPointer(attr_uv, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), &bkg[2]);
-
-
-		glDrawArrays(GL_TRIANGLES, 0, 5);
-
-		glDisableVertexAttribArray(attr_uv);
-		glDisableVertexAttribArray(attr_col);
-		glDisableVertexAttribArray(attr_pos);
-	}
-
-	return;
-
-	switch (menu_id) {
-		case MenuId::config:
-			break;
-		case MenuId::start:
+		glBegin(GL_QUADS);
 		{
-			float move = sinf((float)SDL_GetTicks() / 1000.0f * (2 * M_PI) / 5.0f);
-			float angle = SDL_GetTicks() / 1000.0f * 45;
-
-			glm::vec3 axis_z(0, 0, 1);
-			glm::mat4 mvp = glm::translate(glm::mat4(1.0f), glm::vec3(move, 0.0, 0.0)) * glm::rotate(glm::mat4(1.0f), glm::radians(angle), axis_z);
-
-			glUniformMatrix4fv(uni_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
-			glEnableVertexAttribArray(attr_pos);
-			glEnableVertexAttribArray(attr_col);
-			const GLfloat vtx[] = {
-					 0.0,  0.8, 1.0, 1.0, 0.0, 0.5,
-					-0.8, -0.8, 0.0, 0.0, 1.0, 1.0,
-					 0.8, -0.8, 1.0, 0.0, 0.0, 0.25,
-			};
-			glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), vtx);
-			glVertexAttribPointer(attr_col, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), &vtx[2]);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-			glDisableVertexAttribArray(attr_col);
-			glDisableVertexAttribArray(attr_pos);
-			break;
+			GLfloat x0 = img.bnds.x, y0 = img.bnds.y, x1 = x0 + img.bnds.w, y1 = y0 + img.bnds.h;
+			glTexCoord2f(img.s0, img.t0); glVertex2f(x0, y0);
+			glTexCoord2f(img.s1, img.t0); glVertex2f(x1, y0);
+			glTexCoord2f(img.s1, img.t1); glVertex2f(x1, y1);
+			glTexCoord2f(img.s0, img.t1); glVertex2f(x0, y1);
 		}
-		case MenuId::editor:
-			break;
+		glEnd();
 	}
 }
 
@@ -1013,53 +841,17 @@ int main(int, char**)
 		return -1;
 	}
 
-	// Decide GL+GLSL versions
-#if __APPLE__
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-#else
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-#endif
-
-	// Create window with graphics context
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-	SDL_Window *window = SDL_CreateWindow("Age of Empires Remake", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, window_flags);
-	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-	SDL_GL_MakeCurrent(window, gl_context);
-	SDL_GL_SetSwapInterval(1); // Enable vsync
-
-	// resizing is OK, but not too small please
-	SDL_SetWindowMinimumSize(window, dim_lgy[0].w, dim_lgy[0].h);
-
-	// Initialize OpenGL loader
-#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
-	bool err = gl3wInit() != 0;
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
-	bool err = glewInit() != GLEW_OK;
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
-	bool err = gladLoadGL() == 0;
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING2)
-	bool err = false;
-	glbinding::Binding::initialize();
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING3)
-	bool err = false;
-	glbinding::initialize([](const char *name) { return (glbinding::ProcAddress)SDL_GL_GetProcAddress(name); });
-#else
-	bool err = false; // If you use IMGUI_IMPL_OPENGL_LOADER_CUSTOM, your loader is likely to requires some form of initialization.
-#endif
-	if (err)
-	{
-		fprintf(stderr, "Failed to initialize OpenGL loader!\n");
-		return 1;
-	}
+    // Setup window
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    SDL_Window *window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+    SDL_GL_MakeCurrent(window, gl_context);
+    SDL_GL_SetSwapInterval(1); // Enable vsync
 
 	GLint major, minor;
 	glGetIntegerv(GL_MAJOR_VERSION, &major);
@@ -1104,7 +896,7 @@ int main(int, char**)
 
 	// Setup Platform/Renderer bindings
 	ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
-	ImGui_ImplOpenGL3_Init(glsl_version);
+	ImGui_ImplOpenGL2_Init();
 
 	// Load Fonts
 	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
@@ -1157,26 +949,6 @@ int main(int, char**)
 			auto_paths.pop();
 		}
 
-		// while our worker thread is auto detecting, we can setup the shaders
-		shader_vtx.compile();
-		shader_frag.compile();
-
-		ShaderProgram prog(shader_vtx.handle, shader_frag.handle);
-		attr_pos = glGetAttribLocation(prog.handle, "pos");
-		attr_col = glGetAttribLocation(prog.handle, "col");
-		attr_uv = glGetAttribLocation(prog.handle, "uv");
-		uni_mvp = glGetUniformLocation(prog.handle, "mvp");
-		uni_tex = glGetUniformLocation(prog.handle, "tex");
-
-		if (attr_pos == -1 || attr_col == -1 || attr_uv == -1) {
-			fputs("fatal error: glGetAttribLocation\n", stderr);
-			abort();
-		}
-		if (uni_mvp == -1 || uni_tex == -1) {
-			fputs("fatal error: glGetUniformLocation\n", stderr);
-			abort();
-		}
-
 		DrsView drsview;
 
 		// Main loop
@@ -1227,7 +999,7 @@ int main(int, char**)
 			}
 
 			// Start the Dear ImGui frame
-			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplOpenGL2_NewFrame();
 			ImGui_ImplSDL2_NewFrame(window);
 			ImGui::NewFrame();
 
@@ -1359,7 +1131,8 @@ int main(int, char**)
 					case GLcmdType::stop:
 						break;
 					case GLcmdType::set_bkg:
-						tex_bkg = genie::Texture(std::move(std::get<genie::Tilesheet>(cmd->data)));
+						tex_bkg.ts = std::move(std::get<genie::Tilesheet>(cmd->data));
+						tex_bkg.ts.write(tex_bkg.tex);
 						break;
 					default:
 						assert("bad opengl command" == 0);
@@ -1506,7 +1279,6 @@ int main(int, char**)
 
 			// Rendering
 			ImGui::Render();
-
 			glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 			glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 			glClear(GL_COLOR_BUFFER_BIT);
@@ -1514,11 +1286,11 @@ int main(int, char**)
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			// do our stuff
-			display(prog, tex_bkg);
+			display(tex_bkg);
 
 			// do imgui stuff
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+			//glUseProgram(0); // You may want this if using this code in an OpenGL 3+ context where shaders may be bound
+			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 			SDL_GL_SwapWindow(window);
 		}
 	}
@@ -1531,12 +1303,11 @@ int main(int, char**)
 	if (future.wait_for(std::chrono::seconds(3)) == std::future_status::timeout)
 		_Exit(0); // worker still busy, dirty exit
 
+
 	// Cleanup
-	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplOpenGL2_Shutdown();
 	ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
-
-	Mix_Quit();
 
 	SDL_GL_DeleteContext(gl_context);
 	SDL_DestroyWindow(window);

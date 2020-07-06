@@ -4,23 +4,23 @@
 
 #include "imgui/imgui.h"
 
+#include "math.hpp"
 #include "thread.hpp"
 
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <stack>
 
 namespace genie {
 
 extern std::thread::id t_main;
 
-Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images() {
+Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixels() {
 	bld.sort();
 
-	if (!max)
-		max = max_texture_size;
-
-	size_t maxsize = (size_t)((long long)max * max);
+	max = max ? std::min(max, max_texture_size) : max_texture_size;
+	size_t maxsize = prevpow2((size_t)((long long)max * max));
 
 	// check if biggest image fits
 	auto &tiles = bld.tiles;
@@ -29,6 +29,74 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images() {
 		// splitting images not supported
 		throw std::runtime_error("Image too large");
 
+#if 1
+	// TODO use backtracing
+	//std::stack<SDL_Rect> backtrack;
+	// try to fit as many images as possible
+	size_t size;
+	for (size = nextpow2(std::max<size_t>(biggest.bnds.w, biggest.bnds.h)); size < maxsize; size <<= 1) {
+		images.clear();
+		bnds.x = bnds.y = 0;
+
+		int next_y = 0;
+
+		// place images
+		for (auto it = tiles.rbegin(), end = tiles.rend(); it != end; ++it) {
+			auto &img = *it;
+
+			// does it fit
+			if ((size_t)((long long)bnds.x + img.bnds.w) > size) {
+				// TODO backtrack or start at next row
+
+				// try next row
+				if ((size_t)((long long)next_y + img.bnds.h) > size)
+					break;
+
+				bnds.x = 0;
+				bnds.y = next_y;
+			}
+
+			SDL_Rect pos{bnds.x, bnds.y, img.bnds.w, img.bnds.h};
+			GLfloat s0, t0, s1, t1;
+
+			next_y = std::max(next_y, bnds.y + img.bnds.h);
+
+			s0 = (GLfloat)pos.x / (GLfloat)size;
+			t0 = (GLfloat)pos.y / (GLfloat)size;
+			s1 = (GLfloat)(pos.x + pos.w) / (GLfloat)size;
+			t1 = (GLfloat)(pos.y + pos.h) / (GLfloat)size;
+
+			images.emplace(0, pos, img.id, img.bnds.x, img.bnds.y, s0, t0, s1, t1);
+			bnds.x += img.bnds.w;
+		}
+
+		// stop if all tiles fit
+		if (images.size() == tiles.size())
+			break;
+	}
+
+	if (images.empty())
+		throw std::runtime_error("Image too large");
+
+	bnds.w = bnds.h = (int)size;
+	pixels.resize(size * size);
+
+	// fill unused space with random data
+	for (int y = 0; y < bnds.h; ++y)
+		for (int x = 0; x < bnds.w; ++x)
+			pixels[(long long)y * bnds.w + x] = IM_COL32(rand(), rand(), rand(), rand());
+
+	// place images
+	for (unsigned i = 0; i < images.size(); ++i, tiles.pop_back()) {
+		auto &t = tiles.back();
+		auto &img = *images.find(t.id);
+
+		for (int y = 0; y < t.bnds.h; ++y)
+			for (int x = 0; x < t.bnds.w; ++x)
+				pixels[((long long)y + img.bnds.y) * bnds.w + x + img.bnds.x] = t.pixels[(long long)y * t.bnds.w + x];
+	}
+
+#else
 	// place all images on first row
 	bnds.h = biggest.bnds.h;
 
@@ -36,17 +104,22 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images() {
 		auto &img = *it;
 		bnds.w += img.bnds.w;
 	}
+
+	size_t need = (size_t)((long long)bnds.w * bnds.h);
+	pixels.resize(need);
+
+	// TODO place images
+	for (int y = 0; y < bnds.h; ++y)
+		for (int x = 0; x < bnds.w; ++x)
+			pixels[(long long)y * bnds.w + x] = IM_COL32(rand(), rand(), rand(), rand());
+#endif
 }
 
 void Tilesheet::write(GLuint tex) {
 	assert(is_t_main());
 
-	std::vector<uint32_t> pixels((size_t)((long long)bnds.w * bnds.h));
-
-	// TODO place images
-	for (int y = 0; y < bnds.h; ++y)
-		for (int x = 0; x < bnds.w; ++x)
-			pixels[(long long)y * bnds.w + x] = rand();
+	for (auto &img : images)
+		img.tex = tex;
 
 	GLuint old_tex;
 	glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint*)&old_tex);
@@ -83,18 +156,9 @@ void TilesheetBuilder::sort() noexcept {
 	}
 }
 
-Texture::Texture(Tilesheet &&ts) : tex(0), ts(ts) {
+Texture::Texture() : tex(0), ts() {
 	assert(genie::is_t_main());
 	glGenTextures(1, &tex);
-	this->ts.write(tex);
-}
-
-Texture::Texture(GLuint tex, Tilesheet &&ts) : tex(tex), ts(ts) {
-	if (!tex) {
-		assert(genie::is_t_main());
-		glGenTextures(1, &tex);
-	}
-	this->ts.write(tex);
 }
 
 Texture::~Texture() {
