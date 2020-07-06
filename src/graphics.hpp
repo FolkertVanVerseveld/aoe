@@ -1,8 +1,10 @@
 /* Copyright 2016-2020 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
+#pragma once
 
 #include <cstdint>
 #include <vector>
 #include <algorithm>
+#include <memory>
 
 #include <GL/gl3w.h>
 
@@ -23,7 +25,7 @@ extern GLint max_texture_size;
 /** Single image in texture */
 class SubImage final {
 public:
-	GLuint tex;
+	GLuint tex; // just for convenience. Texture keeps track of tex's lifecycle.
 	SDL_Rect bnds; // x,y are top & left. w,h are size
 	int hotx, hoty;
 	GLfloat s0, t0, s1, t1;
@@ -32,26 +34,24 @@ public:
 		: tex(tex), bnds(bnds), hotx(hotx), hoty(hoty), s0(s0), t0(t0), s1(s1), t1(t1) {}
 };
 
-class TextureBuilder;
+class TilesheetBuilder;
 
-class Texture final {
+class Tilesheet final {
 public:
-	GLuint tex;
 	SDL_Rect bnds; // x,y are cursor for next texture to place. w,h are bounds
 	std::vector<SubImage> images;
 
-	Texture() : tex(0), bnds(), images() {}
+	Tilesheet() : bnds(), images() {}
 
 	/**
 	 * Munch all SubImagePreviews from TextureBuilder and limit texture size to \a max.
 	 * If max is zero, OpenGL's max texture size is used.
 	 * Note: bld.tiles may not be empty.
 	 */
-	Texture(TextureBuilder&, GLint max=0);
-	Texture(const Texture&) = delete;
-	Texture(Texture&&) = default;
+	Tilesheet(TilesheetBuilder&, GLint max=0);
 
-	~Texture();
+	/** Dump contents to OpenGL texture. This must be run on the OpenGL thread. */
+	void write(GLuint tex);
 };
 
 /** Single image used for texture builder. */
@@ -69,14 +69,14 @@ public:
 	friend bool operator<(const SubImagePreview &lhs, const SubImagePreview &rhs) { return lhs.size() < rhs.size(); }
 };
 
-class TextureBuilder final {
+class TilesheetBuilder final {
 public:
 	std::vector<SubImagePreview> tiles;
 	int w, h;
 	size_t minarea;
 	bool sorted;
 
-	TextureBuilder() : tiles(), w(0), h(0), minarea(0), sorted(false) {}
+	TilesheetBuilder() : tiles(), w(0), h(0), minarea(0), sorted(false) {}
 
 	template<typename... Args>
 	decltype(auto) emplace(Args&&... args) {
@@ -89,6 +89,22 @@ public:
 	}
 
 	void sort() noexcept;
+};
+
+class Texture final {
+public:
+	GLuint tex;
+	Tilesheet ts;
+
+	Texture() : tex(0), ts() {}
+	Texture(Tilesheet&&);
+	Texture(GLuint tex, Tilesheet&&);
+
+	Texture(const Texture&) = delete;
+
+	~Texture();
+
+	void bind();
 };
 
 }

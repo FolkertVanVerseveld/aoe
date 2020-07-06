@@ -27,7 +27,7 @@ public:
 
 enum class MusicId {
 	none,
-	start,
+	open,
 	win,
 	lost,
 	game, // track1-10

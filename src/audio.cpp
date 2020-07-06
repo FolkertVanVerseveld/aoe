@@ -18,18 +18,18 @@ extern std::string game_dir;
 
 const char *msc_names[msc_count] = {
 	"",
-	"open",
-	"win",
-	"loss",
-	"track1",
-	"track2",
-	"track3",
-	"track4",
-	"track5",
-	"track6",
-	"track7",
-	"track8",
-	"track9",
+	"Title",
+	"Won",
+	"Loss",
+	"Sick Sate Rittim",
+	"Fretless Salsa",
+	"Polyrhythmic Song",
+	"String Attack!",
+	"Medieval Melody",
+	"The Old One Sleeps",
+	"Slow and Spacious",
+	"Wally",
+	"Rain",
 };
 
 /*
@@ -54,7 +54,7 @@ unsigned music_game_pos = 1;
 int playing;
 
 // don't touch these as they cannot be changed directly
-static bool msc_on = true, sfx_on = true;
+static bool msc_on = false, sfx_on = true;
 static int sfx_vol = MIX_MAX_VOLUME, msc_vol = MIX_MAX_VOLUME;
 
 static void music_stop() {
@@ -157,7 +157,7 @@ void Jukebox::play(MusicId id, int loops) {
 	std::string name;
 
 	switch (id) {
-		case MusicId::start: name = "open.mid"; break;
+		case MusicId::open: name = "open.mid"; break;
 		case MusicId::win: name = "won.mid"; break;
 		case MusicId::lost: name = "lost.mid"; break;
 		default:

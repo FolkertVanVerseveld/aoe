@@ -14,7 +14,7 @@ namespace genie {
 
 extern std::thread::id t_main;
 
-Texture::Texture(TextureBuilder &bld, GLint max) : tex(0), bnds(), images() {
+Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images() {
 	bld.sort();
 
 	if (!max)
@@ -38,12 +38,26 @@ Texture::Texture(TextureBuilder &bld, GLint max) : tex(0), bnds(), images() {
 	}
 }
 
-Texture::~Texture() {
-	if (tex) {
-		// OpenGL calls are only allowed in main thread
-		assert(is_t_main());
-		glDeleteTextures(1, &tex);
-	}
+void Tilesheet::write(GLuint tex) {
+	assert(is_t_main());
+
+	std::vector<uint32_t> pixels((size_t)((long long)bnds.w * bnds.h));
+
+	// TODO place images
+	for (int y = 0; y < bnds.h; ++y)
+		for (int x = 0; x < bnds.w; ++x)
+			pixels[(long long)y * bnds.w + x] = rand();
+
+	GLuint old_tex;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint*)&old_tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#ifdef GL_UNPACK_ROW_LENGTH
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bnds.w, bnds.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+	glBindTexture(GL_TEXTURE_2D, old_tex);
 }
 
 SubImagePreview::SubImagePreview(unsigned id, const Image &img, const SDL_Palette *pal) : pixels(img.bnds.w * img.bnds.h), bnds(img.bnds), id(id) {
@@ -62,11 +76,37 @@ SubImagePreview::SubImagePreview(unsigned id, const Image &img, const SDL_Palett
 		}
 }
 
-void TextureBuilder::sort() noexcept {
+void TilesheetBuilder::sort() noexcept {
 	if (!sorted) {
 		std::sort(tiles.begin(), tiles.end());
 		sorted = true;
 	}
+}
+
+Texture::Texture(Tilesheet &&ts) : tex(0), ts(ts) {
+	assert(genie::is_t_main());
+	glGenTextures(1, &tex);
+	this->ts.write(tex);
+}
+
+Texture::Texture(GLuint tex, Tilesheet &&ts) : tex(tex), ts(ts) {
+	if (!tex) {
+		assert(genie::is_t_main());
+		glGenTextures(1, &tex);
+	}
+	this->ts.write(tex);
+}
+
+Texture::~Texture() {
+	if (tex) {
+		assert(genie::is_t_main());
+		glDeleteTextures(1, &tex);
+	}
+}
+
+void Texture::bind() {
+	assert(tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
 }
 
 }

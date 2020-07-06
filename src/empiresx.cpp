@@ -151,7 +151,7 @@ public:
 
 uniform mat4 mvp;
 
-attribute vec2 coord2d;
+attribute vec3 pos;
 attribute vec2 uv;
 attribute vec4 col;
 
@@ -160,7 +160,7 @@ varying vec4 frag_col;
 
 void main(void)
 {
-	gl_Position = mvp * vec4(coord2d, 0.0, 1.0);
+	gl_Position = mvp * vec4(pos, 1.0);
 	frag_col = col;
 	frag_uv = uv;
 }
@@ -179,7 +179,7 @@ void main(void)
 }
 )glsl", GL_FRAGMENT_SHADER);
 
-static GLint attr_pos, attr_col, uni_mvp;
+static GLint attr_pos, attr_col, attr_uv, uni_mvp, uni_tex;
 
 class ShaderProgram final {
 public:
@@ -229,6 +229,7 @@ enum class WorkTaskType {
 	stop,
 	check_root,
 	load_menu,
+	play_music,
 };
 
 using FdlgItem = std::pair<std::string, std::string>;
@@ -236,7 +237,7 @@ using FdlgItem = std::pair<std::string, std::string>;
 class WorkTask final {
 public:
 	WorkTaskType type;
-	std::variant<std::nullopt_t, FdlgItem, MenuId> data;
+	std::variant<std::nullopt_t, FdlgItem, MenuId, genie::MusicId> data;
 
 	WorkTask(WorkTaskType t) : type(t), data(std::nullopt) {}
 
@@ -279,12 +280,17 @@ Assets assets;
 
 enum class GLcmdType {
 	stop,
+	set_bkg,
 };
 
 struct GLcmd final {
 	GLcmdType type;
+	std::variant<std::nullopt_t, genie::Tilesheet> data;
 
-	GLcmd(GLcmdType type) : type(type) {}
+	GLcmd(GLcmdType type) : type(type), data(std::nullopt) {}
+
+	template<typename... Args>
+	GLcmd(GLcmdType type, Args&&... args) : type(type), data(args...) {}
 };
 
 enum class GLcmdResultType {
@@ -331,6 +337,9 @@ public:
 						break;
 					case WorkTaskType::load_menu:
 						load_menu(task);
+						break;
+					case WorkTaskType::play_music:
+						genie::jukebox.play(std::get<genie::MusicId>(task.data));
 						break;
 					default:
 						assert("bad task type" == 0);
@@ -383,7 +392,8 @@ private:
 	void load_menu(WorkTask &task) {
 		MenuId id = std::get<MenuId>(task.data);
 
-		start(2);
+		start(3);
+		set_desc("Loading menu dialog");
 
 		// find corresponding dialog
 		const genie::res_id dlg_ids[] = {
@@ -397,13 +407,18 @@ private:
 		dlg.set_bkg(0);
 		genie::Animation &anim = *dlg.bkganim.get();
 
-		genie::TextureBuilder bld;
+		genie::TilesheetBuilder bld;
 		bld.emplace(anim.subimage(0), dlg.pal.get());
-		genie::Texture tex(bld);
+		genie::Tilesheet ts(bld);
+
+		ch.cmds.produce(GLcmdType::set_bkg, std::move(ts));
+
+		++p.step;
+		set_desc("Loading menu music");
 
 		switch (id) {
 			case MenuId::start: {
-				genie::jukebox.play(genie::MusicId::start);
+				genie::jukebox.play(genie::MusicId::open);
 				++p.step;
 				done(task, WorkResultType::success);
 				break;
@@ -915,10 +930,44 @@ public:
 	}
 };
 
-static void display(ShaderProgram &prog) {
-	if (menu_id != MenuId::config) {
+static void display(ShaderProgram &prog, genie::Texture &tex_bkg) {
+	glUseProgram(prog.handle);
 
+	if (menu_id != MenuId::config && tex_bkg.tex) {
+		glm::mat4 mvp = glm::ortho(0, tex_bkg.ts.bnds.w, tex_bkg.ts.bnds.h, 0, -1, 1);
+
+		glUniform1i(uni_tex, 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
+
+		glUniformMatrix4fv(uni_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
+		glEnableVertexAttribArray(attr_pos);
+		glEnableVertexAttribArray(attr_col);
+		glEnableVertexAttribArray(attr_uv);
+
+		const GLfloat bkg[] = {
+			0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+			640, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+			0.0, 800, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+
+			0.0, 800, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			640, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+			0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+		};
+
+		glVertexAttribPointer(attr_pos, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), bkg);
+		glVertexAttribPointer(attr_col, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), &bkg[4]);
+		glVertexAttribPointer(attr_uv, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), &bkg[2]);
+
+
+		glDrawArrays(GL_TRIANGLES, 0, 5);
+
+		glDisableVertexAttribArray(attr_uv);
+		glDisableVertexAttribArray(attr_col);
+		glDisableVertexAttribArray(attr_pos);
 	}
+
+	return;
 
 	switch (menu_id) {
 		case MenuId::config:
@@ -926,12 +975,11 @@ static void display(ShaderProgram &prog) {
 		case MenuId::start:
 		{
 			float move = sinf((float)SDL_GetTicks() / 1000.0f * (2 * M_PI) / 5.0f);
-			float angle = SDL_GetTicks() / 1000.0 * 45;
+			float angle = SDL_GetTicks() / 1000.0f * 45;
 
 			glm::vec3 axis_z(0, 0, 1);
 			glm::mat4 mvp = glm::translate(glm::mat4(1.0f), glm::vec3(move, 0.0, 0.0)) * glm::rotate(glm::mat4(1.0f), glm::radians(angle), axis_z);
 
-			glUseProgram(prog.handle);
 			glUniformMatrix4fv(uni_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
 			glEnableVertexAttribArray(attr_pos);
 			glEnableVertexAttribArray(attr_col);
@@ -1084,6 +1132,7 @@ int main(int, char**)
 
 	bool fs_choose_root = false, auto_detect = false;
 	GLchannel glch;
+	genie::Texture tex_bkg;
 	Worker w_bkg(glch);
 	int err_bkg;
 
@@ -1113,15 +1162,17 @@ int main(int, char**)
 		shader_frag.compile();
 
 		ShaderProgram prog(shader_vtx.handle, shader_frag.handle);
-		attr_pos = glGetAttribLocation(prog.handle, "coord2d");
+		attr_pos = glGetAttribLocation(prog.handle, "pos");
 		attr_col = glGetAttribLocation(prog.handle, "col");
+		attr_uv = glGetAttribLocation(prog.handle, "uv");
 		uni_mvp = glGetUniformLocation(prog.handle, "mvp");
+		uni_tex = glGetUniformLocation(prog.handle, "tex");
 
-		if (attr_pos == -1 || attr_col == -1) {
+		if (attr_pos == -1 || attr_col == -1 || attr_uv == -1) {
 			fputs("fatal error: glGetAttribLocation\n", stderr);
 			abort();
 		}
-		if (uni_mvp == -1) {
+		if (uni_mvp == -1 || uni_tex == -1) {
 			fputs("fatal error: glGetUniformLocation\n", stderr);
 			abort();
 		}
@@ -1266,7 +1317,7 @@ int main(int, char**)
 
 							if (ImGui::Combo("Background tune", &music_id, genie::msc_names, genie::msc_count)) {
 								id = (genie::MusicId)music_id;
-								genie::jukebox.play(id);
+								w_bkg.tasks.produce(WorkTaskType::play_music, id);
 							}
 
 							if (ImGui::Button("Panic")) {
@@ -1306,6 +1357,9 @@ int main(int, char**)
 			for (std::optional<GLcmd> cmd; cmd = glch.cmds.try_consume(), cmd.has_value();) {
 				switch (cmd->type) {
 					case GLcmdType::stop:
+						break;
+					case GLcmdType::set_bkg:
+						tex_bkg = genie::Texture(std::move(std::get<genie::Tilesheet>(cmd->data)));
 						break;
 					default:
 						assert("bad opengl command" == 0);
@@ -1403,10 +1457,8 @@ int main(int, char**)
 
 						if (fs_has_root) {
 							ImGui::SameLine();
-							if (ImGui::Button(TXT(TextId::btn_startup))) {
-								menu_id = MenuId::start;
-								genie::jukebox.play(genie::MusicId::start);
-							}
+							if (ImGui::Button(TXT(TextId::btn_startup)))
+								w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
 						}
 					}
 					ImGui::End();
@@ -1462,7 +1514,7 @@ int main(int, char**)
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			// do our stuff
-			display(prog);
+			display(prog, tex_bkg);
 
 			// do imgui stuff
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
