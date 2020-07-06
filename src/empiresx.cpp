@@ -62,6 +62,9 @@
 #undef min
 #endif
 
+static SDL_Window *window;
+static SDL_GLContext gl_context;
+
 namespace genie {
 
 GLint max_texture_size;
@@ -76,7 +79,7 @@ static const SDL_Rect dim_lgy[] = {
 };
 
 static const char *str_dim_lgy[] = {
-	"640x480", "800x600", "1024x768",
+	"640x480", "800x600", "1024x768", "custom",
 };
 
 #pragma warning(disable : 26812)
@@ -802,10 +805,83 @@ public:
 	}
 };
 
-static void display(genie::Texture &tex_bkg) {
+class VideoControl final {
+public:
+	int displays;
+	bool aspect, legacy;
+	std::vector<SDL_Rect> bounds;
+	SDL_Rect size;
+
+	VideoControl() : displays(SDL_GetNumVideoDisplays()), aspect(true), legacy(true), bounds(displays > 0 ? displays : 0), size() {
+		for (int i = 0; i < displays; ++i)
+			SDL_GetDisplayBounds(i, &bounds[i]);
+	}
+};
+
+static void display(VideoControl &video, genie::Texture &tex_bkg) {
+	SDL_Rect bnds;
+
+	SDL_GetWindowSize(window, &bnds.w, &bnds.h);
+	SDL_GetWindowPosition(window, &bnds.x, &bnds.y);
+
+	video.size = bnds;
+
+	int lgy_index = 2;
+
+	// prevent division by zero
+	if (bnds.h < 1) bnds.h = 1;
+
+	long long need_w = bnds.w, need_h = bnds.h;
+	GLdouble left = 0, top = 0, right = 1024, bottom = 1024;
+
+	if (video.aspect) {
+		need_w = bnds.w;
+		need_h = need_w * 3 / 4;
+
+		// if too big, project width onto aspect ratio of height
+		if (need_h > bnds.h) {
+			need_h = bnds.h;
+			need_w = need_h * 4 / 3;
+		}
+
+		right = need_w;
+		bottom = need_h;
+	} else {
+		right = bnds.w;
+		bottom = bnds.h;
+	}
+
+	// find closest background to match dimensions
+	if (video.legacy) {
+		lgy_index = 2;
+
+		if (need_w <= 800)
+			lgy_index = bnds.w <= 640 ? 0 : 1;
+	}
+
+	// adjust viewport if aspect ratio differs
+	if (need_w != bnds.w || need_h != bnds.h) {
+		bnds.x = (bnds.w - need_w) / 2;
+		bnds.y = (bnds.h - need_h) / 2;
+
+		glViewport(bnds.x, bnds.y, need_w, need_h);
+		glClearColor(0, 0, 0, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, 1024, 1024, 0, -1, 1);
+	if (video.legacy) {
+		left = dim_lgy[lgy_index].x;
+		top = dim_lgy[lgy_index].y;
+		right = left + dim_lgy[lgy_index].w;
+		bottom = top + dim_lgy[lgy_index].h;
+	}
+	glOrtho(left, right, bottom, top, -1, 1);
+
+
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glColor3f(1.0f, 1.0f, 1.0f);
@@ -814,15 +890,14 @@ static void display(genie::Texture &tex_bkg) {
 	if (menu_id != MenuId::config && tex_bkg.tex) {
 		glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
 
-		const genie::SubImage &img = tex_bkg.ts[2];
+		const genie::SubImage &img = tex_bkg.ts[lgy_index];
 
 		glBegin(GL_QUADS);
 		{
-			GLfloat x0 = img.bnds.x, y0 = img.bnds.y, x1 = x0 + img.bnds.w, y1 = y0 + img.bnds.h;
-			glTexCoord2f(img.s0, img.t0); glVertex2f(x0, y0);
-			glTexCoord2f(img.s1, img.t0); glVertex2f(x1, y0);
-			glTexCoord2f(img.s1, img.t1); glVertex2f(x1, y1);
-			glTexCoord2f(img.s0, img.t1); glVertex2f(x0, y1);
+			glTexCoord2f(img.s0, img.t0); glVertex2f(left, top);
+			glTexCoord2f(img.s1, img.t0); glVertex2f(right, top);
+			glTexCoord2f(img.s1, img.t1); glVertex2f(right, bottom);
+			glTexCoord2f(img.s0, img.t1); glVertex2f(left, bottom);
 		}
 		glEnd();
 	}
@@ -848,10 +923,12 @@ int main(int, char**)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window *window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
-    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+    window = SDL_CreateWindow("AoE free software Remake v0", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, dim_lgy[2].w, dim_lgy[2].h, window_flags);
+    gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
+
+	SDL_SetWindowMinimumSize(window, dim_lgy[0].w, dim_lgy[0].h);
 
 	GLint major, minor;
 	glGetIntegerv(GL_MAJOR_VERSION, &major);
@@ -931,6 +1008,8 @@ int main(int, char**)
 	std::thread t_bkg(worker_init, std::ref(w_bkg), std::ref(err_bkg));
 	WorkerProgress p = { 0 };
 	std::string bkg_result;
+
+	VideoControl video;
 
 	// some stuff needs to be cleaned up before we shut down, so we need another scope here
 	{
@@ -1095,6 +1174,43 @@ int main(int, char**)
 							if (ImGui::Button("Panic")) {
 								genie::jukebox.stop(-1);
 								genie::jukebox.stop();
+							}
+
+							ImGui::EndTabItem();
+						}
+						if (ImGui::BeginTabItem("Video")) {
+							ImGui::Text("Window size: %.0fx%.0f\n", io.DisplaySize.x, io.DisplaySize.y);
+							ImGui::Checkbox("Keep aspect ratio", &video.aspect);
+
+							if (video.displays < 1) {
+								ImGui::TextUnformatted("Could not get display info");
+							} else {
+								ImGui::Text("Display count: %d\n", video.displays);
+								static int video_display = 0;
+								static int video_mode = 0;
+
+								video_mode = 3;
+
+								for (int i = 0; i < IM_ARRAYSIZE(dim_lgy); ++i)
+									if (video.size.w == dim_lgy[i].w && video.size.h == dim_lgy[i].h) {
+										video_mode = i;
+										break;
+									}
+
+								if (ImGui::Combo("Display mode", &video_mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy))) {
+									if (video_mode < 3)
+										SDL_SetWindowSize(window, dim_lgy[video_mode].w, dim_lgy[video_mode].h);
+								}
+
+								if (video.displays > 1) {
+									ImGui::SliderInputInt("Display", &video_display, 0, video.displays - 1);
+									video_display = genie::clamp(0, video_display, video.displays - 1);
+								} else {
+									video_display = 0;
+								}
+
+								const SDL_Rect &bnds = video.bounds[video_display];
+								ImGui::Text("Size: %dx%d\nLocation: %d,%d\n", bnds.w, bnds.h, bnds.x, bnds.y);
 							}
 
 							ImGui::EndTabItem();
@@ -1286,7 +1402,7 @@ int main(int, char**)
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			// do our stuff
-			display(tex_bkg);
+			display(video, tex_bkg);
 
 			// do imgui stuff
 			//glUseProgram(0); // You may want this if using this code in an OpenGL 3+ context where shaders may be bound

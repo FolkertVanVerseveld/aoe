@@ -29,7 +29,6 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 		// splitting images not supported
 		throw std::runtime_error("Image too large");
 
-#if 1
 	// TODO use backtracing
 	//std::stack<SDL_Rect> backtrack;
 	// try to fit as many images as possible
@@ -81,10 +80,12 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 	bnds.w = bnds.h = (int)size;
 	pixels.resize(size * size);
 
+#if 0
 	// fill unused space with random data
 	for (int y = 0; y < bnds.h; ++y)
 		for (int x = 0; x < bnds.w; ++x)
 			pixels[(long long)y * bnds.w + x] = IM_COL32(rand(), rand(), rand(), rand());
+#endif
 
 	// place images
 	for (unsigned i = 0; i < images.size(); ++i, tiles.pop_back()) {
@@ -95,24 +96,6 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 			for (int x = 0; x < t.bnds.w; ++x)
 				pixels[((long long)y + img.bnds.y) * bnds.w + x + img.bnds.x] = t.pixels[(long long)y * t.bnds.w + x];
 	}
-
-#else
-	// place all images on first row
-	bnds.h = biggest.bnds.h;
-
-	for (auto it = tiles.rbegin(), end = tiles.rend(); it != end; ++it) {
-		auto &img = *it;
-		bnds.w += img.bnds.w;
-	}
-
-	size_t need = (size_t)((long long)bnds.w * bnds.h);
-	pixels.resize(need);
-
-	// TODO place images
-	for (int y = 0; y < bnds.h; ++y)
-		for (int x = 0; x < bnds.w; ++x)
-			pixels[(long long)y * bnds.w + x] = IM_COL32(rand(), rand(), rand(), rand());
-#endif
 }
 
 void Tilesheet::write(GLuint tex) {
