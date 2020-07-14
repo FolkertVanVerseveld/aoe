@@ -39,6 +39,8 @@ static std::vector<std::vector<const char*>> txts = {
 		"About",
 		"Start game",
 		"Editor",
+		// settings
+		"Custom",
 		// tasks
 		"Game configured successfully",
 		"Looking for data resource sets",
@@ -65,6 +67,8 @@ static std::vector<std::vector<const char*>> txts = {
 		"Over",
 		"Speel",
 		"Editor",
+		// instellingen
+		"Anders",
 		// taken
 		"Spelconfiguratie voltooid",
 		"Data resource sets zoeken",
@@ -89,6 +93,8 @@ static std::vector<std::vector<const char*>> txts = {
 		"Over",
 		"Spiel",
 		"Editor",
+		// Einstellung
+		"Anders",
 		// Taken
 		"Konfiguration erfüllt",
 		"Datenressourcensätzen suchen",

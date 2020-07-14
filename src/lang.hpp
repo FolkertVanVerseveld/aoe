@@ -29,6 +29,8 @@ enum class TextId {
 	btn_about,
 	btn_startup,
 	btn_editor,
+	// settings
+	dim_custom,
 	// tasks
 	work_drs_success,
 	work_drs, // check_root: find drs

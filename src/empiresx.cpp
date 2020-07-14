@@ -79,7 +79,7 @@ static const SDL_Rect dim_lgy[] = {
 };
 
 static const char *str_dim_lgy[] = {
-	"640x480", "800x600", "1024x768", "custom",
+	"640x480", "800x600", "1024x768", "Custom",
 };
 
 #pragma warning(disable : 26812)
@@ -807,14 +807,58 @@ public:
 
 class VideoControl final {
 public:
-	int displays;
-	bool aspect, legacy;
+	int displays, display, mode;
+	bool aspect, legacy, fullscreen;
 	std::vector<SDL_Rect> bounds;
-	SDL_Rect size;
+	SDL_Rect size, winsize;
 
-	VideoControl() : displays(SDL_GetNumVideoDisplays()), aspect(true), legacy(true), bounds(displays > 0 ? displays : 0), size() {
+	VideoControl() : displays(SDL_GetNumVideoDisplays()), display(0), mode(3), aspect(true), legacy(true), fullscreen(false), bounds(displays > 0 ? displays : 0), size(), winsize({0, 0, 800, 600}) {
 		for (int i = 0; i < displays; ++i)
 			SDL_GetDisplayBounds(i, &bounds[i]);
+	}
+
+	void idle() {
+		if (fullscreen)
+			return; // Disable mode determination
+
+		// Default to `Custom' mode
+		mode = 3;
+
+		for (int i = 0; i < IM_ARRAYSIZE(dim_lgy); ++i)
+			if (size.w == dim_lgy[i].w && size.h == dim_lgy[i].h) {
+				mode = i;
+				break;
+			}
+
+		if (!fullscreen) {
+			SDL_GetWindowSize(window, &winsize.w, &winsize.h);
+			SDL_GetWindowPosition(window, &winsize.x, &winsize.y);
+		}
+	}
+
+	void set_fullscreen(bool enable) {
+		SDL_Rect bnds;
+		bool was_windowed = !(SDL_GetWindowFlags(window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP));
+		int index = SDL_GetWindowDisplayIndex(window);
+
+		if (index < 0)
+			index = 0;
+
+		SDL_GetWindowSize(window, &bnds.w, &bnds.h);
+
+		if (!enable) {
+			if (!was_windowed) {
+				SDL_SetWindowFullscreen(window, 0);
+				SDL_SetWindowPosition(window, winsize.x, winsize.y);
+			}
+
+			SDL_SetWindowSize(window, winsize.w, winsize.h);
+		} else if (was_windowed) {
+			SDL_SetWindowPosition(window, bounds[index].x, bounds[index].y);
+			SDL_SetWindowSize(window, bounds[index].w, bounds[index].h);
+
+			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+		}
 	}
 };
 
@@ -1077,6 +1121,8 @@ int main(int, char**)
 				}
 			}
 
+			video.idle();
+
 			// Start the Dear ImGui frame
 			ImGui_ImplOpenGL2_NewFrame();
 			ImGui_ImplSDL2_NewFrame(window);
@@ -1182,34 +1228,27 @@ int main(int, char**)
 							ImGui::Text("Window size: %.0fx%.0f\n", io.DisplaySize.x, io.DisplaySize.y);
 							ImGui::Checkbox("Keep aspect ratio", &video.aspect);
 
+							if (ImGui::Checkbox("Fullscreen", &video.fullscreen))
+								video.set_fullscreen(video.fullscreen);
+
 							if (video.displays < 1) {
 								ImGui::TextUnformatted("Could not get display info");
 							} else {
 								ImGui::Text("Display count: %d\n", video.displays);
-								static int video_display = 0;
-								static int video_mode = 0;
 
-								video_mode = 3;
-
-								for (int i = 0; i < IM_ARRAYSIZE(dim_lgy); ++i)
-									if (video.size.w == dim_lgy[i].w && video.size.h == dim_lgy[i].h) {
-										video_mode = i;
-										break;
-									}
-
-								if (ImGui::Combo("Display mode", &video_mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy))) {
-									if (video_mode < 3)
-										SDL_SetWindowSize(window, dim_lgy[video_mode].w, dim_lgy[video_mode].h);
+								if (ImGui::Combo("Display mode", &video.mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy))) {
+									if (video.mode < 3)
+										SDL_SetWindowSize(window, dim_lgy[video.mode].w, dim_lgy[video.mode].h);
 								}
 
 								if (video.displays > 1) {
-									ImGui::SliderInputInt("Display", &video_display, 0, video.displays - 1);
-									video_display = genie::clamp(0, video_display, video.displays - 1);
+									ImGui::SliderInputInt("Display", &video.display, 0, video.displays - 1);
+									video.display = genie::clamp(0, video.display, video.displays - 1);
 								} else {
-									video_display = 0;
+									video.display = 0;
 								}
 
-								const SDL_Rect &bnds = video.bounds[video_display];
+								const SDL_Rect &bnds = video.bounds[video.display];
 								ImGui::Text("Size: %dx%d\nLocation: %d,%d\n", bnds.w, bnds.h, bnds.x, bnds.y);
 							}
 
