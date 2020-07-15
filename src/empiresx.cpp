@@ -41,6 +41,7 @@
 #include <stack>
 #include <exception>
 #include <stdexcept>
+#include <map>
 
 #include <signal.h>
 
@@ -153,11 +154,12 @@ Assets assets;
 enum class GLcmdType {
 	stop,
 	set_bkg,
+	set_dlgcol,
 };
 
 struct GLcmd final {
 	GLcmdType type;
-	std::variant<std::nullopt_t, genie::Tilesheet> data;
+	std::variant<std::nullopt_t, genie::Tilesheet, genie::DialogColors> data;
 
 	GLcmd(GLcmdType type) : type(type), data(std::nullopt) {}
 
@@ -288,6 +290,7 @@ private:
 		// send back to main thread
 		genie::Tilesheet ts(bld);
 		ch.cmds.produce(GLcmdType::set_bkg, ts);
+		ch.cmds.produce(GLcmdType::set_dlgcol, dlg.colors());
 
 		++p.step;
 		set_desc("Loading menu music");
@@ -318,6 +321,15 @@ private:
 			"Terrain.drs"
 		};
 
+		std::string ttfnames[] = {
+			"arial.ttf",
+			"arialbd.ttf",
+			"comic.ttf",
+			"comicbd.ttf",
+			"COPRGTB.TTF",
+			"COPRGTL.TTF",
+		};
+
 		struct ResChk final {
 			genie::res_id id;
 			unsigned type;
@@ -338,7 +350,7 @@ private:
 			}
 		};
 
-		start(2);
+		start(3);
 		set_desc(TXT(TextId::work_drs));
 
 		std::string dir(item.first);
@@ -407,6 +419,24 @@ private:
 					done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_no_drs_item, (unsigned)r.id));
 					return;
 				}
+		}
+
+		++p.step;
+		set_desc("Looking for game fonts");
+
+		// FIXME support linux
+		std::string base("C:\\Windows\\Fonts\\");
+
+		for (unsigned i = 0; i < IM_ARRAYSIZE(ttfnames); ++i) {
+			FILE *f;
+			std::string path(base + ttfnames[i]);
+
+			if (!(f = fopen(path.c_str(), "rb"))) {
+				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_no_ttf, path.c_str()));
+				return;
+			}
+
+			fclose(f);
 		}
 
 		++p.step;
@@ -808,16 +838,34 @@ public:
 
 class GlobalConfiguration;
 
+static constexpr bool contains(double left, double top, double right, double bottom, double x, double y) {
+	return x >= left && y >= top && x < right && y < bottom;
+}
+
 class VideoControl final {
 public:
 	int displays, display, mode;
 	bool aspect, legacy, fullscreen;
 	std::vector<SDL_Rect> bounds;
-	SDL_Rect size, winsize;
+	SDL_Rect size, winsize, vp;
 
-	VideoControl() : displays(SDL_GetNumVideoDisplays()), display(0), mode(3), aspect(true), legacy(true), fullscreen(false), bounds(displays > 0 ? displays : 0), size(), winsize({0, 0, 800, 600}) {
+	VideoControl() : displays(SDL_GetNumVideoDisplays()), display(0), mode(3), aspect(true), legacy(true), fullscreen(false), bounds(displays > 0 ? displays : 0), size(), winsize({0, 0, 800, 600}), vp() {
 		for (int i = 0; i < displays; ++i)
 			SDL_GetDisplayBounds(i, &bounds[i]);
+	}
+
+	void motion(double &px, double &py, int x, int y) {
+		if (x < vp.x || y < vp.y || x >= vp.x + vp.w || y >= vp.y + vp.h) {
+			px = py = -1;
+			return;
+		}
+
+		if (vp.w == size.w && vp.h == size.h) {
+			px = x; py = y;
+		} else {
+			px = (x - vp.x) * (double)(size.w - vp.x) / vp.w;
+			py = (y	- vp.y) * (double)(size.h - vp.y) / vp.h;
+		}
 	}
 
 	void idle() {
@@ -894,6 +942,7 @@ static constexpr uint32_t cfghdr = 0x1b28d7a4; // Nothing special, just smashing
  * Application-wide user-settings save/restore wrapper.
  * Currently only looks at current working directory for settings.dat.
  * Any errors are ignored.
+ * TODO add custom installation path
  *
  * File format:
  * 00-03  magic identifier
@@ -1061,90 +1110,293 @@ void VideoControl::restore(GlobalConfiguration &cfg) {
 	set_fullscreen(cfg.fullscreen);
 }
 
-static void display(VideoControl &video, genie::Texture &tex_bkg) {
+class Hud;
+
+class UI {
+public:
+	bool hot, active, enabled, selected;
 	SDL_Rect bnds;
+	double left, top, right, bottom;
 
-	SDL_GetWindowSize(window, &bnds.w, &bnds.h);
-	SDL_GetWindowPosition(window, &bnds.x, &bnds.y);
+	unsigned id;
 
-	video.size = bnds;
+	UI() : UI(-1) {}
+	UI(unsigned id) : hot(false), active(false), enabled(false), selected(false), bnds(), left(-1), top(-1), right(-1), bottom(-1), id(id) {}
 
-	int lgy_index = 2;
+	/** Display the component immediately. */
+	virtual void display(Hud&) = 0;
+	/** Apply new settings to component. */
+	virtual bool update(Hud&) = 0;
+};
 
-	// prevent division by zero
-	if (bnds.h < 1) bnds.h = 1;
+class Button : public UI {
+public:
+	SDL_Color cols[6];
 
-	long long need_w = bnds.w, need_h = bnds.h;
-	GLdouble left = 0, top = 0, right = 1024, bottom = 1024;
+	Button(unsigned id) : UI(id) {}
 
-	if (video.aspect) {
-		need_w = bnds.w;
-		need_h = need_w * 3 / 4;
+	void display(Hud&) override;
+	bool update(Hud&) override;
+};
 
-		// if too big, project width onto aspect ratio of height
-		if (need_h > bnds.h) {
-			need_h = bnds.h;
-			need_w = need_h * 4 / 3;
+/**
+ * Headup Display
+ *
+ * Note to self: never use GL_LINES to draw a bunch of lines next to each other,
+ * because this will always break when the is in fullscreen or custom resolution as gaps may appear.
+ * This can be mitigated by drawing rectangles on top of each other.
+ */
+class Hud final {
+public:
+	std::map<unsigned, std::unique_ptr<UI>> items;
+	std::set<unsigned> keep;
+
+	SDL_Color cols[6];
+	double mouse_x, mouse_y;
+	double left, right, top, bottom;
+
+	void reset() {
+		items.clear();
+		keep.clear();
+	}
+
+	void display() {
+		for (unsigned id : keep)
+			items.find(id)->second->display(*this);
+
+#if 0
+		for (auto it = items.begin(); it != items.end();) {
+			if (keep.find(it->first) == keep.end())
+				it = items.erase(it);
+			else
+				++it;
 		}
+#endif
 
-		right = need_w;
-		bottom = need_h;
-	} else {
-		right = bnds.w;
-		bottom = bnds.h;
+		keep.clear();
 	}
 
-	// find closest background to match dimensions
-	if (video.legacy) {
-		lgy_index = 2;
+	bool button(unsigned id, double x, double y, double w, double h, SDL_Color cols[6]) {
+		// copy state
+		left = x; top = y; right = x + w; bottom = y + h;
 
-		if (need_w <= 800)
-			lgy_index = bnds.w <= 640 ? 0 : 1;
+		for (unsigned i = 0; i < 6; ++i)
+			this->cols[i] = cols[i];
+
+		// register component
+		keep.emplace(id);
+
+		// create/update element
+		auto search = items.find(id);
+
+		if (search == items.end())
+			return items.emplace(id, new Button(id)).first->second->update(*this);
+		else
+			return search->second->update(*this);
 	}
 
-	// adjust viewport if aspect ratio differs
-	if (need_w != bnds.w || need_h != bnds.h) {
-		bnds.x = (bnds.w - need_w) / 2;
-		bnds.y = (bnds.h - need_h) / 2;
-
-		glViewport(bnds.x, bnds.y, need_w, need_h);
-		glClearColor(0, 0, 0, 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	}
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	if (video.legacy) {
-		left = dim_lgy[lgy_index].x;
-		top = dim_lgy[lgy_index].y;
-		right = left + dim_lgy[lgy_index].w;
-		bottom = top + dim_lgy[lgy_index].h;
-	}
-	glOrtho(left, right, bottom, top, -1, 1);
-
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glColor3f(1.0f, 1.0f, 1.0f);
-	glEnable(GL_TEXTURE_2D);
-
-	if (menu_id != MenuId::config && tex_bkg.tex) {
-		glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
-
-		const genie::SubImage &img = tex_bkg.ts[lgy_index];
-
+	void rect(SDL_Rect bnds, SDL_Color col[6]) {
 		glBegin(GL_QUADS);
 		{
-			glTexCoord2f(img.s0, img.t0); glVertex2f(left, top);
-			glTexCoord2f(img.s1, img.t0); glVertex2f(right, top);
-			glTexCoord2f(img.s1, img.t1); glVertex2f(right, bottom);
-			glTexCoord2f(img.s0, img.t1); glVertex2f(left, bottom);
+			GLdouble left = bnds.x, top = bnds.y, right = left + bnds.w, bottom = top + bnds.h;
+			// start with outermost layers
+			glColor4ub(col[0].r, col[0].g, col[0].b, 255);
+			glVertex2d(left, top); glVertex2d(right, top); glVertex2d(right, top + 1.); glVertex2d(left, top + 1.);
+			glVertex2d(right - 1., top); glVertex2d(right, top); glVertex2d(right, bottom); glVertex2d(right - 1., bottom);
+
+			glColor4ub(col[1].r, col[1].g, col[1].b, 255);
+			glVertex2d(left + 1., top + 1.); glVertex2d(right - 1., top + 1.); glVertex2d(right - 1, top + 2); glVertex2i(left + 1., top + 2.);
+			glVertex2d(right - 2., top + 2.); glVertex2d(right - 1., top + 2.); glVertex2d(right - 1, bottom); glVertex2i(right - 2., bottom);
+
+			glColor4ub(col[2].r, col[2].g, col[2].b, 255);
+			glVertex2d(left + 2., top + 2.); glVertex2d(right - 2., top + 2.); glVertex2d(right - 2., top + 2.4); glVertex2d(left + 2., top + 2.4);
+			glVertex2d(right - 3., top + 2.); glVertex2d(right - 2., top + 2.); glVertex2d(right - 2., bottom); glVertex2d(right - 3., bottom);
+
+			// continue with outermost and use diagonal lines to ensure the overlapping area closes any gaps
+			glColor4ub(col[5].r, col[5].g, col[5].b, 255);
+			glVertex2d(left, top); glVertex2d(left + 1., top); glVertex2d(left + 1., bottom); glVertex2d(left, bottom);
+			glVertex2d(left, bottom - 1.); glVertex2d(right, bottom - 1.); glVertex2d(right, bottom); glVertex2d(left, bottom);
+
+			glColor4ub(col[4].r, col[4].g, col[4].b, 255);
+			glVertex2d(left + 1., top + 1.); glVertex2d(left + 2., top + 1.); glVertex2d(left + 2., bottom - 1.); glVertex2d(left + 1., bottom - 1.);
+			glVertex2d(left + 2., bottom - 2.); glVertex2d(right - 1., bottom - 2.); glVertex2d(right - 1., bottom - 1.); glVertex2d(left + 2., bottom - 1.);
+
+			glColor4ub(col[3].r, col[3].g, col[3].b, 255);
+			glVertex2d(left + 2., top + 2.); glVertex2d(left + 2.4, top + 2.); glVertex2d(left + 2.4, bottom - 2.); glVertex2d(left + 2., bottom - 2.);
+			glVertex2d(left + 2., bottom - 3.); glVertex2d(right - 2., bottom - 3.); glVertex2d(right - 2., bottom - 2.); glVertex2d(left + 2., bottom - 2.);
 		}
 		glEnd();
 	}
+
+	void shaderect(SDL_Rect bnds, int shade) {
+		if (shade >= 255)
+			return;
+
+		glBegin(GL_QUADS);
+		{
+			glColor4ub(0, 0, 0, shade);
+			glVertex2i(bnds.x, bnds.y); glVertex2i(bnds.x + bnds.w, bnds.y);
+			glVertex2i(bnds.x + bnds.w, bnds.y + bnds.h); glVertex2i(bnds.x, bnds.y + bnds.h);
+		}
+		glEnd();
+	}
+};
+
+void Button::display(Hud &hud) {
+	if (hot) {
+		SDL_Color col[6];
+
+		for (unsigned i = 0; i < 6; ++i)
+			col[5 - i] = cols[i];
+
+		hud.rect(bnds, col);
+	} else {
+		hud.rect(bnds, cols);
+	}
 }
+
+// FIXME stub
+bool Button::update(Hud &hud) {
+	left = hud.left; top = hud.top; right = hud.right; bottom = hud.bottom;
+
+	for (unsigned i = 0; i < 6; ++i)
+		cols[i] = hud.cols[i];
+
+	bnds.x = static_cast<int>(left);
+	bnds.y = static_cast<int>(top);
+	bnds.w = static_cast<int>(right - left);
+	bnds.h = static_cast<int>(bottom - top);
+
+	hot = contains(left, top, right, bottom, hud.mouse_x, hud.mouse_y);
+
+	return false;
+}
+
+class AoE final {
+public:
+	VideoControl video;
+	genie::Texture tex_bkg;
+	genie::DialogColors dlgcol;
+	Hud hud;
+	int mouse_x, mouse_y;
+
+	AoE() : video(), tex_bkg(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1) {
+		settings.load(video);
+
+		if (settings.load()) {
+			video.restore(settings);
+		}
+	}
+
+	void idle(SDL_Event &event) {
+		switch (event.type) {
+			case SDL_MOUSEMOTION:
+				mouse_x = event.motion.x;
+				mouse_y = event.motion.y;
+				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
+				break;
+		}
+	}
+
+	void display() {
+		SDL_Rect bnds;
+
+		SDL_GetWindowSize(window, &bnds.w, &bnds.h);
+		SDL_GetWindowPosition(window, &bnds.x, &bnds.y);
+
+		video.vp = video.size = bnds;
+
+		int lgy_index = 2;
+
+		// prevent division by zero
+		if (bnds.h < 1) bnds.h = 1;
+
+		long long need_w = bnds.w, need_h = bnds.h;
+		GLdouble left = 0, top = 0, right = 1024, bottom = 1024;
+
+		if (video.aspect) {
+			need_w = bnds.w;
+			need_h = need_w * 3 / 4;
+
+			// if too big, project width onto aspect ratio of height
+			if (need_h > bnds.h) {
+				need_h = bnds.h;
+				need_w = need_h * 4 / 3;
+			}
+
+			right = need_w;
+			bottom = need_h;
+		} else {
+			right = bnds.w;
+			bottom = bnds.h;
+		}
+
+		// find closest background to match dimensions
+		if (video.legacy) {
+			lgy_index = 2;
+
+			if (need_w <= 800)
+				lgy_index = bnds.w <= 640 ? 0 : 1;
+		}
+
+		// adjust viewport if aspect ratio differs
+		if (need_w != bnds.w || need_h != bnds.h) {
+			bnds.x = (bnds.w - need_w) / 2;
+			bnds.y = (bnds.h - need_h) / 2;
+
+			glViewport(video.vp.x = bnds.x, video.vp.y = bnds.y, video.vp.w = need_w, video.vp.h = need_h);
+			glClearColor(0, 0, 0, 0);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		} else {
+			video.vp.x = video.vp.y = 0;
+		}
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		if (video.legacy) {
+			left = dim_lgy[lgy_index].x;
+			top = dim_lgy[lgy_index].y;
+			right = left + dim_lgy[lgy_index].w;
+			bottom = top + dim_lgy[lgy_index].h;
+		}
+		// glVertex2i will place coordinate on top-left of pixel, adjust orthogonal view to place them on the pixel's center
+		glOrtho(left - 0.5, right - 0.5, bottom - 0.5, top - 0.5, -1, 1);
+
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		glDisable(GL_BLEND);
+		glEnable(GL_TEXTURE_2D);
+
+		if (menu_id != MenuId::config && tex_bkg.tex) {
+			glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
+
+			const genie::SubImage &img = tex_bkg.ts[lgy_index];
+
+			glBegin(GL_QUADS);
+			{
+				glTexCoord2f(img.s0, img.t0); glVertex2f(left, top);
+				glTexCoord2f(img.s1, img.t0); glVertex2f(right, top);
+				glTexCoord2f(img.s1, img.t1); glVertex2f(right, bottom);
+				glTexCoord2f(img.s0, img.t1); glVertex2f(left, bottom);
+			}
+			glEnd();
+
+			bnds.x = left; bnds.y = top; bnds.w = right - left; bnds.h = bottom - top;
+
+			glDisable(GL_TEXTURE_2D);
+			hud.rect(bnds, dlgcol.bevel);
+
+			hud.button(0, 32, 32, 100, 30, dlgcol.bevel);
+			hud.button(1, 32, 200, 100, 30, dlgcol.bevel);
+
+			hud.display();
+		}
+	}
+};
 
 // Main code
 int main(int, char**)
@@ -1236,7 +1488,7 @@ int main(int, char**)
 	//io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesVietnamese());
 
 	// Our state
-	bool show_demo_window = true;
+	bool show_demo_window = false;
 	bool ther_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -1244,7 +1496,6 @@ int main(int, char**)
 
 	bool fs_choose_root = false, auto_detect = false;
 	GLchannel glch;
-	genie::Texture tex_bkg;
 	Worker w_bkg(glch);
 	int err_bkg;
 
@@ -1252,12 +1503,8 @@ int main(int, char**)
 	WorkerProgress p = { 0 };
 	std::string bkg_result;
 
-	VideoControl video;
-	settings.load(video);
-
-	if (settings.load()) {
-		video.restore(settings);
-	}
+	AoE aoe;
+	VideoControl &video = aoe.video;
 
 	// some stuff needs to be cleaned up before we shut down, so we need another scope here
 	{
@@ -1320,6 +1567,9 @@ int main(int, char**)
 					case SDL_KEYUP:
 						if (event.key.keysym.sym == SDLK_BACKQUOTE)
 							show_debug = !show_debug;
+						break;
+					default:
+						aoe.idle(event);
 						break;
 					}
 				}
@@ -1430,6 +1680,9 @@ int main(int, char**)
 						}
 						if (ImGui::BeginTabItem("Video")) {
 							ImGui::Text("Window size: %.0fx%.0f\n", io.DisplaySize.x, io.DisplaySize.y);
+							ImGui::Text("Viewport: (%d,%d), (%d,%d)", video.vp.x, video.vp.y, video.vp.x + video.vp.w, video.vp.y + video.vp.h);
+							ImGui::Text("Video size: %d,%d by %dx%d", video.size.x, video.size.y, video.size.w, video.size.h);
+							ImGui::Text("Mouse pos: %d,%d (p: %.1f,%.1f)", aoe.mouse_x, aoe.mouse_y, aoe.hud.mouse_x, aoe.hud.mouse_y);
 							ImGui::Checkbox("Keep aspect ratio", &video.aspect);
 
 							if (ImGui::Checkbox("Fullscreen", &video.fullscreen))
@@ -1493,8 +1746,11 @@ int main(int, char**)
 					case GLcmdType::stop:
 						break;
 					case GLcmdType::set_bkg:
-						tex_bkg.ts = std::move(std::get<genie::Tilesheet>(cmd->data));
-						tex_bkg.ts.write(tex_bkg.tex);
+						aoe.tex_bkg.ts = std::move(std::get<genie::Tilesheet>(cmd->data));
+						aoe.tex_bkg.ts.write(aoe.tex_bkg.tex);
+						break;
+					case GLcmdType::set_dlgcol:
+						aoe.dlgcol = std::move(std::get<genie::DialogColors>(cmd->data));
 						break;
 					default:
 						assert("bad opengl command" == 0);
@@ -1522,6 +1778,7 @@ int main(int, char**)
 								}
 								break;
 							case WorkTaskType::load_menu:
+								aoe.hud.reset();
 								menu_id = std::get<MenuId>(res->task.data);
 								break;
 							default:
@@ -1648,7 +1905,7 @@ int main(int, char**)
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 			// do our stuff
-			display(video, tex_bkg);
+			aoe.display();
 
 			// do imgui stuff
 			//glUseProgram(0); // You may want this if using this code in an OpenGL 3+ context where shaders may be bound

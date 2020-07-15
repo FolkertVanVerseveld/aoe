@@ -403,6 +403,19 @@ void Dialog::set_bkg(int bkgmode) {
 	bkganim.reset(new Animation(std::move(drs.open_anim(cfg.bmp[bkgmode]))));
 }
 
+DialogColors Dialog::colors() {
+	DialogColors col;
+
+	for (unsigned i = 0; i < 6; ++i) {
+		col.bevel[i] = pal->colors[cfg.bevel[i]]; col.bevel[i].a = cfg.shade;
+		col.text [i] = pal->colors[cfg.text [i]]; col.text [i].a = cfg.shade;
+		col.focus[i] = pal->colors[cfg.focus[i]]; col.focus[i].a = cfg.shade;
+		col.state[i] = pal->colors[cfg.state[i]]; col.state[i].a = cfg.shade;
+	}
+
+	return col;
+}
+
 Dialog DRS::open_dlg(res_id id) const {
 	DrsItem item;
 

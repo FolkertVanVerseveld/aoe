@@ -40,6 +40,7 @@ enum class TextId {
 	err_drs_hdr,
 	err_drs_empty,
 	err_no_drs_item,
+	err_no_ttf,
 	max,
 };
 

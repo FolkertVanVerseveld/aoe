@@ -50,6 +50,7 @@ static std::vector<std::vector<const char*>> txts = {
 		"Bad DRS file \"%s\": invalid header",
 		"DRS file \"%s\" must have at least one list",
 		"Could not find DRS item %u",
+		"Could not find TTF font \"%s\"",
 	},
 	// Chinese
 	//{},
@@ -78,6 +79,7 @@ static std::vector<std::vector<const char*>> txts = {
 		"Fout in DRS \"%s\": onjuiste header",
 		"Fout in DRS \"%s\": geen lijsten",
 		"DRS nummer %u niet gevonden",
+		"Kan TTF font \"%s\" niet vinden",
 	},
 	// Deutsch
 	{
@@ -103,7 +105,8 @@ static std::vector<std::vector<const char*>> txts = {
 		"Datenressourcensatz \"%s\" kann nicht gefunden werden",
 		"Beschädigte DRS-Datei \"%s\": ungültiger Header",
 		"Beschädigte DRS-Datei \"%s\": leere Liste",
-		"DRS nummer %u nicht gefunden"
+		"DRS nummer %u nicht gefunden",
+		"TTF Font \"%s\" nicht gefunden",
 	},
 	// 日本語
 	//{},

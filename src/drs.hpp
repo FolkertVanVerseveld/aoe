@@ -317,6 +317,11 @@ struct DialogSettings final {
 	uint8_t state[6];
 };
 
+/** High-level representation of color fields in DialogSettings. */
+struct DialogColors final {
+	SDL_Color bevel[6], text[6], focus[6], state[6];
+};
+
 class DRS;
 
 /** Most generic graphical asset loaded as shape, shape list or plain bitmap */
@@ -372,6 +377,8 @@ public:
 	Dialog(Dialog&&) = default;
 
 	void set_bkg(int bkgmode);
+
+	DialogColors colors();
 };
 
 class DRS final {
