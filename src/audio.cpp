@@ -54,7 +54,7 @@ unsigned music_game_pos = 1;
 int playing;
 
 // don't touch these as they cannot be changed directly
-static bool msc_on = false, sfx_on = true;
+static bool msc_on = true, sfx_on = true;
 static int sfx_vol = MIX_MAX_VOLUME, msc_vol = MIX_MAX_VOLUME;
 
 static void music_stop() {

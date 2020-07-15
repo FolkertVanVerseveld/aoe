@@ -30,6 +30,7 @@
 #include <inttypes.h>
 
 #include <atomic>
+#include <fstream>
 #include <string>
 #include <thread>
 #include <variant>
@@ -805,6 +806,8 @@ public:
 	}
 };
 
+class GlobalConfiguration;
+
 class VideoControl final {
 public:
 	int displays, display, mode;
@@ -836,6 +839,24 @@ public:
 		}
 	}
 
+	void center() {
+		if (fullscreen)
+			return;
+
+		int index = SDL_GetWindowDisplayIndex(window);
+
+		if (index < 0)
+			index = 0;
+
+		int left, top;
+		const SDL_Rect &d = bounds[index];
+
+		left = d.x + (d.w - winsize.w) / 2;
+		top = d.y + (d.h - winsize.h) / 2;
+
+		SDL_SetWindowPosition(window, left, top);
+	}
+
 	void set_fullscreen(bool enable) {
 		SDL_Rect bnds;
 		bool was_windowed = !(SDL_GetWindowFlags(window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP));
@@ -859,8 +880,186 @@ public:
 
 			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 		}
+
+		fullscreen = enable;
 	}
+
+	void restore(GlobalConfiguration &cfg);
 };
+
+static constexpr const char *defcfg = "settings.dat";
+static constexpr uint32_t cfghdr = 0x1b28d7a4; // Nothing special, just smashing some keys
+
+/**
+ * Application-wide user-settings save/restore wrapper.
+ * Currently only looks at current working directory for settings.dat.
+ * Any errors are ignored.
+ *
+ * File format:
+ * 00-03  magic identifier
+ * 04     display index
+ * 05     mode
+ * 06     flags: 0x01 fullscreen, 0x02 music enabled, 0x04 sound enabled
+ * 07     reserved
+ * 18-27  display.x, display.y, display.w, display.h  display boundaries
+ * 28-37  scrbnds.x, scrbnds.y, scrbnds.w, scrbnds.h  application boundaries
+ * 38-39  music volume
+ * 3a-3b  sound volume
+ */
+static class GlobalConfiguration final {
+public:
+	// video
+	int display_index, mode;
+	SDL_Rect display, scrbnds;
+	bool fullscreen;
+	// audio
+	bool msc_on, sfx_on;
+	int msc_vol, sfx_vol;
+
+	void load(const VideoControl &video) {
+		display_index = video.display;
+		mode = video.mode;
+		display = video.bounds[display_index];
+		fullscreen = (SDL_GetWindowFlags(window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
+
+		if (scrbnds.w < 1 || scrbnds.h < 1)
+			scrbnds = dim_lgy[2];
+
+		if (!fullscreen) {
+			SDL_GetWindowPosition(window, &scrbnds.x, &scrbnds.y);
+			SDL_GetWindowSize(window, &scrbnds.w, &scrbnds.h);
+		}
+	}
+
+	bool load() { return load(defcfg); }
+
+	bool load(const char *fname) {
+		try {
+			std::ifstream in(fname, std::ios_base::binary);
+			in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+			uint8_t db; uint32_t dd;
+			int8_t b; int16_t w; int32_t d;
+
+			SDL_Rect display, scrbnds;
+			int display_index, mode;
+			bool fullscreen, msc_on, sfx_on;
+			int msc_vol, sfx_vol;
+
+			in.read((char*)&dd, 4);
+			if (dd != cfghdr)
+				throw std::runtime_error("bad magic header");
+
+			in.read((char*)&b, 1); display_index = b;
+			in.read((char*)&b, 1); mode = b;
+
+			in.read((char*)&db, 1);
+			fullscreen = (db & 0x01) != 0;
+			msc_on = (db & 0x02) != 0;
+			sfx_on = (db & 0x04) != 0;
+
+			in.read((char*)&b, 1);
+
+			in.read((char*)&d, 4); display.x = d;
+			in.read((char*)&d, 4); display.y = d;
+			in.read((char*)&d, 4); display.w = d;
+			in.read((char*)&d, 4); display.h = d;
+
+			if (display.w < 1 || display.h < 1)
+				throw std::runtime_error("invalid display size");
+
+			in.read((char*)&d, 4); scrbnds.x = d;
+			in.read((char*)&d, 4); scrbnds.y = d;
+			in.read((char*)&d, 4); scrbnds.w = d;
+			in.read((char*)&d, 4); scrbnds.h = d;
+
+			if (scrbnds.w < 1 || scrbnds.h < 1)
+				throw std::runtime_error("invalid application size");
+
+			in.read((char*)&w, 2); msc_vol = w;
+			in.read((char*)&w, 2); sfx_vol = w;
+
+			this->display = display;
+			this->scrbnds = scrbnds;
+			this->display_index = display_index;
+			this->mode = mode;
+			this->fullscreen = fullscreen;
+
+			genie::jukebox.msc(msc_on); genie::jukebox.msc_volume(msc_vol);
+			genie::jukebox.sfx(sfx_on); genie::jukebox.sfx_volume(sfx_vol);
+
+			return true;
+		} catch (std::ios_base::failure &f) {
+			fprintf(stderr, "%s: %s\n", fname, f.what());
+		} catch (std::runtime_error &e) {
+			fprintf(stderr, "%s: %s\n", fname, e.what());
+		}
+
+		return false;
+	}
+
+	void save() { save(defcfg); }
+
+	void save(const char *fname) {
+		try {
+			std::ofstream out(fname, std::ios_base::binary);
+			out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+
+			uint8_t db;
+			int8_t b; int16_t w; int32_t d;
+
+			out.write((char*)&cfghdr, 4);
+
+			b = display_index; out.write((char*)&b, 1);
+			b = mode; out.write((char*)&b, 1);
+
+			db = 0;
+			if (fullscreen)
+				db |= 0x01;
+			if (genie::jukebox.msc_enabled())
+				db |= 0x02;
+			if (genie::jukebox.sfx_enabled())
+				db |= 0x04;
+			out.write((char*)&db, 1);
+
+			b = 0; out.write((char*)&b, 1);
+
+			d = display.x; out.write((char*)&d, 4);
+			d = display.y; out.write((char*)&d, 4);
+			d = display.w; out.write((char*)&d, 4);
+			d = display.h; out.write((char*)&d, 4);
+
+			d = scrbnds.x; out.write((char*)&d, 4);
+			d = scrbnds.y; out.write((char*)&d, 4);
+			d = scrbnds.w; out.write((char*)&d, 4);
+			d = scrbnds.h; out.write((char*)&d, 4);
+
+			w = genie::jukebox.msc_volume(); out.write((char*)&w, 2);
+			w = genie::jukebox.sfx_volume(); out.write((char*)&w, 2);
+		} catch (std::ios_base::failure &f) {
+			fprintf(stderr, "%s: %s\n", fname, f.what());
+		}
+	}
+} settings;
+
+void VideoControl::restore(GlobalConfiguration &cfg) {
+	// only apply configuration if display settings match
+	bool match = false;
+
+	for (SDL_Rect b : bounds)
+		if (b.x == cfg.display.x && b.y == cfg.display.y && b.w == cfg.display.w && b.h == cfg.display.h) {
+			match = true;
+			break;
+		}
+
+	if (!match)
+		return;
+
+	SDL_SetWindowPosition(window, cfg.scrbnds.x, cfg.scrbnds.y);
+	SDL_SetWindowSize(window, cfg.scrbnds.w, cfg.scrbnds.h);
+
+	set_fullscreen(cfg.fullscreen);
+}
 
 static void display(VideoControl &video, genie::Texture &tex_bkg) {
 	SDL_Rect bnds;
@@ -1054,6 +1253,11 @@ int main(int, char**)
 	std::string bkg_result;
 
 	VideoControl video;
+	settings.load(video);
+
+	if (settings.load()) {
+		video.restore(settings);
+	}
 
 	// some stuff needs to be cleaned up before we shut down, so we need another scope here
 	{
@@ -1230,6 +1434,9 @@ int main(int, char**)
 
 							if (ImGui::Checkbox("Fullscreen", &video.fullscreen))
 								video.set_fullscreen(video.fullscreen);
+
+							if (ImGui::Button("Center"))
+								video.center();
 
 							if (video.displays < 1) {
 								ImGui::TextUnformatted("Could not get display info");
@@ -1448,12 +1655,17 @@ int main(int, char**)
 			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 			SDL_GL_SwapWindow(window);
 		}
+
+		settings.load(video);
 	}
 
 	// try to stop worker
 	// for whatever reason, it may be busy for a long time (e.g. blocking socket call)
 	// in that case, wait up to 3 seconds
 	w_bkg.tasks.stop();
+
+	settings.save();
+
 	auto future = std::async(std::launch::async, &std::thread::join, &t_bkg);
 	if (future.wait_for(std::chrono::seconds(3)) == std::future_status::timeout)
 		_Exit(0); // worker still busy, dirty exit
