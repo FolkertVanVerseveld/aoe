@@ -320,6 +320,7 @@ struct DialogSettings final {
 /** High-level representation of color fields in DialogSettings. */
 struct DialogColors final {
 	SDL_Color bevel[6], text[6], focus[6], state[6];
+	int shade;
 };
 
 class DRS;
@@ -408,6 +409,7 @@ public:
 extern class Assets final {
 public:
 	std::vector<std::unique_ptr<DRS>> blobs;
+	std::vector<std::unique_ptr<Blob>> ttf;
 
 	bool open_item(DrsItem &item, res_id id, DrsType type) const noexcept;
 	bool open_item(DrsItem &item, res_id id, DrsType type, unsigned &pos) const noexcept;

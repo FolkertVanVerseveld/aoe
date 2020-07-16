@@ -9,7 +9,7 @@
 
 namespace ImGui {
 
-IMGUI_API void PixelBox(ImU32 col, const ImVec2 &size) {
+void PixelBox(ImU32 col, const ImVec2 &size) {
 	ImGuiWindow *window = GetCurrentWindow();
 	if (window->SkipItems)
 		return;
@@ -31,7 +31,7 @@ IMGUI_API void PixelBox(ImU32 col, const ImVec2 &size) {
 	SameLine(0, style.FramePadding.x);
 }
 
-IMGUI_API void ColorPalette(SDL_Palette *pal, const ImVec2 &pxsize) {
+void ColorPalette(SDL_Palette *pal, const ImVec2 &pxsize) {
 	for (unsigned y = 0, i = 0, n = pal->ncolors; y < 16; ++y) {
 		for (unsigned x = 0; x < 16 && i < n; ++x, ++i)
 			ImGui::PixelBox(IM_COL32(pal->colors[i].r, pal->colors[i].g, pal->colors[i].b, pal->colors[i].a), pxsize);
@@ -39,7 +39,7 @@ IMGUI_API void ColorPalette(SDL_Palette *pal, const ImVec2 &pxsize) {
 	}
 }
 
-IMGUI_API bool SliderInputInt(const char *label, int *v, int v_min, int v_max, const char *format)
+bool SliderInputInt(const char *label, int *v, int v_min, int v_max, const char *format)
 {
 	ImGuiWindow* window = GetCurrentWindow();
 	if (window->SkipItems)
@@ -66,6 +66,19 @@ IMGUI_API bool SliderInputInt(const char *label, int *v, int v_min, int v_max, c
 	ImGui::TextUnformatted(lbl.c_str() + 3);
 
 	return b;
+}
+
+void FloatingText(const ImVec2 &pos, const char *str, const ImVec4 &col)
+{
+	FloatingText(pos, str, ColorConvertFloat4ToU32(col));
+}
+
+void FloatingText(const ImVec2 &pos, const char *str, ImU32 col)
+{
+	ImGuiContext &g = *GImGui;
+	ImGuiWindow *window = g.CurrentWindow;
+
+	window->DrawList->AddText(g.Font, g.FontSize, pos, col, str);
 }
 
 }

@@ -424,19 +424,19 @@ private:
 		++p.step;
 		set_desc("Looking for game fonts");
 
+		genie::assets.ttf.clear();
+
 		// FIXME support linux
 		std::string base("C:\\Windows\\Fonts\\");
 
 		for (unsigned i = 0; i < IM_ARRAYSIZE(ttfnames); ++i) {
-			FILE *f;
-			std::string path(base + ttfnames[i]);
-
-			if (!(f = fopen(path.c_str(), "rb"))) {
-				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_no_ttf, path.c_str()));
+			try {
+				std::string path(base + ttfnames[i]);
+				genie::assets.ttf.emplace_back(new genie::Blob(path, genie::open(path), true));
+			} catch (std::runtime_error &e) {
+				done(WorkTaskType::check_root, WorkResultType::fail, e.what());
 				return;
 			}
-
-			fclose(f);
 		}
 
 		++p.step;
@@ -863,8 +863,8 @@ public:
 		if (vp.w == size.w && vp.h == size.h) {
 			px = x; py = y;
 		} else {
-			px = (x - vp.x) * (double)(size.w - vp.x) / vp.w;
-			py = (y	- vp.y) * (double)(size.h - vp.y) / vp.h;
+			px = (x - vp.x) * (double)(size.w - 2 * vp.x) / vp.w;
+			py = (y	- vp.y) * (double)(size.h - 2 * vp.y) / vp.h;
 		}
 	}
 
@@ -1132,12 +1132,15 @@ public:
 class Button : public UI {
 public:
 	SDL_Color cols[6];
+	int shade;
 
-	Button(unsigned id) : UI(id) {}
+	Button(unsigned id) : UI(id), cols(), shade() { enabled = true; }
 
 	void display(Hud&) override;
 	bool update(Hud&) override;
 };
+
+IMGUI_API int           ImTextCharFromUtf8(unsigned int* out_char, const char* in_text, const char* in_text_end);
 
 /**
  * Headup Display
@@ -1154,10 +1157,30 @@ public:
 	SDL_Color cols[6];
 	double mouse_x, mouse_y;
 	double left, right, top, bottom;
+	int shade;
+	Uint8 mouse_btn, mouse_btn_grab;
 
 	void reset() {
+		mouse_btn = 0;
+		mouse_btn_grab = 0;
 		items.clear();
 		keep.clear();
+	}
+
+	bool try_grab(Uint8 mask, bool hot) {
+		if (hot && (mouse_btn & mask) != 0) {
+			if (mouse_btn_grab & mask)
+				return false;
+
+			mouse_btn_grab |= mask;
+			return true;
+		}
+
+		return false;
+	}
+
+	bool lost_grab(Uint8 mask, bool active) {
+		return active && (mouse_btn & mask) == 0;
 	}
 
 	void display() {
@@ -1172,13 +1195,14 @@ public:
 				++it;
 		}
 #endif
-
+		// reset state
 		keep.clear();
 	}
 
-	bool button(unsigned id, double x, double y, double w, double h, SDL_Color cols[6]) {
+	bool button(unsigned id, double x, double y, double w, double h, int shade, SDL_Color cols[6]) {
 		// copy state
 		left = x; top = y; right = x + w; bottom = y + h;
+		this->shade = shade;
 
 		for (unsigned i = 0; i < 6; ++i)
 			this->cols[i] = cols[i];
@@ -1240,10 +1264,169 @@ public:
 		}
 		glEnd();
 	}
+
+	void text(ImFont *font, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &str, float width, int align)
+	{
+		text(font, size, pos, col, clip_rect, str.c_str(), str.size(), width, align);
+	}
+
+	void text(ImFont *font, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
+	{
+#ifndef IM_FLOOR
+#define IM_FLOOR(_VAL)                  ((float)(int)(_VAL))
+#endif
+		if (!n)
+			return;
+
+		const char *text_end = text_begin + n;
+
+		pos.x = IM_FLOOR(pos.x + font->DisplayOffset.x);
+		pos.y = IM_FLOOR(pos.y + font->DisplayOffset.y);
+		float x = pos.x;
+		float y = pos.y;
+		if (y > clip_rect.y + clip_rect.h)
+			return;
+
+		const float scale = size / font->FontSize;
+		const float line_height = font->FontSize * scale;
+		const bool word_wrap_enabled = wrap_width > 0.f;
+		const char *word_wrap_eol = NULL;
+
+		// Fast-forward to first visible line
+		const char *s = text_begin;
+		if (y + line_height < clip_rect.y && !word_wrap_enabled)
+			while (y + line_height < clip_rect.y && s < text_end) {
+				s = (const char*)memchr(s, '\n', text_end - s);
+				s = s ? s + 1 : text_end;
+				y += line_height;
+			}
+
+		glColor4ub(col.r, col.g, col.b, col.a);
+		glBegin(GL_QUADS);
+
+		// Align
+		float adjust = 0;
+
+		if (align != -1) {
+			for (const char *s = text_begin; s < text_end;) {
+				unsigned int c = (unsigned int)*s;
+				if (c < 0x80) {
+					++s;
+				} else {
+					s += ImTextCharFromUtf8(&c, s, text_end);
+					if (!c)
+						break;
+				}
+
+				if (c == '\r')
+					continue;
+
+				if (c == '\n')
+					break;
+
+				const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
+				if (!glyph)
+					continue;
+
+				adjust += glyph->AdvanceX * scale;
+			}
+
+			if (align == 0)
+				adjust *= 0.5f;
+		}
+
+		for (const char *s = text_begin; s < text_end;) {
+			if (word_wrap_enabled) {
+				if (!word_wrap_eol) {
+					word_wrap_eol = font->CalcWordWrapPositionA(scale, s, text_end, wrap_width - (x - pos.x));
+
+					if (word_wrap_eol == s)
+						++word_wrap_eol;
+				}
+
+				if (s >= word_wrap_eol) {
+					x = pos.x;
+					y += line_height;
+					word_wrap_eol = NULL;
+
+					// Wrapping skips upcoming blanks
+					while (s < text_end) {
+						const char *c = s;
+						if (*c == ' ' || *c == '\t') {
+							++s;
+						} else {
+							if (*c == '\n')
+								++s;
+							break;
+						}
+					}
+					continue;
+				}
+			}
+
+			// Decode and advance source
+			unsigned int c = (unsigned int)*s;
+			if (c < 0x80) {
+				++s;
+			} else {
+				s += ImTextCharFromUtf8(&c, s, text_end);
+				if (!c)
+					break;
+			}
+
+			if (c < 32) {
+				if (c == '\n') {
+					x = pos.x;
+					y += line_height;
+					if (y > clip_rect.y + clip_rect.h)
+						break; // break out of main loop
+					continue;
+				}
+				if (c == '\r')
+					continue;
+			}
+
+			const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
+			if (!glyph)
+				continue;
+
+			float char_width = glyph->AdvanceX * scale;
+			if (glyph->Visible) {
+				// We don't do a second finer clipping test on the Y axis as we've already skipped anything before clip_rect.y and exit once we pass clip_rect.w
+				float x1 = x + glyph->X0 * scale - adjust;
+				float x2 = x + glyph->X1 * scale - adjust;
+				float y1 = y + glyph->Y0 * scale;
+				float y2 = y + glyph->Y1 * scale;
+
+				if (x1 <= clip_rect.x + clip_rect.w && x2 >= clip_rect.x) {
+					// Render a character
+					float u1 = glyph->U0;
+					float v1 = glyph->V0;
+					float u2 = glyph->U1;
+					float v2 = glyph->V1;
+
+					glTexCoord2f(u1, v1); glVertex2f(x1, y1);
+					glTexCoord2f(u2, v1); glVertex2f(x2, y1);
+					glTexCoord2f(u2, v2); glVertex2f(x2, y2);
+					glTexCoord2f(u1, v2); glVertex2f(x1, y2);
+				}
+			}
+			x += char_width;
+		}
+
+		glEnd();
+	}
 };
 
+static ImFont *fonts[6];
+static int font_sizes[6] = {13, 13, 16, 16, 18, 28};
+
 void Button::display(Hud &hud) {
-	if (hot) {
+	glEnable(GL_BLEND);
+	hud.shaderect(bnds, shade);
+	glDisable(GL_BLEND);
+
+	if (hot && active) {
 		SDL_Color col[6];
 
 		for (unsigned i = 0; i < 6; ++i)
@@ -1253,11 +1436,19 @@ void Button::display(Hud &hud) {
 	} else {
 		hud.rect(bnds, cols);
 	}
+
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	ImFont *font = fonts[4];
+	glBindTexture(GL_TEXTURE_2D, (GLuint)font->ContainerAtlas->TexID);
+	hud.text(font, font_sizes[4], ImVec2(left + bnds.w / 2, top + (bnds.h - font->FontSize) / 2), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, "test123", 200, 0);
+	glDisable(GL_TEXTURE_2D);
 }
 
-// FIXME stub
 bool Button::update(Hud &hud) {
+	// copy state
 	left = hud.left; top = hud.top; right = hud.right; bottom = hud.bottom;
+	shade = 2 * hud.shade;
 
 	for (unsigned i = 0; i < 6; ++i)
 		cols[i] = hud.cols[i];
@@ -1268,6 +1459,17 @@ bool Button::update(Hud &hud) {
 	bnds.h = static_cast<int>(bottom - top);
 
 	hot = contains(left, top, right, bottom, hud.mouse_x, hud.mouse_y);
+
+	if (hud.try_grab(SDL_BUTTON_LMASK, hot)) {
+		active = true;
+		genie::jukebox.sfx(genie::DrsId::button4);
+	}
+
+	if (hud.lost_grab(SDL_BUTTON_LMASK, active)) {
+		active = false;
+		selected = hot;
+		return hot && enabled;
+	}
 
 	return false;
 }
@@ -1289,11 +1491,58 @@ public:
 	}
 
 	void idle(SDL_Event &event) {
+		Uint8 db;
+
 		switch (event.type) {
 			case SDL_MOUSEMOTION:
 				mouse_x = event.motion.x;
 				mouse_y = event.motion.y;
 				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+				db = event.button.button;
+				hud.mouse_btn |= SDL_BUTTON(db);
+				hud.mouse_btn_grab &= ~SDL_BUTTON(db);
+				mouse_x = event.button.x;
+				mouse_y = event.button.y;
+				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
+				break;
+			case SDL_MOUSEBUTTONUP:
+				db = event.button.button;
+				hud.mouse_btn &= ~SDL_BUTTON(db);
+				hud.mouse_btn_grab &= ~SDL_BUTTON(db);
+				mouse_x = event.button.x;
+				mouse_y = event.button.y;
+				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
+				break;
+		}
+	}
+
+	void display_start(SDL_Rect bnds) {
+		hud.rect(bnds, dlgcol.bevel);
+
+		double btn_x, btn_y, btn_w, btn_h, pad_y;
+
+		btn_w = bnds.w * 300.0 / 640.0;
+		btn_h = bnds.h * 40.0 / 480.0;
+		btn_x = bnds.w * 0.5 - btn_w * 0.5;
+		btn_y = bnds.h * 0.625;
+		pad_y = bnds.h * 10.0 / 480.0;
+
+		int selected = -1;
+
+		for (int i = 0; i < 5; ++i)
+			if (hud.button(i, btn_x, btn_y - btn_h * 0.5 + (i - 2) * (btn_h + pad_y), btn_w, btn_h, dlgcol.shade, dlgcol.bevel))
+				selected = i;
+
+		switch (selected) {
+			case 0: // single player
+			case 1: // multiplayer
+			case 2: // help
+			case 3: // scenario builder
+				break;
+			case 4: // exit
+				running = false;
 				break;
 		}
 	}
@@ -1355,12 +1604,7 @@ public:
 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		if (video.legacy) {
-			left = dim_lgy[lgy_index].x;
-			top = dim_lgy[lgy_index].y;
-			right = left + dim_lgy[lgy_index].w;
-			bottom = top + dim_lgy[lgy_index].h;
-		}
+
 		// glVertex2i will place coordinate on top-left of pixel, adjust orthogonal view to place them on the pixel's center
 		glOrtho(left - 0.5, right - 0.5, bottom - 0.5, top - 0.5, -1, 1);
 
@@ -1387,11 +1631,28 @@ public:
 
 			bnds.x = left; bnds.y = top; bnds.w = right - left; bnds.h = bottom - top;
 
-			glDisable(GL_TEXTURE_2D);
-			hud.rect(bnds, dlgcol.bevel);
+#if 0
+			glBindTexture(GL_TEXTURE_2D, (GLuint)fonts[4]->ContainerAtlas->TexID);
+			glEnable(GL_BLEND);
 
-			hud.button(0, 32, 32, 100, 30, dlgcol.bevel);
-			hud.button(1, 32, 200, 100, 30, dlgcol.bevel);
+			glBegin(GL_QUADS);
+			{
+				glTexCoord2f(0, 0); glVertex2f(left, top);
+				glTexCoord2f(1, 0); glVertex2f(right, top);
+				glTexCoord2f(1, 0.7f); glVertex2f(right, bottom);
+				glTexCoord2f(0, 0.7f); glVertex2f(left, bottom);
+			}
+			glEnd();
+			glDisable(GL_BLEND);
+#endif
+			glDisable(GL_TEXTURE_2D);
+
+
+			switch (menu_id) {
+				case MenuId::start:
+					display_start(bnds);
+					break;
+			}
 
 			hud.display();
 		}
@@ -1477,7 +1738,7 @@ int main(int, char**)
 	// - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
 	// - Read 'docs/FONTS.txt' for more instructions and details.
 	// - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-	//io.Fonts->AddFontDefault();
+	io.Fonts->AddFontDefault();
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
@@ -1577,6 +1838,65 @@ int main(int, char**)
 
 			video.idle();
 
+			bool working = w_bkg.progress(p);
+
+			// munch all results
+			for (std::optional<WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
+				switch (res->type) {
+					case WorkResultType::success:
+						switch (res->task.type) {
+							case WorkTaskType::stop:
+								break;
+							case WorkTaskType::check_root:
+								// build font cache
+								io.Fonts->Clear();
+								io.Fonts->AddFontDefault();
+
+								//for (auto &p : genie::assets.ttf) {
+								for (unsigned i = 0; i < 6; ++i) {
+									auto &p = genie::assets.ttf[i];
+									void *copy = IM_ALLOC(p->length());
+									memcpy(copy, p->get(), p->length());
+									fonts[i] = io.Fonts->AddFontFromMemoryTTF(copy, p->length(), font_sizes[i]);
+								}
+
+								ImGui_ImplOpenGL2_CreateFontsTexture();
+
+								fs_has_root = true;
+								// start game automatically on auto detect
+								if (auto_detect) {
+									auto_detect = false;
+									w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
+								}
+								break;
+							case WorkTaskType::load_menu:
+								aoe.hud.reset();
+								menu_id = std::get<MenuId>(res->task.data);
+								break;
+							default:
+								assert("bad task type" == 0);
+								break;
+						}
+						break;
+					case WorkResultType::stop:
+						break;
+					case WorkResultType::fail:
+						if (!auto_paths.empty()) {
+							std::string path(auto_paths.top());
+							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
+							auto_paths.pop();
+							working = true;
+						} else {
+							auto_detect = false;
+						}
+						break;
+					default:
+						assert("bad result type" == 0);
+						break;
+				}
+				bkg_result = res->what;
+			}
+
 			// Start the Dear ImGui frame
 			ImGui_ImplOpenGL2_NewFrame();
 			ImGui_ImplSDL2_NewFrame(window);
@@ -1586,6 +1906,9 @@ int main(int, char**)
 			io.IniFilename = NULL;
 
 			if (show_debug) {
+				if (fs_has_root)
+					ImGui::PushFont(fonts[4]);
+
 				// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
 				if (show_demo_window)
 					ImGui::ShowDemoWindow(&show_demo_window);
@@ -1738,6 +2061,10 @@ int main(int, char**)
 					}
 				}
 				ImGui::End();
+
+
+				if (fs_has_root)
+					ImGui::PopFont();
 			}
 
 			// munch all OpenGL commands
@@ -1760,50 +2087,6 @@ int main(int, char**)
 
 			static int lang_current = 0;
 			static bool show_about = false;
-			bool working = w_bkg.progress(p);
-
-			// munch all results
-			for (std::optional<WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
-				switch (res->type) {
-					case WorkResultType::success:
-						switch (res->task.type) {
-							case WorkTaskType::stop:
-								break;
-							case WorkTaskType::check_root:
-								fs_has_root = true;
-								// start game automatically on auto detect
-								if (auto_detect) {
-									auto_detect = false;
-									w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
-								}
-								break;
-							case WorkTaskType::load_menu:
-								aoe.hud.reset();
-								menu_id = std::get<MenuId>(res->task.data);
-								break;
-							default:
-								assert("bad task type" == 0);
-								break;
-						}
-						break;
-					case WorkResultType::stop:
-						break;
-					case WorkResultType::fail:
-						if (!auto_paths.empty()) {
-							std::string path(auto_paths.top());
-							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
-							auto_paths.pop();
-							working = true;
-						} else {
-							auto_detect = false;
-						}
-						break;
-					default:
-						assert("bad result type" == 0);
-						break;
-				}
-				bkg_result = res->what;
-			}
 
 			switch (menu_id) {
 				case MenuId::config:
@@ -1849,6 +2132,7 @@ int main(int, char**)
 
 						if (fs_has_root) {
 							ImGui::SameLine();
+
 							if (ImGui::Button(TXT(TextId::btn_startup)))
 								w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
 						}
