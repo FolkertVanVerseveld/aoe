@@ -94,6 +94,7 @@ enum class MenuId {
 	config,
 	start,
 	editor,
+	scn_edit,
 };
 
 MenuId menu_id = MenuId::config;
@@ -274,7 +275,9 @@ private:
 			-1,
 			(unsigned)genie::DrsId::menu_start,
 			(unsigned)genie::DrsId::menu_editor,
+			(unsigned)genie::DrsId::menu_scn_edit,
 		};
+
 		genie::Dialog dlg(genie::assets.blobs[2]->open_dlg(dlg_ids[(unsigned)id]));
 		++p.step;
 
@@ -296,16 +299,22 @@ private:
 		set_desc("Loading menu music");
 
 		switch (id) {
-			case MenuId::start: {
+			case MenuId::start:
 				genie::jukebox.play(genie::MusicId::open);
-				++p.step;
-				done(task, WorkResultType::success);
 				break;
-			}
+			case MenuId::editor:
+				break;
+			case MenuId::scn_edit:
+				genie::jukebox.stop();
+				break;
 			default:
+				assert("bad menu id" == 0);
 				done(task, WorkResultType::fail);
-				break;
+				return;
 		}
+
+		++p.step;
+		done(task, WorkResultType::success);
 	}
 
 	void check_root(const FdlgItem &item) {
@@ -1104,6 +1113,7 @@ void VideoControl::restore(GlobalConfiguration &cfg) {
 	if (!match)
 		return;
 
+	winsize = cfg.scrbnds;
 	SDL_SetWindowPosition(window, cfg.scrbnds.x, cfg.scrbnds.y);
 	SDL_SetWindowSize(window, cfg.scrbnds.w, cfg.scrbnds.h);
 
@@ -1132,7 +1142,8 @@ public:
 class Button : public UI {
 public:
 	SDL_Color cols[6];
-	int shade;
+	int shade, fnt_id;
+	std::string label;
 
 	Button(unsigned id) : UI(id), cols(), shade() { enabled = true; }
 
@@ -1140,7 +1151,7 @@ public:
 	bool update(Hud&) override;
 };
 
-IMGUI_API int           ImTextCharFromUtf8(unsigned int* out_char, const char* in_text, const char* in_text_end);
+IMGUI_API int ImTextCharFromUtf8(unsigned int* out_char, const char* in_text, const char* in_text_end);
 
 /**
  * Headup Display
@@ -1157,8 +1168,9 @@ public:
 	SDL_Color cols[6];
 	double mouse_x, mouse_y;
 	double left, right, top, bottom;
-	int shade;
+	int shade, fnt_id;
 	Uint8 mouse_btn, mouse_btn_grab;
+	std::string m_text;
 
 	void reset() {
 		mouse_btn = 0;
@@ -1199,9 +1211,11 @@ public:
 		keep.clear();
 	}
 
-	bool button(unsigned id, double x, double y, double w, double h, int shade, SDL_Color cols[6]) {
+	bool button(unsigned id, unsigned fnt_id, double x, double y, double w, double h, const std::string &label, int shade, SDL_Color cols[6]) {
 		// copy state
 		left = x; top = y; right = x + w; bottom = y + h;
+		m_text = label;
+		this->fnt_id = fnt_id;
 		this->shade = shade;
 
 		for (unsigned i = 0; i < 6; ++i)
@@ -1419,7 +1433,7 @@ public:
 };
 
 static ImFont *fonts[6];
-static int font_sizes[6] = {13, 13, 16, 16, 18, 28};
+static int font_sizes[6] = {14, 14, 16, 16, 18, 28};
 
 void Button::display(Hud &hud) {
 	glEnable(GL_BLEND);
@@ -1439,16 +1453,18 @@ void Button::display(Hud &hud) {
 
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
-	ImFont *font = fonts[4];
+	ImFont *font = fonts[fnt_id];
 	glBindTexture(GL_TEXTURE_2D, (GLuint)font->ContainerAtlas->TexID);
-	hud.text(font, font_sizes[4], ImVec2(left + bnds.w / 2, top + (bnds.h - font->FontSize) / 2), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, "test123", 200, 0);
+	hud.text(font, font_sizes[fnt_id], ImVec2(left + bnds.w / 2, top + (bnds.h - font->FontSize) / 2), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, label, 200, 0);
 	glDisable(GL_TEXTURE_2D);
 }
 
 bool Button::update(Hud &hud) {
 	// copy state
 	left = hud.left; top = hud.top; right = hud.right; bottom = hud.bottom;
+	label = hud.m_text;
 	shade = 2 * hud.shade;
+	fnt_id = hud.fnt_id;
 
 	for (unsigned i = 0; i < 6; ++i)
 		cols[i] = hud.cols[i];
@@ -1474,6 +1490,22 @@ bool Button::update(Hud &hud) {
 	return false;
 }
 
+class Terrain final {
+public:
+	std::vector<uint8_t> tiles, hmap;
+	int w, h;
+
+	Terrain() : tiles(), hmap() {}
+
+	void resize(int w, int h) {
+		if (w < 1) w = 1;
+		if (h < 1) h = 1;
+
+		tiles.reserve(w * h);
+		hmap.reserve(w * h);
+	}
+};
+
 class AoE final {
 public:
 	VideoControl video;
@@ -1481,8 +1513,11 @@ public:
 	genie::DialogColors dlgcol;
 	Hud hud;
 	int mouse_x, mouse_y;
+	bool working, global_settings;
+	Worker &w_bkg;
+	Terrain terrain;
 
-	AoE() : video(), tex_bkg(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1) {
+	AoE(Worker &w_bkg) : video(), tex_bkg(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1), working(false), global_settings(false), w_bkg(w_bkg), terrain() {
 		settings.load(video);
 
 		if (settings.load()) {
@@ -1518,6 +1553,83 @@ public:
 		}
 	}
 
+	void display_editor(SDL_Rect bnds) {
+		hud.rect(bnds, dlgcol.bevel);
+
+		double btn_x, btn_y, btn_w, btn_h, pad_y;
+
+		btn_w = bnds.w * 300.0 / 640.0;
+		btn_h = bnds.h * 40.0 / 480.0;
+		btn_x = bnds.w * 0.5 - btn_w * 0.5;
+		btn_y = bnds.h * 0.5;
+		pad_y = bnds.h * 10.0 / 480.0;
+
+		int selected = -1;
+
+		TextId ids[] = {
+			TextId::btn_scn_edit,
+			TextId::btn_cpn_edit,
+			TextId::btn_drs_edit,
+			TextId::btn_back,
+		};
+
+		for (int i = 0; i < IM_ARRAYSIZE(ids); ++i)
+			if (hud.button(i, 4, btn_x, btn_y + (i - 2) * (btn_h + pad_y), btn_w, btn_h, TXT(ids[i]), dlgcol.shade, dlgcol.bevel))
+				selected = i;
+
+		if (working)
+			return;
+
+		switch (selected) {
+			case 0:
+				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::scn_edit);
+				break;
+			case 3:
+				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
+				break;
+		}
+	}
+
+	void display_scn_edit(SDL_Rect bnds) {
+		SDL_Rect top, bottom;
+
+		top.x = bnds.x; top.y = bnds.y; top.w = bnds.w; top.h = 51;
+		bottom.x = bnds.x; bottom.y = bnds.h - 143; bottom.w = bnds.w; bottom.h = 143;
+
+		double btn_x, btn_y, btn_w, btn_h, pad_x, pad_y;
+
+		pad_x = 3; pad_y = 5;
+		btn_w = 58; btn_h = 40;
+		btn_x = bnds.w - btn_w - pad_x; btn_y = pad_y;
+
+		int selected = -1;
+
+		hud.rect(top, dlgcol.bevel);
+		hud.rect(bottom, dlgcol.bevel);
+
+		glColor3f(0, 0, 0);
+		glBegin(GL_QUADS);
+		{
+			glVertex2f(0, top.h);
+			glVertex2f(bnds.w, top.h);
+			glVertex2f(bnds.w, bottom.y);
+			glVertex2f(0, bottom.y);
+		}
+		glEnd();
+
+		if (hud.button(0, 0, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_back), dlgcol.shade, dlgcol.bevel))
+			selected = 0;
+
+		if (working)
+			return;
+
+		switch (selected) {
+			case 0:
+				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::editor);
+				break;
+		}
+	}
+
 	void display_start(SDL_Rect bnds) {
 		hud.rect(bnds, dlgcol.bevel);
 
@@ -1531,15 +1643,30 @@ public:
 
 		int selected = -1;
 
+		TextId ids[] = {
+			TextId::btn_singleplayer,
+			TextId::btn_multiplayer,
+			TextId::btn_main_settings,
+			TextId::btn_editor,
+			TextId::btn_quit,
+		};
+
 		for (int i = 0; i < 5; ++i)
-			if (hud.button(i, btn_x, btn_y - btn_h * 0.5 + (i - 2) * (btn_h + pad_y), btn_w, btn_h, dlgcol.shade, dlgcol.bevel))
+			if (hud.button(i, 4, btn_x, btn_y - btn_h * 0.5 + (i - 2) * (btn_h + pad_y), btn_w, btn_h, TXT(ids[i]), dlgcol.shade, dlgcol.bevel))
 				selected = i;
+
+		if (working)
+			return;
 
 		switch (selected) {
 			case 0: // single player
 			case 1: // multiplayer
+				break;
 			case 2: // help
+				global_settings = true;
+				break;
 			case 3: // scenario builder
+				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::editor);
 				break;
 			case 4: // exit
 				running = false;
@@ -1615,42 +1742,32 @@ public:
 		glDisable(GL_BLEND);
 		glEnable(GL_TEXTURE_2D);
 
-		if (menu_id != MenuId::config && tex_bkg.tex) {
-			glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
+		if (menu_id != MenuId::config) {
+			if (tex_bkg.tex) {
+				glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
+				const genie::SubImage &img = tex_bkg.ts[lgy_index];
 
-			const genie::SubImage &img = tex_bkg.ts[lgy_index];
-
-			glBegin(GL_QUADS);
-			{
-				glTexCoord2f(img.s0, img.t0); glVertex2f(left, top);
-				glTexCoord2f(img.s1, img.t0); glVertex2f(right, top);
-				glTexCoord2f(img.s1, img.t1); glVertex2f(right, bottom);
-				glTexCoord2f(img.s0, img.t1); glVertex2f(left, bottom);
+				glBegin(GL_QUADS);
+				{
+					glTexCoord2f(img.s0, img.t0); glVertex2f(left, top);
+					glTexCoord2f(img.s1, img.t0); glVertex2f(right, top);
+					glTexCoord2f(img.s1, img.t1); glVertex2f(right, bottom);
+					glTexCoord2f(img.s0, img.t1); glVertex2f(left, bottom);
+				}
+				glEnd();
+				glDisable(GL_TEXTURE_2D);
 			}
-			glEnd();
-
 			bnds.x = left; bnds.y = top; bnds.w = right - left; bnds.h = bottom - top;
-
-#if 0
-			glBindTexture(GL_TEXTURE_2D, (GLuint)fonts[4]->ContainerAtlas->TexID);
-			glEnable(GL_BLEND);
-
-			glBegin(GL_QUADS);
-			{
-				glTexCoord2f(0, 0); glVertex2f(left, top);
-				glTexCoord2f(1, 0); glVertex2f(right, top);
-				glTexCoord2f(1, 0.7f); glVertex2f(right, bottom);
-				glTexCoord2f(0, 0.7f); glVertex2f(left, bottom);
-			}
-			glEnd();
-			glDisable(GL_BLEND);
-#endif
-			glDisable(GL_TEXTURE_2D);
-
 
 			switch (menu_id) {
 				case MenuId::start:
 					display_start(bnds);
+					break;
+				case MenuId::editor:
+					display_editor(bnds);
+					break;
+				case MenuId::scn_edit:
+					display_scn_edit(bnds);
 					break;
 			}
 
@@ -1764,7 +1881,7 @@ int main(int, char**)
 	WorkerProgress p = { 0 };
 	std::string bkg_result;
 
-	AoE aoe;
+	AoE aoe(w_bkg);
 	VideoControl &video = aoe.video;
 
 	// some stuff needs to be cleaned up before we shut down, so we need another scope here
@@ -1826,8 +1943,14 @@ int main(int, char**)
 				if (!munched) {
 					switch (event.type) {
 					case SDL_KEYUP:
-						if (event.key.keysym.sym == SDLK_BACKQUOTE)
-							show_debug = !show_debug;
+						switch (event.key.keysym.sym) {
+							case SDLK_BACKQUOTE:
+								show_debug = !show_debug;
+								break;
+							case SDLK_F11:
+								video.set_fullscreen(!video.fullscreen);
+								break;
+						}
 						break;
 					default:
 						aoe.idle(event);
@@ -1838,7 +1961,7 @@ int main(int, char**)
 
 			video.idle();
 
-			bool working = w_bkg.progress(p);
+			aoe.working = w_bkg.progress(p);
 
 			// munch all results
 			for (std::optional<WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
@@ -1885,7 +2008,7 @@ int main(int, char**)
 							std::string path(auto_paths.top());
 							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
 							auto_paths.pop();
-							working = true;
+							aoe.working = true;
 						} else {
 							auto_detect = false;
 						}
@@ -2095,19 +2218,19 @@ int main(int, char**)
 						ImGui::SetWindowSize(io.DisplaySize);
 						ImGui::SetWindowPos(ImVec2());
 
-						if (ImGui::Button(TXT(TextId::btn_about)))
+						if (ImGui::Button(CTXT(TextId::btn_about)))
 							show_about = true;
 
-						ImGui::TextWrapped(TXT(TextId::hello));
+						ImGui::TextWrapped(CTXT(TextId::hello));
 
 						lang_current = int(lang);
-						ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
+						ImGui::Combo(CTXT(TextId::language), &lang_current, langs, int(LangId::max));
 						lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
 
-						if (!working && ImGui::Button(TXT(TextId::set_game_dir)))
-							fd->OpenDialog(FDLG_CHOOSE_DIR, TXT(TextId::dlg_game_dir), 0, ".");
+						if (!aoe.working && ImGui::Button(CTXT(TextId::set_game_dir)))
+							fd->OpenDialog(FDLG_CHOOSE_DIR, CTXT(TextId::dlg_game_dir), 0, ".");
 
-						if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !working) {
+						if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !aoe.working) {
 							if (fd->IsOk == true) {
 								std::string fname(fd->GetFilepathName()), path(fd->GetCurrentPath());
 								printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
@@ -2119,7 +2242,7 @@ int main(int, char**)
 							fd->CloseDialog(FDLG_CHOOSE_DIR);
 						}
 
-						if (working && p.total) {
+						if (aoe.working && p.total) {
 							ImGui::TextUnformatted(p.desc.c_str());
 							ImGui::ProgressBar(float(p.step) / p.total);
 						}
@@ -2127,55 +2250,70 @@ int main(int, char**)
 						if (!bkg_result.empty())
 							ImGui::TextUnformatted(bkg_result.c_str());
 
-						if (ImGui::Button(TXT(TextId::btn_quit)))
+						if (ImGui::Button(CTXT(TextId::btn_quit)))
 							running = false;
 
 						if (fs_has_root) {
 							ImGui::SameLine();
 
-							if (ImGui::Button(TXT(TextId::btn_startup)))
+							if (ImGui::Button(CTXT(TextId::btn_startup)))
 								w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
 						}
 					}
 					ImGui::End();
 					break;
-				case MenuId::start:
-					ImGui::Begin("Main menu placeholder");
+				case MenuId::scn_edit:
+					ImGui::Begin("Map Editor");
 					{
-						if (ImGui::Button(TXT(TextId::btn_about)))
-							show_about = true;
+						static int w = 20, h = 20;
 
-						if (ImGui::Button(TXT(TextId::btn_editor)))
-							menu_id = MenuId::editor;
+						if (ImGui::BeginTabBar("EditorTabs")) {
+							if (ImGui::BeginTabItem("Map creator")) {
+								ImGui::InputInt("Map width", &w);
+								ImGui::InputInt("Map height", &h);
 
-						if (ImGui::Button(TXT(TextId::btn_quit)))
-							running = false;
+								w = genie::clamp(1, w, 1024);
+								h = genie::clamp(1, h, 1024);
 
-						lang_current = int(lang);
-						ImGui::Combo(TXT(TextId::language), &lang_current, langs, int(LangId::max));
-						lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
+								if (ImGui::Button("Create"))
+									aoe.terrain.resize(w, h);
+
+								ImGui::EndTabItem();
+							}
+
+							ImGui::EndTabBar();
+						}
 					}
 					ImGui::End();
 					break;
-				case MenuId::editor:
-					ImGui::Begin("Editor menu placeholder");
-					{
-						if (ImGui::Button(TXT(TextId::btn_back)))
-							menu_id = MenuId::start;
-					}
-					ImGui::End();
-					break;
+			}
+
+			if (aoe.global_settings || show_debug) {
+				// candidates for language image: flag 460: 0-9, priest convert 604: 0-9
+				ImGui::Begin(CTXT(TextId::dlg_global), show_debug ? NULL : &aoe.global_settings, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+				{
+					ImGui::SetWindowSize(ImVec2(240, 140));
+					ImGui::SetWindowPos(ImVec2(8, 8));
+
+					if (ImGui::Button(CTXT(TextId::btn_about)))
+						show_about = true;
+
+					lang_current = int(lang);
+					ImGui::Combo(CTXT(TextId::language), &lang_current, langs, int(LangId::max));
+					lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
+				}
+				ImGui::End();
 			}
 
 			if (show_about) {
 				ImGui::Begin("About", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 				ImGui::SetWindowSize(io.DisplaySize);
 				ImGui::SetWindowPos(ImVec2());
-				ImGui::TextWrapped("Copyright 2016-%d Folkert van Verseveld\n", year_start);
-				ImGui::TextWrapped(TXT(TextId::about));
+				ImGui::TextWrapped("Copyright (c) 2016-%d Folkert van Verseveld. Some rights reserved\n", year_start);
+				ImGui::TextWrapped(CTXT(TextId::about));
 				ImGui::TextWrapped("Using OpenGL version: %d.%d", major, minor);
 
-				if (ImGui::Button(TXT(TextId::btn_back)))
+				if (ImGui::Button(CTXT(TextId::btn_back)))
 					show_about = false;
 				ImGui::End();
 			}

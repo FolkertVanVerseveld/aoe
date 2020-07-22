@@ -6,6 +6,9 @@
 #include <string>
 
 #include "imgui/imgui.h"
+#include "imgui/ImGuiFileDialog.h"
+
+#include <SDL2/SDL_version.h>
 
 // NOTE: never load TXT and TXTF data externally as this enables remote code execution in vspnrintf
 // NOTE: always ensure that any translation in a imgui window is unique. if it isn't you can suffix it with ## as everything after ## is not shown on screen
@@ -24,21 +27,38 @@ extern const char *langs[] = {
 
 enum LangId lang = LangId::standard;
 
-static std::vector<std::vector<const char*>> txts = {
+#define str(x) #x
+#define stre(x) str(x)
+
+static std::vector<std::vector<std::string>> txts = {
 	// English
 	{
 		"Age of Empires Remake",
 		"Language",
 		"Welcome to the free software remake of Age of Empires. This project is not affiliated with Microsoft or Ensemble Studios in any way. If you have paid for this remake edition, you have been ripped off.\n\nTo get started, you need to have the original game installed from CD-ROM to get this to work. The Definitive Edition on Steam is not supported yet.",
-		"About free software Age of Empires\nversion 0\n\nImGui version " IMGUI_VERSION,
+		"About free software Age of Empires\nversion 0"
+			"\n\n"
+			"Libraries:\n"
+			"  Dear ImGui version " IMGUI_VERSION " Copyright (c) 2014-2020 Omar Cornut and others\n"
+			"  ImGuiFileDialog " IMGUIFILEDIALOG_VERSION " Copyright (c) 2018-2020 Stephane Cuillerdier (aka Aiekick)\n"
+			"  Simple DirectMedia Layer " stre(SDL_MAJOR_VERSION) "." stre(SDL_MINOR_VERSION) " Copyright(c) 1998-2020 Sam Lantinga",
 		"Set game directory",
 		"Choose installation directory of original game",
+		"Global settings",
 		// buttons
 		"Quit",
 		"Back",
 		"About",
 		"Start game",
+		// main menu
+		"Single player",
+		"Multiplayer",
+		"Settings",
 		"Editor",
+		// editor
+		"Scenario Editor",
+		"Campaign Editor",
+		"DRS Editor",
 		// settings
 		"Custom",
 		// tasks
@@ -62,12 +82,21 @@ static std::vector<std::vector<const char*>> txts = {
 		"Over free software Age of Empires Namaak-editie",
 		"Kies spelmap",
 		"Kies installatiemap van origineel spel",
+		"Globale instellingen",
 		// knopjes
 		"Stop",
 		"Terug",
 		"Over",
 		"Speel",
+		// hoofdmenu
+		"Alleen spelen",
+		"Samen spelen",
+		"Instellingen",
 		"Editor",
+		// editor
+		"",
+		"Campagne Bewerken",
+		"DRS Bewerken",
 		// instellingen
 		"Anders",
 		// taken
@@ -85,16 +114,24 @@ static std::vector<std::vector<const char*>> txts = {
 	{
 		"Age of Empires Remake",
 		"Sprache",
-		NULL,//"Willkommen zum kostenlosen Software-Remake Age of Empires. Dieses Projekt ist in keiner Weise mit Microsoft oder Ensemble Studios verbunden. Wenn Sie für diese Remake-Edition bezahlt haben, wurden Sie abgezockt.\n\nUm loszulegen, muss das Originalspiel von der CD-ROM installiert sein, damit dies funktioniert. Die Definitive Edition auf Steam wird noch nicht unterstützt.",
-		NULL,
+		"",//"Willkommen zum kostenlosen Software-Remake Age of Empires. Dieses Projekt ist in keiner Weise mit Microsoft oder Ensemble Studios verbunden. Wenn Sie für diese Remake-Edition bezahlt haben, wurden Sie abgezockt.\n\nUm loszulegen, muss das Originalspiel von der CD-ROM installiert sein, damit dies funktioniert. Die Definitive Edition auf Steam wird noch nicht unterstützt.",
+		"",
 		"Spielverzeichnis einstellen",
 		"Installationsverzeichnis des Originalspiels einstellen",
+		"",
 		// Klicktasten
 		"Stop",
 		"Zurück",
 		"Over",
 		"Spiel",
+		"",
+		"",
+		"Einstellung",
 		"Editor",
+		// Editor
+		"",
+		"",
+		"",
 		// Einstellung
 		"Anders",
 		// Taken
@@ -118,11 +155,11 @@ static std::vector<std::vector<const char*>> txts = {
 	//{},
 };
 
-const char *TXT(LangId lang, TextId id) {
+const std::string &TXT(LangId lang, TextId id) {
 	assert(txts[0].size() == size_t(TextId::max));
 	assert(txts.size() == size_t(LangId::max));
 
-	return size_t(id) >= txts[size_t(lang)].size() || !txts[size_t(lang)][size_t(id)] ? txts[0][size_t(id)] : txts[size_t(lang)][size_t(id)];
+	return size_t(id) >= txts[size_t(lang)].size() || txts[size_t(lang)][size_t(id)].length() == 0 ? txts[0][size_t(id)] : txts[size_t(lang)][size_t(id)];
 }
 
 std::string TXTF(LangId lang, TextId id, ...)
@@ -136,10 +173,10 @@ std::string TXTF(LangId lang, TextId id, ...)
 
 std::string TXTF(LangId lang, TextId id, va_list args)
 {
-	const char *fmt = TXT(lang, id);
+	const std::string &fmt = TXT(lang, id);
 	va_list copy;
 	va_copy(copy, args);
-	int need = vsnprintf(NULL, 0, fmt, copy);
+	int need = vsnprintf(NULL, 0, fmt.c_str(), copy);
 	va_end(copy);
 
 	if (need <= 0)
@@ -147,6 +184,6 @@ std::string TXTF(LangId lang, TextId id, va_list args)
 
 	std::string s(need, 0);
 	// s.size() + 1 abuses the fact that c++11 strings always have a null terminator byte
-	vsnprintf(s.data(), s.size() + 1, fmt, args);
+	vsnprintf(s.data(), s.size() + 1, fmt.c_str(), args);
 	return s;
 }

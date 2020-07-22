@@ -148,6 +148,10 @@ void Jukebox::play(MusicId id, int loops) {
 
 	std::lock_guard<std::recursive_mutex> lock(sfx_mut);
 
+	// Don't restart music if it's already playing.
+	if (Mix_PlayingMusic() && this->id == id)
+		return;
+
 	music_stop();
 	playing = 0;
 

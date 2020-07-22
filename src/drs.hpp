@@ -237,6 +237,7 @@ enum class DrsId {
 	/* dialogs/screen menus */
 	menu_start = 50051,
 	menu_editor = 50054,
+	menu_scn_edit = 50055,
 	/* sfx */
 	game = 5036,
 	button4 = 50300,

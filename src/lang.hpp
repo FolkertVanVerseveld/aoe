@@ -23,12 +23,21 @@ enum class TextId {
 	about,
 	set_game_dir,
 	dlg_game_dir,
+	dlg_global,
 	// buttons
 	btn_quit,
 	btn_back,
 	btn_about,
 	btn_startup,
+	// main menu
+	btn_singleplayer,
+	btn_multiplayer,
+	btn_main_settings,
 	btn_editor,
+	// editor
+	btn_scn_edit,
+	btn_cpn_edit,
+	btn_drs_edit,
 	// settings
 	dim_custom,
 	// tasks
@@ -48,8 +57,11 @@ extern const char *langs[];
 
 extern LangId lang;
 
-const char *TXT(LangId lang, TextId id);
-static const char *TXT(TextId id) { return TXT(lang, id); }
+const std::string &TXT(LangId lang, TextId id);
+static const std::string &TXT(TextId id) { return TXT(lang, id); }
+
+static const char *CTXT(LangId lang, TextId id) { return TXT(lang, id).c_str(); }
+static const char *CTXT(TextId id) { return TXT(id).c_str(); }
 
 std::string TXTF(LangId lang, TextId id, ...);
 std::string TXTF(LangId lang, TextId id, va_list);
