@@ -2,6 +2,11 @@
 
 #include "graphics.hpp"
 
+#define STB_RECT_PACK_IMPLEMENTATION 1
+#define STBRP_LARGE_RECTS 1
+
+#include "imgui/imstb_rectpack.h"
+
 #include "imgui/imgui.h"
 
 #include "math.hpp"
@@ -11,8 +16,15 @@
 #include <string>
 #include <thread>
 #include <stack>
+#include <map>
 
 namespace genie {
+
+#if STBRP_LARGE_RECTS
+constexpr size_t pack_size_max = INT_MAX;
+#else
+constexpr size_t pack_size_max = SHRT_MAX;
+#endif
 
 extern std::thread::id t_main;
 
@@ -20,7 +32,8 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 	bld.sort();
 
 	max = max ? std::min(max, max_texture_size) : max_texture_size;
-	size_t maxsize = prevpow2((size_t)((long long)max * max));
+	// also take into account packer texture limit
+	size_t maxsize = std::min<size_t>(prevpow2((size_t)((long long)max * max)), pack_size_max + 1);
 
 	// check if biggest image fits
 	auto &tiles = bld.tiles;
@@ -32,9 +45,33 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 	// TODO use backtracing
 	//std::stack<SDL_Rect> backtrack;
 	// try to fit as many images as possible
+	std::vector<stbrp_rect> buf_rects;
+	buf_rects.reserve(tiles.size());
+	int fit = 0;
+
 	size_t size;
 	for (size = nextpow2(std::max<size_t>(biggest.bnds.w, biggest.bnds.h)); size < maxsize; size <<= 1) {
 		images.clear();
+#if 1
+		stbrp_context packer = {};
+		buf_rects.clear();
+		std::vector<stbrp_node> buf_nodes(size);
+
+		::stbrp_init_target(&packer, size, size, buf_nodes.data(), tiles.size());
+
+		// populate tiles
+		for (auto it = tiles.rbegin(), end = tiles.rend(); it != end; ++it) {
+			auto &img = *it;
+			auto &r = buf_rects.emplace_back();
+			r.id = img.id;
+			r.w = img.bnds.w;
+			r.h = img.bnds.h;
+			r.was_packed = false;
+		}
+
+		if ((fit = ::stbrp_pack_rects(&packer, buf_rects.data(), tiles.size())) != 0)
+			break;
+#else
 		bnds.x = bnds.y = 0;
 
 		int next_y = 0;
@@ -72,9 +109,10 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 		// stop if all tiles fit
 		if (images.size() == tiles.size())
 			break;
+#endif
 	}
 
-	if (images.empty())
+	if (!fit)
 		throw std::runtime_error("Image too large");
 
 	bnds.w = bnds.h = (int)size;
@@ -86,15 +124,28 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 		for (int x = 0; x < bnds.w; ++x)
 			pixels[(long long)y * bnds.w + x] = IM_COL32(rand(), rand(), rand(), rand());
 #endif
+	std::map<unsigned, unsigned> index;
+
+	for (unsigned i = 0; i < bld.tiles.size(); ++i)
+		index.emplace(bld.tiles[i].id, i);
 
 	// place images
-	for (unsigned i = 0; i < images.size(); ++i, tiles.pop_back()) {
-		auto &t = tiles.back();
-		auto &img = *images.find(t.id);
+	//for (unsigned i = 0; i < images.size(); ++i, tiles.pop_back()) {
+	//	auto &t = tiles.back();
+	for (auto &t : buf_rects) {
+		auto &p = bld.tiles[index.at(t.id)];
+		GLfloat s0, t0, s1, t1;
 
-		for (int y = 0; y < t.bnds.h; ++y)
-			for (int x = 0; x < t.bnds.w; ++x)
-				pixels[((long long)y + img.bnds.y) * bnds.w + x + img.bnds.x] = t.pixels[(long long)y * t.bnds.w + x];
+		s0 = (GLfloat)t.x / (GLfloat)size;
+		t0 = (GLfloat)t.y / (GLfloat)size;
+		s1 = (GLfloat)(t.x + p.bnds.w) / (GLfloat)size;
+		t1 = (GLfloat)(t.y + p.bnds.h) / (GLfloat)size;
+
+		images.emplace(0, p.bnds, t.id, t.x, t.y, s0, t0, s1, t1);
+
+		for (int y = 0; y < t.h; ++y)
+			for (int x = 0; x < t.w; ++x)
+				pixels[((long long)y + t.y) * bnds.w + x + t.x] = p.pixels[(long long)y * t.w + x];
 	}
 }
 
@@ -134,7 +185,7 @@ SubImagePreview::SubImagePreview(unsigned id, const Image &img, const SDL_Palett
 
 void TilesheetBuilder::sort() noexcept {
 	if (!sorted) {
-		std::sort(tiles.begin(), tiles.end());
+		std::sort(tiles.begin(), tiles.end(), [](const SubImagePreview &lhs, const SubImagePreview &rhs){ return lhs.bnds.h < rhs.bnds.h || lhs.bnds.w < rhs.bnds.w; });
 		sorted = true;
 	}
 }

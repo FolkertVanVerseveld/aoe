@@ -234,6 +234,8 @@ enum class DrsId {
 	// units
 	villager_idle = 418,
 	clubman_stand = 425,
+	// terrain tiles
+	terrain_desert = 15000,
 	/* dialogs/screen menus */
 	menu_start = 50051,
 	menu_editor = 50054,
@@ -397,7 +399,9 @@ public:
 	io::Slp open_slp(res_id id) const;
 	Image open_image(res_id id) const;
 	Animation open_anim(res_id id) const { return Animation(id, *this); }
+	Animation open_anim(DrsId id) const { return open_anim((res_id)id); }
 	SDL_Palette *open_pal(res_id id) const;
+	SDL_Palette *open_pal(DrsId id) const { return open_pal((res_id)id); }
 
 	const DrsList operator[](unsigned pos) const noexcept {
 		return DrsList(*this, pos);
@@ -416,6 +420,7 @@ public:
 	bool open_item(DrsItem &item, res_id id, DrsType type, unsigned &pos) const noexcept;
 
 	SDL_Palette *open_pal(res_id id) const;
+	SDL_Palette *open_pal(DrsId id) const { return open_pal((res_id)id); }
 } assets;
 
 }

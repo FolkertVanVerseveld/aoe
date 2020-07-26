@@ -358,7 +358,7 @@ Animation::Animation(res_id id, const DRS &drs) : slp(drs.open_slp(id)), size(0)
 	if (memcmp(slp.hdr->version, "2.0N", 4))
 		throw std::runtime_error("Could not load animation: bad header");
 
-	images.reset(new Image[image_count = slp.hdr->frame_count]);
+	images.reset(new Image[size = image_count = slp.hdr->frame_count]);
 
 	for (int i = 0, n = slp.hdr->frame_count; i < n; ++i)
 		if (images[i].load(slp, i)) {
@@ -370,7 +370,7 @@ Animation::Animation(res_id id, const DRS &drs) : slp(drs.open_slp(id)), size(0)
 	if (!dynamic)
 		return;
 
-	images.reset(new Image[image_count * io::max_players]);
+	images.reset(new Image[size = image_count * io::max_players]);
 
 	for (unsigned p = 0; p < io::max_players; ++p)
 		for (unsigned i = 0; i < image_count; ++i)

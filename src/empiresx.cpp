@@ -267,7 +267,7 @@ private:
 	void load_menu(WorkTask &task) {
 		MenuId id = std::get<MenuId>(task.data);
 
-		start(3);
+		start(4);
 		set_desc("Loading menu dialog");
 
 		// find corresponding dialog
@@ -280,6 +280,7 @@ private:
 
 		genie::Dialog dlg(genie::assets.blobs[2]->open_dlg(dlg_ids[(unsigned)id]));
 		++p.step;
+		set_desc("Loading backgrounds");
 
 		genie::TilesheetBuilder bld;
 
@@ -289,6 +290,23 @@ private:
 			genie::Animation &anim = *dlg.bkganim.get();
 			bld.emplace(anim.subimage(0), dlg.pal.get());
 		}
+
+		++p.step;
+		set_desc("Loading animations");
+
+		// add any other images depending on the menu being loaded
+		switch (id) {
+			case MenuId::scn_edit:
+			{
+				std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal(genie::assets.open_pal(genie::DrsId::palette), SDL_FreePalette);
+				genie::Animation anim(genie::assets.blobs[4]->open_anim(genie::DrsId::terrain_desert));
+				for (size_t i = 0; i < anim.size; ++i) {
+					bld.emplace(anim.images[i], pal.get());
+				}
+				break;
+			}
+		}
+
 
 		// send back to main thread
 		genie::Tilesheet ts(bld);
@@ -2283,6 +2301,22 @@ int main(int, char**)
 
 							ImGui::EndTabBar();
 						}
+					}
+					ImGui::End();
+
+					ImGui::Begin("Texture map");
+					{
+						ImVec2 sz(500, 250);
+						ImVec2 wsz = ImGui::GetWindowSize();
+						sz.x = std::max(wsz.x - 16.0f, sz.x);
+						sz.y = std::max(wsz.y - 35.0f, sz.y);
+
+						ImGui::BeginChild("scrolling", sz, false, ImGuiWindowFlags_HorizontalScrollbar);
+						{
+							ImTextureID tex = (ImTextureID)aoe.tex_bkg.tex;
+							ImGui::Image(tex, ImVec2(aoe.tex_bkg.ts.bnds.w, aoe.tex_bkg.ts.bnds.h));
+						}
+						ImGui::EndChild();
 					}
 					ImGui::End();
 					break;
