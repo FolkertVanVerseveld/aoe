@@ -99,6 +99,7 @@ public:
 		return t;
 	}
 
+	void add(unsigned idx, DrsId id, SDL_Palette *pal);
 	void sort() noexcept;
 };
 

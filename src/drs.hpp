@@ -236,6 +236,15 @@ enum class DrsId {
 	clubman_stand = 425,
 	// terrain tiles
 	terrain_desert = 15000,
+	terrain_grass = 15001,
+	terrain_water_shallow = 15002,
+	terrain_water_deep = 15003,
+	corner_desert_water = 20000,
+	corner_desert_grass = 20001,
+	// 20002 seems redundant?
+	// 20003 tribe relic with annotations
+	// 20004 is some shallow alternative tile?
+	overlay_water = 20006,
 	/* dialogs/screen menus */
 	menu_start = 50051,
 	menu_editor = 50054,
@@ -249,6 +258,7 @@ enum class DrsId {
 	lost = 50321,
 	/* hud */
 	palette = 50500,
+	cursors = 51000,
 	// icons
 	buildings1 = 50704,
 	buildings2 = 50705,

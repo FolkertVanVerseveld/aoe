@@ -285,11 +285,14 @@ private:
 		genie::TilesheetBuilder bld;
 
 		// add all backgrounds
-		for (int i = 0; i < 3; ++i) {
+		for (int i = 0; i < IM_ARRAYSIZE(dim_lgy); ++i) {
 			dlg.set_bkg(i);
 			genie::Animation &anim = *dlg.bkganim.get();
 			bld.emplace(anim.subimage(0), dlg.pal.get());
 		}
+
+		std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal(genie::assets.open_pal(genie::DrsId::palette), SDL_FreePalette);
+		//bld.add(2, genie::DrsId::cursors, pal.get());
 
 		++p.step;
 		set_desc("Loading animations");
@@ -298,11 +301,13 @@ private:
 		switch (id) {
 			case MenuId::scn_edit:
 			{
-				std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal(genie::assets.open_pal(genie::DrsId::palette), SDL_FreePalette);
-				genie::Animation anim(genie::assets.blobs[4]->open_anim(genie::DrsId::terrain_desert));
-				for (size_t i = 0; i < anim.size; ++i) {
-					bld.emplace(anim.images[i], pal.get());
-				}
+				bld.add(4, genie::DrsId::terrain_desert, pal.get());
+				bld.add(4, genie::DrsId::terrain_grass, pal.get());
+				bld.add(4, genie::DrsId::terrain_water_shallow, pal.get());
+				bld.add(4, genie::DrsId::terrain_water_deep, pal.get());
+				bld.add(0, genie::DrsId::corner_desert_water, pal.get());
+				bld.add(0, genie::DrsId::corner_desert_grass, pal.get());
+				bld.add(0, genie::DrsId::overlay_water, pal.get());
 				break;
 			}
 		}
@@ -551,7 +556,7 @@ public:
 
 	DrsView()
 		: current_drs(-1), current_list(-1), current_item(-1), current_image(-1), current_player(-1), current_palette(-1)
-		, channel(-1), dialog_mode(0), lookup_id(0), looping(true), autoplay(true), preview_changed(true)
+		, channel(-1), dialog_mode(0), lookup_id(0), looping(false), autoplay(true), preview_changed(true)
 		, item(), resdata(std::nullopt), pal(nullptr, SDL_FreePalette), res(), preview() {}
 
 	DrsView(const DrsView&) = delete;
@@ -743,7 +748,7 @@ public:
 
 						if (ImGui::TreeNode("Preview")) {
 							int old_dialog_mode = dialog_mode;
-							ImGui::Combo("Display mode", &dialog_mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy));
+							ImGui::Combo("Display mode", &dialog_mode, str_dim_lgy, IM_ARRAYSIZE(dim_lgy));
 
 							if (old_dialog_mode != dialog_mode)
 								preview_changed = true;
@@ -2047,6 +2052,24 @@ int main(int, char**)
 			io.IniFilename = NULL;
 
 			if (show_debug) {
+				if (aoe.tex_bkg.tex) {
+					ImGui::Begin("Texture map");
+					{
+						ImVec2 sz(300, 200);
+						ImVec2 wsz = ImGui::GetWindowSize();
+						sz.x = std::max(wsz.x - 16.0f, sz.x);
+						sz.y = std::max(wsz.y - 35.0f, sz.y);
+
+						ImGui::BeginChild("scrolling", sz, false, ImGuiWindowFlags_HorizontalScrollbar);
+						{
+							ImTextureID tex = (ImTextureID)aoe.tex_bkg.tex;
+							ImGui::Image(tex, ImVec2(aoe.tex_bkg.ts.bnds.w, aoe.tex_bkg.ts.bnds.h));
+						}
+						ImGui::EndChild();
+					}
+					ImGui::End();
+				}
+
 				if (fs_has_root)
 					ImGui::PushFont(fonts[4]);
 
@@ -2301,22 +2324,6 @@ int main(int, char**)
 
 							ImGui::EndTabBar();
 						}
-					}
-					ImGui::End();
-
-					ImGui::Begin("Texture map");
-					{
-						ImVec2 sz(500, 250);
-						ImVec2 wsz = ImGui::GetWindowSize();
-						sz.x = std::max(wsz.x - 16.0f, sz.x);
-						sz.y = std::max(wsz.y - 35.0f, sz.y);
-
-						ImGui::BeginChild("scrolling", sz, false, ImGuiWindowFlags_HorizontalScrollbar);
-						{
-							ImTextureID tex = (ImTextureID)aoe.tex_bkg.tex;
-							ImGui::Image(tex, ImVec2(aoe.tex_bkg.ts.bnds.w, aoe.tex_bkg.ts.bnds.h));
-						}
-						ImGui::EndChild();
 					}
 					ImGui::End();
 					break;

@@ -52,7 +52,6 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 	size_t size;
 	for (size = nextpow2(std::max<size_t>(biggest.bnds.w, biggest.bnds.h)); size < maxsize; size <<= 1) {
 		images.clear();
-#if 1
 		stbrp_context packer = {};
 		buf_rects.clear();
 		std::vector<stbrp_node> buf_nodes(size);
@@ -71,45 +70,6 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 
 		if ((fit = ::stbrp_pack_rects(&packer, buf_rects.data(), tiles.size())) != 0)
 			break;
-#else
-		bnds.x = bnds.y = 0;
-
-		int next_y = 0;
-
-		// place images
-		for (auto it = tiles.rbegin(), end = tiles.rend(); it != end; ++it) {
-			auto &img = *it;
-
-			// does it fit
-			if ((size_t)((long long)bnds.x + img.bnds.w) > size) {
-				// TODO backtrack or start at next row
-
-				// try next row
-				if ((size_t)((long long)next_y + img.bnds.h) > size)
-					break;
-
-				bnds.x = 0;
-				bnds.y = next_y;
-			}
-
-			SDL_Rect pos{bnds.x, bnds.y, img.bnds.w, img.bnds.h};
-			GLfloat s0, t0, s1, t1;
-
-			next_y = std::max(next_y, bnds.y + img.bnds.h);
-
-			s0 = (GLfloat)pos.x / (GLfloat)size;
-			t0 = (GLfloat)pos.y / (GLfloat)size;
-			s1 = (GLfloat)(pos.x + pos.w) / (GLfloat)size;
-			t1 = (GLfloat)(pos.y + pos.h) / (GLfloat)size;
-
-			images.emplace(0, pos, img.id, img.bnds.x, img.bnds.y, s0, t0, s1, t1);
-			bnds.x += img.bnds.w;
-		}
-
-		// stop if all tiles fit
-		if (images.size() == tiles.size())
-			break;
-#endif
 	}
 
 	if (!fit)
@@ -183,9 +143,15 @@ SubImagePreview::SubImagePreview(unsigned id, const Image &img, const SDL_Palett
 		}
 }
 
+void TilesheetBuilder::add(unsigned idx, DrsId id, SDL_Palette *pal) {
+	Animation anim(genie::assets.blobs[idx]->open_anim(id));
+	for (size_t i = 0; i < anim.size; ++i)
+		emplace(anim.images[i], pal);
+}
+
 void TilesheetBuilder::sort() noexcept {
 	if (!sorted) {
-		std::sort(tiles.begin(), tiles.end(), [](const SubImagePreview &lhs, const SubImagePreview &rhs){ return lhs.bnds.h < rhs.bnds.h || lhs.bnds.w < rhs.bnds.w; });
+		std::sort(tiles.begin(), tiles.end(), [](const SubImagePreview &lhs, const SubImagePreview &rhs){ return lhs.bnds.h < rhs.bnds.h; });
 		sorted = true;
 	}
 }

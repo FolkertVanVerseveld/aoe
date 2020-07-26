@@ -98,6 +98,10 @@ bool Image::load(const io::Slp &slp, unsigned idx, unsigned player) {
 	bool dynamic = false;
 	const io::SlpFrameInfo *info = &slp.info[idx];
 
+	// adjust row for gaia
+	if (player == io::max_players - 1)
+		++player;
+
 	bnds.x = info->hotspot_x;
 	bnds.y = info->hotspot_y;
 
