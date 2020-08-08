@@ -22,6 +22,7 @@
 #include "math.hpp"
 #include "audio.hpp"
 #include "graphics.hpp"
+#include "geom.hpp"
 
 #include <cstdio>
 #include <ctime>
@@ -98,6 +99,10 @@ enum class MenuId {
 };
 
 MenuId menu_id = MenuId::config;
+
+static bool constexpr menu_is_game(MenuId id=menu_id) {
+	return id == MenuId::scn_edit;
+}
 
 enum class WorkTaskType {
 	stop,
@@ -1133,7 +1138,14 @@ void VideoControl::restore(GlobalConfiguration &cfg) {
 			break;
 		}
 
-	if (!match)
+	SDL_Rect cntr = cfg.scrbnds;
+	cntr.x += cfg.scrbnds.w / 2;
+	cntr.y += cfg.scrbnds.h / 2;
+
+	if (!match || SDL_GetNumVideoDisplays() < cfg.display_index
+		// Also don't restore if window is out of bounds
+		|| cfg.scrbnds.x + cfg.scrbnds.w < cfg.display.x || cfg.scrbnds.y + cfg.scrbnds.h < cfg.display.y
+		|| cntr.x >= cfg.display.x + cfg.display.w || cntr.y >= cfg.display.y + cfg.display.h)
 		return;
 
 	winsize = cfg.scrbnds;
@@ -1194,6 +1206,7 @@ public:
 	int shade, fnt_id;
 	Uint8 mouse_btn, mouse_btn_grab;
 	std::string m_text;
+	bool was_hot;
 
 	void reset() {
 		mouse_btn = 0;
@@ -1250,10 +1263,20 @@ public:
 		// create/update element
 		auto search = items.find(id);
 
-		if (search == items.end())
-			return items.emplace(id, new Button(id)).first->second->update(*this);
-		else
-			return search->second->update(*this);
+		bool b = false;
+
+		if (search == items.end()) {
+			auto btn = items.emplace(id, new Button(id)).first;
+			b = btn->second->update(*this);
+			if (btn->second->hot)
+				was_hot = true;
+		} else {
+			b = search->second->update(*this);
+			if (search->second->hot)
+				was_hot = true;
+		}
+
+		return b;
 	}
 
 	void rect(SDL_Rect bnds, SDL_Color col[6]) {
@@ -1513,19 +1536,166 @@ bool Button::update(Hud &hud) {
 	return false;
 }
 
+enum AnimationId {
+	desert,
+	grass,
+	water_shallow,
+	water_deep,
+	count,
+};
+
+static const unsigned anim_count[] = {
+	25,
+	25,
+	20,
+	20,
+};
+
+struct TileInfo final {
+	AnimationId id;
+	unsigned subimage;
+
+	TileInfo(AnimationId id, unsigned subimage) : id(id), subimage(subimage) {}
+};
+
 class Terrain final {
 public:
-	std::vector<uint8_t> tiles, hmap;
+	std::vector<uint8_t> tiles;
+	/* Allow negative depths as well as this is more natural when placing water/base ground on layer 0. */
+	std::vector<int8_t> hmap;
 	int w, h;
 
-	Terrain() : tiles(), hmap() {}
+	int left, right, bottom, top;
+	long long tile_focus;
+
+	static constexpr int tw = 64, th = 32, thw = tw / 2, thh = th / 2;
+
+	std::vector<TileInfo> tiledata;
+	std::vector<SDL_Point> tilegfx; // cache for tile positions
+
+	// data for unproject
+	GLfloat proj[16], mv[16];
+	GLint vp[4];
+
+	Terrain() : tiles(), hmap(), w(20), h(20)
+		, left(0), right(0), bottom(1), top(1), tile_focus(-1)
+		, tiledata() { resize(w, h); }
+
+	void init(genie::Texture &tex) {
+		for (unsigned i = 0; i < IM_ARRAYSIZE(anim_count); ++i) {
+			auto &strip = *tex.ts.animations.find(i);
+
+			for (unsigned j = 0; j < anim_count[i]; ++j)
+				tiledata.emplace_back((AnimationId)i, strip.tiles[j]);
+		}
+	}
 
 	void resize(int w, int h) {
 		if (w < 1) w = 1;
 		if (h < 1) h = 1;
 
-		tiles.reserve(w * h);
-		hmap.reserve(w * h);
+		long long sz = (long long)w * h;
+		int pad_x = 10;
+
+		left = 0;
+		right = w * tw;
+		bottom = w * thh;
+		top = -bottom;
+
+		tiles.resize(sz, 1);
+		tilegfx.resize(sz);
+		hmap.resize(sz);
+
+		this->w = w;
+		this->h = h;
+	}
+
+	void select(genie::Texture &tex, int mx, int my, int vpx, int vpy) {
+		// compute world coordinate
+		float pos[3], scr[3];
+
+		scr[0] = mx + vpx; scr[1] = vp[3] - my + vpy; scr[2] = 0;
+		tile_focus = -1;
+
+		genie::unproject(pos, scr, mv, proj, vp);
+
+#if 0
+		printf("select: %d,%d -> %.1f,%.1f\n", mx, my, pos[0], pos[1]);
+
+		uint8_t id = tiles[0];
+		int8_t height = hmap[0];
+
+		if (!(!id || id - 1 > tiledata.size())) {
+
+			auto &t = tiledata[id - 1];
+			auto &strip = *tex.ts.animations.find(t.id);
+			auto &img = *tex.ts.images.find(t.subimage);
+			auto &gfx = tilegfx[0];
+
+			printf("fst: %d,%d\n", gfx.x, gfx.y);
+		}
+#endif
+
+		// determine selected tile
+		for (long long i = 0; i < tiles.size(); ++i) {
+			uint8_t id = tiles[i];
+			int8_t height = hmap[i];
+
+			if (!id || id - 1 > tiledata.size())
+				continue;
+
+			auto &t = tiledata[id - 1];
+			auto &strip = *tex.ts.animations.find(t.id);
+			auto &img = *tex.ts.images.find(t.subimage);
+			auto &gfx = tilegfx[i];
+
+			if (img.contains(pos[0] - gfx.x, pos[1] - gfx.y - height * thh)) {
+				tile_focus = i;
+				break;
+			}
+		}
+	}
+
+	/* Draw terrain. Assumes glBegin hasn't been called yet and the texture is bound. */
+	void show(genie::Texture &tex) {
+		// save unproject data
+		glGetFloatv(GL_MODELVIEW_MATRIX, mv);
+		glGetFloatv(GL_PROJECTION_MATRIX, proj);
+		glGetIntegerv(GL_VIEWPORT, vp);
+
+		glBegin(GL_QUADS);
+		{
+			for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
+				for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
+					GLfloat x0, y0, x1, y1;
+
+					long long pos = (long long)y * w + x;
+					uint8_t id = tiles[pos];
+					int8_t height = hmap[pos];
+
+					if (!id || id - 1 >= tiledata.size())
+						continue;
+
+					auto &t = tiledata[id - 1];
+					auto &strip = *tex.ts.animations.find(t.id);
+					auto &img = *tex.ts.images.find(t.subimage);
+
+					x0 = right - img.bnds.x;
+					x1 = x0 + img.bnds.w;
+					y0 = bottom - img.bnds.y - height * thh;
+					y1 = y0 + img.bnds.h;
+
+					tilegfx[pos].x = right - img.bnds.x;
+					tilegfx[pos].y = bottom - img.bnds.y - height * thh;
+
+					glTexCoord2f(img.s0, img.t0); glVertex2f(x0, y0);
+					glTexCoord2f(img.s1, img.t0); glVertex2f(x1, y0);
+					glTexCoord2f(img.s1, img.t1); glVertex2f(x1, y1);
+					glTexCoord2f(img.s0, img.t1); glVertex2f(x0, y1);
+				}
+			}
+		}
+		glEnd();
 	}
 };
 
@@ -1533,6 +1703,7 @@ class AoE final {
 public:
 	VideoControl video;
 	genie::Texture tex_bkg;
+	genie::Tilesheet ts_next;
 	genie::DialogColors dlgcol;
 	Hud hud;
 	int mouse_x, mouse_y;
@@ -1540,12 +1711,39 @@ public:
 	Worker &w_bkg;
 	Terrain terrain;
 
-	AoE(Worker &w_bkg) : video(), tex_bkg(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1), working(false), global_settings(false), w_bkg(w_bkg), terrain() {
+	int lgy_index;
+	// orthogonal viewport
+	GLdouble left, right, top, bottom;
+
+	float cam_x, cam_y, cam_zoom;
+
+	static constexpr float zoom_min = 0.01f, zoom_max = 5.0f;
+
+	AoE(Worker &w_bkg)
+		: video(), tex_bkg(), ts_next(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1)
+		, working(false), global_settings(false), w_bkg(w_bkg), terrain()
+		, lgy_index(2), left(0), right(0), top(0), bottom(0)
+		, cam_x(0), cam_y(0), cam_zoom(1.0f)
+	{
 		settings.load(video);
 
 		if (settings.load()) {
 			video.restore(settings);
 		}
+	}
+
+	void load_menu(MenuId id) {
+		hud.reset();
+		tex_bkg.ts = std::move(ts_next);
+		tex_bkg.ts.write(tex_bkg.tex);
+
+		switch (id) {
+			case MenuId::scn_edit:
+				terrain.init(tex_bkg);
+				break;
+		}
+
+		menu_id = id;
 	}
 
 	void idle(SDL_Event &event) {
@@ -1564,6 +1762,9 @@ public:
 				mouse_x = event.button.x;
 				mouse_y = event.button.y;
 				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
+
+				if (menu_is_game())
+					terrain.select(tex_bkg, hud.mouse_x, hud.mouse_y, video.vp.x, video.vp.y);
 				break;
 			case SDL_MOUSEBUTTONUP:
 				db = event.button.button;
@@ -1574,6 +1775,44 @@ public:
 				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
 				break;
 		}
+	}
+
+	void draw_background() {
+		assert(tex_bkg.tex);
+		const genie::SubImage &img = tex_bkg.ts[lgy_index];
+
+		glBegin(GL_QUADS);
+		{
+			glTexCoord2f(img.s0, img.t0); glVertex2f(left, top);
+			glTexCoord2f(img.s1, img.t0); glVertex2f(right, top);
+			glTexCoord2f(img.s1, img.t1); glVertex2f(right, bottom);
+			glTexCoord2f(img.s0, img.t1); glVertex2f(left, bottom);
+		}
+		glEnd();
+	}
+
+	void draw_terrain() {
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		// center camera to make zooming and scrolling easier
+		GLdouble w = right - left, h = top - bottom;
+
+		glOrtho(-w * .5, w * .5, -h * .5, h * .5, -1, 1);
+		//glOrtho(left, right, bottom, top, -1, 1);
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glScalef(cam_zoom, cam_zoom, 1.0f);
+		glTranslatef(-cam_x, -cam_y, 0);
+		terrain.show(tex_bkg);
+
+		// restore
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(left - 0.5, right - 0.5, bottom - 0.5, top - 0.5, -1, 1);
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
 	}
 
 	void display_editor(SDL_Rect bnds) {
@@ -1627,18 +1866,26 @@ public:
 
 		int selected = -1;
 
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
+
+		glEnable(GL_BLEND);
+		draw_terrain();//terrain.show(tex_bkg);
+
+		// NOTE y-coordinate for scissor is flipped
+		// the coordinates are window global, so we need the video viewport as well
+		glEnable(GL_SCISSOR_TEST);
+		glScissor(video.vp.x, video.vp.y + video.vp.h - top.h, top.w, top.h);
+		draw_background();
+		glScissor(video.vp.x, video.vp.y, bottom.w, bottom.h);
+		draw_background();
+		glDisable(GL_SCISSOR_TEST);
+
+		glDisable(GL_TEXTURE_2D);
+
+
 		hud.rect(top, dlgcol.bevel);
 		hud.rect(bottom, dlgcol.bevel);
-
-		glColor3f(0, 0, 0);
-		glBegin(GL_QUADS);
-		{
-			glVertex2f(0, top.h);
-			glVertex2f(bnds.w, top.h);
-			glVertex2f(bnds.w, bottom.y);
-			glVertex2f(0, bottom.y);
-		}
-		glEnd();
 
 		if (hud.button(0, 0, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_back), dlgcol.shade, dlgcol.bevel))
 			selected = 0;
@@ -1705,13 +1952,13 @@ public:
 
 		video.vp = video.size = bnds;
 
-		int lgy_index = 2;
+		lgy_index = 2;
 
 		// prevent division by zero
 		if (bnds.h < 1) bnds.h = 1;
 
 		long long need_w = bnds.w, need_h = bnds.h;
-		GLdouble left = 0, top = 0, right = 1024, bottom = 1024;
+		right = bottom = 1024;
 
 		if (video.aspect) {
 			need_w = bnds.w;
@@ -1758,29 +2005,22 @@ public:
 		// glVertex2i will place coordinate on top-left of pixel, adjust orthogonal view to place them on the pixel's center
 		glOrtho(left - 0.5, right - 0.5, bottom - 0.5, top - 0.5, -1, 1);
 
-
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		glDisable(GL_BLEND);
-		glEnable(GL_TEXTURE_2D);
 
 		if (menu_id != MenuId::config) {
-			if (tex_bkg.tex) {
-				glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
-				const genie::SubImage &img = tex_bkg.ts[lgy_index];
+			bnds.x = left; bnds.y = top; bnds.w = right - left; bnds.h = bottom - top;
 
-				glBegin(GL_QUADS);
-				{
-					glTexCoord2f(img.s0, img.t0); glVertex2f(left, top);
-					glTexCoord2f(img.s1, img.t0); glVertex2f(right, top);
-					glTexCoord2f(img.s1, img.t1); glVertex2f(right, bottom);
-					glTexCoord2f(img.s0, img.t1); glVertex2f(left, bottom);
-				}
-				glEnd();
+			if (menu_id != MenuId::scn_edit) {
+				glEnable(GL_TEXTURE_2D);
+				glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
+				draw_background();
 				glDisable(GL_TEXTURE_2D);
 			}
-			bnds.x = left; bnds.y = top; bnds.w = right - left; bnds.h = bottom - top;
+
+			hud.was_hot = false;
 
 			switch (menu_id) {
 				case MenuId::start:
@@ -1986,6 +2226,23 @@ int main(int, char**)
 
 			aoe.working = w_bkg.progress(p);
 
+			// munch all OpenGL commands
+			for (std::optional<GLcmd> cmd; cmd = glch.cmds.try_consume(), cmd.has_value();) {
+				switch (cmd->type) {
+					case GLcmdType::stop:
+						break;
+					case GLcmdType::set_bkg:
+						aoe.ts_next = std::move(std::get<genie::Tilesheet>(cmd->data));
+						break;
+					case GLcmdType::set_dlgcol:
+						aoe.dlgcol = std::move(std::get<genie::DialogColors>(cmd->data));
+						break;
+					default:
+						assert("bad opengl command" == 0);
+						break;
+				}
+			}
+
 			// munch all results
 			for (std::optional<WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
 				switch (res->type) {
@@ -2016,8 +2273,7 @@ int main(int, char**)
 								}
 								break;
 							case WorkTaskType::load_menu:
-								aoe.hud.reset();
-								menu_id = std::get<MenuId>(res->task.data);
+								aoe.load_menu(std::get<MenuId>(res->task.data));
 								break;
 							default:
 								assert("bad task type" == 0);
@@ -2231,24 +2487,6 @@ int main(int, char**)
 					ImGui::PopFont();
 			}
 
-			// munch all OpenGL commands
-			for (std::optional<GLcmd> cmd; cmd = glch.cmds.try_consume(), cmd.has_value();) {
-				switch (cmd->type) {
-					case GLcmdType::stop:
-						break;
-					case GLcmdType::set_bkg:
-						aoe.tex_bkg.ts = std::move(std::get<genie::Tilesheet>(cmd->data));
-						aoe.tex_bkg.ts.write(aoe.tex_bkg.tex);
-						break;
-					case GLcmdType::set_dlgcol:
-						aoe.dlgcol = std::move(std::get<genie::DialogColors>(cmd->data));
-						break;
-					default:
-						assert("bad opengl command" == 0);
-						break;
-				}
-			}
-
 			static int lang_current = 0;
 			static bool show_about = false;
 
@@ -2308,6 +2546,10 @@ int main(int, char**)
 					{
 						static int w = 20, h = 20;
 
+						ImGui::DragFloat("Cam X", &aoe.cam_x, 1.0f, aoe.terrain.left, aoe.terrain.right);
+						ImGui::DragFloat("Cam Y", &aoe.cam_y, 1.0f, aoe.terrain.top, aoe.terrain.bottom);
+						ImGui::DragFloat("Cam Zoom", &aoe.cam_zoom, 0.005f, aoe.zoom_min, aoe.zoom_max, "%.2f", 1.2f);
+
 						if (ImGui::BeginTabBar("EditorTabs")) {
 							if (ImGui::BeginTabItem("Map creator")) {
 								ImGui::InputInt("Map width", &w);
@@ -2318,6 +2560,33 @@ int main(int, char**)
 
 								if (ImGui::Button("Create"))
 									aoe.terrain.resize(w, h);
+
+								ImGui::EndTabItem();
+							}
+
+							if (ImGui::BeginTabItem("Tile Editor")) {
+								if (aoe.terrain.tile_focus == -1) {
+									ImGui::TextUnformatted("Nothing selected");
+								} else {
+									static int id, height;
+									int x, y;
+									long long pos = aoe.terrain.tile_focus;
+
+									y = (int)(pos / aoe.terrain.w);
+									x = (int)(pos % aoe.terrain.w);
+
+									ImGui::Text("pos: %d,%d", x, y);
+
+									id = aoe.terrain.tiles[pos];
+									height = aoe.terrain.hmap[pos];
+
+									ImGui::SliderInputInt("ID", &id, 0, UINT8_MAX);
+									ImGui::InputInt("Height", &height);
+									height = genie::clamp<int>(INT8_MIN, height, INT8_MAX);
+
+									aoe.terrain.tiles[pos] = id;
+									aoe.terrain.hmap[pos] = height;
+								}
 
 								ImGui::EndTabItem();
 							}

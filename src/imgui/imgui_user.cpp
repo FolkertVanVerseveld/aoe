@@ -68,17 +68,4 @@ bool SliderInputInt(const char *label, int *v, int v_min, int v_max, const char 
 	return b;
 }
 
-void FloatingText(const ImVec2 &pos, const char *str, const ImVec4 &col)
-{
-	FloatingText(pos, str, ColorConvertFloat4ToU32(col));
-}
-
-void FloatingText(const ImVec2 &pos, const char *str, ImU32 col)
-{
-	ImGuiContext &g = *GImGui;
-	ImGuiWindow *window = g.CurrentWindow;
-
-	window->DrawList->AddText(g.Font, g.FontSize, pos, col, str);
-}
-
 }

@@ -28,6 +28,10 @@ constexpr size_t pack_size_max = SHRT_MAX;
 
 extern std::thread::id t_main;
 
+bool SubImage::contains(int px, int py) const {
+	return (px >= 0 && py >= 0 && px < bnds.w && py < bnds.h) && (mask.empty() || mask[(long long)py * bnds.w + px]);
+}
+
 Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixels() {
 	bld.sort();
 
@@ -42,8 +46,6 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 		// splitting images not supported
 		throw std::runtime_error("Image too large");
 
-	// TODO use backtracing
-	//std::stack<SDL_Rect> backtrack;
 	// try to fit as many images as possible
 	std::vector<stbrp_rect> buf_rects;
 	buf_rects.reserve(tiles.size());
@@ -84,10 +86,14 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 		for (int x = 0; x < bnds.w; ++x)
 			pixels[(long long)y * bnds.w + x] = IM_COL32(rand(), rand(), rand(), rand());
 #endif
+	// build lookup-table for previews
 	std::map<unsigned, unsigned> index;
 
 	for (unsigned i = 0; i < bld.tiles.size(); ++i)
 		index.emplace(bld.tiles[i].id, i);
+
+	// copy animation strips
+	animations = bld.animations;
 
 	// place images
 	//for (unsigned i = 0; i < images.size(); ++i, tiles.pop_back()) {
@@ -101,7 +107,7 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 		s1 = (GLfloat)(t.x + p.bnds.w) / (GLfloat)size;
 		t1 = (GLfloat)(t.y + p.bnds.h) / (GLfloat)size;
 
-		images.emplace(0, p.bnds, t.id, t.x, t.y, s0, t0, s1, t1);
+		images.emplace(0, p.bnds, t.id, s0, t0, s1, t1, p.mask);
 
 		for (int y = 0; y < t.h; ++y)
 			for (int x = 0; x < t.w; ++x)
@@ -127,26 +133,50 @@ void Tilesheet::write(GLuint tex) {
 	glBindTexture(GL_TEXTURE_2D, old_tex);
 }
 
-SubImagePreview::SubImagePreview(unsigned id, const Image &img, const SDL_Palette *pal) : pixels(img.bnds.w * img.bnds.h), bnds(img.bnds), id(id) {
+SubImagePreview::SubImagePreview(unsigned id, const Image &img, const SDL_Palette *pal) : pixels((long long)img.bnds.w * img.bnds.h), bnds(img.bnds), id(id), mask((long long)img.bnds.w * img.bnds.h) {
 	if (img.bnds.w <= 0 || img.bnds.h <= 0)
 		throw std::runtime_error("invalid image boundaries");
 
 	// TODO support SDL_Surface
 	const std::vector<uint8_t> &data = std::get<std::vector<uint8_t>>(img.surf);
 
+	bool opaque = true;
+
 	// convert
 	for (int y = 0; y < bnds.h; ++y)
 		for (int x = 0; x < bnds.w; ++x) {
 			unsigned long long pos = (unsigned long long)y * bnds.w + x;
 			SDL_Color *col = &pal->colors[data[pos]];
+
+			if (data[pos] == 0)
+				opaque = false;
+
+			mask[pos] = data[pos] != 0;
 			pixels[pos] = IM_COL32(col->r, col->g, col->b, data[pos] ? col->a : 0);
 		}
+
+	// do not use mask if fully opaque
+	if (opaque)
+		mask.clear();
 }
 
-void TilesheetBuilder::add(unsigned idx, DrsId id, SDL_Palette *pal) {
+unsigned TilesheetBuilder::add(unsigned idx, DrsId id, SDL_Palette *pal) {
 	Animation anim(genie::assets.blobs[idx]->open_anim(id));
-	for (size_t i = 0; i < anim.size; ++i)
-		emplace(anim.images[i], pal);
+	unsigned v = animations.size();
+	auto &a = animations.emplace(v);
+	if (!a.second)
+		throw std::runtime_error("Bad strip index");
+
+	auto &s = const_cast<Strip&>(*a.first);
+
+	for (size_t i = 0; i < anim.size; ++i) {
+		auto t = emplace(anim.images[i], pal);
+		s.tiles.push_back(t.id);
+	}
+
+	s.count = anim.image_count;
+	s.dynamic = anim.dynamic;
+	return v;
 }
 
 void TilesheetBuilder::sort() noexcept {
