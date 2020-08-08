@@ -1572,6 +1572,7 @@ public:
 
 	std::vector<TileInfo> tiledata;
 	std::vector<SDL_Point> tilegfx; // cache for tile positions
+	bool tiles_cached;
 
 	// data for unproject
 	GLfloat proj[16], mv[16];
@@ -1581,7 +1582,7 @@ public:
 
 	Terrain() : tiles(), hmap(), w(20), h(20)
 		, left(0), right(0), bottom(1), top(1), tile_focus(-1)
-		, tiledata(), tilegfx()
+		, tiledata(), tilegfx(), tiles_cached(false)
 		, static_objects(1) { resize(w, h); }
 
 	void init(genie::Texture &tex) {
@@ -1616,9 +1617,13 @@ public:
 
 		this->w = w;
 		this->h = h;
+		tiles_cached = false;
 	}
 
 	void select(genie::Texture &tex, int mx, int my, int vpx, int vpy) {
+		if (!tiles_cached)
+			return;
+
 		// compute world coordinate
 		float pos[3], scr[3];
 
@@ -1626,23 +1631,6 @@ public:
 		tile_focus = -1;
 
 		genie::unproject(pos, scr, mv, proj, vp);
-
-#if 0
-		printf("select: %d,%d -> %.1f,%.1f\n", mx, my, pos[0], pos[1]);
-
-		uint8_t id = tiles[0];
-		int8_t height = hmap[0];
-
-		if (!(!id || id - 1 > tiledata.size())) {
-
-			auto &t = tiledata[id - 1];
-			auto &strip = *tex.ts.animations.find(t.id);
-			auto &img = *tex.ts.images.find(t.subimage);
-			auto &gfx = tilegfx[0];
-
-			printf("fst: %d,%d\n", gfx.x, gfx.y);
-		}
-#endif
 
 		// determine selected tile
 		for (long long i = 0; i < tiles.size(); ++i) {
@@ -1704,10 +1692,14 @@ public:
 		}
 		glEnd();
 
-		glDisable(GL_TEXTURE_2D);
-		static_objects.show();
-		glColor3f(1, 1, 1);
-		glEnable(GL_TEXTURE_2D);
+		tiles_cached = true;
+
+		if (show_debug) {
+			glDisable(GL_TEXTURE_2D);
+			static_objects.show();
+			glColor3f(1, 1, 1);
+			glEnable(GL_TEXTURE_2D);
+		}
 	}
 };
 
