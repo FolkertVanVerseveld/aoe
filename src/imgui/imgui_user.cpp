@@ -14,8 +14,8 @@ void PixelBox(ImU32 col, const ImVec2 &size) {
 	if (window->SkipItems)
 		return;
 
-	ImGuiContext& g = *GImGui;
-	const ImGuiStyle& style = g.Style;
+	ImGuiContext &g = *GImGui;
+	const ImGuiStyle &style = g.Style;
 	const float line_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + g.Style.FramePadding.y*2), g.FontSize);
 	const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(g.FontSize, line_height));
 	ItemSize(bb);
@@ -41,12 +41,12 @@ void ColorPalette(SDL_Palette *pal, const ImVec2 &pxsize) {
 
 bool SliderInputInt(const char *label, int *v, int v_min, int v_max, const char *format)
 {
-	ImGuiWindow* window = GetCurrentWindow();
+	ImGuiWindow *window = GetCurrentWindow();
 	if (window->SkipItems)
 		return false;
 
-	ImGuiContext& g = *GImGui;
-	ImGuiStyle& style = g.Style;
+	ImGuiContext &g = *GImGui;
+	ImGuiStyle &style = g.Style;
 
 	std::string lbl(std::string(" ##") + label);
 	bool b = ImGui::SliderInt(lbl.c_str() + 1, v, v_min, v_max, format);

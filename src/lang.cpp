@@ -11,7 +11,7 @@
 #include <SDL2/SDL_version.h>
 
 // NOTE: never load TXT and TXTF data externally as this enables remote code execution in vspnrintf
-// NOTE: always ensure that any translation in a imgui window is unique. if it isn't you can suffix it with ## as everything after ## is not shown on screen
+// NOTE: always ensure that any translation in an imgui window is unique. if it isn't you can suffix it with ## as everything after ## is not shown on screen
 
 extern const char *langs[] = {
 	"English",
@@ -58,7 +58,7 @@ static std::vector<std::vector<std::string>> txts = {
 		// editor
 		"Scenario Editor",
 		"Campaign Editor",
-		"DRS Editor",
+		"DRS Viewer",
 		// settings
 		"Custom",
 		// tasks
@@ -96,7 +96,7 @@ static std::vector<std::vector<std::string>> txts = {
 		// editor
 		"",
 		"Campagne Bewerken",
-		"DRS Bewerken",
+		"DRS Bekijken",
 		// instellingen
 		"Anders",
 		// taken

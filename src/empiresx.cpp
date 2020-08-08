@@ -1577,11 +1577,16 @@ public:
 	GLfloat proj[16], mv[16];
 	GLint vp[4];
 
+	genie::Quadtree<int> static_objects;
+
 	Terrain() : tiles(), hmap(), w(20), h(20)
 		, left(0), right(0), bottom(1), top(1), tile_focus(-1)
-		, tiledata() { resize(w, h); }
+		, tiledata(), tilegfx()
+		, static_objects(1) { resize(w, h); }
 
 	void init(genie::Texture &tex) {
+		tiledata.clear();
+
 		for (unsigned i = 0; i < IM_ARRAYSIZE(anim_count); ++i) {
 			auto &strip = *tex.ts.animations.find(i);
 
@@ -1605,6 +1610,9 @@ public:
 		tiles.resize(sz, 1);
 		tilegfx.resize(sz);
 		hmap.resize(sz);
+
+		int hsize = std::max<int>(w * 64 / 2, h * 32 / 2) + 640 / 2;
+		static_objects.reset({w * 64 / 2, 0, hsize});
 
 		this->w = w;
 		this->h = h;
@@ -1639,17 +1647,16 @@ public:
 		// determine selected tile
 		for (long long i = 0; i < tiles.size(); ++i) {
 			uint8_t id = tiles[i];
-			int8_t height = hmap[i];
 
 			if (!id || id - 1 > tiledata.size())
-				continue;
+				id = 1; // empty or invalid tiles should still be selectable
 
 			auto &t = tiledata[id - 1];
 			auto &strip = *tex.ts.animations.find(t.id);
 			auto &img = *tex.ts.images.find(t.subimage);
 			auto &gfx = tilegfx[i];
 
-			if (img.contains(pos[0] - gfx.x, pos[1] - gfx.y - height * thh)) {
+			if (img.contains(pos[0] - gfx.x, pos[1] - gfx.y)) {
 				tile_focus = i;
 				break;
 			}
@@ -1696,6 +1703,11 @@ public:
 			}
 		}
 		glEnd();
+
+		glDisable(GL_TEXTURE_2D);
+		static_objects.show();
+		glColor3f(1, 1, 1);
+		glEnable(GL_TEXTURE_2D);
 	}
 };
 
@@ -1717,13 +1729,15 @@ public:
 
 	float cam_x, cam_y, cam_zoom;
 
+	bool show_drs;
+
 	static constexpr float zoom_min = 0.01f, zoom_max = 5.0f;
 
 	AoE(Worker &w_bkg)
 		: video(), tex_bkg(), ts_next(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1)
 		, working(false), global_settings(false), w_bkg(w_bkg), terrain()
 		, lgy_index(2), left(0), right(0), top(0), bottom(0)
-		, cam_x(0), cam_y(0), cam_zoom(1.0f)
+		, cam_x(0), cam_y(0), cam_zoom(1.0f), show_drs(false)
 	{
 		settings.load(video);
 
@@ -1844,9 +1858,14 @@ public:
 
 		switch (selected) {
 			case 0:
+				show_drs = false;
 				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::scn_edit);
 				break;
+			case 2:
+				show_drs = true;
+				break;
 			case 3:
+				show_drs = false;
 				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
 				break;
 		}
@@ -2482,9 +2501,14 @@ int main(int, char**)
 				}
 				ImGui::End();
 
-
 				if (fs_has_root)
 					ImGui::PopFont();
+			}
+
+			if (aoe.show_drs) {
+				ImGui::Begin("DRS view", &aoe.show_drs);
+				drsview.show();
+				ImGui::End();
 			}
 
 			static int lang_current = 0;
@@ -2519,11 +2543,6 @@ int main(int, char**)
 							}
 
 							fd->CloseDialog(FDLG_CHOOSE_DIR);
-						}
-
-						if (aoe.working && p.total) {
-							ImGui::TextUnformatted(p.desc.c_str());
-							ImGui::ProgressBar(float(p.step) / p.total);
 						}
 
 						if (!bkg_result.empty())
@@ -2588,6 +2607,30 @@ int main(int, char**)
 									aoe.terrain.hmap[pos] = height;
 								}
 
+								if (ImGui::Button("Fill empty/invalid tiles")) {
+									for (int y = 0; y < aoe.terrain.h; ++y) {
+										for (int x = 0; x < aoe.terrain.w; ++x) {
+											long long pos = (long long)y * aoe.terrain.w + x;
+											uint8_t id = aoe.terrain.tiles[pos];
+											int8_t height = aoe.terrain.hmap[pos];
+
+											if (!id || id - 1 >= aoe.terrain.tiledata.size()) {
+												aoe.terrain.tiles[pos] = 1;
+
+												// choose max of direct neighbors (a tile always has two or more neighbors)
+												int max = INT8_MIN;
+
+												if (x > 0) max = std::max<int>(max, aoe.terrain.hmap[pos - 1]);
+												if (x + 1 < aoe.terrain.w) max = std::max<int>(max, aoe.terrain.hmap[pos + 1]);
+												if (y > 0) max = std::max<int>(max, aoe.terrain.hmap[pos - aoe.terrain.w]);
+												if (y + 1 < aoe.terrain.h) max = std::max<int>(max, aoe.terrain.hmap[pos + aoe.terrain.w]);
+
+												aoe.terrain.hmap[pos] = max;
+											}
+										}
+									}
+								}
+
 								ImGui::EndTabItem();
 							}
 
@@ -2627,6 +2670,19 @@ int main(int, char**)
 					show_about = false;
 				ImGui::End();
 			}
+
+			static boolean was_working = false;
+
+			if (aoe.working && !was_working)
+				ImGui::OpenPopup("Loading...");
+
+			if (aoe.working && p.total && ImGui::BeginPopupModal("Loading...", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+				ImGui::TextUnformatted(p.desc.c_str());
+				ImGui::ProgressBar(float(p.step) / p.total);
+				ImGui::EndPopup();
+			}
+
+			was_working = aoe.working;
 
 			// Rendering
 			ImGui::Render();

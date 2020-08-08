@@ -78,7 +78,7 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 		throw std::runtime_error("Image too large");
 
 	bnds.w = bnds.h = (int)size;
-	pixels.resize(size * size);
+	pixels.resize(size * size + 1);
 
 #if 0
 	// fill unused space with random data
@@ -133,31 +133,39 @@ void Tilesheet::write(GLuint tex) {
 	glBindTexture(GL_TEXTURE_2D, old_tex);
 }
 
-SubImagePreview::SubImagePreview(unsigned id, const Image &img, const SDL_Palette *pal) : pixels((long long)img.bnds.w * img.bnds.h), bnds(img.bnds), id(id), mask((long long)img.bnds.w * img.bnds.h) {
+SubImagePreview::SubImagePreview(unsigned id, const Image &img, const SDL_Palette *pal) : pixels((long long)img.bnds.w * img.bnds.h), bnds(img.bnds), id(id), mask() {
 	if (img.bnds.w <= 0 || img.bnds.h <= 0)
 		throw std::runtime_error("invalid image boundaries");
 
 	// TODO support SDL_Surface
 	const std::vector<uint8_t> &data = std::get<std::vector<uint8_t>>(img.surf);
+	// look for any transparent pixel to speed up collision mask generation
+	const void *tp = memchr(data.data(), 0, data.size());
 
-	bool opaque = true;
+	if (tp) {
+		// image has transparent pixels
+		mask.resize((long long)img.bnds.w * img.bnds.h);
 
-	// convert
-	for (int y = 0; y < bnds.h; ++y)
-		for (int x = 0; x < bnds.w; ++x) {
-			unsigned long long pos = (unsigned long long)y * bnds.w + x;
-			SDL_Color *col = &pal->colors[data[pos]];
+		// convert
+		for (int y = 0; y < bnds.h; ++y)
+			for (int x = 0; x < bnds.w; ++x) {
+				unsigned long long pos = (unsigned long long)y * bnds.w + x;
+				SDL_Color *col = &pal->colors[data[pos]];
 
-			if (data[pos] == 0)
-				opaque = false;
+				mask[pos] = data[pos] != 0;
+				pixels[pos] = IM_COL32(col->r, col->g, col->b, data[pos] ? col->a : 0);
+			}
+	} else {
+		// fully opaque image
+		// convert
+		for (int y = 0; y < bnds.h; ++y)
+			for (int x = 0; x < bnds.w; ++x) {
+				unsigned long long pos = (unsigned long long)y * bnds.w + x;
+				SDL_Color *col = &pal->colors[data[pos]];
 
-			mask[pos] = data[pos] != 0;
-			pixels[pos] = IM_COL32(col->r, col->g, col->b, data[pos] ? col->a : 0);
-		}
-
-	// do not use mask if fully opaque
-	if (opaque)
-		mask.clear();
+				pixels[pos] = IM_COL32(col->r, col->g, col->b, data[pos] ? col->a : 0);
+			}
+	}
 }
 
 unsigned TilesheetBuilder::add(unsigned idx, DrsId id, SDL_Palette *pal) {
