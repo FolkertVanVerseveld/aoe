@@ -1560,15 +1560,15 @@ struct TileInfo final {
 
 class StaticObject final {
 public:
-	genie::Box<int> bounds;
+	genie::Box<double> bounds;
 	size_t tpos;
 	unsigned image_index; // if tpos != (size_t)-1 then subimage else animation index (e.g. debris)
 
-	StaticObject(const genie::Box<int> &bounds, size_t tpos) : bounds(bounds), tpos(tpos), image_index(0) {}
-	StaticObject(const genie::Box<int> &bounds, unsigned anim_index) : bounds(bounds), tpos((size_t)-1), image_index(anim_index) {}
+	StaticObject(const genie::Box<double> &bounds, size_t tpos) : bounds(bounds), tpos(tpos), image_index(0) {}
+	StaticObject(const genie::Box<double> &bounds, unsigned anim_index) : bounds(bounds), tpos((size_t)-1), image_index(anim_index) {}
 };
 
-static genie::Box<int> getStaticObjectAABB(const StaticObject &obj) {
+static genie::Box<double> getStaticObjectAABB(const StaticObject &obj) {
 	return obj.bounds;
 }
 
@@ -1598,7 +1598,7 @@ public:
 	genie::Box<double> cam;
 	// FIXME /int/float/
 	// images may have odd width or height dimensions, which breaks drawing and collision detection...
-	genie::Quadtree<StaticObject, decltype(getStaticObjectAABB), decltype(cmpStaticObject), int> static_objects;
+	genie::Quadtree<StaticObject, decltype(getStaticObjectAABB), decltype(cmpStaticObject), double> static_objects;
 	std::vector<const StaticObject*> vis_static_objects;
 	bool culling;
 
@@ -1636,8 +1636,8 @@ public:
 		hmap.resize(sz);
 
 		// FIXME compute proper bounds
-		int hsize = (std::max<int>(right, bottom) + 640) / 2;
-		genie::Box<int> bounds(hsize, 0, hsize, hsize);
+		double hsize = (std::max<double>(right, bottom) + 640.0) / 2.0;
+		genie::Box<double> bounds(hsize, 0, hsize, hsize);
 		static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
 
 		this->w = w;
@@ -1646,7 +1646,7 @@ public:
 		for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
 			for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
 				long long pos = (long long)y * w + x;
-				genie::Box<int> bounds(right + thw, bottom + thh, thw, thh);
+				genie::Box<double> bounds(right + thw, bottom + thh, thw, thh);
 				static_objects.try_emplace(bounds, (size_t)pos);
 			}
 		}
@@ -1726,8 +1726,7 @@ public:
 
 		auto &obj = vis_static_objects;
 		obj.clear();
-		genie::Box<int> camApprox((double)cam.center.x, (double)cam.center.y, (double)cam.hsize.x, (double)cam.hsize.y);
-		static_objects.collect(obj, camApprox);
+		static_objects.collect(obj, cam);
 	}
 
 	/* Draw terrain. Assumes glBegin hasn't been called yet and the texture is bound. */
