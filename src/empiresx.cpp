@@ -1572,18 +1572,14 @@ public:
 
 	std::vector<TileInfo> tiledata;
 	std::vector<SDL_Point> tilegfx; // cache for tile positions
-	bool tiles_cached;
 
 	// data for unproject
 	GLfloat proj[16], mv[16];
 	GLint vp[4];
 
-	genie::Quadtree<int> static_objects;
-
 	Terrain() : tiles(), hmap(), w(20), h(20)
 		, left(0), right(0), bottom(1), top(1), tile_focus(-1)
-		, tiledata(), tilegfx(), tiles_cached(false)
-		, static_objects(1) { resize(w, h); }
+		, tiledata(), tilegfx() { resize(w, h); }
 
 	void init(genie::Texture &tex) {
 		tiledata.clear();
@@ -1612,18 +1608,14 @@ public:
 		tilegfx.resize(sz);
 		hmap.resize(sz);
 
-		int hsize = std::max<int>(w * 64 / 2, h * 32 / 2) + 640 / 2;
-		static_objects.reset({w * 64 / 2, 0, hsize});
+		//int hsize = std::max<int>(w * 64 / 2, h * 32 / 2) + 640 / 2;
+		//static_objects.reset({w * 64 / 2, 0, hsize});
 
 		this->w = w;
 		this->h = h;
-		tiles_cached = false;
 	}
 
 	void select(genie::Texture &tex, int mx, int my, int vpx, int vpy) {
-		if (!tiles_cached)
-			return;
-
 		// compute world coordinate
 		float pos[3], scr[3];
 
@@ -1691,15 +1683,6 @@ public:
 			}
 		}
 		glEnd();
-
-		tiles_cached = true;
-
-		if (show_debug) {
-			glDisable(GL_TEXTURE_2D);
-			static_objects.show();
-			glColor3f(1, 1, 1);
-			glEnable(GL_TEXTURE_2D);
-		}
 	}
 };
 

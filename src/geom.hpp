@@ -4,6 +4,7 @@
 #include <variant>
 #include <vector>
 #include <map>
+#include <memory>
 
 #include <SDL2/SDL_opengl.h>
 
@@ -25,97 +26,55 @@ struct Point final {
 	}
 };
 
+/** Squared axis aligned bounding box for collision detection. */
 template<typename T>
+struct AABB final {
+	Point<T> center;
+	T hsize;
+
+	AABB() : center(), hsize(0) {}
+	AABB(T hsize) : center(), hsize(hsize) {}
+	AABB(T x, T y, T hsize) : center(x, y), hsize(hsize) {}
+
+	constexpr bool operator==(const AABB &bnds) const noexcept {
+		return center == bnds.center && hsize == bnds.hsize;
+	}
+
+#if 0
+	constexpr bool intersects(const Point<T> &center, const Point<T> &size) const noexcept {
+		T w = size.x / 2 + this->hsize, h = size.y / 2 + this->hsize;
+		T dx = center.x - this->center.x, dy = center.y - this->center.y;
+		return w <= std::abs(dx) && h <= std::abs(dy);
+	}
+#endif
+
+	constexpr bool intersects(const AABB &bb) const noexcept {
+		T dx = center.x - bb.center.x, dy = center.y - bb.center.y, sz = hsize + bb.hsize;
+		return sz <= std::abs(dx) && sz <= std::abs(dy);
+	}
+};
+
+template<typename Obj, typename GetBox, typename Float=float>
 class Quadtree final {
+	static_assert(std::is_convertible_v<std::invoke_result_t<GetBox, const Obj&>, AABB<Float>>,
+		"GetBox must be a callable of signature AABB<Float>(const Obj&)");
+
 public:
-	/**
-	 * Item placeholder in quadtree with reference counting and a unique identifier.
-	 * Note that multiple nodes may contain the same leaf, as leaves can be larger than a node.
-	 */
-	struct Leaf final {
-		// leaf may be rectangular, nodes must be square
-		Point<T> pos, size;
-		unsigned ref;
-		/** Unique identifier that is externally defined. */
-		size_t id;
+	GetBox getBox;
 
-		Leaf(size_t id, const Point<T> &pos, const Point<T> &size) : pos(pos), size(size), ref(0), id(id) {}
-	};
-
-	/**
-	 * Squared axis aligned bounding box for collision detection.
-	 * Only for internal use!
-	 */
-	struct AABB final {
-		Point<T> center;
-		T hsize;
-
-		AABB(T hsize) : center(), hsize(hsize) {}
-		AABB(T x, T y, T hsize) : center(x, y), hsize(hsize) {}
-
-		constexpr bool operator==(const AABB &bnds) const noexcept {
-			return center == bnds.center && hsize == bnds.hsize;
-		}
-
-		constexpr bool intersects(const Point<T> &center, const Point<T> &size) const noexcept {
-			T w = size.x / 2 + this->hsize, h = size.y / 2 + this->hsize;
-			T dx = center.x - this->center.x, dy = center.y - this->center.y;
-			return w <= std::abs(dx) && h <= std::abs(dy);
-		}
-
-		constexpr bool intersects(const Leaf &l) const noexcept {
-			return intersects(l.pos, l.size);
-		}
-	};
+	static constexpr size_t threshold = 16;
+	static constexpr size_t maxdepth = 8;
 
 	struct Node final {
-		AABB bounds;
-		std::variant<std::vector<std::size_t>, std::unique_ptr<Node[]>> data;
-		unsigned quadrant;
-		Node *parent;
-		Quadtree *qt;
+		std::variant<std::vector<std::shared_ptr<Obj>>, std::unique_ptr<Node[]>> data;
 
-		Node(const AABB &bounds, Node *parent, Quadtree *qt) : bounds(bounds), data(), quadrant(4), parent(parent), qt(qt) {}
+		Node() : data() {}
 
-		bool add(Leaf &l) {
-			if (!bounds.intersects(l))
-				return false;
-
-			switch (data.index()) {
-				case 0:
-					std::get<std::vector<std::size_t>>(data).emplace_back(l.id);
-					++l.ref;
-					return true;
-				case 1:
-				{
-					Node *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
-					bool added = false;
-
-					for (unsigned i = 0; i < 4; ++i)
-						if (nodes[i].add(l))
-							added = true; // DON'T BREAK: other nodes may need to add leaf as well
-
-					return added;
-				}
-				default:
-					assert("bad index" == 0);
-					break;
-			}
-			return false;
+		void clear() {
+			data.emplace<std::vector<std::shared_ptr<Obj>>();
 		}
 
-		void resize(const AABB &bounds) {
-			assert(parent == nullptr);
-
-			if (data.index() == 0)
-				std::get<std::vector<std::size_t>>(data).clear();
-			else
-				data.emplace<std::vector<std::size_t>>();
-
-			this->bounds = bounds;
-		}
-
-		void show() const {
+		void show_nodes(AABB<Float> bounds) const {
 			auto x = bounds.center.x, y = bounds.center.y, sz = bounds.hsize;
 
 			glVertex2f(x - sz, y - sz); glVertex2f(x + sz, y - sz);
@@ -123,70 +82,42 @@ public:
 			glVertex2f(x + sz, y + sz); glVertex2f(x - sz, y + sz);
 			glVertex2f(x - sz, y + sz); glVertex2f(x - sz, y - sz);
 
-			switch (data.index()) {
-				case 0:
-					break;
-				case 1:
-				{
-					auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
+			if (data.index() == 1) {
+				auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
 
-					for (unsigned i = 0; i < 4; ++i)
-						nodes[i].show();
-					break;
-				}
-				default:
-					assert("bad index" == 0);
-					break;
+				AABB<Float> bb[4];
+				bb[0].hsize = bb[1].hsize = bb[2].hsize = bb[3].hsize = bounds.hsize / 2;
+				auto ss = hsize / 4;
+				bb[0].center.x = bounds.center.x + ss; bb[0].center.y = bounds.center.y + ss;
+				bb[1].center.x = bounds.center.x - ss; bb[1].center.y = bounds.center.y + ss;
+				bb[2].center.x = bounds.center.x - ss; bb[2].center.y = bounds.center.y - ss;
+				bb[3].center.x = bounds.center.x + ss; bb[3].center.y = bounds.center.y - ss;
+
+				for (unsigned i = 0; i < 4; ++i)
+					nodes[i].show_nodes(bb[i]);
+				break;
 			}
 		}
 	};
 
-	/** Quick lookup-table and container for reference counting. */
-	std::map<size_t, Leaf> items;
-
 	Node root;
+	AABB<Float> bounds;
 
-	Quadtree(T hsize) : root(hsize, nullptr, this) {}
+	Quadtree(AABB<Float> bounds) : root(), bounds(bounds) {}
 
-	void reset(AABB bounds) {
-		root.resize(bounds);
-	}
-
-	bool add(size_t id, const Point<T> &pos, const Point<T> &size) {
-		Leaf l(id, pos, size);
-
-		if (!l.ref)
-			return false;
-
-		items.emplace(id, std::move(l));
-		return true;
-	}
-
-	int try_erase(size_t id) {
-		auto search = items.find(id);
-		if (search == items.end())
-			return -1;
-
-		if (--search->ref)
-			return 0;
-
-		items.erase(search);
-		return 1;
-	}
-
-	bool erase(size_t id) {
-		int ret = try_erase(id);
-		assert(ret != -1);
-		return ret != 0;
+	void reset(AABB<Float> bounds) {
+		root.clear();
+		this->bounds = bounds;
 	}
 
 	void show() const {
 		glColor3f(1, 0, 0);
 
 		glBegin(GL_LINES);
-		root.show();
+		root.show(bounds);
 		glEnd();
 
+#if 0
 		glColor4f(0, 1, 1, 0.5);
 		glBegin(GL_QUADS);
 
@@ -201,6 +132,7 @@ public:
 		}
 
 		glEnd();
+#endif
 	}
 };
 
