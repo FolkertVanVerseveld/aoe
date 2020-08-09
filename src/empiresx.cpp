@@ -277,10 +277,10 @@ private:
 
 		// find corresponding dialog
 		const genie::res_id dlg_ids[] = {
-			-1,
-			(unsigned)genie::DrsId::menu_start,
-			(unsigned)genie::DrsId::menu_editor,
-			(unsigned)genie::DrsId::menu_scn_edit,
+			(genie::res_id)-1,
+			(genie::res_id)genie::DrsId::menu_start,
+			(genie::res_id)genie::DrsId::menu_editor,
+			(genie::res_id)genie::DrsId::menu_scn_edit,
 		};
 
 		genie::Dialog dlg(genie::assets.blobs[2]->open_dlg(dlg_ids[(unsigned)id]));
@@ -545,7 +545,7 @@ public:
 		if (!bnds.w || !bnds.h || !alt.empty())
 			ImGui::TextUnformatted(alt.empty() ? "(no image data)" : alt.c_str());
 		else
-			ImGui::Image((ImTextureID)tex, ImVec2(bnds.w, bnds.h));
+			ImGui::Image((ImTextureID)tex, ImVec2((float)bnds.w, (float)bnds.h));
 	}
 };
 
@@ -1501,7 +1501,7 @@ void Button::display(Hud &hud) {
 	glEnable(GL_BLEND);
 	ImFont *font = fonts[fnt_id];
 	glBindTexture(GL_TEXTURE_2D, (GLuint)font->ContainerAtlas->TexID);
-	hud.text(font, font_sizes[fnt_id], ImVec2(left + bnds.w / 2, top + (bnds.h - font->FontSize) / 2), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, label, 200, 0);
+	hud.text(font, font_sizes[fnt_id], ImVec2((float)(left + bnds.w / 2), (float)(top + (bnds.h - font->FontSize) / 2)), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, label, 200, 0);
 	glDisable(GL_TEXTURE_2D);
 }
 
@@ -1558,6 +1558,24 @@ struct TileInfo final {
 	TileInfo(AnimationId id, unsigned subimage) : id(id), subimage(subimage) {}
 };
 
+class StaticObject final {
+public:
+	genie::Box<int> bounds;
+	size_t tpos;
+	unsigned image_index; // if tpos != (size_t)-1 then subimage else animation index (e.g. debris)
+
+	StaticObject(const genie::Box<int> &bounds, size_t tpos) : bounds(bounds), tpos(tpos), image_index(0) {}
+	StaticObject(const genie::Box<int> &bounds, unsigned anim_index) : bounds(bounds), tpos((size_t)-1), image_index(anim_index) {}
+};
+
+static genie::Box<int> getStaticObjectAABB(const StaticObject &obj) {
+	return obj.bounds;
+}
+
+static bool cmpStaticObject(const StaticObject &lhs, const StaticObject &rhs) {
+	return lhs.tpos == rhs.tpos || lhs.bounds == rhs.bounds;
+}
+
 class Terrain final {
 public:
 	std::vector<uint8_t> tiles;
@@ -1577,9 +1595,16 @@ public:
 	GLfloat proj[16], mv[16];
 	GLint vp[4];
 
+	genie::Box<double> cam;
+	// FIXME /int/float/
+	// images may have odd width or height dimensions, which breaks drawing and collision detection...
+	genie::Quadtree<StaticObject, decltype(getStaticObjectAABB), decltype(cmpStaticObject), int> static_objects;
+	std::vector<const StaticObject*> vis_static_objects;
+	bool culling;
+
 	Terrain() : tiles(), hmap(), w(20), h(20)
 		, left(0), right(0), bottom(1), top(1), tile_focus(-1)
-		, tiledata(), tilegfx() { resize(w, h); }
+		, tiledata(), tilegfx(), cam(), static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2)), vis_static_objects(), culling(false) { resize(w, h); }
 
 	void init(genie::Texture &tex) {
 		tiledata.clear();
@@ -1590,6 +1615,8 @@ public:
 			for (unsigned j = 0; j < anim_count[i]; ++j)
 				tiledata.emplace_back((AnimationId)i, strip.tiles[j]);
 		}
+
+		set_view();
 	}
 
 	void resize(int w, int h) {
@@ -1600,7 +1627,7 @@ public:
 		int pad_x = 10;
 
 		left = 0;
-		right = w * tw;
+		right = std::max<long long>(w * tw, h * th);
 		bottom = w * thh;
 		top = -bottom;
 
@@ -1608,24 +1635,57 @@ public:
 		tilegfx.resize(sz);
 		hmap.resize(sz);
 
-		//int hsize = std::max<int>(w * 64 / 2, h * 32 / 2) + 640 / 2;
-		//static_objects.reset({w * 64 / 2, 0, hsize});
+		// FIXME compute proper bounds
+		int hsize = (std::max<int>(right, bottom) + 640) / 2;
+		genie::Box<int> bounds(hsize, 0, hsize, hsize);
+		static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
 
 		this->w = w;
 		this->h = h;
+
+		for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
+			for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
+				long long pos = (long long)y * w + x;
+				genie::Box<int> bounds(right + thw, bottom + thh, thw, thh);
+				static_objects.try_emplace(bounds, (size_t)pos);
+			}
+		}
 	}
 
 	void select(genie::Texture &tex, int mx, int my, int vpx, int vpy) {
 		// compute world coordinate
 		float pos[3], scr[3];
 
-		scr[0] = mx + vpx; scr[1] = vp[3] - my + vpy; scr[2] = 0;
+		scr[0] = (float)(mx + vpx); scr[1] = float(vp[3] - my + vpy); scr[2] = 0;
 		tile_focus = -1;
 
 		genie::unproject(pos, scr, mv, proj, vp);
 
 		// determine selected tile
-		for (long long i = 0; i < tiles.size(); ++i) {
+#if 1
+		for (auto it : vis_static_objects) {
+			auto &o = *it;
+
+			if (o.tpos != (size_t)-1) {
+				size_t i = o.tpos;
+				uint8_t id = tiles[i];
+
+				if (!id || id - 1 > tiledata.size())
+					id = 1; // empty or invalid tiles should still be selectable
+
+				auto &t = tiledata[id - 1];
+				auto &strip = *tex.ts.animations.find(t.id);
+				auto &img = *tex.ts.images.find(t.subimage);
+				auto &gfx = tilegfx[i];
+
+				if (img.contains((int)(pos[0] - gfx.x), (int)(pos[1] - gfx.y))) {
+					tile_focus = (long long)i;
+					break;
+				}
+			}
+		}
+#else
+		for (size_t i = 0; i < tiles.size(); ++i) {
 			uint8_t id = tiles[i];
 
 			if (!id || id - 1 > tiledata.size())
@@ -1636,11 +1696,38 @@ public:
 			auto &img = *tex.ts.images.find(t.subimage);
 			auto &gfx = tilegfx[i];
 
-			if (img.contains(pos[0] - gfx.x, pos[1] - gfx.y)) {
-				tile_focus = i;
+			if (img.contains((int)(pos[0] - gfx.x), (int)(pos[1] - gfx.y))) {
+				tile_focus = (long long)i;
 				break;
 			}
 		}
+#endif
+	}
+
+	void set_view() {
+		float pos[3], scr[3];
+		genie::Point<double> lt, rb;
+
+		if (vp[2] < 1 || vp[3] < 1)
+			return;
+
+		scr[0] = (float)vp[0]; scr[1] = (float)(vp[3] - vp[1]); scr[2] = 0;
+		genie::unproject(pos, scr, mv, proj, vp);
+		lt.x = pos[0]; lt.y = pos[1];
+
+		scr[0] = (float)vp[2]; scr[1] = (float)vp[1]; scr[2] = 0;
+		genie::unproject(pos, scr, mv, proj, vp);
+		rb.x = pos[0]; rb.y = pos[1];
+
+		cam.hsize.x = (rb.x - lt.x) * 0.5;
+		cam.hsize.y = (rb.y - lt.y) * 0.5;
+		cam.center.x = lt.x + cam.hsize.x;
+		cam.center.y = lt.y + cam.hsize.y;
+
+		auto &obj = vis_static_objects;
+		obj.clear();
+		genie::Box<int> camApprox((double)cam.center.x, (double)cam.center.y, (double)cam.hsize.x, (double)cam.hsize.y);
+		static_objects.collect(obj, camApprox);
 	}
 
 	/* Draw terrain. Assumes glBegin hasn't been called yet and the texture is bound. */
@@ -1650,6 +1737,39 @@ public:
 		glGetFloatv(GL_PROJECTION_MATRIX, proj);
 		glGetIntegerv(GL_VIEWPORT, vp);
 
+		if (culling) {
+		glBegin(GL_QUADS);
+		{
+			for (auto it : vis_static_objects) {
+				auto &o = *it;
+
+				// if is tile
+				if (o.tpos != (size_t)-1) {
+					GLfloat x0, y0, x1, y1;
+
+					auto pos = o.tpos;
+					uint8_t id = tiles[pos];
+					int8_t height = hmap[pos];
+
+					if (!id || id - 1 >= tiledata.size())
+						continue;
+
+					auto &t = tiledata[id - 1];
+					auto &strip = *tex.ts.animations.find(t.id);
+					auto &img = *tex.ts.images.find(t.subimage);
+
+					x0 = o.bounds.center.x - o.bounds.hsize.x; x1 = o.bounds.center.x + o.bounds.hsize.x;
+					y0 = o.bounds.center.y - o.bounds.hsize.y; y1 = o.bounds.center.y + o.bounds.hsize.y;
+
+					glTexCoord2f(img.s0, img.t0); glVertex2f(x0, y0);
+					glTexCoord2f(img.s1, img.t0); glVertex2f(x1, y0);
+					glTexCoord2f(img.s1, img.t1); glVertex2f(x1, y1);
+					glTexCoord2f(img.s0, img.t1); glVertex2f(x0, y1);
+				}
+			}
+		}
+		glEnd();
+		} else {
 		glBegin(GL_QUADS);
 		{
 			for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
@@ -1683,6 +1803,14 @@ public:
 			}
 		}
 		glEnd();
+		}
+
+		if (show_debug) {
+			glDisable(GL_TEXTURE_2D);
+			static_objects.show();
+			glColor3f(1, 1, 1);
+			glEnable(GL_TEXTURE_2D);
+		}
 	}
 };
 
@@ -2539,10 +2667,14 @@ int main(int, char**)
 					ImGui::Begin("Map Editor");
 					{
 						static int w = 20, h = 20;
+						bool cam_moved = false;
 
-						ImGui::DragFloat("Cam X", &aoe.cam_x, 1.0f, aoe.terrain.left, aoe.terrain.right);
-						ImGui::DragFloat("Cam Y", &aoe.cam_y, 1.0f, aoe.terrain.top, aoe.terrain.bottom);
-						ImGui::DragFloat("Cam Zoom", &aoe.cam_zoom, 0.005f, aoe.zoom_min, aoe.zoom_max, "%.2f", 1.2f);
+						cam_moved |= ImGui::DragFloat("Cam X", &aoe.cam_x, 1.0f, aoe.terrain.left, aoe.terrain.right);
+						cam_moved |= ImGui::DragFloat("Cam Y", &aoe.cam_y, 1.0f, aoe.terrain.top, aoe.terrain.bottom);
+						cam_moved |= ImGui::DragFloat("Cam Zoom", &aoe.cam_zoom, 0.005f, aoe.zoom_min, aoe.zoom_max, "%.2f", 1.2f);
+
+						if (cam_moved)
+							aoe.terrain.set_view();
 
 						if (ImGui::BeginTabBar("EditorTabs")) {
 							if (ImGui::BeginTabItem("Map creator")) {
@@ -2559,6 +2691,12 @@ int main(int, char**)
 							}
 
 							if (ImGui::BeginTabItem("Tile Editor")) {
+								ImGui::Checkbox("Culling", &aoe.terrain.culling);
+								if (aoe.terrain.culling)
+									ImGui::Text("Static objects: %zu/%zu", aoe.terrain.vis_static_objects.size(), aoe.terrain.static_objects.count);
+								else
+									ImGui::Text("Static objects: %zu", aoe.terrain.static_objects.count);
+
 								if (aoe.terrain.tile_focus == -1) {
 									ImGui::TextUnformatted("Nothing selected");
 								} else {
