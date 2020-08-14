@@ -56,12 +56,16 @@ bool SliderInputInt(const char *label, int *v, int v_min, int v_max, const char 
 
 	ImGui::SameLine(0, style.ItemInnerSpacing.x);
 	lbl[0] = '-';
-	if (ImGui::ButtonEx(lbl.c_str(), ImVec2(button_size, button_size), button_flags))
+	if (ImGui::ButtonEx(lbl.c_str(), ImVec2(button_size, button_size), button_flags)) {
 		*v = *v > v_min ? *v - 1 : v_min;
+		b = true;
+	}
 	ImGui::SameLine(0, style.ItemInnerSpacing.x);
 	lbl[0] = '+';
-	if (ImGui::ButtonEx(lbl.c_str(), ImVec2(button_size, button_size), button_flags))
+	if (ImGui::ButtonEx(lbl.c_str(), ImVec2(button_size, button_size), button_flags)) {
 		*v = *v < v_max ? *v + 1 : v_max;
+		b = true;
+	}
 	ImGui::SameLine(0, style.ItemInnerSpacing.x);
 	ImGui::TextUnformatted(lbl.c_str() + 3);
 

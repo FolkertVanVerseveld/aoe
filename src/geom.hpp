@@ -78,7 +78,7 @@ public:
 			if (data.index() == 0)
 				return std::get<std::vector<Obj>>(data).size();
 
-			auto *nodes = std::get<std::unique_ptr<Node[]>>(data);
+			auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
 			size_t count = 0;
 
 			for (unsigned i = 0; i < 4; ++i)
@@ -135,18 +135,16 @@ public:
 			}
 		}
 
-		bool add(std::function<Box<Coord>(const Obj&)> getBox, Obj &obj, const Point<Coord> &pos, size_t depth, size_t threshold) {
+		std::pair<Obj*, bool> add(std::function<Box<Coord>(const Obj&)> getBox, Obj &obj, const Point<Coord> &pos, size_t depth, size_t threshold) {
 			if (!bounds.contains(pos))
-				return false;
+				return std::make_pair<Obj*, bool>(nullptr, false);
 
 			// if leaf
 			if (data.index() == 0) {
 				auto &lst = std::get<std::vector<Obj>>(data);
 
-				if (!depth || lst.size() < threshold) {
-					lst.emplace_back(std::move(obj));
-					return true;
-				}
+				if (!depth || lst.size() < threshold)
+					return std::make_pair<Obj*, bool>(&lst.emplace_back(std::move(obj)), true);
 
 				split(getBox, depth ? depth - 1 : 0, threshold);
 				// readd
@@ -158,11 +156,13 @@ public:
 			if (depth)
 				--depth;
 
-			for (unsigned i = 0; i < 4; ++i)
-				if (nodes[i].add(getBox, obj, pos, depth, threshold))
-					return true;
+			for (unsigned i = 0; i < 4; ++i) {
+				auto ret = nodes[i].add(getBox, obj, pos, depth, threshold);
+				if (ret.second)
+					return ret;
+			}
 
-			return false;
+			return std::make_pair<Obj*, bool>(nullptr, false);
 		}
 
 		bool erase(std::function<bool(const Obj&, const Obj&)> equal, const Obj &obj, const Point<Coord> &pos, size_t threshold) {
@@ -172,7 +172,7 @@ public:
 			// if leaf
 			if (data.index() == 0) {
 				auto &lst = std::get<std::vector<Obj>>(data);
-				auto it = std::find_if(std::begin(lst), std::end(lst), [this, &value](const auto &rhs) { return equal(value, rhs); });
+				auto it = std::find_if(std::begin(lst), std::end(lst), [equal, &obj](const auto &rhs) { return equal(obj, rhs); });
 				assert(it != std::end(lst));
 				if (it == std::end(lst))
 					return false;
@@ -185,12 +185,18 @@ public:
 			auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
 
 			for (unsigned i = 0; i < 4; ++i)
-				if (nodes[i].erase(equal, obj, pos)) {
+				if (nodes[i].erase(equal, obj, pos, threshold)) {
 					// merge if too small
 					if (size(threshold) <= threshold) {
-						std::vector<Obj> items;
+						std::vector<const Obj*> items;
 						collect(items, bounds);
-						data.emplace<std::vector<Obj>>(std::move(items));
+
+						std::vector<Obj> copy;
+
+						for (const Obj *p : items)
+							copy.emplace_back(std::move(*const_cast<Obj*>(p)));
+
+						data.emplace<std::vector<Obj>>(std::move(copy));
 					}
 
 					return true;
@@ -230,7 +236,7 @@ public:
 				Box<Coord> pos(getBox(obj));
 
 				for (unsigned i = 0; i < 4; ++i)
-					if (nodes[i].add(getBox, obj, pos.center, depth, threshold))
+					if (nodes[i].add(getBox, obj, pos.center, depth, threshold).second)
 						break;
 
 				items.pop_back();
@@ -252,13 +258,13 @@ public:
 	}
 
 	template<class... Args>
-	bool try_emplace(Args&&... args) {
+	std::pair<Obj*, bool> try_emplace(Args&&... args) {
 		Obj obj(args...);
 		auto pos = getBox(obj).center;
-		bool b = root.add(getBox, obj, pos, maxdepth, threshold);
-		if (b)
+		auto ret = root.add(getBox, obj, pos, maxdepth, threshold);
+		if (ret.second)
 			++count;
-		return b;
+		return ret;
 	}
 
 	bool erase(const Obj &obj) {
@@ -280,7 +286,7 @@ public:
 		root.show_nodes();
 		glEnd();
 
-		glColor4f(0, 1, 1, 0.5);
+		glColor4f(0, 1, 1, 0.25);
 		glBegin(GL_QUADS);
 
 		std::vector<const Obj*> items;

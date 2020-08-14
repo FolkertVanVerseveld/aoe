@@ -1585,6 +1585,7 @@ public:
 
 	int left, right, bottom, top;
 	long long tile_focus;
+	StaticObject *tile_focus_obj;
 
 	static constexpr int tw = 64, th = 32, thw = tw / 2, thh = th / 2;
 
@@ -1596,15 +1597,21 @@ public:
 	GLint vp[4];
 
 	genie::Box<double> cam;
+	bool cam_moved;
 	// FIXME /int/float/
 	// images may have odd width or height dimensions, which breaks drawing and collision detection...
 	genie::Quadtree<StaticObject, decltype(getStaticObjectAABB), decltype(cmpStaticObject), double> static_objects;
 	std::vector<const StaticObject*> vis_static_objects;
 	bool culling;
+	float cull_margin;
+
+	genie::Texture *tex;
 
 	Terrain() : tiles(), hmap(), w(20), h(20)
-		, left(0), right(0), bottom(1), top(1), tile_focus(-1)
-		, tiledata(), tilegfx(), cam(), static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2)), vis_static_objects(), culling(false) { resize(w, h); }
+		, left(0), right(0), bottom(1), top(1), tile_focus(-1), tile_focus_obj(nullptr)
+		, tiledata(), tilegfx(), cam(), cam_moved(false)
+		, static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2))
+		, vis_static_objects(), culling(false), cull_margin(-20), tex(nullptr) { resize(w, h); }
 
 	void init(genie::Texture &tex) {
 		tiledata.clear();
@@ -1616,7 +1623,86 @@ public:
 				tiledata.emplace_back((AnimationId)i, strip.tiles[j]);
 		}
 
+		// FIXME compute proper bounds
+		double hsize = (std::max<double>(right, bottom) + 640.0) / 2.0;
+		genie::Box<double> bounds(hsize, 0, hsize, hsize);
+		static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
+
+		for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
+			for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
+				long long pos = (long long)y * w + x;
+				uint8_t id = tiles[pos];
+				int8_t height = hmap[pos];
+
+				if (!id || id - 1 >= tiledata.size()) {
+					genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
+					static_objects.try_emplace(bounds, (size_t)pos);
+					continue;
+				}
+
+				double x0, y0, x1, y1;
+
+				auto &t = tiledata[id - 1];
+				auto &strip = *tex.ts.animations.find(t.id);
+				auto &img = *tex.ts.images.find(t.subimage);
+
+				x0 = right - img.bnds.x;
+				x1 = x0 + img.bnds.w;
+				y0 = bottom - img.bnds.y - height * thh;
+				y1 = y0 + img.bnds.h;
+
+				genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
+				static_objects.try_emplace(bounds, (size_t)pos);
+			}
+		}
+
+		this->tex = &tex;
 		set_view();
+	}
+
+	void update_tile(const StaticObject &obj) {
+		size_t pos = obj.tpos;
+		uint8_t id = tiles[pos];
+		int8_t height = hmap[pos];
+		bool update_focus = tile_focus_obj == &obj;
+
+		double right = obj.bounds.center.x - obj.bounds.hsize.x;
+		double bottom = obj.bounds.center.y - obj.bounds.hsize.y;
+
+		if (!static_objects.erase(obj))
+			assert("object should be removed" == 0);
+
+		if (!id || id - 1 >= tiledata.size()) {
+			genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
+			auto ret = static_objects.try_emplace(bounds, (size_t)pos);
+			if (ret.second) {
+				tile_focus_obj = ret.first;
+			} else {
+				tile_focus_obj = nullptr;
+				tile_focus = -1;
+			}
+			return;
+		}
+
+		double x0, y0, x1, y1;
+
+		auto &t = tiledata[id - 1];
+		auto &strip = *tex->ts.animations.find(t.id);
+		auto &img = *tex->ts.images.find(t.subimage);
+
+		x0 = right - img.bnds.x;
+		x1 = x0 + img.bnds.w;
+		y0 = bottom - img.bnds.y - height * thh;
+		y1 = y0 + img.bnds.h;
+
+		genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
+		auto ret = static_objects.try_emplace(bounds, (size_t)pos);
+		if (ret.second) {
+			tile_focus_obj = ret.first;
+		} else {
+			tile_focus_obj = nullptr;
+			tile_focus = -1;
+		}
 	}
 
 	void resize(int w, int h) {
@@ -1635,24 +1721,11 @@ public:
 		tilegfx.resize(sz);
 		hmap.resize(sz);
 
-		// FIXME compute proper bounds
-		double hsize = (std::max<double>(right, bottom) + 640.0) / 2.0;
-		genie::Box<double> bounds(hsize, 0, hsize, hsize);
-		static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
-
 		this->w = w;
 		this->h = h;
-
-		for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
-			for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
-				long long pos = (long long)y * w + x;
-				genie::Box<double> bounds(right + thw, bottom + thh, thw, thh);
-				static_objects.try_emplace(bounds, (size_t)pos);
-			}
-		}
 	}
 
-	void select(genie::Texture &tex, int mx, int my, int vpx, int vpy) {
+	void select(int mx, int my, int vpx, int vpy) {
 		// compute world coordinate
 		float pos[3], scr[3];
 
@@ -1674,12 +1747,13 @@ public:
 					id = 1; // empty or invalid tiles should still be selectable
 
 				auto &t = tiledata[id - 1];
-				auto &strip = *tex.ts.animations.find(t.id);
-				auto &img = *tex.ts.images.find(t.subimage);
+				auto &strip = *tex->ts.animations.find(t.id);
+				auto &img = *tex->ts.images.find(t.subimage);
 				auto &gfx = tilegfx[i];
 
 				if (img.contains((int)(pos[0] - gfx.x), (int)(pos[1] - gfx.y))) {
 					tile_focus = (long long)i;
+					tile_focus_obj = const_cast<StaticObject*>(it);
 					break;
 				}
 			}
@@ -1711,11 +1785,11 @@ public:
 		if (vp[2] < 1 || vp[3] < 1)
 			return;
 
-		scr[0] = (float)vp[0]; scr[1] = (float)(vp[3] - vp[1]); scr[2] = 0;
+		scr[0] = (float)(vp[0] - cull_margin); scr[1] = (float)(vp[3] - vp[1] + cull_margin); scr[2] = 0;
 		genie::unproject(pos, scr, mv, proj, vp);
 		lt.x = pos[0]; lt.y = pos[1];
 
-		scr[0] = (float)vp[2]; scr[1] = (float)vp[1]; scr[2] = 0;
+		scr[0] = (float)(vp[0] + vp[2] + cull_margin); scr[1] = (float)(vp[1] - cull_margin); scr[2] = 0;
 		genie::unproject(pos, scr, mv, proj, vp);
 		rb.x = pos[0]; rb.y = pos[1];
 
@@ -1727,6 +1801,7 @@ public:
 		auto &obj = vis_static_objects;
 		obj.clear();
 		static_objects.collect(obj, cam);
+		cam_moved = false;
 	}
 
 	/* Draw terrain. Assumes glBegin hasn't been called yet and the texture is bound. */
@@ -1735,6 +1810,9 @@ public:
 		glGetFloatv(GL_MODELVIEW_MATRIX, mv);
 		glGetFloatv(GL_PROJECTION_MATRIX, proj);
 		glGetIntegerv(GL_VIEWPORT, vp);
+
+		if (cam_moved)
+			set_view();
 
 		if (culling) {
 		glBegin(GL_QUADS);
@@ -1807,6 +1885,18 @@ public:
 		if (show_debug) {
 			glDisable(GL_TEXTURE_2D);
 			static_objects.show();
+			glColor4f(0, 1, 0, 0.3);
+			glBegin(GL_QUADS);
+			double left, top, right, bottom;
+			left = cam.center.x - cam.hsize.x;
+			top = cam.center.y - cam.hsize.y;
+			right = cam.center.x + cam.hsize.x;
+			bottom = cam.center.y + cam.hsize.y;
+			glVertex2f(left, top);
+			glVertex2f(right, top);
+			glVertex2f(right, bottom);
+			glVertex2f(left, bottom);
+			glEnd();
 			glColor3f(1, 1, 1);
 			glEnable(GL_TEXTURE_2D);
 		}
@@ -1880,7 +1970,7 @@ public:
 				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
 
 				if (menu_is_game())
-					terrain.select(tex_bkg, hud.mouse_x, hud.mouse_y, video.vp.x, video.vp.y);
+					terrain.select(hud.mouse_x, hud.mouse_y, video.vp.x, video.vp.y);
 				break;
 			case SDL_MOUSEBUTTONUP:
 				db = event.button.button;
@@ -2666,14 +2756,10 @@ int main(int, char**)
 					ImGui::Begin("Map Editor");
 					{
 						static int w = 20, h = 20;
-						bool cam_moved = false;
 
-						cam_moved |= ImGui::DragFloat("Cam X", &aoe.cam_x, 1.0f, aoe.terrain.left, aoe.terrain.right);
-						cam_moved |= ImGui::DragFloat("Cam Y", &aoe.cam_y, 1.0f, aoe.terrain.top, aoe.terrain.bottom);
-						cam_moved |= ImGui::DragFloat("Cam Zoom", &aoe.cam_zoom, 0.005f, aoe.zoom_min, aoe.zoom_max, "%.2f", 1.2f);
-
-						if (cam_moved)
-							aoe.terrain.set_view();
+						aoe.terrain.cam_moved |= ImGui::DragFloat("Cam X", &aoe.cam_x, 1.0f, aoe.terrain.left, aoe.terrain.right);
+						aoe.terrain.cam_moved |= ImGui::DragFloat("Cam Y", &aoe.cam_y, 1.0f, aoe.terrain.top, aoe.terrain.bottom);
+						aoe.terrain.cam_moved |= ImGui::DragFloat("Cam Zoom", &aoe.cam_zoom, 0.005f, aoe.zoom_min, aoe.zoom_max, "%.2f", 1.2f);
 
 						if (ImGui::BeginTabBar("EditorTabs")) {
 							if (ImGui::BeginTabItem("Map creator")) {
@@ -2691,10 +2777,22 @@ int main(int, char**)
 
 							if (ImGui::BeginTabItem("Tile Editor")) {
 								ImGui::Checkbox("Culling", &aoe.terrain.culling);
-								if (aoe.terrain.culling)
+								if (aoe.terrain.culling) {
 									ImGui::Text("Static objects: %zu/%zu", aoe.terrain.vis_static_objects.size(), aoe.terrain.static_objects.count);
-								else
+									double left, top, right, bottom;
+									auto cam = aoe.terrain.cam;
+
+									left = cam.center.x - cam.hsize.x;
+									top = cam.center.y - cam.hsize.y;
+									right = cam.center.x + cam.hsize.x;
+									bottom = cam.center.y + cam.hsize.y;
+
+									aoe.terrain.cam_moved |= ImGui::SliderFloat("Margin", &aoe.terrain.cull_margin, -300, 300, "%.1f", 1.2);
+
+									ImGui::Text("Frustum: (%g,%g)  (%g,%g)" , left, top, right, bottom);
+								} else {
 									ImGui::Text("Static objects: %zu", aoe.terrain.static_objects.count);
+								}
 
 								if (aoe.terrain.tile_focus == -1) {
 									ImGui::TextUnformatted("Nothing selected");
@@ -2711,9 +2809,14 @@ int main(int, char**)
 									id = aoe.terrain.tiles[pos];
 									height = aoe.terrain.hmap[pos];
 
-									ImGui::SliderInputInt("ID", &id, 0, UINT8_MAX);
-									ImGui::InputInt("Height", &height);
+									bool changed = false;
+
+									changed |= ImGui::SliderInputInt("ID", &id, 0, UINT8_MAX);
+									changed |= ImGui::InputInt("Height", &height);
 									height = genie::clamp<int>(INT8_MIN, height, INT8_MAX);
+
+									if (changed && aoe.terrain.tile_focus_obj)
+										aoe.terrain.update_tile(*aoe.terrain.tile_focus_obj);
 
 									aoe.terrain.tiles[pos] = id;
 									aoe.terrain.hmap[pos] = height;
