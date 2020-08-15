@@ -1558,14 +1558,18 @@ struct TileInfo final {
 	TileInfo(AnimationId id, unsigned subimage) : id(id), subimage(subimage) {}
 };
 
+/** Immovable object that cannot change state while a scenario is running. */
 class StaticObject final {
 public:
-	genie::Box<double> bounds;
+	genie::Box<double> bounds; // screen position
 	size_t tpos;
+	int8_t height;
+	uint8_t id;
 	unsigned image_index; // if tpos != (size_t)-1 then subimage else animation index (e.g. debris)
 
-	StaticObject(const genie::Box<double> &bounds, size_t tpos) : bounds(bounds), tpos(tpos), image_index(0) {}
-	StaticObject(const genie::Box<double> &bounds, unsigned anim_index) : bounds(bounds), tpos((size_t)-1), image_index(anim_index) {}
+	StaticObject() : bounds(), tpos((size_t)-1), height(0), id(1), image_index((unsigned)-1) {}
+	StaticObject(const genie::Box<double> &bounds, size_t tpos) : bounds(bounds), tpos(tpos), height(0), id(1), image_index(0) {}
+	StaticObject(const genie::Box<double> &bounds, unsigned anim_index) : bounds(bounds), tpos((size_t)-1), height(0), id(1), image_index(anim_index) {}
 };
 
 static genie::Box<double> getStaticObjectAABB(const StaticObject &obj) {
@@ -1578,8 +1582,8 @@ static bool cmpStaticObject(const StaticObject &lhs, const StaticObject &rhs) {
 
 class Terrain final {
 public:
+	// duplicate information as static_objects also has this, but this eases tile info lookup
 	std::vector<uint8_t> tiles;
-	/* Allow negative depths as well as this is more natural when placing water/base ground on layer 0. */
 	std::vector<int8_t> hmap;
 	int w, h;
 
@@ -1590,7 +1594,6 @@ public:
 	static constexpr int tw = 64, th = 32, thw = tw / 2, thh = th / 2;
 
 	std::vector<TileInfo> tiledata;
-	std::vector<SDL_Point> tilegfx; // cache for tile positions
 
 	// data for unproject
 	GLfloat proj[16], mv[16];
@@ -1607,9 +1610,9 @@ public:
 
 	genie::Texture *tex;
 
-	Terrain() : tiles(), hmap(), w(20), h(20)
+	Terrain() : tiles(), w(20), h(20)
 		, left(0), right(0), bottom(1), top(1), tile_focus(-1), tile_focus_obj(nullptr)
-		, tiledata(), tilegfx(), cam(), cam_moved(false)
+		, tiledata(), cam(), cam_moved(false)
 		, static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2))
 		, vis_static_objects(), culling(false), cull_margin(-20), tex(nullptr) { resize(w, h); }
 
@@ -1657,6 +1660,22 @@ public:
 		}
 
 		this->tex = &tex;
+		tile_focus_obj = nullptr;
+		tile_focus = -1;
+		set_view();
+	}
+
+	void invalidate_cam_focus(std::pair<StaticObject*, bool> ret, unsigned image_index, uint8_t id, int8_t height, bool update_focus) {
+		if (ret.second) {
+			ret.first->image_index = image_index;
+			ret.first->id = id;
+			ret.first->height = height;
+			if (update_focus)
+				tile_focus_obj = ret.first;
+		} else if (update_focus) {
+			tile_focus_obj = nullptr;
+			tile_focus = -1;
+		}
 		set_view();
 	}
 
@@ -1666,8 +1685,12 @@ public:
 		int8_t height = hmap[pos];
 		bool update_focus = tile_focus_obj == &obj;
 
-		double right = obj.bounds.center.x - obj.bounds.hsize.x;
-		double bottom = obj.bounds.center.y - obj.bounds.hsize.y;
+		//double right = obj.bounds.center.x - obj.bounds.hsize.x;
+		//double bottom = obj.bounds.center.y - obj.bounds.hsize.y;
+		int y = obj.tpos / w, x = obj.tpos % w;
+		// height is not added as we can compute this manually
+		double right = (y + x) * thw, bottom = (x - y) * thh;
+		unsigned image_index = obj.image_index;
 
 		if (!static_objects.erase(obj))
 			assert("object should be removed" == 0);
@@ -1675,12 +1698,7 @@ public:
 		if (!id || id - 1 >= tiledata.size()) {
 			genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
 			auto ret = static_objects.try_emplace(bounds, (size_t)pos);
-			if (ret.second) {
-				tile_focus_obj = ret.first;
-			} else {
-				tile_focus_obj = nullptr;
-				tile_focus = -1;
-			}
+			invalidate_cam_focus(ret, image_index, id, height, update_focus);
 			return;
 		}
 
@@ -1692,17 +1710,12 @@ public:
 
 		x0 = right - img.bnds.x;
 		x1 = x0 + img.bnds.w;
-		y0 = bottom - img.bnds.y - height * thh;
+		y0 = bottom - img.bnds.y - (int)height * thh;
 		y1 = y0 + img.bnds.h;
 
 		genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
 		auto ret = static_objects.try_emplace(bounds, (size_t)pos);
-		if (ret.second) {
-			tile_focus_obj = ret.first;
-		} else {
-			tile_focus_obj = nullptr;
-			tile_focus = -1;
-		}
+		invalidate_cam_focus(ret, image_index, id, height, update_focus);
 	}
 
 	void resize(int w, int h) {
@@ -1718,7 +1731,6 @@ public:
 		top = -bottom;
 
 		tiles.resize(sz, 1);
-		tilegfx.resize(sz);
 		hmap.resize(sz);
 
 		this->w = w;
@@ -1749,9 +1761,10 @@ public:
 				auto &t = tiledata[id - 1];
 				auto &strip = *tex->ts.animations.find(t.id);
 				auto &img = *tex->ts.images.find(t.subimage);
-				auto &gfx = tilegfx[i];
 
-				if (img.contains((int)(pos[0] - gfx.x), (int)(pos[1] - gfx.y))) {
+				double left = o.bounds.center.x - o.bounds.hsize.x, top = o.bounds.center.y - o.bounds.hsize.y;
+
+				if (img.contains((int)(pos[0] - left), (int)(pos[1] - top))) {
 					tile_focus = (long long)i;
 					tile_focus_obj = const_cast<StaticObject*>(it);
 					break;
@@ -1868,9 +1881,6 @@ public:
 					x1 = x0 + img.bnds.w;
 					y0 = bottom - img.bnds.y - height * thh;
 					y1 = y0 + img.bnds.h;
-
-					tilegfx[pos].x = right - img.bnds.x;
-					tilegfx[pos].y = bottom - img.bnds.y - height * thh;
 
 					glTexCoord2f(img.s0, img.t0); glVertex2f(x0, y0);
 					glTexCoord2f(img.s1, img.t0); glVertex2f(x1, y0);
@@ -2769,8 +2779,10 @@ int main(int, char**)
 								w = genie::clamp(1, w, 1024);
 								h = genie::clamp(1, h, 1024);
 
-								if (ImGui::Button("Create"))
+								if (ImGui::Button("Create")) {
 									aoe.terrain.resize(w, h);
+									aoe.terrain.init(aoe.tex_bkg);
+								}
 
 								ImGui::EndTabItem();
 							}
@@ -2815,11 +2827,11 @@ int main(int, char**)
 									changed |= ImGui::InputInt("Height", &height);
 									height = genie::clamp<int>(INT8_MIN, height, INT8_MAX);
 
-									if (changed && aoe.terrain.tile_focus_obj)
-										aoe.terrain.update_tile(*aoe.terrain.tile_focus_obj);
-
 									aoe.terrain.tiles[pos] = id;
 									aoe.terrain.hmap[pos] = height;
+
+									if (changed && aoe.terrain.tile_focus_obj)
+										aoe.terrain.update_tile(*aoe.terrain.tile_focus_obj);
 								}
 
 								if (ImGui::Button("Fill empty/invalid tiles")) {
