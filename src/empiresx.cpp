@@ -991,6 +991,8 @@ static constexpr uint32_t cfghdr = 0x1b28d7a4; // Nothing special, just smashing
  * 28-37  scrbnds.x, scrbnds.y, scrbnds.w, scrbnds.h  application boundaries
  * 38-39  music volume
  * 3a-3b  sound volume
+ * 3c-3d  last valid game path length
+ * 3e-XX  last valid game path string data
  */
 static class GlobalConfiguration final {
 public:
@@ -1001,6 +1003,10 @@ public:
 	// audio
 	bool msc_on, sfx_on;
 	int msc_vol, sfx_vol;
+
+	std::string gamepath;
+
+	GlobalConfiguration() = default;
 
 	void load(const VideoControl &video) {
 		display_index = video.display;
@@ -1065,11 +1071,17 @@ public:
 			in.read((char*)&w, 2); msc_vol = w;
 			in.read((char*)&w, 2); sfx_vol = w;
 
+			std::string gamepath;
+
+			in.read((char*)&w, 2); gamepath.resize(w, '\0');
+			in.read((char*)gamepath.data(), w);
+
 			this->display = display;
 			this->scrbnds = scrbnds;
 			this->display_index = display_index;
 			this->mode = mode;
 			this->fullscreen = fullscreen;
+			this->gamepath = gamepath;
 
 			genie::jukebox.msc(msc_on); genie::jukebox.msc_volume(msc_vol);
 			genie::jukebox.sfx(sfx_on); genie::jukebox.sfx_volume(sfx_vol);
@@ -1122,6 +1134,10 @@ public:
 
 			w = genie::jukebox.msc_volume(); out.write((char*)&w, 2);
 			w = genie::jukebox.sfx_volume(); out.write((char*)&w, 2);
+
+			w = gamepath.length(); out.write((char*)&w, 2);
+			if (w)
+				out.write((char*)gamepath.data(), w);
 		} catch (std::ios_base::failure &f) {
 			fprintf(stderr, "%s: %s\n", fname, f.what());
 		}
@@ -1605,7 +1621,6 @@ public:
 	// images may have odd width or height dimensions, which breaks drawing and collision detection...
 	genie::Quadtree<StaticObject, decltype(getStaticObjectAABB), decltype(cmpStaticObject), double> static_objects;
 	std::vector<const StaticObject*> vis_static_objects;
-	bool culling;
 	float cull_margin;
 
 	genie::Texture *tex;
@@ -1614,7 +1629,7 @@ public:
 		, left(0), right(0), bottom(1), top(1), tile_focus(-1), tile_focus_obj(nullptr)
 		, tiledata(), cam(), cam_moved(false)
 		, static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2))
-		, vis_static_objects(), culling(false), cull_margin(-20), tex(nullptr) { resize(w, h); }
+		, vis_static_objects(), cull_margin(-20), tex(nullptr) { resize(w, h); }
 
 	void init(genie::Texture &tex) {
 		tiledata.clear();
@@ -1726,7 +1741,7 @@ public:
 		int pad_x = 10;
 
 		left = 0;
-		right = std::max<long long>(w * tw, h * th);
+		right = std::max<int>(w * tw, h * th);
 		bottom = w * thh;
 		top = -bottom;
 
@@ -1827,7 +1842,6 @@ public:
 		if (cam_moved)
 			set_view();
 
-		if (culling) {
 		glBegin(GL_QUADS);
 		{
 			for (auto it : vis_static_objects) {
@@ -1859,38 +1873,6 @@ public:
 			}
 		}
 		glEnd();
-		} else {
-		glBegin(GL_QUADS);
-		{
-			for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
-				for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
-					GLfloat x0, y0, x1, y1;
-
-					long long pos = (long long)y * w + x;
-					uint8_t id = tiles[pos];
-					int8_t height = hmap[pos];
-
-					if (!id || id - 1 >= tiledata.size())
-						continue;
-
-					auto &t = tiledata[id - 1];
-					auto &strip = *tex.ts.animations.find(t.id);
-					auto &img = *tex.ts.images.find(t.subimage);
-
-					x0 = right - img.bnds.x;
-					x1 = x0 + img.bnds.w;
-					y0 = bottom - img.bnds.y - height * thh;
-					y1 = y0 + img.bnds.h;
-
-					glTexCoord2f(img.s0, img.t0); glVertex2f(x0, y0);
-					glTexCoord2f(img.s1, img.t0); glVertex2f(x1, y0);
-					glTexCoord2f(img.s1, img.t1); glVertex2f(x1, y1);
-					glTexCoord2f(img.s0, img.t1); glVertex2f(x0, y1);
-				}
-			}
-		}
-		glEnd();
-		}
 
 		if (show_debug) {
 			glDisable(GL_TEXTURE_2D);
@@ -2378,6 +2360,9 @@ int main(int, char**)
 		auto_paths.emplace("/media/cdrom");
 #endif
 
+		if (settings.gamepath.length())
+			auto_paths.emplace(settings.gamepath.c_str());
+
 		if (!auto_paths.empty()) {
 			auto_detect = true;
 			std::string path(auto_paths.top());
@@ -2741,6 +2726,7 @@ int main(int, char**)
 								printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
 
 								fs_has_root = false;
+								settings.gamepath = path;
 								w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
 							}
 
@@ -2788,23 +2774,18 @@ int main(int, char**)
 							}
 
 							if (ImGui::BeginTabItem("Tile Editor")) {
-								ImGui::Checkbox("Culling", &aoe.terrain.culling);
-								if (aoe.terrain.culling) {
-									ImGui::Text("Static objects: %zu/%zu", aoe.terrain.vis_static_objects.size(), aoe.terrain.static_objects.count);
-									double left, top, right, bottom;
-									auto cam = aoe.terrain.cam;
+								ImGui::Text("Static objects: %zu/%zu", aoe.terrain.vis_static_objects.size(), aoe.terrain.static_objects.count);
+								double left, top, right, bottom;
+								auto cam = aoe.terrain.cam;
 
-									left = cam.center.x - cam.hsize.x;
-									top = cam.center.y - cam.hsize.y;
-									right = cam.center.x + cam.hsize.x;
-									bottom = cam.center.y + cam.hsize.y;
+								left = cam.center.x - cam.hsize.x;
+								top = cam.center.y - cam.hsize.y;
+								right = cam.center.x + cam.hsize.x;
+								bottom = cam.center.y + cam.hsize.y;
 
-									aoe.terrain.cam_moved |= ImGui::SliderFloat("Margin", &aoe.terrain.cull_margin, -300, 300, "%.1f", 1.2);
+								aoe.terrain.cam_moved |= ImGui::SliderFloat("Margin", &aoe.terrain.cull_margin, -300, 300, "%.1f", 1.2);
 
-									ImGui::Text("Frustum: (%g,%g)  (%g,%g)" , left, top, right, bottom);
-								} else {
-									ImGui::Text("Static objects: %zu", aoe.terrain.static_objects.count);
-								}
+								ImGui::Text("Frustum: (%g,%g)  (%g,%g)" , left, top, right, bottom);
 
 								if (aoe.terrain.tile_focus == -1) {
 									ImGui::TextUnformatted("Nothing selected");
