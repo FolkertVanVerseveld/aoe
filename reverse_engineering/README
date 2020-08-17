@@ -1,7 +1,0 @@
-All programs listed in this directory are either reconstructed from the
-dissassembly or are written from scratch to study their behavior or to assist in
-understanding the windows API.
-
-These have been verified to work under wine 1.6 on Xubuntu 14 and should work on
-any newer version of wine. Each file also provides a brief explanation what it
-does and how it works.
