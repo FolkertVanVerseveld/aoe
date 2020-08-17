@@ -12,6 +12,8 @@
 #include "math.hpp"
 #include "thread.hpp"
 
+#include <climits>
+
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -171,7 +173,7 @@ SubImagePreview::SubImagePreview(unsigned id, const Image &img, const SDL_Palett
 unsigned TilesheetBuilder::add(unsigned idx, DrsId id, SDL_Palette *pal) {
 	Animation anim(genie::assets.blobs[idx]->open_anim(id));
 	unsigned v = animations.size();
-	auto &a = animations.emplace(v);
+	auto a = animations.emplace(v);
 	if (!a.second)
 		throw std::runtime_error("Bad strip index");
 

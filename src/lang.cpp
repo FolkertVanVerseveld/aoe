@@ -6,7 +6,6 @@
 #include <string>
 
 #include "imgui/imgui.h"
-#include "imgui/ImGuiFileDialog.h"
 
 #include <SDL2/SDL_version.h>
 
@@ -40,7 +39,6 @@ static std::vector<std::vector<std::string>> txts = {
 			"\n\n"
 			"Libraries:\n"
 			"  Dear ImGui version " IMGUI_VERSION " Copyright (c) 2014-2020 Omar Cornut and others\n"
-			"  ImGuiFileDialog " IMGUIFILEDIALOG_VERSION " Copyright (c) 2018-2020 Stephane Cuillerdier (aka Aiekick)\n"
 			"  Simple DirectMedia Layer " stre(SDL_MAJOR_VERSION) "." stre(SDL_MINOR_VERSION) " Copyright(c) 1998-2020 Sam Lantinga"
 			"  miniz compression library v115 r4 Copyright (c) 2011-2013 Rich Geldreich", // https://code.google.com/archive/p/miniz/
 		"Set game directory",

@@ -15,7 +15,7 @@
 
 // addons
 #include "imgui/imgui_memory_editor.h"
-#include "imgui/ImGuiFileDialog.h"
+#include "imgui/ImGuiFileBrowser.h"
 
 #include "prodcons.hpp"
 #include "lang.hpp"
@@ -89,8 +89,6 @@ static const char *str_dim_lgy[] = {
 };
 
 #pragma warning(disable : 26812)
-
-static igfd::ImGuiFileDialog *fd = nullptr;
 
 static bool show_debug;
 static bool fs_has_root;
@@ -399,8 +397,9 @@ private:
 
 		try {
 			for (unsigned i = 0; i < COUNT; ++i) {
-				std::string path(genie::drs_path(item.first, fnames[i]));
-				if ((fd[i] = genie::open(path.c_str())) == genie::fd_invalid) {
+				size_t off;
+				std::string path(genie::drs_path(item.first, fnames[i], off));
+				if ((fd[i] = genie::open(path.c_str(), off)) == genie::fd_invalid) {
 					for (unsigned j = 0; j < i; ++j)
 						genie::close(fd[j]);
 
@@ -416,8 +415,9 @@ private:
 				dir = item.second;
 
 				for (unsigned i = 0; i < COUNT; ++i) {
-					std::string path(genie::drs_path(item.second, fnames[i]));
-					if ((fd[i] = genie::open(path.c_str())) == genie::fd_invalid) {
+					size_t off;
+					std::string path(genie::drs_path(item.second, fnames[i], off));
+					if ((fd[i] = genie::open(path.c_str(), off)) == genie::fd_invalid) {
 						for (unsigned j = 0; j < i; ++j)
 							genie::close(fd[j]);
 
@@ -468,13 +468,18 @@ private:
 
 		genie::assets.ttf.clear();
 
-		// FIXME support linux
+#if WIN32
 		std::string base("C:\\Windows\\Fonts\\");
+		size_t off = 0;
+#else
+		std::string base(dir + "/../system/fonts/");
+		size_t off = dir.size() + 1 + 2 + 1;
+#endif
 
 		for (unsigned i = 0; i < IM_ARRAYSIZE(ttfnames); ++i) {
 			try {
 				std::string path(base + ttfnames[i]);
-				genie::assets.ttf.emplace_back(new genie::Blob(path, genie::open(path), true));
+				genie::assets.ttf.emplace_back(new genie::Blob(path, genie::open(path, off), true));
 			} catch (std::runtime_error &e) {
 				done(WorkTaskType::check_root, WorkResultType::fail, e.what());
 				return;
@@ -1521,7 +1526,7 @@ void Button::display(Hud &hud) {
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
 	ImFont *font = fonts[fnt_id];
-	glBindTexture(GL_TEXTURE_2D, (GLuint)font->ContainerAtlas->TexID);
+	glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)font->ContainerAtlas->TexID);
 	hud.text(font, font_sizes[fnt_id], ImVec2((float)(left + bnds.w / 2), (float)(top + (bnds.h - font->FontSize) / 2)), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, label, 200, 0);
 	glDisable(GL_TEXTURE_2D);
 }
@@ -1604,7 +1609,8 @@ static genie::Box<double> getStaticObjectAABB(const StaticObject &obj) {
 }
 
 static bool cmpStaticObject(const StaticObject &lhs, const StaticObject &rhs) {
-	return lhs.tpos == rhs.tpos || lhs.bounds == rhs.bounds;
+	assert(lhs.tpos != (size_t)-1);
+	return lhs.tpos == rhs.tpos;
 }
 
 class Terrain final {
@@ -1929,7 +1935,8 @@ public:
 
 	float cam_x, cam_y, cam_zoom;
 
-	bool show_drs;
+	bool show_drs, open_dlg;
+	const char *dlg_id;
 
 	static constexpr float zoom_min = 0.01f, zoom_max = 5.0f;
 
@@ -1937,7 +1944,7 @@ public:
 		: video(), tex_bkg(), ts_next(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1)
 		, working(false), global_settings(false), w_bkg(w_bkg), terrain()
 		, lgy_index(2), left(0), right(0), top(0), bottom(0)
-		, cam_x(0), cam_y(0), cam_zoom(1.0f), show_drs(false)
+		, cam_x(0), cam_y(0), cam_zoom(1.0f), show_drs(false), open_dlg(false), dlg_id(NULL)
 	{
 		settings.load(video);
 
@@ -2122,7 +2129,9 @@ public:
 				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::editor);
 				break;
 			case 1:
-				fd->OpenDialog(FDLG_CHOOSE_SCN, CTXT(TextId::btn_scn_load), ".scn", genie::game_dir);
+				open_dlg = true;
+				dlg_id = FDLG_CHOOSE_SCN;
+				//fd->OpenDialog(FDLG_CHOOSE_SCN, CTXT(TextId::btn_scn_load), ".scn", genie::game_dir);
 				break;
 		}
 	}
@@ -2360,7 +2369,7 @@ int main(int, char**)
 	bool ther_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-	fd = igfd::ImGuiFileDialog::Instance();
+	imgui_addons::ImGuiFileBrowser fd;
 
 	bool fs_choose_root = false, auto_detect = false;
 	GLchannel glch;
@@ -2741,21 +2750,26 @@ int main(int, char**)
 						ImGui::Combo(CTXT(TextId::language), &lang_current, langs, int(LangId::max));
 						lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
 
-						if (!aoe.working && ImGui::Button(CTXT(TextId::set_game_dir)))
-							fd->OpenDialog(FDLG_CHOOSE_DIR, CTXT(TextId::dlg_game_dir), 0, ".");
+						static bool working;
 
-						if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !aoe.working) {
-							if (fd->IsOk) {
-								std::string fname(fd->GetFilepathName()), path(fd->GetCurrentPath());
-								printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
+						working = aoe.working;
 
-								fs_has_root = false;
-								settings.gamepath = path;
-								w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
-							}
-
-							fd->CloseDialog(FDLG_CHOOSE_DIR);
+						if (!aoe.working && ImGui::Button(CTXT(TextId::set_game_dir))) {
+							ImGui::OpenPopup(FDLG_CHOOSE_DIR);
+							puts("open");
 						}
+
+						if (fd.showFileDialog(FDLG_CHOOSE_DIR, imgui_addons::ImGuiFileBrowser::DialogMode::SELECT, ImVec2(400, 200))) {
+							std::string fname(fd.selected_fn), path(fd.selected_path);
+							printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
+
+							fs_has_root = false;
+							settings.gamepath = path;
+							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
+						}
+
+						if (aoe.working != working)
+							printf("work %d -> %d\n", working, aoe.working);
 
 						if (!bkg_result.empty())
 							ImGui::TextUnformatted(bkg_result.c_str());
@@ -2871,34 +2885,35 @@ int main(int, char**)
 					}
 					ImGui::End();
 
-					if (fd->FileDialog(FDLG_CHOOSE_SCN, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200))) {
-						if (fd->IsOk) {
-							std::string fname(fd->GetFilepathName());
-							printf("fname = %s\n", fname.c_str());
+					if (aoe.open_dlg) {
+						aoe.open_dlg = false;
+						ImGui::OpenPopup(FDLG_CHOOSE_SCN);
+					}
 
-							// TODO open scenario
-							try {
-								std::ifstream in(fname, std::ios::binary);
-								in.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+					if (fd.showFileDialog(FDLG_CHOOSE_SCN, imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(400, 200))) {
+						std::string fname(fd.selected_path);
+						printf("fname = %s\n", fname.c_str());
 
-								std::streampos fsize = in.tellg();
-								in.seekg(0, std::ios::end);
-								fsize = in.tellg() - fsize;
-								in.seekg(0, std::ios::beg);
+						// TODO open scenario
+						try {
+							std::ifstream in(fname, std::ios::binary);
+							in.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-								aoe.terrain.filedata.resize(fsize);
-								in.read((char*)aoe.terrain.filedata.data(), fsize);
+							std::streampos fsize = in.tellg();
+							in.seekg(0, std::ios::end);
+							fsize = in.tellg() - fsize;
+							in.seekg(0, std::ios::beg);
 
-								aoe.terrain.filename = fname;
-								aoe.terrain.scenario.reset(new genie::io::Scenario(aoe.terrain.filedata));
-							} catch (std::ios_base::failure &f) {
-								fprintf(stderr, "scn load: %s\n", f.what());
-							} catch (std::runtime_error &e) {
-								fprintf(stderr, "scn load: %s\n", e.what());
-							}
+							aoe.terrain.filedata.resize(fsize);
+							in.read((char*)aoe.terrain.filedata.data(), fsize);
+
+							aoe.terrain.filename = fname;
+							aoe.terrain.scenario.reset(new genie::io::Scenario(aoe.terrain.filedata));
+						} catch (std::ios_base::failure &f) {
+							fprintf(stderr, "scn load: %s\n", f.what());
+						} catch (std::runtime_error &e) {
+							fprintf(stderr, "scn load: %s\n", e.what());
 						}
-
-						fd->CloseDialog(FDLG_CHOOSE_SCN);
 					}
 
 					if (aoe.terrain.scenario) {
@@ -2958,7 +2973,7 @@ int main(int, char**)
 				ImGui::End();
 			}
 
-			static boolean was_working = false;
+			static bool was_working = false;
 
 			if (aoe.working && !was_working)
 				ImGui::OpenPopup("Loading...");

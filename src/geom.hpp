@@ -76,9 +76,9 @@ public:
 
 		constexpr size_t size(size_t threshold = (size_t)-1) const noexcept {
 			if (data.index() == 0)
-				return std::get<std::vector<Obj>>(data).size();
+				return std::get<std::vector<Obj> >(data).size();
 
-			auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
+			auto *nodes = std::get<std::unique_ptr<Node[]> >(data).get();
 			size_t count = 0;
 
 			for (unsigned i = 0; i < 4; ++i)
@@ -94,7 +94,7 @@ public:
 				return 0;
 
 			if (data.index() == 0) {
-				auto &items = std::get<std::vector<Obj>>(data);
+				auto &items = std::get<std::vector<Obj> >(data);
 
 				for (size_t i = 0; i < items.size(); ++i)
 					lst.emplace_back(items.data() + i);
@@ -102,7 +102,7 @@ public:
 				return items.size();
 			}
 
-			auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
+			auto *nodes = std::get<std::unique_ptr<Node[]> >(data).get();
 			size_t count = 0;
 
 			for (unsigned i = 0; i < 4; ++i)
@@ -112,7 +112,9 @@ public:
 		}
 
 		void clear() {
-			data.emplace<std::vector<Obj>>();
+			// emplace<Something> does not work on Xubuntu 18 so we use a little trick...
+			std::variant<std::vector<Obj>, std::unique_ptr<Node[]>> v;
+			data.swap(v);
 		}
 
 		void resize(Box<Coord> bounds) noexcept {
@@ -128,7 +130,7 @@ public:
 			glVertex2f(x - szx, y + szy); glVertex2f(x - szx, y - szy);
 
 			if (data.index() == 1) {
-				auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
+				auto *nodes = std::get<std::unique_ptr<Node[]> >(data).get();
 
 				for (unsigned i = 0; i < 4; ++i)
 					nodes[i].show_nodes();
@@ -141,7 +143,7 @@ public:
 
 			// if leaf
 			if (data.index() == 0) {
-				auto &lst = std::get<std::vector<Obj>>(data);
+				auto &lst = std::get<std::vector<Obj> >(data);
 
 				if (!depth || lst.size() < threshold)
 					return std::make_pair<Obj*, bool>(&lst.emplace_back(std::move(obj)), true);
@@ -151,7 +153,7 @@ public:
 				return add(getBox, obj, pos, depth, threshold);
 			}
 
-			auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
+			auto *nodes = std::get<std::unique_ptr<Node[]> >(data).get();
 
 			if (depth)
 				--depth;
@@ -171,7 +173,7 @@ public:
 
 			// if leaf
 			if (data.index() == 0) {
-				auto &lst = std::get<std::vector<Obj>>(data);
+				auto &lst = std::get<std::vector<Obj> >(data);
 				auto it = std::find_if(std::begin(lst), std::end(lst), [equal, &obj](const auto &rhs) { return equal(obj, rhs); });
 				assert(it != std::end(lst));
 				if (it == std::end(lst))
@@ -182,7 +184,7 @@ public:
 				return true;
 			}
 
-			auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
+			auto *nodes = std::get<std::unique_ptr<Node[]> >(data).get();
 
 			for (unsigned i = 0; i < 4; ++i)
 				if (nodes[i].erase(equal, obj, pos, threshold)) {
@@ -196,7 +198,8 @@ public:
 						for (const Obj *p : items)
 							copy.emplace_back(std::move(*const_cast<Obj*>(p)));
 
-						data.emplace<std::vector<Obj>>(std::move(copy));
+						std::variant<std::vector<Obj>, std::unique_ptr<Node[]>> v(std::in_place_index<0>, std::move(copy));
+						data.swap(v);
 					}
 
 					return true;
@@ -209,7 +212,7 @@ public:
 			assert(data.index() == 0);
 
 			// copy collect
-			std::vector<Obj> items(std::get<std::vector<Obj>>(data));
+			std::vector<Obj> items(std::get<std::vector<Obj> >(data));
 
 			// compute bounds
 			Box<Coord> bb[4];
@@ -222,8 +225,9 @@ public:
 			bb[3].center.x = bounds.center.x + szx; bb[3].center.y = bounds.center.y - szy;
 
 			// do split, apply bounds
-			data.emplace<std::unique_ptr<Node[]>>(new Node[4]);
-			auto *nodes = std::get<std::unique_ptr<Node[]>>(data).get();
+			std::variant<std::vector<Obj>, std::unique_ptr<Node[]>> v(std::in_place_index<1>, new Node[4]);
+			data.swap(v);
+			auto *nodes = std::get<std::unique_ptr<Node[]> >(data).get();
 
 			nodes[0].resize(bb[0]);
 			nodes[1].resize(bb[1]);

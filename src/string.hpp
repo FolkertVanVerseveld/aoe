@@ -46,12 +46,12 @@ static inline std::string trim_copy(std::string s) {
 	return s;
 }
 
-static inline void tolower(std::string &s) {
-	std::for_each(s.begin(), s.end(), [](char &ch) { ch = std::tolower((unsigned)ch); });
+static inline void tolower(std::string &s, size_t off=0) {
+	std::for_each(s.begin() + off, s.end(), [](char &ch) { ch = std::tolower((unsigned)ch); });
 }
 
-static inline void toupper(std::string &s) {
-	std::for_each(s.begin(), s.end(), [](char &ch) { ch = std::toupper((unsigned)ch); });
+static inline void toupper(std::string &s, size_t off=0) {
+	std::for_each(s.begin() + off, s.end(), [](char &ch) { ch = std::toupper((unsigned)ch); });
 }
 
 static inline size_t strlen(const char *str, size_t max) {

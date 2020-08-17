@@ -7,6 +7,7 @@
 #include <SDL2/SDL_rwops.h>
 
 #include <cassert>
+#include <climits>
 
 #include <mutex>
 #include <stdexcept>

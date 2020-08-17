@@ -3,6 +3,7 @@
  * MIT-License (as far as I can tell).
  */
 
+#include <cmath>
 #include <stdexcept>
 #include <string>
 
