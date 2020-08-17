@@ -29,6 +29,13 @@ namespace genie {
 std::string drs_path(const std::string &root, const std::string &fname) {
 	return root + dir_sep + "data" + dir_sep + fname;
 }
+
+std::string drs_path(const std::string &root, const std::string &fname, size_t &off) {
+	std::string s(root + dir_sep + "data" + dir_sep + fname);
+	off = s.size() - (4 + 1 + fname.size());
+	return s;
+}
+
 std::string msc_path(const std::string &root, const std::string &fname) {
 	return root + dir_sep + "sound" + dir_sep + fname;
 }
@@ -92,7 +99,7 @@ int (close)(iofd fd) {
 	return CloseHandle(fd) == false;
 }
 #else
-int (open)(const std::string &name) {
+int (open)(const std::string &name, size_t off) {
 	// unix is case-sensitive, so open may fail where it succeeds on windows
 	// try real name first, then fall back to lowercase and uppercas
 	int fd;
@@ -102,12 +109,12 @@ int (open)(const std::string &name) {
 
 	// FIXME apply lowercase and uppercase only to basename
 	std::string path(name);
-	tolower(path);
+	tolower(path, off);
 
 	if ((fd = ::open(path.c_str(), O_RDONLY)) != FD_INVALID)
 		return fd;
 
-	toupper(path);
+	toupper(path, off);
 	return ::open(path.c_str(), O_RDONLY);
 }
 

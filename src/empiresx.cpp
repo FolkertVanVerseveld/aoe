@@ -14,7 +14,7 @@
 #include "imgui/imgui_impl_opengl2.h"
 
 // addons
-#include "imgui/ImGuiFileDialog.h"
+#include "imgui/ImGuiFileBrowser.h"
 
 #include "prodcons.hpp"
 #include "lang.hpp"
@@ -394,8 +394,9 @@ private:
 
 		try {
 			for (unsigned i = 0; i < COUNT; ++i) {
-				std::string path(genie::drs_path(item.first, fnames[i]));
-				if ((fd[i] = genie::open(path.c_str())) == genie::fd_invalid) {
+				size_t off;
+				std::string path(genie::drs_path(item.first, fnames[i], off));
+				if ((fd[i] = genie::open(path.c_str(), off)) == genie::fd_invalid) {
 					for (unsigned j = 0; j < i; ++j)
 						genie::close(fd[j]);
 
@@ -411,8 +412,9 @@ private:
 				dir = item.second;
 
 				for (unsigned i = 0; i < COUNT; ++i) {
-					std::string path(genie::drs_path(item.second, fnames[i]));
-					if ((fd[i] = genie::open(path.c_str())) == genie::fd_invalid) {
+					size_t off;
+					std::string path(genie::drs_path(item.second, fnames[i], off));
+					if ((fd[i] = genie::open(path.c_str(), off)) == genie::fd_invalid) {
 						for (unsigned j = 0; j < i; ++j)
 							genie::close(fd[j]);
 
@@ -463,13 +465,18 @@ private:
 
 		genie::assets.ttf.clear();
 
-		// FIXME support linux
+#if WIN32
 		std::string base("C:\\Windows\\Fonts\\");
+		size_t off = 0;
+#else
+		std::string base(dir + "/../system/fonts/");
+		size_t off = dir.size() + 1 + 2 + 1;
+#endif
 
 		for (unsigned i = 0; i < IM_ARRAYSIZE(ttfnames); ++i) {
 			try {
 				std::string path(base + ttfnames[i]);
-				genie::assets.ttf.emplace_back(new genie::Blob(path, genie::open(path), true));
+				genie::assets.ttf.emplace_back(new genie::Blob(path, genie::open(path, off), true));
 			} catch (std::runtime_error &e) {
 				done(WorkTaskType::check_root, WorkResultType::fail, e.what());
 				return;
@@ -2336,7 +2343,7 @@ int main(int, char**)
 	bool ther_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-	auto fd = igfd::ImGuiFileDialog::Instance();
+	imgui_addons::ImGuiFileBrowser fd;
 
 	bool fs_choose_root = false, auto_detect = false;
 	GLchannel glch;
@@ -2717,21 +2724,26 @@ int main(int, char**)
 						ImGui::Combo(CTXT(TextId::language), &lang_current, langs, int(LangId::max));
 						lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
 
-						if (!aoe.working && ImGui::Button(CTXT(TextId::set_game_dir)))
-							fd->OpenDialog(FDLG_CHOOSE_DIR, CTXT(TextId::dlg_game_dir), 0, ".");
+						static bool working;
 
-						if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !aoe.working) {
-							if (fd->IsOk == true) {
-								std::string fname(fd->GetFilepathName()), path(fd->GetCurrentPath());
-								printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
+						working = aoe.working;
 
-								fs_has_root = false;
-								settings.gamepath = path;
-								w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
-							}
-
-							fd->CloseDialog(FDLG_CHOOSE_DIR);
+						if (!aoe.working && ImGui::Button(CTXT(TextId::set_game_dir))) {
+							ImGui::OpenPopup(FDLG_CHOOSE_DIR);
+							puts("open");
 						}
+
+						if (fd.showFileDialog(FDLG_CHOOSE_DIR, imgui_addons::ImGuiFileBrowser::DialogMode::SELECT, ImVec2(400, 200))) {
+							std::string fname(fd.selected_fn), path(fd.selected_path);
+							printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
+
+							fs_has_root = false;
+							settings.gamepath = path;
+							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
+						}
+
+						if (aoe.working != working)
+							printf("work %d -> %d\n", working, aoe.working);
 
 						if (!bkg_result.empty())
 							ImGui::TextUnformatted(bkg_result.c_str());

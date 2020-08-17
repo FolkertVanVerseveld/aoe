@@ -52,9 +52,10 @@ public:
 };
 
 std::string drs_path(const std::string &root, const std::string &fname);
+std::string drs_path(const std::string &root, const std::string &fname, size_t &off);
 std::string msc_path(const std::string &root, const std::string &fname);
 
-iofd (open)(const std::string&);
+iofd (open)(const std::string&, size_t off=0);
 int (close)(iofd);
 
 }
