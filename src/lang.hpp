@@ -38,6 +38,8 @@ enum class TextId {
 	btn_scn_edit,
 	btn_cpn_edit,
 	btn_drs_edit,
+	// scn editor
+	btn_scn_load,
 	// settings
 	dim_custom,
 	// tasks

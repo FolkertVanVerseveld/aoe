@@ -14,6 +14,7 @@
 #include "imgui/imgui_impl_opengl2.h"
 
 // addons
+#include "imgui/imgui_memory_editor.h"
 #include "imgui/ImGuiFileDialog.h"
 
 #include "prodcons.hpp"
@@ -23,6 +24,7 @@
 #include "audio.hpp"
 #include "graphics.hpp"
 #include "geom.hpp"
+#include "scn.hpp"
 
 #include <cstdio>
 #include <ctime>
@@ -55,6 +57,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #define FDLG_CHOOSE_DIR "Fdlg Choose AoE dir"
+#define FDLG_CHOOSE_SCN "Fdlg Choose SCN"
 #define MSG_INIT "Msg Init"
 
 #ifdef max
@@ -86,6 +89,8 @@ static const char *str_dim_lgy[] = {
 };
 
 #pragma warning(disable : 26812)
+
+static igfd::ImGuiFileDialog *fd = nullptr;
 
 static bool show_debug;
 static bool fs_has_root;
@@ -1557,6 +1562,9 @@ enum AnimationId {
 	grass,
 	water_shallow,
 	water_deep,
+	corner_water_desert,
+	corner_desert_grass,
+	overlay_water,
 	count,
 };
 
@@ -1565,6 +1573,9 @@ static const unsigned anim_count[] = {
 	25,
 	20,
 	20,
+	36,
+	36,
+	68,
 };
 
 struct TileInfo final {
@@ -1624,12 +1635,17 @@ public:
 	float cull_margin;
 
 	genie::Texture *tex;
+	MemoryEditor memedit;
+	std::string filename;
+	std::vector<uint8_t> filedata;
+	std::unique_ptr<genie::io::Scenario> scenario;
 
 	Terrain() : tiles(), w(20), h(20)
 		, left(0), right(0), bottom(1), top(1), tile_focus(-1), tile_focus_obj(nullptr)
 		, tiledata(), cam(), cam_moved(false)
 		, static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2))
-		, vis_static_objects(), cull_margin(-20), tex(nullptr) { resize(w, h); }
+		, vis_static_objects(), cull_margin(-20), tex(nullptr)
+		, memedit(), filename(), filedata() { resize(w, h); }
 
 	void init(genie::Texture &tex) {
 		tiledata.clear();
@@ -2093,12 +2109,20 @@ public:
 		if (hud.button(0, 0, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_back), dlgcol.shade, dlgcol.bevel))
 			selected = 0;
 
+		btn_x = pad_x;
+
+		if (hud.button(1, 0, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_scn_load), dlgcol.shade, dlgcol.bevel))
+			selected = 1;
+
 		if (working)
 			return;
 
 		switch (selected) {
 			case 0:
 				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::editor);
+				break;
+			case 1:
+				fd->OpenDialog(FDLG_CHOOSE_SCN, CTXT(TextId::btn_scn_load), ".scn", genie::game_dir);
 				break;
 		}
 	}
@@ -2336,7 +2360,7 @@ int main(int, char**)
 	bool ther_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-	auto fd = igfd::ImGuiFileDialog::Instance();
+	fd = igfd::ImGuiFileDialog::Instance();
 
 	bool fs_choose_root = false, auto_detect = false;
 	GLchannel glch;
@@ -2721,7 +2745,7 @@ int main(int, char**)
 							fd->OpenDialog(FDLG_CHOOSE_DIR, CTXT(TextId::dlg_game_dir), 0, ".");
 
 						if (fd->FileDialog(FDLG_CHOOSE_DIR, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200)) && !aoe.working) {
-							if (fd->IsOk == true) {
+							if (fd->IsOk) {
 								std::string fname(fd->GetFilepathName()), path(fd->GetCurrentPath());
 								printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
 
@@ -2846,6 +2870,61 @@ int main(int, char**)
 						}
 					}
 					ImGui::End();
+
+					if (fd->FileDialog(FDLG_CHOOSE_SCN, ImGuiWindowFlags_NoCollapse, ImVec2(400, 200))) {
+						if (fd->IsOk) {
+							std::string fname(fd->GetFilepathName());
+							printf("fname = %s\n", fname.c_str());
+
+							// TODO open scenario
+							try {
+								std::ifstream in(fname, std::ios::binary);
+								in.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+
+								std::streampos fsize = in.tellg();
+								in.seekg(0, std::ios::end);
+								fsize = in.tellg() - fsize;
+								in.seekg(0, std::ios::beg);
+
+								aoe.terrain.filedata.resize(fsize);
+								in.read((char*)aoe.terrain.filedata.data(), fsize);
+
+								aoe.terrain.filename = fname;
+								aoe.terrain.scenario.reset(new genie::io::Scenario(aoe.terrain.filedata));
+							} catch (std::ios_base::failure &f) {
+								fprintf(stderr, "scn load: %s\n", f.what());
+							} catch (std::runtime_error &e) {
+								fprintf(stderr, "scn load: %s\n", e.what());
+							}
+						}
+
+						fd->CloseDialog(FDLG_CHOOSE_SCN);
+					}
+
+					if (aoe.terrain.scenario) {
+						aoe.terrain.memedit.DrawWindow("Filedata", aoe.terrain.scenario->data.data(), aoe.terrain.scenario->data.size());
+
+						ImGui::Begin("Scenario info");
+						{
+							ImGui::SetWindowSize(ImVec2(360, 200));
+							auto *scn = aoe.terrain.scenario.get();
+
+							char v[5];
+							strncpy(v, scn->hdr->version, 4);
+							v[4] = 0;
+
+							ImGui::Text("Version: %s", v);
+							ImGui::Text("Header size: %" PRIX32, scn->hdr->header_size);
+
+							ImGui::Text("Players: %" PRIu32, scn->hdr2->player_count);
+							ImGui::TextWrapped("Description: %s", scn->description.c_str());
+
+							ImGui::Text("Sections: %u", scn->sections.size());
+							for (auto p : scn->sections)
+								ImGui::Text("Offset: %8" PRIX64 "  Size: %8" PRIX64, (uint64_t)p.first, (uint64_t)p.second);
+						}
+						ImGui::End();
+					}
 					break;
 			}
 

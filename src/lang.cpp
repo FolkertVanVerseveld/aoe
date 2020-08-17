@@ -41,7 +41,8 @@ static std::vector<std::vector<std::string>> txts = {
 			"Libraries:\n"
 			"  Dear ImGui version " IMGUI_VERSION " Copyright (c) 2014-2020 Omar Cornut and others\n"
 			"  ImGuiFileDialog " IMGUIFILEDIALOG_VERSION " Copyright (c) 2018-2020 Stephane Cuillerdier (aka Aiekick)\n"
-			"  Simple DirectMedia Layer " stre(SDL_MAJOR_VERSION) "." stre(SDL_MINOR_VERSION) " Copyright(c) 1998-2020 Sam Lantinga",
+			"  Simple DirectMedia Layer " stre(SDL_MAJOR_VERSION) "." stre(SDL_MINOR_VERSION) " Copyright(c) 1998-2020 Sam Lantinga"
+			"  miniz compression library v115 r4 Copyright (c) 2011-2013 Rich Geldreich", // https://code.google.com/archive/p/miniz/
 		"Set game directory",
 		"Choose installation directory of original game",
 		"Global settings",
@@ -59,6 +60,8 @@ static std::vector<std::vector<std::string>> txts = {
 		"Scenario Editor",
 		"Campaign Editor",
 		"DRS Viewer",
+		// scn editor
+		"Load",
 		// settings
 		"Custom",
 		// tasks
@@ -94,9 +97,11 @@ static std::vector<std::vector<std::string>> txts = {
 		"Instellingen",
 		"Editor",
 		// editor
-		"",
-		"Campagne Bewerken",
-		"DRS Bekijken",
+		"Scenario bewerken",
+		"Campagne bewerken",
+		"DRS bekijken",
+		// scn bewerker
+		"Laad",
 		// instellingen
 		"Anders",
 		// taken
@@ -131,6 +136,8 @@ static std::vector<std::vector<std::string>> txts = {
 		// Editor
 		"",
 		"",
+		"",
+		// Scenario Editor
 		"",
 		// Einstellung
 		"Anders",
