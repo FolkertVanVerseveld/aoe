@@ -1516,7 +1516,7 @@ void Button::display(Hud &hud) {
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
 	ImFont *font = fonts[fnt_id];
-	glBindTexture(GL_TEXTURE_2D, (GLuint)font->ContainerAtlas->TexID);
+	glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)font->ContainerAtlas->TexID);
 	hud.text(font, font_sizes[fnt_id], ImVec2((float)(left + bnds.w / 2), (float)(top + (bnds.h - font->FontSize) / 2)), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, label, 200, 0);
 	glDisable(GL_TEXTURE_2D);
 }
@@ -2879,7 +2879,7 @@ int main(int, char**)
 				ImGui::End();
 			}
 
-			static boolean was_working = false;
+			static bool was_working = false;
 
 			if (aoe.working && !was_working)
 				ImGui::OpenPopup("Loading...");

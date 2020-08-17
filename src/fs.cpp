@@ -5,6 +5,7 @@
 #include "string.hpp"
 
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <stdexcept>
 #include <string>
