@@ -81,10 +81,12 @@ Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullp
 	// first byte seems type, second height and third something like overlay?
 	uint8_t *db = (uint8_t*)&dw[2];
 
-	for (size_t i = 0; i < size; ++i, db += 3) {
-		tiles.push_back(db[0]);
-		hmap.push_back((int8_t)db[1]);
-		overlay.push_back(db[2]);
+	for (unsigned x = 0; x < map_width; ++x) {
+		for (unsigned y = 0; y < map_height; ++y) {
+			tiles.push_back(db[3 * (y * map_width + x) + 0]);
+			hmap.push_back(db[3 * (y * map_width + x) + 1]);
+			overlay.push_back(db[3 * (y * map_width + x) + 2]);
+		}
 	}
 
 	// TODO convert tiles data
@@ -94,6 +96,9 @@ Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullp
 		switch (tiles[i]) {
 			case 0:
 				tiles[i] = 26;
+				break;
+			case 1:
+				tiles[i] = 51;
 				break;
 			default:
 				continue;
