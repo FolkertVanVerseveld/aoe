@@ -52,6 +52,12 @@ public:
 	std::string description;
 	std::vector<std::pair<size_t, size_t>> sections;
 
+	int32_t map_width, map_height;
+
+	std::vector<uint8_t> tiles;
+	std::vector<int8_t> hmap;
+	std::vector<uint8_t> overlay;
+
 	Scenario(std::vector<uint8_t> &raw);
 };
 

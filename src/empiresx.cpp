@@ -1644,16 +1644,19 @@ public:
 	MemoryEditor memedit;
 	std::string filename;
 	std::vector<uint8_t> filedata;
-	std::unique_ptr<genie::io::Scenario> scenario;
+	std::unique_ptr<genie::io::Scenario> scn;
+
+	bool flip_x, flip_y;
 
 	Terrain() : tiles(), w(20), h(20)
 		, left(0), right(0), bottom(1), top(1), tile_focus(-1), tile_focus_obj(nullptr)
 		, tiledata(), cam(), cam_moved(false)
 		, static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2))
 		, vis_static_objects(), cull_margin(-20), tex(nullptr)
-		, memedit(), filename(), filedata() { resize(w, h); }
+		, memedit(), filename(), filedata(), scn(nullptr), flip_x(false), flip_y(false) { resize(w, h); }
 
-	void init(genie::Texture &tex) {
+private:
+	void build_tiles(genie::Texture &tex) {
 		tiledata.clear();
 
 		for (unsigned i = 0; i < IM_ARRAYSIZE(anim_count); ++i) {
@@ -1662,6 +1665,108 @@ public:
 			for (unsigned j = 0; j < anim_count[i]; ++j)
 				tiledata.emplace_back((AnimationId)i, strip.tiles[j]);
 		}
+	}
+
+public:
+	void load() {
+		resize(scn->map_width, scn->map_height);
+
+		// determine bounds
+		build_tiles(*tex);
+
+		int left = 0, right = (scn->map_height + scn->map_width) * thw, top = 0, bottom = 0;
+
+		for (unsigned y = 0; y < scn->map_height; ++y) {
+			for (unsigned x = 0; x < scn->map_width; ++x) {
+				size_t pos = (size_t)y * scn->map_width + x;
+
+				uint8_t id = scn->tiles[pos];
+				int8_t height = scn->hmap[pos];
+
+				// TODO id mapping
+
+				double x0, y0, x1, y1;
+
+				if (!id || id >= tiledata.size() - 1)
+					continue;
+
+				auto &t = tiledata[id - 1];
+				auto &strip = *tex->ts.animations.find(t.id);
+				auto &img = *tex->ts.images.find(t.subimage);
+
+				x0 = right - img.bnds.x;
+				x1 = x0 + img.bnds.w;
+				y0 = bottom - img.bnds.y - (int)height * thh;
+				y1 = y0 + img.bnds.h;
+
+				if (y0 < top)
+					top = y0;
+
+				if (y1 > bottom)
+					bottom = y1;
+
+				if (x1 > right)
+					right = x1;
+			}
+		}
+
+		double hsize = (std::max<double>(right, std::max<double>(-top, bottom)) + 640.0) / 2.0;
+		genie::Box<double> bounds(hsize, 0, hsize, hsize);
+		static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
+
+		// important: swap Y
+#if 1
+		tiles.clear();
+		hmap.clear();
+		tiles.reserve(scn->tiles.size());
+		hmap.reserve(scn->hmap.size());
+
+		for (unsigned y = 0; y < scn->map_height; ++y)
+			for (unsigned x = 0; x < scn->map_width; ++x) {
+				tiles.push_back(scn->tiles[(flip_y ? scn->map_height - y - 1 : y) * scn->map_width + (flip_x ? scn->map_width - x - 1 : x)]);
+				hmap.push_back(scn->hmap[(flip_y ? scn->map_height - y - 1 : y) * scn->map_width + (flip_x ? scn->map_width - x - 1 : x)]);
+			}
+#else
+		tiles = scn->tiles;
+		hmap = scn->hmap;
+#endif
+
+		for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
+			for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
+				long long pos = (long long)y * w + x;
+				uint8_t id = tiles[pos];
+				int8_t height = hmap[pos];
+
+				if (!id || id - 1 >= tiledata.size()) {
+					printf("%d,%d: %" PRIu8 ", %" PRId8 ", %" PRIu8 "\n", x, y, tiles[pos], hmap[pos], scn->overlay[pos]);
+					genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
+					static_objects.try_emplace(bounds, (size_t)pos);
+					continue;
+				}
+
+				double x0, y0, x1, y1;
+
+				auto &t = tiledata[id - 1];
+				auto &strip = *tex->ts.animations.find(t.id);
+				auto &img = *tex->ts.images.find(t.subimage);
+
+				x0 = right - img.bnds.x;
+				x1 = x0 + img.bnds.w;
+				y0 = bottom - img.bnds.y - height * thh;
+				y1 = y0 + img.bnds.h;
+
+				genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
+				static_objects.try_emplace(bounds, (size_t)pos);
+			}
+		}
+
+		tile_focus_obj = nullptr;
+		tile_focus = -1;
+		set_view();
+	}
+
+	void init(genie::Texture &tex) {
+		build_tiles(tex);
 
 		// FIXME compute proper bounds
 		double hsize = (std::max<double>(right, bottom) + 640.0) / 2.0;
@@ -1769,6 +1874,11 @@ public:
 
 		tiles.resize(sz, 1);
 		hmap.resize(sz);
+
+		for (size_t i = 0; i < sz; ++i) {
+			tiles[i] = 1;
+			hmap[i] = 0;
+		}
 
 		this->w = w;
 		this->h = h;
@@ -2796,6 +2906,9 @@ int main(int, char**)
 						aoe.terrain.cam_moved |= ImGui::DragFloat("Cam Zoom", &aoe.cam_zoom, 0.005f, aoe.zoom_min, aoe.zoom_max, "%.2f", 1.2f);
 
 						if (ImGui::BeginTabBar("EditorTabs")) {
+							ImGui::Checkbox("flip x", &aoe.terrain.flip_x);
+							ImGui::Checkbox("flip y", &aoe.terrain.flip_y);
+
 							if (ImGui::BeginTabItem("Map creator")) {
 								ImGui::InputInt("Map width", &w);
 								ImGui::InputInt("Map height", &h);
@@ -2894,7 +3007,7 @@ int main(int, char**)
 						std::string fname(fd.selected_path);
 						printf("fname = %s\n", fname.c_str());
 
-						// TODO open scenario
+						// open scenario
 						try {
 							std::ifstream in(fname, std::ios::binary);
 							in.exceptions(std::ofstream::failbit | std::ofstream::badbit);
@@ -2908,7 +3021,8 @@ int main(int, char**)
 							in.read((char*)aoe.terrain.filedata.data(), fsize);
 
 							aoe.terrain.filename = fname;
-							aoe.terrain.scenario.reset(new genie::io::Scenario(aoe.terrain.filedata));
+							aoe.terrain.scn.reset(new genie::io::Scenario(aoe.terrain.filedata));
+							aoe.terrain.load();
 						} catch (std::ios_base::failure &f) {
 							fprintf(stderr, "scn load: %s\n", f.what());
 						} catch (std::runtime_error &e) {
@@ -2916,13 +3030,13 @@ int main(int, char**)
 						}
 					}
 
-					if (aoe.terrain.scenario) {
-						aoe.terrain.memedit.DrawWindow("Filedata", aoe.terrain.scenario->data.data(), aoe.terrain.scenario->data.size());
+					if (aoe.terrain.scn) {
+						aoe.terrain.memedit.DrawWindow("Filedata", aoe.terrain.scn->data.data(), aoe.terrain.scn->data.size());
 
 						ImGui::Begin("Scenario info");
 						{
 							ImGui::SetWindowSize(ImVec2(360, 200));
-							auto *scn = aoe.terrain.scenario.get();
+							auto *scn = aoe.terrain.scn.get();
 
 							char v[5];
 							strncpy(v, scn->hdr->version, 4);

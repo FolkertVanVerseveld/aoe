@@ -1,9 +1,14 @@
 #include "scn.hpp"
 
+#include <cstdio>
+#include <cassert>
+#include <inttypes.h>
+
 #include <cstring>
 #include <algorithm>
 #include <array>
 #include <stdexcept>
+#include <string>
 
 static constexpr uint32_t section_separator = 0xffffff9d;
 
@@ -23,7 +28,7 @@ namespace genie {
 
 namespace io {
 
-Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullptr), description(), sections(0) {
+Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullptr), description(), sections(0), map_width(0), map_height(0), tiles(), hmap(), overlay() {
 	hdr = (ScnHdr*)raw.data();
 
 	if (!hdr->good(raw.size()))
@@ -55,6 +60,45 @@ Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullp
 	}
 
 	sections.emplace_back(off, data.size() - off);
+
+	// through empirical testing, 5 sections are mandatory
+	if (sections.size() != 5)
+		throw std::runtime_error(std::string("Invalid section count: expected 5, got ") + std::to_string(sections.size()));
+
+	assert(sections[4].first < data.size());
+	int32_t *dw = (int32_t*)((char*)data.data() + sections[4].first);
+	map_width = dw[0];
+	map_height = dw[1];
+
+	assert(map_width && map_height);
+
+	size_t size = (size_t)map_width * map_height;
+
+	tiles.reserve(size);
+	hmap.reserve(size);
+	overlay.reserve(size);
+
+	// first byte seems type, second height and third something like overlay?
+	uint8_t *db = (uint8_t*)&dw[2];
+
+	for (size_t i = 0; i < size; ++i, db += 3) {
+		tiles.push_back(db[0]);
+		hmap.push_back((int8_t)db[1]);
+		overlay.push_back(db[2]);
+	}
+
+	// TODO convert tiles data
+	// XXX or use same id numbering internally...
+
+	for (size_t i = 0; i < size; ++i) {
+		switch (tiles[i]) {
+			case 0:
+				tiles[i] = 26;
+				break;
+			default:
+				continue;
+		}
+	}
 }
 
 }
