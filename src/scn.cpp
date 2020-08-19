@@ -100,10 +100,64 @@ Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullp
 			case 1:
 				tiles[i] = 51;
 				break;
+			case 22:
+				tiles[i] = 71;
+				break;
 			default:
 				continue;
 		}
 	}
+
+#if 0
+	// TODO fix corners and overlays
+	std::vector<uint8_t> copy_tiles(tiles);
+
+	for (unsigned y = 0; y < map_height; ++y) {
+		for (unsigned x = 0; x < map_width; ++x) {
+			// check for conflicts
+			size_t pos[9];
+			uint8_t id[9];
+			// 0 1 2
+			// 3 4 5
+			// 6 7 8
+			pos[4] = y * map_width + x;
+			pos[0] = x > 0 && y > 0 ? (y - 1) * map_width + (x - 1) : pos[4];
+			pos[1] = y > 0 ? (y - 1) * map_width + x : pos[4];
+			pos[2] = x + 1 < map_width && y > 0 ? (y - 1) * map_width + (x + 1) : pos[4];
+			pos[3] = x > 0 ? y * map_width + (x - 1) : pos[4];
+			pos[5] = x + 1 < map_width ? y * map_width + (x + 1) : pos[4];
+			pos[6] = x > 0 && y + 1 < map_height ? (y + 1) * map_width + (x - 1) : pos[4];
+			pos[7] = y + 1 < map_height ? (y + 1) * map_width + x : pos[4];
+			pos[8] = x + 1 < map_width && y + 1 < map_height ? (y + 1) * map_width + (x + 1) : pos[4];
+
+			// fetch tiles
+			id[0] = copy_tiles[pos[0]]; id[1] = copy_tiles[pos[1]]; id[2] = copy_tiles[pos[2]];
+			id[3] = copy_tiles[pos[3]]; id[4] = copy_tiles[pos[4]]; id[5] = copy_tiles[pos[5]];
+			id[6] = copy_tiles[pos[6]]; id[7] = copy_tiles[pos[7]]; id[8] = copy_tiles[pos[8]];
+
+			if (id[0] != id[4] || id[1] != id[4] || id[2] != id[4]
+				|| id[3] != id[4] || id[5] != id[4]
+				|| id[6] != id[4] || id[7] != id[4] || id[8] != id[4]) {
+				switch (id[4]) {
+					case 2:
+						// do easy cases first
+						//   1
+						// 3 4 5
+						//   7
+						if (id[1] == 51 || id[3] == 51 || id[5] == 51 || id[7] == 51) {
+							if (id[1] == 51 && id[3] == 51 && id[5] == 2 && id[7] == 51) {
+								id[4] = 91;
+								break;
+							}
+						}
+						break;
+				}
+			}
+
+			tiles[pos[4]] = id[4];
+		}
+	}
+#endif
 }
 
 }

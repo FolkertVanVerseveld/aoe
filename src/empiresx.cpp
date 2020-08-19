@@ -1616,7 +1616,7 @@ static bool cmpStaticObject(const StaticObject &lhs, const StaticObject &rhs) {
 class Terrain final {
 public:
 	// duplicate information as static_objects also has this, but this eases tile info lookup
-	std::vector<uint8_t> tiles;
+	std::vector<uint8_t> tiles, overlay;
 	std::vector<int8_t> hmap;
 	int w, h;
 
@@ -1646,14 +1646,12 @@ public:
 	std::vector<uint8_t> filedata;
 	std::unique_ptr<genie::io::Scenario> scn;
 
-	bool flip_x, flip_y;
-
-	Terrain() : tiles(), w(20), h(20)
+	Terrain() : tiles(), overlay(), w(20), h(20)
 		, left(0), right(0), bottom(1), top(1), tile_focus(-1), tile_focus_obj(nullptr)
 		, tiledata(), cam(), cam_moved(false)
 		, static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2))
 		, vis_static_objects(), cull_margin(-20), tex(nullptr)
-		, memedit(), filename(), filedata(), scn(nullptr), flip_x(false), flip_y(false) { resize(w, h); }
+		, memedit(), filename(), filedata(), scn(nullptr) { resize(w, h); }
 
 private:
 	void build_tiles(genie::Texture &tex) {
@@ -1674,10 +1672,10 @@ public:
 		// determine bounds
 		build_tiles(*tex);
 
-		int left = 0, right = (scn->map_height + scn->map_width) * thw, top = 0, bottom = 0;
+		int min_top = 0, max_right = 0, max_bottom = 0;
 
-		for (unsigned y = 0; y < scn->map_height; ++y) {
-			for (unsigned x = 0; x < scn->map_width; ++x) {
+		for (int left = 0, top = 0, y = 0; y < scn->map_height; ++y, left += thw, top -= thh) {
+			for (int right = left, bottom = top, x = 0; x < scn->map_width; ++x, right += thw, bottom += thh) {
 				size_t pos = (size_t)y * scn->map_width + x;
 
 				uint8_t id = scn->tiles[pos];
@@ -1699,37 +1697,24 @@ public:
 				y0 = bottom - img.bnds.y - (int)height * thh;
 				y1 = y0 + img.bnds.h;
 
-				if (y0 < top)
-					top = y0;
+				if (y0 < min_top)
+					min_top = y0;
 
-				if (y1 > bottom)
-					bottom = y1;
+				if (y1 > max_bottom)
+					max_bottom = y1;
 
-				if (x1 > right)
-					right = x1;
+				if (x1 > max_right)
+					max_right = x1;
 			}
 		}
 
-		double hsize = (std::max<double>(right, std::max<double>(-top, bottom)) + 640.0) / 2.0;
+		double hsize = (std::max<double>(max_right, std::max<double>(-min_top, max_bottom))) / 2.0;
 		genie::Box<double> bounds(hsize, 0, hsize, hsize);
 		static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
 
-		// important: swap Y
-#if 1
-		tiles.clear();
-		hmap.clear();
-		tiles.reserve(scn->tiles.size());
-		hmap.reserve(scn->hmap.size());
-
-		for (unsigned y = 0; y < scn->map_height; ++y)
-			for (unsigned x = 0; x < scn->map_width; ++x) {
-				tiles.push_back(scn->tiles[(flip_y ? scn->map_height - y - 1 : y) * scn->map_width + (flip_x ? scn->map_width - x - 1 : x)]);
-				hmap.push_back(scn->hmap[(flip_y ? scn->map_height - y - 1 : y) * scn->map_width + (flip_x ? scn->map_width - x - 1 : x)]);
-			}
-#else
 		tiles = scn->tiles;
 		hmap = scn->hmap;
-#endif
+		overlay = scn->overlay;
 
 		for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
 			for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
@@ -1874,11 +1859,7 @@ public:
 
 		tiles.resize(sz, 1);
 		hmap.resize(sz);
-
-		for (size_t i = 0; i < sz; ++i) {
-			tiles[i] = 1;
-			hmap[i] = 0;
-		}
+		overlay.resize(sz);
 
 		this->w = w;
 		this->h = h;
@@ -2904,11 +2885,9 @@ int main(int, char**)
 						aoe.terrain.cam_moved |= ImGui::DragFloat("Cam X", &aoe.cam_x, 1.0f, aoe.terrain.left, aoe.terrain.right);
 						aoe.terrain.cam_moved |= ImGui::DragFloat("Cam Y", &aoe.cam_y, 1.0f, aoe.terrain.top, aoe.terrain.bottom);
 						aoe.terrain.cam_moved |= ImGui::DragFloat("Cam Zoom", &aoe.cam_zoom, 0.005f, aoe.zoom_min, aoe.zoom_max, "%.2f", 1.2f);
+						aoe.cam_zoom = genie::clamp(aoe.zoom_min, aoe.cam_zoom, aoe.zoom_max);
 
 						if (ImGui::BeginTabBar("EditorTabs")) {
-							ImGui::Checkbox("flip x", &aoe.terrain.flip_x);
-							ImGui::Checkbox("flip y", &aoe.terrain.flip_y);
-
 							if (ImGui::BeginTabItem("Map creator")) {
 								ImGui::InputInt("Map width", &w);
 								ImGui::InputInt("Map height", &h);
@@ -2941,7 +2920,7 @@ int main(int, char**)
 								if (aoe.terrain.tile_focus == -1) {
 									ImGui::TextUnformatted("Nothing selected");
 								} else {
-									static int id, height;
+									static int id, height, overlay;
 									int x, y;
 									long long pos = aoe.terrain.tile_focus;
 
@@ -2952,15 +2931,18 @@ int main(int, char**)
 
 									id = aoe.terrain.tiles[pos];
 									height = aoe.terrain.hmap[pos];
+									overlay = aoe.terrain.overlay[pos];
 
 									bool changed = false;
 
 									changed |= ImGui::SliderInputInt("ID", &id, 0, UINT8_MAX);
 									changed |= ImGui::InputInt("Height", &height);
+									changed |= ImGui::InputInt("Overlay", &overlay);
 									height = genie::clamp<int>(INT8_MIN, height, INT8_MAX);
 
 									aoe.terrain.tiles[pos] = id;
 									aoe.terrain.hmap[pos] = height;
+									aoe.terrain.overlay[pos] = overlay;
 
 									if (changed && aoe.terrain.tile_focus_obj)
 										aoe.terrain.update_tile(*aoe.terrain.tile_focus_obj);
