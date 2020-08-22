@@ -67,8 +67,8 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 			auto &img = *it;
 			auto &r = buf_rects.emplace_back();
 			r.id = img.id;
-			r.w = img.bnds.w;
-			r.h = img.bnds.h;
+			r.w = img.bnds.w + 1;
+			r.h = img.bnds.h + 1;
 			r.was_packed = false;
 		}
 
@@ -111,9 +111,9 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 
 		images.emplace(0, p.bnds, t.id, s0, t0, s1, t1, p.mask);
 
-		for (int y = 0; y < t.h; ++y)
-			for (int x = 0; x < t.w; ++x)
-				pixels[((long long)y + t.y) * bnds.w + x + t.x] = p.pixels[(long long)y * t.w + x];
+		for (int y = 0; y < t.h - 1; ++y)
+			for (int x = 0; x < t.w - 1; ++x)
+				pixels[((long long)y + t.y) * bnds.w + x + t.x] = p.pixels[(long long)y * (t.w - 1) + x];
 	}
 }
 
