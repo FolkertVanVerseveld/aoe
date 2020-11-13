@@ -61,6 +61,13 @@ static std::vector<std::vector<std::string>> txts = {
 		// scn editor
 		"Load",
 		// settings
+		"Sound",
+		"Sound volume",
+		"Music",
+		"Music volume",
+		"Fullscreen",
+		"Center",
+		"Display mode",
 		"Custom",
 		// tasks
 		"Game configured successfully",
@@ -101,6 +108,13 @@ static std::vector<std::vector<std::string>> txts = {
 		// scn bewerker
 		"Laad",
 		// instellingen
+		"Geluid",
+		"Geluidsvolume",
+		"Muziek",
+		"Muzieksvolume",
+		"",
+		"Centreer",
+		"Schermmodus",
 		"Anders",
 		// taken
 		"Spelconfiguratie voltooid",
@@ -138,6 +152,13 @@ static std::vector<std::vector<std::string>> txts = {
 		// Scenario Editor
 		"",
 		// Einstellung
+		"Audio",
+		"Audiovolume",
+		"Musik",
+		"Musikvolume",
+		"",
+		"",
+		"Bildmodus",
 		"Anders",
 		// Taken
 		"Konfiguration erfüllt",

@@ -41,6 +41,13 @@ enum class TextId {
 	// scn editor
 	btn_scn_load,
 	// settings
+	cfg_sfx,
+	cfg_sfx_vol,
+	cfg_msc,
+	cfg_msc_vol,
+	cfg_fullscreen,
+	cfg_center_window,
+	cfg_display_mode,
 	dim_custom,
 	// tasks
 	work_drs_success,

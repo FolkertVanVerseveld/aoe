@@ -60,6 +60,9 @@
 #define FDLG_CHOOSE_SCN "Fdlg Choose SCN"
 #define MSG_INIT "Msg Init"
 
+#define MODAL_LOADING "Loading..."
+#define MODAL_GLOBAL_SETTTINGS "Global settings"
+
 #ifdef max
 #undef max
 #endif
@@ -2769,6 +2772,8 @@ int main(int, char**)
 							} else {
 								ImGui::Text("Display count: %d\n", video.displays);
 
+								str_dim_lgy[3] = CTXT(TextId::dim_custom);
+
 								if (ImGui::Combo("Display mode", &video.mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy))) {
 									if (video.mode < 3)
 										SDL_SetWindowSize(window, dim_lgy[video.mode].w, dim_lgy[video.mode].h);
@@ -3039,6 +3044,7 @@ int main(int, char**)
 					break;
 			}
 
+#if 0
 			if (aoe.global_settings || show_debug) {
 				// candidates for language image: flag 460: 0-9, priest convert 604: 0-9
 				ImGui::Begin(CTXT(TextId::dlg_global), show_debug ? NULL : &aoe.global_settings, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
@@ -3055,6 +3061,7 @@ int main(int, char**)
 				}
 				ImGui::End();
 			}
+#endif
 
 			if (show_about) {
 				ImGui::Begin("About", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
@@ -3069,18 +3076,81 @@ int main(int, char**)
 				ImGui::End();
 			}
 
-			static bool was_working = false;
+			static bool was_working = false, was_global_settings = false;
 
-			if (aoe.working && !was_working)
-				ImGui::OpenPopup("Loading...");
+			if (aoe.global_settings) {
+				if (!was_global_settings)
+					ImGui::OpenPopup(MODAL_GLOBAL_SETTTINGS);
+			}
 
-			if (aoe.working && p.total && ImGui::BeginPopupModal("Loading...", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-				ImGui::TextUnformatted(p.desc.c_str());
-				ImGui::ProgressBar(float(p.step) / p.total);
+			if (ImGui::BeginPopupModal(MODAL_GLOBAL_SETTTINGS, &aoe.global_settings, ImGuiWindowFlags_AlwaysAutoResize)) {
+				lang_current = int(lang);
+				ImGui::Combo(CTXT(TextId::language), &lang_current, langs, int(LangId::max));
+				lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
+
+				static bool sfx_on, msc_on;
+				sfx_on = genie::jukebox.sfx_enabled();
+				msc_on = genie::jukebox.msc_enabled();
+
+				// enable/disable audio
+				if (ImGui::Checkbox(CTXT(TextId::cfg_sfx), &sfx_on))
+					genie::jukebox.sfx(sfx_on);
+				ImGui::SameLine();
+				if (ImGui::Checkbox(CTXT(TextId::cfg_msc), &msc_on))
+					genie::jukebox.msc(msc_on);
+
+				// volume control
+				static float sfx_vol = 100.0f, msc_vol = 100.0f;
+				int old_vol = genie::jukebox.sfx_volume(), new_vol;
+
+				sfx_vol = old_vol * 100.0f / genie::sfx_max_volume;
+				ImGui::SliderFloat(CTXT(TextId::cfg_sfx_vol), &sfx_vol, 0, 100.0f, "%.0f");
+
+				sfx_vol = genie::clamp(0.0f, sfx_vol, 100.0f);
+				new_vol = sfx_vol * genie::sfx_max_volume / 100.0f;
+
+				if (old_vol != new_vol)
+					genie::jukebox.sfx_volume(new_vol);
+
+				old_vol = genie::jukebox.msc_volume();
+				msc_vol = old_vol * 100.0f / genie::sfx_max_volume;
+				ImGui::SliderFloat(CTXT(TextId::cfg_msc_vol), &msc_vol, 0, 100.0f, "%.0f");
+
+				msc_vol = genie::clamp(0.0f, msc_vol, 100.0f);
+				new_vol = msc_vol * genie::sfx_max_volume / 100.0f;
+
+				if (old_vol != new_vol)
+					genie::jukebox.msc_volume(new_vol);
+
+				if (ImGui::Checkbox(CTXT(TextId::cfg_fullscreen), &video.fullscreen))
+					video.set_fullscreen(video.fullscreen);
+
+				if (ImGui::Button(CTXT(TextId::cfg_center_window)))
+					video.center();
+
+				str_dim_lgy[3] = CTXT(TextId::dim_custom);
+
+				if (ImGui::Combo(CTXT(TextId::cfg_display_mode), &video.mode, str_dim_lgy, IM_ARRAYSIZE(str_dim_lgy))) {
+					if (video.mode < 3)
+						SDL_SetWindowSize(window, dim_lgy[video.mode].w, dim_lgy[video.mode].h);
+				}
+
 				ImGui::EndPopup();
 			}
 
+			if (aoe.working) {
+				if (!was_working)
+					ImGui::OpenPopup(MODAL_LOADING);
+
+				if (p.total && ImGui::BeginPopupModal(MODAL_LOADING, NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+					ImGui::TextUnformatted(p.desc.c_str());
+					ImGui::ProgressBar(float(p.step) / p.total);
+					ImGui::EndPopup();
+				}
+			}
+
 			was_working = aoe.working;
+			was_global_settings = aoe.global_settings;
 
 			// Rendering
 			ImGui::Render();
