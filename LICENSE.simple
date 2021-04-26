@@ -1,5 +1,4 @@
 You are required to:
-* Disclose source (even when streamed/provided through a network)
 * Show license and copyright notice
 * State changes to this product
 
@@ -12,15 +11,11 @@ You are permitted to:
 
 You are forbidden to:
 * Hold us liable
+* Use trademarks
 * Break this license
 
 Required
 --------
-
-#Disclose source
-Source code must be made available when distributing the software. In the case
-of LGPL and OSL 3.0, the source for the library (and not the entire program)
-must be made available.
 
 #License and copyright notice
 Include a copy of the license and copyright notice with the code.
@@ -59,3 +54,8 @@ Forbidden
 #Hold Liable
 Software is provided without warranty and the software author/license owner
 cannot be held liable for damages.
+
+#Trademark use
+The trademarks are property of Ensemble Studios, owned by Microsoft. This
+project does not claim any ownership and for trademark use, you should consult
+a lawyer and ask Microsoft for permission.
