@@ -1,10 +1,10 @@
 Any file in this project that doesn't state otherwise, and isn't listed as an
-exception below, is Copyright 2016-2020 The Age of Empires Free Software Remake
-authors, and licensed only under the terms of the GNU Affero General Public
-License Version 3 ("AGPL3"), and no later version.
+exception below, is Copyright 2016-2021 The Age of Empires Free Software Remake
+authors, and licensed only under the terms of the Apache License 2.0
+("Apache 2"), and no later version.
 
-This means that all code as a whole is licensed under AGPL3, but some files may
-be licensed under e.g. MIT (see file header if available).
+This means that all code as a whole is licensed under Apache 2, but some files
+may be licensed under e.g. MIT (see file header if available).
 
 Remember that this product is a non-profit free-time project and that Microsoft
 and Ensemble Studios own all the rights of the original product.
@@ -17,7 +17,7 @@ to interpretation errors. Always read LICENSE in case LICENSE.simple does not
 clarify legal issues.
 
 Please note that this product is *not* suited for commercial use without paying
-royalties to their original respective copyright owners (i.e.  Microsoft and
+royalties to their original respective copyright owners (i.e. Microsoft and
 Ensemble Studios). You have to contact these copyright owners for commercial
 purposes. We are in no way related to Microsoft nor Ensemble Studios.
 
