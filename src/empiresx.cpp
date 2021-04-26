@@ -1877,7 +1877,12 @@ public:
 		scr[0] = (float)(mx + vpx); scr[1] = float(vp[3] - my + vpy); scr[2] = 0;
 		tile_focus = -1;
 
-		genie::unproject(pos, scr, mv, proj, vp);
+		try {
+			genie::unproject(pos, scr, mv, proj, vp);
+		} catch (std::runtime_error &e) {
+			fputs("unproject failed\n", stderr);
+			return;
+		}
 
 		// determine selected tile
 #if 1
