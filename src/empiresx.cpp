@@ -17,6 +17,8 @@
 #include "imgui/imgui_memory_editor.h"
 #include "imgui/ImGuiFileBrowser.h"
 
+#include "../tracy/Tracy.hpp"
+
 #include "prodcons.hpp"
 #include "lang.hpp"
 #include "drs.hpp"
@@ -1950,6 +1952,7 @@ public:
 
 	/* Draw terrain. Assumes glBegin hasn't been called yet and the texture is bound. */
 	void show(genie::Texture &tex) {
+		ZoneScoped;
 		// save unproject data
 		glGetFloatv(GL_MODELVIEW_MATRIX, mv);
 		glGetFloatv(GL_PROJECTION_MATRIX, proj);
@@ -2048,6 +2051,7 @@ public:
 	}
 
 	void load_menu(MenuId id) {
+		ZoneScoped;
 		hud.reset();
 		tex_bkg.ts = std::move(ts_next);
 		tex_bkg.ts.write(tex_bkg.tex);
@@ -2062,6 +2066,7 @@ public:
 	}
 
 	void idle(SDL_Event &event) {
+		ZoneScoped;
 		Uint8 db;
 
 		switch (event.type) {
@@ -2093,6 +2098,7 @@ public:
 	}
 
 	void draw_background() {
+		ZoneScoped;
 		assert(tex_bkg.tex);
 		const genie::SubImage &img = tex_bkg.ts[lgy_index];
 
@@ -2107,6 +2113,7 @@ public:
 	}
 
 	void draw_terrain() {
+		ZoneScoped;
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		// center camera to make zooming and scrolling easier
@@ -2131,6 +2138,7 @@ public:
 	}
 
 	void display_editor(SDL_Rect bnds) {
+		ZoneScoped;
 		hud.rect(bnds, dlgcol.bevel);
 
 		double btn_x, btn_y, btn_w, btn_h, pad_y;
@@ -2173,6 +2181,7 @@ public:
 	}
 
 	void display_scn_edit(SDL_Rect bnds) {
+		ZoneScoped;
 		SDL_Rect top, bottom;
 
 		top.x = bnds.x; top.y = bnds.y; top.w = bnds.w; top.h = 51;
@@ -2231,6 +2240,7 @@ public:
 	}
 
 	void display_start(SDL_Rect bnds) {
+		ZoneScoped;
 		hud.rect(bnds, dlgcol.bevel);
 
 		double btn_x, btn_y, btn_w, btn_h, pad_y;
@@ -2275,6 +2285,7 @@ public:
 	}
 
 	void display() {
+		ZoneScoped;
 		SDL_Rect bnds;
 
 		SDL_GetWindowSize(window, &bnds.w, &bnds.h);
@@ -3166,6 +3177,7 @@ int main(int, char**)
 			// do imgui stuff
 			//glUseProgram(0); // You may want this if using this code in an OpenGL 3+ context where shaders may be bound
 			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+			FrameMark
 			SDL_GL_SwapWindow(window);
 		}
 

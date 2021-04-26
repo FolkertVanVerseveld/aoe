@@ -10,6 +10,8 @@
 
 #include <SDL2/SDL_opengl.h>
 
+#include "../tracy/Tracy.hpp"
+
 /*
  * Geometric objects and geometric transformation functions
  */
@@ -90,6 +92,7 @@ public:
 
 		/** Retrieve all objects that intersect with \a bounds and return number of retrieved objects. */
 		size_t collect(std::vector<const Obj*> &lst, const Box<Coord> &bounds) const noexcept {
+			ZoneScoped;
 			if (!this->bounds.intersects(bounds))
 				return 0;
 
@@ -138,6 +141,7 @@ public:
 		}
 
 		std::pair<Obj*, bool> add(std::function<Box<Coord>(const Obj&)> getBox, Obj &obj, const Point<Coord> &pos, size_t depth, size_t threshold) {
+			ZoneScoped;
 			if (!bounds.contains(pos))
 				return std::make_pair<Obj*, bool>(nullptr, false);
 
@@ -168,6 +172,7 @@ public:
 		}
 
 		bool erase(std::function<bool(const Obj&, const Obj&)> equal, const Obj &obj, const Point<Coord> &pos, size_t threshold) {
+			ZoneScoped;
 			if (!bounds.contains(pos))
 				return false;
 
@@ -209,6 +214,7 @@ public:
 		}
 
 		void split(std::function<Box<Coord>(const Obj&)> getBox, size_t depth, size_t threshold) {
+			ZoneScoped;
 			assert(data.index() == 0);
 
 			// copy collect
@@ -284,6 +290,7 @@ public:
 	}
 
 	void show() const {
+		ZoneScoped;
 		glColor3f(1, 0, 0);
 
 		glBegin(GL_LINES);

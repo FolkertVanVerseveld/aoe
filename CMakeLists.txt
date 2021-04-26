@@ -2,8 +2,15 @@ cmake_minimum_required (VERSION 2.8)
 
 project (main)
 
+set(PROFILING TRUE)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(PROFILING)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRACY_ENABLE=1")
+	set(TRACY_SOURCES "tracy/TracyClient.cpp")
+endif()
 
 if(UNIX AND NOT APPLE)
 	set(LINUX TRUE)
@@ -26,7 +33,7 @@ else()
 endif()
 
 # https://cmake.org/cmake/help/v3.0/command/file.html
-file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.c")# "libs/gl3w/GL/gl3w.c")
+file(GLOB SOURCES "src/*.cpp" "src/imgui/*.cpp" "src/*.c" "${TRACY_SOURCES}")# "libs/gl3w/GL/gl3w.c")
 
 include_directories(${SDL2_INCLUDE_DIRS} ${INCLUDE_WINDOWS})# "libs/gl3w")
 add_executable (main ${SOURCES})# ${GL3W_SOURCES})
