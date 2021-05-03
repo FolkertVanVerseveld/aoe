@@ -28,7 +28,15 @@ namespace genie {
 
 namespace io {
 
-Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullptr), description(), sections(0), map_width(0), map_height(0), tiles(), hmap(), overlay() {
+std::map<uint8_t, std::pair<uint8_t, uint8_t>> tconv({
+	{0, {2, 0}},
+	{1, {3, 0}},
+	{6, {1, 0}},
+	{22, {3, 1}},
+});
+
+Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullptr), description(), sections(0), map_width(0), map_height(0), tiles(), subimg(), hmap(), overlay()
+{
 	hdr = (ScnHdr*)raw.data();
 
 	if (!hdr->good(raw.size()))
@@ -75,6 +83,7 @@ Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullp
 	size_t size = (size_t)map_width * map_height;
 
 	tiles.reserve(size);
+	subimg.reserve(size);
 	hmap.reserve(size);
 	overlay.reserve(size);
 
@@ -84,31 +93,23 @@ Scenario::Scenario(std::vector<uint8_t> &raw) : data(), hdr(nullptr), hdr2(nullp
 	for (unsigned x = 0; x < map_width; ++x) {
 		for (unsigned y = 0; y < map_height; ++y) {
 			tiles.push_back(db[3 * (y * map_width + x) + 0]);
+			subimg.push_back(0);
 			hmap.push_back(db[3 * (y * map_width + x) + 1]);
 			overlay.push_back(db[3 * (y * map_width + x) + 2]);
 		}
 	}
 
-	// TODO convert tiles data
-	// XXX or use same id numbering internally...
-
 	for (size_t i = 0; i < size; ++i) {
-		switch (tiles[i]) {
-			case 0:
-				tiles[i] = 26;
-				break;
-			case 1:
-				tiles[i] = 51;
-				break;
-			case 22:
-				tiles[i] = 71;
-				break;
-			default:
-				continue;
-		}
+		auto search = tconv.find(tiles[i]);
+
+		if (search == tconv.end())
+			continue;
+
+		tiles[i] = search->second.first;
+		subimg[i] = search->second.second;
 	}
 
-#if 1
+#if 0
 	// TODO fix corners and overlays
 	std::vector<uint8_t> copy_tiles(tiles);
 

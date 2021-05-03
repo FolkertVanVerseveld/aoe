@@ -102,11 +102,22 @@ static std::atomic_bool running(true);
 enum class MenuId {
 	config,
 	start,
+	singleplayer,
 	editor,
 	scn_edit,
 };
 
+enum class SubMenuId {
+	singleplayer_menu,
+	singleplayer_game,
+};
+
 MenuId menu_id = MenuId::config;
+SubMenuId submenu_id = SubMenuId::singleplayer_menu;
+
+class AoE;
+
+AoE *eng = nullptr;
 
 static bool constexpr menu_is_game(MenuId id=menu_id) {
 	return id == MenuId::scn_edit;
@@ -165,15 +176,27 @@ Assets assets;
 
 }
 
+enum AnimationId {
+	desert,
+	grass,
+	water_shallow,
+	water_deep,
+	corner_water_desert,
+	corner_desert_grass,
+	overlay_water,
+	ui_buttons,
+};
+
 enum class GLcmdType {
 	stop,
 	set_bkg,
 	set_dlgcol,
+	set_anims,
 };
 
 struct GLcmd final {
 	GLcmdType type;
-	std::variant<std::nullopt_t, genie::Tilesheet, genie::DialogColors> data;
+	std::variant<std::nullopt_t, genie::Tilesheet, genie::DialogColors, std::map<AnimationId, unsigned>> data;
 
 	GLcmd(GLcmdType type) : type(type), data(std::nullopt) {}
 
@@ -200,6 +223,17 @@ public:
 
 	GLchannel() : cmds(GLcmdType::stop, 10), results(GLcmdResultType::stop, 10) {}
 };
+
+static const unsigned anim_counts[] = {
+	7,
+	1,
+};
+
+static void anim_add(std::map<AnimationId, unsigned> &anims, genie::TilesheetBuilder &bld, unsigned idx, AnimationId anim, genie::DrsId id, SDL_Palette *pal)
+{
+	unsigned pos = bld.add(idx, id, pal);
+	anims.emplace(anim, pos);
+}
 
 class Worker final {
 public:
@@ -287,6 +321,7 @@ private:
 		const genie::res_id dlg_ids[] = {
 			(genie::res_id)-1,
 			(genie::res_id)genie::DrsId::menu_start,
+			(genie::res_id)genie::DrsId::menu_singleplayer,
 			(genie::res_id)genie::DrsId::menu_editor,
 			(genie::res_id)genie::DrsId::menu_scn_edit,
 		};
@@ -310,17 +345,27 @@ private:
 		++p.step;
 		set_desc("Loading animations");
 
+		std::map<AnimationId, unsigned> anims;
+
 		// add any other images depending on the menu being loaded
+		// anim_counts should match number of bld.add lines!
 		switch (id) {
 			case MenuId::scn_edit:
 			{
-				bld.add(4, genie::DrsId::terrain_desert, pal.get());
-				bld.add(4, genie::DrsId::terrain_grass, pal.get());
-				bld.add(4, genie::DrsId::terrain_water_shallow, pal.get());
-				bld.add(4, genie::DrsId::terrain_water_deep, pal.get());
-				bld.add(0, genie::DrsId::corner_desert_water, pal.get());
-				bld.add(0, genie::DrsId::corner_desert_grass, pal.get());
-				bld.add(0, genie::DrsId::overlay_water, pal.get());
+				anim_add(anims, bld, 4, AnimationId::desert, genie::DrsId::terrain_desert, pal.get());
+				anim_add(anims, bld, 4, AnimationId::grass, genie::DrsId::terrain_grass, pal.get());
+				anim_add(anims, bld, 4, AnimationId::water_shallow, genie::DrsId::terrain_water_shallow, pal.get());
+				anim_add(anims, bld, 4, AnimationId::water_deep, genie::DrsId::terrain_water_deep, pal.get());
+				anim_add(anims, bld, 0, AnimationId::corner_water_desert, genie::DrsId::corner_desert_water, pal.get());
+				anim_add(anims, bld, 0, AnimationId::corner_desert_grass, genie::DrsId::corner_desert_grass, pal.get());
+				anim_add(anims, bld, 0, AnimationId::overlay_water, genie::DrsId::overlay_water, pal.get());
+				break;
+			}
+			case MenuId::singleplayer:
+			{
+				std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> ui_pal(genie::assets.open_pal(genie::DrsId::ui_palette), SDL_FreePalette);
+
+				anim_add(anims, bld, 2, AnimationId::ui_buttons, genie::DrsId::ui_buttons, ui_pal.get());
 				break;
 			}
 		}
@@ -330,6 +375,7 @@ private:
 		genie::Tilesheet ts(bld);
 		ch.cmds.produce(GLcmdType::set_bkg, ts);
 		ch.cmds.produce(GLcmdType::set_dlgcol, dlg.colors());
+		ch.cmds.produce(GLcmdType::set_anims, anims);
 
 		++p.step;
 		set_desc("Loading menu music");
@@ -339,6 +385,7 @@ private:
 				genie::jukebox.play(genie::MusicId::open);
 				break;
 			case MenuId::editor:
+			case MenuId::singleplayer:
 				break;
 			case MenuId::scn_edit:
 				genie::jukebox.stop();
@@ -1188,6 +1235,9 @@ void VideoControl::restore(GlobalConfiguration &cfg) {
 
 class Hud;
 
+static ImFont *fonts[6];
+static int font_sizes[6] = {14, 14, 16, 16, 18, 32};
+
 class UI {
 public:
 	bool hot, active, enabled, selected;
@@ -1198,11 +1248,25 @@ public:
 
 	UI() : UI(-1) {}
 	UI(unsigned id) : hot(false), active(false), enabled(false), selected(false), bnds(), left(-1), top(-1), right(-1), bottom(-1), id(id) {}
+	virtual ~UI() {}
 
 	/** Display the component immediately. */
 	virtual void display(Hud&) = 0;
 	/** Apply new settings to component. */
 	virtual bool update(Hud&) = 0;
+};
+
+class Popup {
+public:
+	bool opened, closed;
+	std::vector<SDL_Rect> item_bounds;
+
+	Popup() : opened(false) {}
+
+	virtual ~Popup() {}
+	/** Display popup visuals. */
+	virtual void display_popup(Hud&) = 0;
+	virtual void item_select(unsigned index) = 0;
 };
 
 class Button : public UI {
@@ -1211,13 +1275,58 @@ public:
 	int shade, fnt_id;
 	std::string label;
 
-	Button(unsigned id) : UI(id), cols(), shade() { enabled = true; }
+	Button(unsigned id) : UI(id), cols(), shade(), fnt_id(-1), label() { enabled = true; }
 
 	void display(Hud&) override;
 	bool update(Hud&) override;
 };
 
+class ListPopup : public UI, public Popup {
+public:
+	SDL_Color cols[6];
+	int shade;
+	unsigned fnt_id;
+	std::string label;
+	bool align_left;
+
+	unsigned selected_item;
+	const std::vector<std::string> &items;
+
+	static constexpr int btn_w = 28, btn_h = 38;
+
+	ListPopup(unsigned id, unsigned fnt_id, unsigned selected, const std::vector<std::string> &items)
+		: UI(id), cols(), shade(), fnt_id(fnt_id), selected_item(selected), items(items), label(), align_left(false)
+	{
+		enabled = true;
+	}
+
+	void display(Hud&) override;
+	void display_popup(Hud&) override;
+	bool update(Hud&) override;
+
+	void item_select(unsigned index) override {
+		selected_item = index;
+	}
+};
+
 IMGUI_API int ImTextCharFromUtf8(unsigned int* out_char, const char* in_text, const char* in_text_end);
+
+static const unsigned anim_count[] = {
+	25,
+	25,
+	20,
+	20,
+	36,
+	36,
+	68,
+};
+
+struct TileInfo final {
+	AnimationId id;
+	unsigned subimage;
+
+	TileInfo(AnimationId id, unsigned subimage) : id(id), subimage(subimage) {}
+};
 
 /**
  * Headup Display
@@ -1234,19 +1343,61 @@ public:
 	SDL_Color cols[6];
 	double mouse_x, mouse_y;
 	double left, right, top, bottom;
+	bool align_left;
 	int shade, fnt_id;
 	Uint8 mouse_btn, mouse_btn_grab;
 	std::string m_text;
 	bool was_hot;
+	genie::Texture *tex;
+
+	//std::map<AnimationId, TileInfo> tiledata;
+	Popup *ui_popup;
 
 	void reset() {
 		mouse_btn = 0;
 		mouse_btn_grab = 0;
+		ui_popup = nullptr;
 		items.clear();
 		keep.clear();
 	}
 
+	void reset(genie::Texture &tex) {
+		this->tex = &tex;
+		reset();
+	}
+
+	void down(SDL_MouseButtonEvent &ev) {
+		Uint8 db = ev.button;
+		mouse_btn |= SDL_BUTTON(db);
+		mouse_btn_grab &= ~SDL_BUTTON(db);
+	}
+
+	void up(SDL_MouseButtonEvent &ev) {
+		Uint8 db = ev.button;
+		mouse_btn &= ~SDL_BUTTON(db);
+		mouse_btn_grab &= ~SDL_BUTTON(db);
+
+		if (ui_popup) {
+			// determine selected element
+			for (unsigned i = 0; i < ui_popup->item_bounds.size(); ++i) {
+				SDL_Rect &bnds = ui_popup->item_bounds[i];
+
+				if (mouse_x >= bnds.x && mouse_y >= bnds.y && mouse_x < bnds.x + bnds.w && mouse_y < bnds.y + bnds.h) {
+					ui_popup->item_select(i);
+					break;
+				}
+			}
+
+			ui_popup->opened = false;
+			ui_popup->closed = true;
+			ui_popup = nullptr;
+		}
+	}
+
 	bool try_grab(Uint8 mask, bool hot) {
+		if (ui_popup)
+			return false;
+
 		if (hot && (mouse_btn & mask) != 0) {
 			if (mouse_btn_grab & mask)
 				return false;
@@ -1276,6 +1427,9 @@ public:
 #endif
 		// reset state
 		keep.clear();
+
+		if (ui_popup)
+			ui_popup->display_popup(*this);
 	}
 
 	bool button(unsigned id, unsigned fnt_id, double x, double y, double w, double h, const std::string &label, int shade, SDL_Color cols[6]) {
@@ -1305,6 +1459,56 @@ public:
 			b = search->second->update(*this);
 			if (search->second->hot)
 				was_hot = true;
+		}
+
+		return b;
+	}
+
+	bool listpopup(unsigned id, unsigned fnt_id, double x, double y, double w, double h, unsigned &selected, const std::vector<std::string> &elements, int shade, SDL_Color cols[6], bool left=true) {
+		// copy state
+		this->left = x; top = y; right = x + w; bottom = y + h;
+		this->fnt_id = fnt_id;
+		this->shade = shade;
+		this->align_left = left;
+
+		for (unsigned i = 0; i < 6; ++i)
+			this->cols[i] = cols[i];
+
+		// register component
+		keep.emplace(id);
+
+		// create/update element
+		auto search = items.find(id);
+
+		bool b = false;
+		ListPopup *ui = nullptr;
+
+		if (search == items.end()) {
+			auto popup = items.emplace(id, new ListPopup(id, fnt_id, selected, elements)).first;
+			ui = (ListPopup*)popup->second.get();
+		} else {
+			ui = (ListPopup*)search->second.get();
+		}
+
+		if (ui) {
+			if (ui->closed) {
+				ui->closed = false;
+				selected = ui->selected_item;
+				b |= true;
+			} else {
+				ui->selected_item = selected;
+			}
+
+			b |= ui->update(*this);
+
+			if (ui->hot) {
+				was_hot = true;
+
+				if (b) {
+					ui->opened = true;
+					ui_popup = ui;
+				}
+			}
 		}
 
 		return b;
@@ -1356,16 +1560,29 @@ public:
 		glEnd();
 	}
 
-	void text(ImFont *font, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &str, float width, int align)
+	void text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &str, float width, int align)
 	{
 		text(font, size, pos, col, clip_rect, str.c_str(), str.size(), width, align);
 	}
 
-	void text(ImFont *font, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
+	void text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &str, float width, int align, float &max_width)
+	{
+		text(font, size, pos, col, clip_rect, str.c_str(), str.size(), width, align, max_width);
+	}
+
+	void text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
+	{
+		float dummy = 0;
+		text(font, size, pos, col, clip_rect, text_begin, n, wrap_width, align, dummy);
+	}
+
+	void text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align, float &max_width)
 	{
 #ifndef IM_FLOOR
 #define IM_FLOOR(_VAL)                  ((float)(int)(_VAL))
 #endif
+		max_width = 0.0f;
+
 		if (!n)
 			return;
 
@@ -1373,7 +1590,7 @@ public:
 
 		pos.x = IM_FLOOR(pos.x + font->DisplayOffset.x);
 		pos.y = IM_FLOOR(pos.y + font->DisplayOffset.y);
-		float x = pos.x;
+		float x = pos.x, x_orig = x;
 		float y = pos.y;
 		if (y > clip_rect.y + clip_rect.h)
 			return;
@@ -1503,14 +1720,38 @@ public:
 				}
 			}
 			x += char_width;
+
+			if (x > max_width)
+				max_width = x;
 		}
 
 		glEnd();
+
+		pos.x = x;
+		pos.y = y;
+		max_width -= x_orig;
+	}
+
+	void slow_text(int fnt_id, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
+	{
+		glEnable(GL_TEXTURE_2D);
+		glEnable(GL_BLEND);
+		ImFont *font = fonts[fnt_id];
+		glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)font->ContainerAtlas->TexID);
+		text(font, size, pos, SDL_Color{0xff, 0xff, 0xff, 0xff}, clip_rect, text_begin, n, wrap_width, align);
+		glDisable(GL_TEXTURE_2D);
+	}
+
+	void slow_text(int fnt_id, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &text, float wrap_width, int align)
+	{
+		slow_text(fnt_id, size, pos, col, clip_rect, text.c_str(), text.size(), wrap_width, align);
+	}
+
+	void title(ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
+	{
+		slow_text(5, font_sizes[5], pos, col, clip_rect, text_begin, n, wrap_width, align);
 	}
 };
-
-static ImFont *fonts[6];
-static int font_sizes[6] = {14, 14, 16, 16, 18, 28};
 
 void Button::display(Hud &hud) {
 	glEnable(GL_BLEND);
@@ -1528,12 +1769,7 @@ void Button::display(Hud &hud) {
 		hud.rect(bnds, cols);
 	}
 
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_BLEND);
-	ImFont *font = fonts[fnt_id];
-	glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)font->ContainerAtlas->TexID);
-	hud.text(font, font_sizes[fnt_id], ImVec2((float)(left + bnds.w / 2), (float)(top + (bnds.h - font->FontSize) / 2)), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, label, 200, 0);
-	glDisable(GL_TEXTURE_2D);
+	hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2((float)(left + bnds.w / 2), (float)(top + (bnds.h - fonts[fnt_id]->FontSize) / 2)), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, label, 200, 0);
 }
 
 bool Button::update(Hud &hud) {
@@ -1567,33 +1803,41 @@ bool Button::update(Hud &hud) {
 	return false;
 }
 
-enum AnimationId {
-	desert,
-	grass,
-	water_shallow,
-	water_deep,
-	corner_water_desert,
-	corner_desert_grass,
-	overlay_water,
-	count,
-};
+bool ListPopup::update(Hud &hud) {
+	// copy state
+	left = hud.left; top = hud.top; right = hud.right; bottom = hud.bottom;
+	align_left = hud.align_left;
+	shade = 2 * hud.shade;
 
-static const unsigned anim_count[] = {
-	25,
-	25,
-	20,
-	20,
-	36,
-	36,
-	68,
-};
+	for (unsigned i = 0; i < 6; ++i)
+		cols[i] = hud.cols[i];
 
-struct TileInfo final {
-	AnimationId id;
-	unsigned subimage;
+	bnds.x = static_cast<int>(left);
+	bnds.y = static_cast<int>(top);
+	bnds.w = static_cast<int>(right - left);
+	bnds.h = static_cast<int>(bottom - top);
 
-	TileInfo(AnimationId id, unsigned subimage) : id(id), subimage(subimage) {}
-};
+	if (!align_left)
+		left = right - 28;
+
+	right = left + 28;
+	bottom = top + 38;
+
+	hot = contains(left, top, right, bottom, hud.mouse_x, hud.mouse_y);
+
+	if (hud.try_grab(SDL_BUTTON_LMASK, hot)) {
+		active = true;
+		genie::jukebox.sfx(genie::DrsId::button4);
+	}
+
+	if (hud.lost_grab(SDL_BUTTON_LMASK, active)) {
+		active = false;
+		selected = hot;
+		return hot && enabled;
+	}
+
+	return false;
+}
 
 /** Immovable object that cannot change state while a scenario is running. */
 class StaticObject final {
@@ -1621,7 +1865,7 @@ static bool cmpStaticObject(const StaticObject &lhs, const StaticObject &rhs) {
 class Terrain final {
 public:
 	// duplicate information as static_objects also has this, but this eases tile info lookup
-	std::vector<uint8_t> tiles, overlay;
+	std::vector<uint8_t> tiles, subimg, overlay;
 	std::vector<int8_t> hmap;
 	int w, h;
 
@@ -1665,95 +1909,13 @@ private:
 		for (unsigned i = 0; i < IM_ARRAYSIZE(anim_count); ++i) {
 			auto &strip = *tex.ts.animations.find(i);
 
-			for (unsigned j = 0; j < anim_count[i]; ++j)
+			for (unsigned j = 0; j < strip.tiles.size(); ++j)
 				tiledata.emplace_back((AnimationId)i, strip.tiles[j]);
 		}
 	}
 
 public:
-	void load() {
-		resize(scn->map_width, scn->map_height);
-
-		// determine bounds
-		build_tiles(*tex);
-
-		int min_top = 0, max_right = 0, max_bottom = 0;
-
-		for (int left = 0, top = 0, y = 0; y < scn->map_height; ++y, left += thw, top -= thh) {
-			for (int right = left, bottom = top, x = 0; x < scn->map_width; ++x, right += thw, bottom += thh) {
-				size_t pos = (size_t)y * scn->map_width + x;
-
-				uint8_t id = scn->tiles[pos];
-				int8_t height = scn->hmap[pos];
-
-				// TODO id mapping
-
-				double x0, y0, x1, y1;
-
-				if (!id || id >= tiledata.size() - 1)
-					continue;
-
-				auto &t = tiledata[id - 1];
-				auto &strip = *tex->ts.animations.find(t.id);
-				auto &img = *tex->ts.images.find(t.subimage);
-
-				x0 = right - img.bnds.x;
-				x1 = x0 + img.bnds.w;
-				y0 = bottom - img.bnds.y - (int)height * thh;
-				y1 = y0 + img.bnds.h;
-
-				if (y0 < min_top)
-					min_top = y0;
-
-				if (y1 > max_bottom)
-					max_bottom = y1;
-
-				if (x1 > max_right)
-					max_right = x1;
-			}
-		}
-
-		double hsize = (std::max<double>(max_right, std::max<double>(-min_top, max_bottom))) / 2.0;
-		genie::Box<double> bounds(hsize, 0, hsize, hsize);
-		static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
-
-		tiles = scn->tiles;
-		hmap = scn->hmap;
-		overlay = scn->overlay;
-
-		for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
-			for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
-				long long pos = (long long)y * w + x;
-				uint8_t id = tiles[pos];
-				int8_t height = hmap[pos];
-
-				if (!id || id - 1 >= tiledata.size()) {
-					printf("%d,%d: %" PRIu8 ", %" PRId8 ", %" PRIu8 "\n", x, y, tiles[pos], hmap[pos], scn->overlay[pos]);
-					genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
-					static_objects.try_emplace(bounds, (size_t)pos);
-					continue;
-				}
-
-				double x0, y0, x1, y1;
-
-				auto &t = tiledata[id - 1];
-				auto &strip = *tex->ts.animations.find(t.id);
-				auto &img = *tex->ts.images.find(t.subimage);
-
-				x0 = right - img.bnds.x;
-				x1 = x0 + img.bnds.w;
-				y0 = bottom - img.bnds.y - height * thh;
-				y1 = y0 + img.bnds.h;
-
-				genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
-				static_objects.try_emplace(bounds, (size_t)pos);
-			}
-		}
-
-		tile_focus_obj = nullptr;
-		tile_focus = -1;
-		set_view();
-	}
+	void load();
 
 	void init(genie::Texture &tex) {
 		build_tiles(tex);
@@ -1863,6 +2025,7 @@ public:
 		top = -bottom;
 
 		tiles.resize(sz, 1);
+		subimg.resize(sz, 0);
 		hmap.resize(sz);
 		overlay.resize(sz);
 
@@ -1956,68 +2119,46 @@ public:
 	}
 
 	/* Draw terrain. Assumes glBegin hasn't been called yet and the texture is bound. */
-	void show(genie::Texture &tex) {
-		ZoneScoped;
-		// save unproject data
-		glGetFloatv(GL_MODELVIEW_MATRIX, mv);
-		glGetFloatv(GL_PROJECTION_MATRIX, proj);
-		glGetIntegerv(GL_VIEWPORT, vp);
-
-		if (cam_moved)
-			set_view();
-
-		glBegin(GL_QUADS);
-		{
-			for (auto it : vis_static_objects) {
-				auto &o = *it;
-
-				// if is tile
-				if (o.tpos != (size_t)-1) {
-					GLfloat x0, y0, x1, y1;
-
-					auto pos = o.tpos;
-					uint8_t id = tiles[pos];
-					int8_t height = hmap[pos];
-
-					if (!id || id - 1 >= tiledata.size())
-						continue;
-
-					auto &t = tiledata[id - 1];
-					auto &strip = *tex.ts.animations.find(t.id);
-					auto &img = *tex.ts.images.find(t.subimage);
-
-					x0 = o.bounds.center.x - o.bounds.hsize.x; x1 = o.bounds.center.x + o.bounds.hsize.x;
-					y0 = o.bounds.center.y - o.bounds.hsize.y; y1 = o.bounds.center.y + o.bounds.hsize.y;
-
-					glTexCoord2f(img.s0, img.t0); glVertex2f(x0, y0);
-					glTexCoord2f(img.s1, img.t0); glVertex2f(x1, y0);
-					glTexCoord2f(img.s1, img.t1); glVertex2f(x1, y1);
-					glTexCoord2f(img.s0, img.t1); glVertex2f(x0, y1);
-				}
-			}
-		}
-		glEnd();
-
-		if (show_debug) {
-			glDisable(GL_TEXTURE_2D);
-			static_objects.show();
-			glColor4f(0, 1, 0, 0.3);
-			glBegin(GL_QUADS);
-			double left, top, right, bottom;
-			left = cam.center.x - cam.hsize.x;
-			top = cam.center.y - cam.hsize.y;
-			right = cam.center.x + cam.hsize.x;
-			bottom = cam.center.y + cam.hsize.y;
-			glVertex2f(left, top);
-			glVertex2f(right, top);
-			glVertex2f(right, bottom);
-			glVertex2f(left, bottom);
-			glEnd();
-			glColor3f(1, 1, 1);
-			glEnable(GL_TEXTURE_2D);
-		}
-	}
+	void show(genie::Texture &tex);
 };
+
+class Player final {
+public:
+	unsigned id, civ_id;
+	std::string name;
+
+	Player(unsigned id, unsigned civ_id, const std::string &name) : id(id), civ_id(civ_id), name(name) {}
+};
+
+class VirtualPlayer final {
+public:
+	unsigned id, p_id;
+	std::string name;
+
+	VirtualPlayer(unsigned id, unsigned p_id, const std::string &name) : id(id), p_id(p_id), name(name) {}
+};
+
+class Team final {
+public:
+	std::string name;
+};
+
+const std::vector<std::string> civs({
+	"Assyrian",
+	"Babylonian",
+	"Choson",
+	"Egyptian",
+	"Greek",
+	"Hittite",
+	"Minoan",
+	"Persian",
+	"Phoenician",
+	"Shang",
+	"Sumerian",
+	"Yamato",
+});
+
+const std::vector<std::string> player_count_str({"1", "2", "3", "4", "5", "6", "7", "8"});
 
 class AoE final {
 public:
@@ -2025,11 +2166,18 @@ public:
 	genie::Texture tex_bkg;
 	genie::Tilesheet ts_next;
 	genie::DialogColors dlgcol;
+	std::map<AnimationId, unsigned> anims;
 	Hud hud;
 	int mouse_x, mouse_y;
 	bool working, global_settings;
 	Worker &w_bkg;
 	Terrain terrain;
+	std::vector<Team> teams;
+	std::vector<Player> players;
+	std::vector<VirtualPlayer> vplayers;
+
+	// singleplayer menu state vars
+	unsigned player_count;
 
 	int lgy_index;
 	// orthogonal viewport
@@ -2045,8 +2193,10 @@ public:
 	AoE(Worker &w_bkg)
 		: video(), tex_bkg(), ts_next(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1)
 		, working(false), global_settings(false), w_bkg(w_bkg), terrain()
+		, player_count(1)
 		, lgy_index(2), left(0), right(0), top(0), bottom(0)
 		, cam_x(0), cam_y(0), cam_zoom(1.0f), show_drs(false), open_dlg(false), dlg_id(NULL)
+		, teams(), players(), vplayers()
 	{
 		settings.load(video);
 
@@ -2057,7 +2207,7 @@ public:
 
 	void load_menu(MenuId id) {
 		ZoneScoped;
-		hud.reset();
+		hud.reset(tex_bkg);
 		tex_bkg.ts = std::move(ts_next);
 		tex_bkg.ts.write(tex_bkg.tex);
 
@@ -2065,6 +2215,24 @@ public:
 			case MenuId::scn_edit:
 				terrain.init(tex_bkg);
 				break;
+			case MenuId::singleplayer: {
+				submenu_id = SubMenuId::singleplayer_menu;
+				teams.clear();
+				players.clear();
+				vplayers.clear();
+
+				unsigned id, p_id;
+
+				id = vplayers.size();
+				p_id = players.size();
+
+				players.emplace_back(p_id = players.size(), 0, "default");
+				vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
+
+				players.emplace_back(p_id = players.size(), 0, "You");
+				vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
+				break;
+			}
 		}
 
 		menu_id = id;
@@ -2072,7 +2240,6 @@ public:
 
 	void idle(SDL_Event &event) {
 		ZoneScoped;
-		Uint8 db;
 
 		switch (event.type) {
 			case SDL_MOUSEMOTION:
@@ -2081,9 +2248,7 @@ public:
 				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-				db = event.button.button;
-				hud.mouse_btn |= SDL_BUTTON(db);
-				hud.mouse_btn_grab &= ~SDL_BUTTON(db);
+				hud.down(event.button);
 				mouse_x = event.button.x;
 				mouse_y = event.button.y;
 				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
@@ -2092,12 +2257,10 @@ public:
 					terrain.select(hud.mouse_x, hud.mouse_y, video.vp.x, video.vp.y);
 				break;
 			case SDL_MOUSEBUTTONUP:
-				db = event.button.button;
-				hud.mouse_btn &= ~SDL_BUTTON(db);
-				hud.mouse_btn_grab &= ~SDL_BUTTON(db);
 				mouse_x = event.button.x;
 				mouse_y = event.button.y;
 				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
+				hud.up(event.button);
 				break;
 		}
 	}
@@ -2275,6 +2438,8 @@ public:
 
 		switch (selected) {
 			case 0: // single player
+				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::singleplayer);
+				break;
 			case 1: // multiplayer
 				break;
 			case 2: // help
@@ -2285,6 +2450,177 @@ public:
 				break;
 			case 4: // exit
 				running = false;
+				break;
+		}
+	}
+
+	void display_singleplayer(SDL_Rect bnds) {
+		switch (submenu_id) {
+			case SubMenuId::singleplayer_game:
+				display_singleplayer_game(bnds);
+				break;
+			default:
+				display_singleplayer_menu(bnds);
+				break;
+		}
+	}
+
+	void display_singleplayer_menu(SDL_Rect bnds) {
+		ZoneScoped;
+		hud.rect(bnds, dlgcol.bevel);
+
+		double btn_x, btn_y, btn_w, btn_h, pad_y;
+
+		btn_w = bnds.w * 300.0 / 640.0;
+		btn_h = bnds.h * 40.0 / 480;
+		btn_x = bnds.w * 0.5 - btn_w * 0.5;
+		btn_y = bnds.h * 0.6;
+		pad_y = bnds.h * 10.0 / 480.0;
+
+		int selected = -1;
+
+		TextId ids[] = {
+			TextId::btn_random_map,
+			TextId::btn_missions,
+			TextId::btn_deathmatch,
+			TextId::btn_scenario,
+			TextId::btn_restore_game,
+			TextId::btn_cancel,
+		};
+
+		for (int i = 0; i < 6; ++i)
+			if (hud.button(i, 4, btn_x, btn_y - btn_h * 0.5 + (i - 3) * (btn_h + pad_y), btn_w, btn_h, TXT(ids[i]), dlgcol.shade, dlgcol.bevel))
+				selected = i;
+
+		int hdr_x = bnds.w / 2, hdr_y = bnds.h * 48 / 768;
+
+		const char *str = CTXT(TextId::title_singleplayer);
+		hud.title(ImVec2(hdr_x, hdr_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{0, 0, bnds.w, 64}, str, strlen(str), bnds.w, 0);
+
+		if (working)
+			return;
+
+		switch (selected) {
+			case 0: // random map
+				hud.reset();
+				submenu_id = SubMenuId::singleplayer_game;
+				break;
+			case 5: // cancel
+				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
+				break;
+		}
+	}
+
+	void display_singleplayer_game(SDL_Rect bnds) {
+		ZoneScoped;
+		hud.rect(bnds, dlgcol.bevel);
+
+		double btn_x, btn_y, btn_w, btn_h, pad_x;
+
+		pad_x = bnds.w * 20.0 / 640.0;
+		btn_w = bnds.w * 240.0 / 640.0;
+		btn_h = bnds.h * 30.0 / 480.0;
+		btn_x = (bnds.w - pad_x) * 0.5 - btn_w;
+		btn_y = bnds.h * 704.0 / 768.0;
+
+		int selected = -1;
+
+		if (hud.button(0, 4, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_start_game), dlgcol.shade, dlgcol.bevel))
+			selected = 0;
+
+		btn_x = (bnds.w + pad_x) * 0.5;
+
+		if (hud.button(1, 4, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_cancel), dlgcol.shade, dlgcol.bevel))
+			selected = 1;
+
+		btn_x = bnds.w * 672.0 / 1024.0;
+		btn_y = bnds.h * 80.0 / 768.0;
+		btn_w = bnds.w * 336.0 / 1024.0;
+
+		if (hud.button(2, 4, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_game_settings), dlgcol.shade, dlgcol.bevel))
+			selected = 2;
+
+		int hdr_x = bnds.w / 2, hdr_y = bnds.h * 14 / 768;
+
+		const char *str = CTXT(TextId::title_singleplayer_game);
+		hud.title(ImVec2(hdr_x, hdr_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{0, 0, bnds.w, 64}, str, strlen(str), bnds.w, 0);
+
+		btn_x = bnds.w * 49.0 / 1024.0;
+		btn_y = bnds.h * 515.0 / 768.0;
+		btn_w = 112.0;
+		btn_h = 38.0;
+
+		int fnt_id = 4;
+
+		if (hud.listpopup(4, fnt_id, btn_x, btn_y, btn_w, btn_h, player_count, player_count_str, dlgcol.shade, dlgcol.bevel, false))
+			selected = 4;
+
+		for (unsigned i = 1; i < vplayers.size(); ++i) {
+			btn_x = bnds.w * 272.0 / 1024.0;
+			btn_y = bnds.h * 134.0 / 768.0;
+
+			int id;
+
+			Player &p = players[vplayers[i].p_id];
+			btn_w = bnds.w * 220.0 / 1024.0;
+
+			if (hud.listpopup(id = 5 + 3 * (i - 1), fnt_id, btn_x, btn_y, btn_w, btn_h, p.civ_id, civs, 255, dlgcol.bevel))
+				selected = id;
+
+			btn_x = bnds.w * 496.0 / 1024.0;
+			btn_w = bnds.w * 48.0 / 1024.0;
+			btn_h = bnds.h * 32.0 / 768.0;
+
+			if (hud.button(id = 6 + 3 * (i - 1), 4, btn_x, btn_y, btn_w, btn_h, "1", dlgcol.shade, dlgcol.bevel))
+				selected = id;
+
+			btn_x = bnds.w * 608.0 / 1024.0;
+
+			if (hud.button(id = 7 + 3 * (i - 1), 4, btn_x, btn_y, btn_w, btn_h, "-", dlgcol.shade, dlgcol.bevel))
+				selected = id;
+		}
+
+		int txt_x, txt_y, txt_w, txt_h;
+		txt_x = bnds.w * 46 / 1024;
+		txt_y = bnds.h * 480 / 768;
+		txt_w = 250;
+		txt_h = 20;
+
+		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_count), txt_w, -1);
+
+		txt_y = bnds.h * 96 / 768;
+		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_name), txt_w, -1);
+
+		txt_x = bnds.w * 306 / 1024;
+		txt_w = bnds.w * 168 / 1024;
+		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_civ), txt_w, -1);
+
+		txt_x = bnds.w * 476 / 1024;
+		txt_w = bnds.w * 130 / 1024;
+		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_id), txt_w, -1);
+
+		txt_x = bnds.w * 606 / 1024;
+		txt_w = bnds.w * 66 / 1024;
+		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_team), txt_w, -1);
+
+		if (working)
+			return;
+
+		switch (selected) {
+			case 0: // start game
+				break;
+			case 1: // cancel
+				hud.reset();
+				submenu_id = SubMenuId::singleplayer_menu;
+				//w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::singleplayer_menu);
+				break;
+			case 2: // settings
+				break;
+			case 3: // ?
+				break;
+			case 4: // number of players
+				break;
+			case 5: // civ 1
 				break;
 		}
 	}
@@ -2378,12 +2714,300 @@ public:
 				case MenuId::scn_edit:
 					display_scn_edit(bnds);
 					break;
+				case MenuId::singleplayer:
+					display_singleplayer(bnds);
+					break;
 			}
 
 			hud.display();
 		}
 	}
 };
+
+void ListPopup::display(Hud &hud) {
+	glEnable(GL_BLEND);
+	//hud.shaderect(bnds, shade);
+
+	SDL_Rect btn_bnds{bnds.x, bnds.y, btn_w, btn_h};
+
+	if (!align_left)
+		btn_bnds.x = bnds.x + bnds.w - 28;
+
+
+	SDL_Color col[6];
+
+	for (unsigned i = 0; i < 6; ++i)
+		col[5 - i] = cols[i];
+
+	SDL_Rect shade_bnds{bnds.x, bnds.y, bnds.w - btn_w - 2, bnds.h};
+
+	if (align_left)
+		shade_bnds.x += btn_w + 2;
+
+	if (shade < 255)
+		hud.shaderect(shade_bnds, shade);
+
+	glDisable(GL_BLEND);
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, eng->tex_bkg.tex);
+
+	auto search = eng->anims.find(AnimationId::ui_buttons);
+	assert(search != eng->anims.end());
+
+	auto &strip = *hud.tex->ts.animations.find(search->second);
+
+	auto &img = *hud.tex->ts.images.find(strip.tiles[10]);
+
+	GLfloat x0, y0, x1, y1;
+	GLfloat s0, t0, s1, t1;
+
+	x0 = btn_bnds.x; x1 = x0 + btn_w;
+	y0 = btn_bnds.y; y1 = y0 + btn_h;
+
+	int offx = (img.bnds.w - btn_w) / 2, offy = (img.bnds.h - btn_h) / 2;
+
+	s0 = (img.tx + offx) / (GLfloat)hud.tex->ts.bnds.w;
+	s1 = (img.tx + offx + btn_w) / (GLfloat)hud.tex->ts.bnds.w;
+
+	t0 = (img.ty + offy) / (GLfloat)hud.tex->ts.bnds.h;
+	t1 = (img.ty + offy + btn_h) / (GLfloat)hud.tex->ts.bnds.h;
+
+	glBegin(GL_QUADS);
+	glColor3f(1, 1, 1);
+	glTexCoord2f(s0, t0); glVertex2f(x0, y0);
+	glTexCoord2f(s1, t0); glVertex2f(x1, y0);
+	glTexCoord2f(s1, t1); glVertex2f(x1, y1);
+	glTexCoord2f(s0, t1); glVertex2f(x0, y1);
+	glEnd();
+
+	glDisable(GL_TEXTURE_2D);
+
+	if (hot && active) {
+		hud.rect(btn_bnds, col);
+	} else {
+		hud.rect(btn_bnds, cols);
+	}
+
+	if (!opened)
+		hud.slow_text(
+			fnt_id, font_sizes[fnt_id],
+			ImVec2((float)shade_bnds.x + 6, (float)shade_bnds.y + (btn_h - fonts[fnt_id]->FontSize) * 0.5f),
+			SDL_Color{0xff, 0xff, 0xff, 0xff}, bnds, items[selected_item], shade_bnds.w, -1
+		);
+}
+
+void ListPopup::display_popup(Hud &hud) {
+	SDL_Rect shade_bnds{bnds.x, bnds.y, bnds.w - btn_w - 2, bnds.h};
+
+	if (align_left)
+		shade_bnds.x += btn_w + 2;
+
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	ImFont *font = fonts[fnt_id];
+	glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)font->ContainerAtlas->TexID);
+
+	float pos_x = (float)shade_bnds.x + 6.0f;
+	ImVec2 pos(pos_x, (float)shade_bnds.y + (btn_h - font_sizes[fnt_id]) * 0.5f);
+
+	item_bounds.resize(items.size());
+
+	for (unsigned i = 0; i < items.size(); ++i) {
+		item_bounds[i].x = (int)pos_x;
+		item_bounds[i].y = (int)pos.y;
+
+		float w = 0;
+
+		hud.text(font, font_sizes[fnt_id], pos, SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{0, 0, eng->video.vp.w, eng->video.vp.h}, items[i], eng->video.vp.w, -1, w);
+		pos.x = pos_x;
+		pos.y += font_sizes[fnt_id];
+
+		item_bounds[i].w = w;//(int)pos.x - item_bounds[i].x;
+		item_bounds[i].h = (int)pos.y - item_bounds[i].y;
+	}
+
+	glDisable(GL_TEXTURE_2D);
+}
+
+void Terrain::load() {
+	resize(scn->map_width, scn->map_height);
+
+	// determine bounds
+	build_tiles(*tex);
+
+	int min_top = 0, max_right = 0, max_bottom = 0;
+
+	for (int left = 0, top = 0, y = 0; y < scn->map_height; ++y, left += thw, top -= thh) {
+		for (int right = left, bottom = top, x = 0; x < scn->map_width; ++x, right += thw, bottom += thh) {
+			size_t pos = (size_t)y * scn->map_width + x;
+
+#if 0
+			uint8_t id = scn->tiles[pos];
+			int8_t height = scn->hmap[pos];
+
+			// TODO id mapping
+
+			if (!id || id >= tiledata.size() - 1)
+				continue;
+
+			auto &t = tiledata[id - 1];
+			auto &strip = *tex->ts.animations.find(t.id);
+			auto &img = *tex->ts.images.find(t.subimage);
+#else
+			uint8_t id = scn->tiles[pos], subimg = scn->subimg[pos];
+			int8_t height = scn->hmap[pos];
+
+			auto search = eng->anims.find((AnimationId)((unsigned)AnimationId::desert + id - 1));
+			if (search == eng->anims.end())
+				continue;
+
+			auto &strip = *tex->ts.animations.find(search->second);
+
+			if (subimg >= strip.tiles.size())
+				continue;
+
+			auto &img = *tex->ts.images.find(strip.tiles[subimg]);
+
+#endif
+			double x0, y0, x1, y1;
+
+			x0 = right - img.bnds.x;
+			x1 = x0 + img.bnds.w;
+			y0 = bottom - img.bnds.y - (int)height * thh;
+			y1 = y0 + img.bnds.h;
+
+			if (y0 < min_top)
+				min_top = y0;
+
+			if (y1 > max_bottom)
+				max_bottom = y1;
+
+			if (x1 > max_right)
+				max_right = x1;
+		}
+	}
+
+	double hsize = (std::max<double>(max_right, std::max<double>(-min_top, max_bottom))) / 2.0;
+	genie::Box<double> bounds(hsize, 0, hsize, hsize);
+	static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
+
+	tiles = scn->tiles;
+	subimg = scn->subimg;
+	hmap = scn->hmap;
+	overlay = scn->overlay;
+
+	for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
+		for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
+			long long pos = (long long)y * w + x;
+			uint8_t id = tiles[pos];
+			int8_t height = hmap[pos];
+
+			if (!id || id - 1 >= tiledata.size()) {
+				printf("%d,%d: %" PRIu8 ", %" PRId8 ", %" PRIu8 "\n", x, y, tiles[pos], hmap[pos], scn->overlay[pos]);
+				genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
+				static_objects.try_emplace(bounds, (size_t)pos);
+				continue;
+			}
+
+			double x0, y0, x1, y1;
+
+			auto &t = tiledata[id - 1];
+			auto &strip = *tex->ts.animations.find(t.id);
+			auto &img = *tex->ts.images.find(t.subimage);
+
+			x0 = right - img.bnds.x;
+			x1 = x0 + img.bnds.w;
+			y0 = bottom - img.bnds.y - height * thh;
+			y1 = y0 + img.bnds.h;
+
+			genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
+			static_objects.try_emplace(bounds, (size_t)pos);
+		}
+	}
+
+	tile_focus_obj = nullptr;
+	tile_focus = -1;
+	set_view();
+}
+
+void Terrain::show(genie::Texture &tex) {
+	ZoneScoped;
+	// save unproject data
+	glGetFloatv(GL_MODELVIEW_MATRIX, mv);
+	glGetFloatv(GL_PROJECTION_MATRIX, proj);
+	glGetIntegerv(GL_VIEWPORT, vp);
+
+	if (cam_moved)
+		set_view();
+
+	glBegin(GL_QUADS);
+	{
+		for (auto it : vis_static_objects) {
+			auto &o = *it;
+
+			// if is tile
+			if (o.tpos != (size_t)-1) {
+				GLfloat x0, y0, x1, y1;
+
+				auto pos = o.tpos;
+#if 0
+				uint8_t id = tiles[pos];
+				int8_t height = hmap[pos];
+
+				if (!id || id - 1 >= tiledata.size())
+					continue;
+
+				auto &t = tiledata[id - 1];
+				auto &strip = *tex.ts.animations.find(t.id);
+				auto &img = *tex.ts.images.find(t.subimage);
+#else
+				uint8_t id = tiles[pos], sub = subimg[pos];
+				int8_t height = hmap[pos];
+
+				auto search = eng->anims.find((AnimationId)((unsigned)AnimationId::desert + id - 1));
+				if (search == eng->anims.end())
+					continue;
+
+				auto &strip = *tex.ts.animations.find(search->second);
+
+				if (sub >= strip.tiles.size())
+					continue;
+
+				auto &img = *tex.ts.images.find(strip.tiles[sub]);
+#endif
+
+				x0 = o.bounds.center.x - o.bounds.hsize.x; x1 = o.bounds.center.x + o.bounds.hsize.x;
+				y0 = o.bounds.center.y - o.bounds.hsize.y; y1 = o.bounds.center.y + o.bounds.hsize.y;
+
+				glTexCoord2f(img.s0, img.t0); glVertex2f(x0, y0);
+				glTexCoord2f(img.s1, img.t0); glVertex2f(x1, y0);
+				glTexCoord2f(img.s1, img.t1); glVertex2f(x1, y1);
+				glTexCoord2f(img.s0, img.t1); glVertex2f(x0, y1);
+			}
+		}
+	}
+	glEnd();
+
+	if (show_debug) {
+		glDisable(GL_TEXTURE_2D);
+		static_objects.show();
+		glColor4f(0, 1, 0, 0.3);
+		glBegin(GL_QUADS);
+		double left, top, right, bottom;
+		left = cam.center.x - cam.hsize.x;
+		top = cam.center.y - cam.hsize.y;
+		right = cam.center.x + cam.hsize.x;
+		bottom = cam.center.y + cam.hsize.y;
+		glVertex2f(left, top);
+		glVertex2f(right, top);
+		glVertex2f(right, bottom);
+		glVertex2f(left, bottom);
+		glEnd();
+		glColor3f(1, 1, 1);
+		glEnable(GL_TEXTURE_2D);
+	}
+}
 
 // Main code
 int main(int, char**)
@@ -2491,6 +3115,7 @@ int main(int, char**)
 	std::string bkg_result;
 
 	AoE aoe(w_bkg);
+	eng = &aoe;
 	VideoControl &video = aoe.video;
 
 	// some stuff needs to be cleaned up before we shut down, so we need another scope here
@@ -2586,6 +3211,9 @@ int main(int, char**)
 					case GLcmdType::set_dlgcol:
 						aoe.dlgcol = std::move(std::get<genie::DialogColors>(cmd->data));
 						break;
+					case GLcmdType::set_anims:
+						aoe.anims = std::move(std::get<std::map<AnimationId, unsigned>>(cmd->data));
+						break;
 					default:
 						assert("bad opengl command" == 0);
 						break;
@@ -2632,12 +3260,14 @@ int main(int, char**)
 					case WorkResultType::stop:
 						break;
 					case WorkResultType::fail:
+						// try next one
 						if (!auto_paths.empty()) {
 							std::string path(auto_paths.top());
 							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
 							auto_paths.pop();
 							aoe.working = true;
 						} else {
+							// bail out, let user decide
 							auto_detect = false;
 						}
 						break;
@@ -2941,7 +3571,7 @@ int main(int, char**)
 								if (aoe.terrain.tile_focus == -1) {
 									ImGui::TextUnformatted("Nothing selected");
 								} else {
-									static int id, height, overlay;
+									static int id, sub, height, overlay;
 									int x, y;
 									long long pos = aoe.terrain.tile_focus;
 
@@ -2951,17 +3581,20 @@ int main(int, char**)
 									ImGui::Text("pos: %d,%d", x, y);
 
 									id = aoe.terrain.tiles[pos];
+									sub = aoe.terrain.subimg[pos];
 									height = aoe.terrain.hmap[pos];
 									overlay = aoe.terrain.overlay[pos];
 
 									bool changed = false;
 
 									changed |= ImGui::SliderInputInt("ID", &id, 0, UINT8_MAX);
+									changed |= ImGui::SliderInputInt("Subimage", &sub, 0, UINT8_MAX);
 									changed |= ImGui::InputInt("Height", &height);
 									changed |= ImGui::InputInt("Overlay", &overlay);
 									height = genie::clamp<int>(INT8_MIN, height, INT8_MAX);
 
 									aoe.terrain.tiles[pos] = id;
+									aoe.terrain.subimg[pos] = sub;
 									aoe.terrain.hmap[pos] = height;
 									aoe.terrain.overlay[pos] = overlay;
 

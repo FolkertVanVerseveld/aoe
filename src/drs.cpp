@@ -417,6 +417,8 @@ DialogColors Dialog::colors() {
 		col.state[i] = pal->colors[cfg.state[i]]; col.state[i].a = cfg.shade;
 	}
 
+	col.shade = cfg.shade;
+
 	return col;
 }
 

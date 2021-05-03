@@ -247,6 +247,7 @@ enum class DrsId {
 	overlay_water = 20006,
 	/* dialogs/screen menus */
 	menu_start = 50051,
+	menu_singleplayer = 50052,
 	menu_editor = 50054,
 	menu_scn_edit = 50055,
 	/* sfx */
@@ -258,7 +259,9 @@ enum class DrsId {
 	lost = 50321,
 	/* hud */
 	palette = 50500,
+	ui_palette = 50502,
 	cursors = 51000,
+	ui_buttons = 50601,
 	// icons
 	buildings1 = 50704,
 	buildings2 = 50705,

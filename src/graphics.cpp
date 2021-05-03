@@ -109,7 +109,7 @@ Tilesheet::Tilesheet(TilesheetBuilder &bld, GLint max) : bnds(), images(), pixel
 		s1 = (GLfloat)(t.x + p.bnds.w) / (GLfloat)size;
 		t1 = (GLfloat)(t.y + p.bnds.h) / (GLfloat)size;
 
-		images.emplace(0, p.bnds, t.id, s0, t0, s1, t1, p.mask);
+		images.emplace(0, t.x, t.y, p.bnds, t.id, s0, t0, s1, t1, p.mask);
 
 		for (int y = 0; y < t.h - 1; ++y)
 			for (int x = 0; x < t.w - 1; ++x)

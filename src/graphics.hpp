@@ -31,13 +31,14 @@ public:
 	SDL_Rect bnds; // x,y are hotspot. w,h are size
 	unsigned id; // for tilesheet to keep track of reordered images
 	GLfloat s0, t0, s1, t1;
+	int tx, ty; // real position on texture
 
 	std::vector<bool> mask; // if not opaque, this contains collision mask
 
 	SubImage(unsigned id) : tex(0), bnds(), id(id), s0(0), t0(0), s1(0), t1(0), mask() {}
 
-	SubImage(GLuint tex, const SDL_Rect &bnds, unsigned id, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1, const std::vector<bool> &mask)
-		: tex(tex), bnds(bnds), id(id), s0(s0), t0(t0), s1(s1), t1(t1), mask(mask) {}
+	SubImage(GLuint tex, int tx, int ty, const SDL_Rect &bnds, unsigned id, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1, const std::vector<bool> &mask)
+		: tex(tex), tx(tx), ty(ty), bnds(bnds), id(id), s0(s0), t0(t0), s1(s1), t1(t1), mask(mask) {}
 
 	/** Pixel perfect collision detection. */
 	bool contains(int px, int py) const;

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <map>
 
 namespace genie {
 
@@ -42,6 +43,8 @@ struct ScnHdr2 final {
 	}
 };
 
+extern std::map<uint8_t, std::pair<uint8_t, uint8_t>> tconv;
+
 class Scenario final {
 public:
 	std::vector<uint8_t> data;
@@ -54,7 +57,7 @@ public:
 
 	int32_t map_width, map_height;
 
-	std::vector<uint8_t> tiles;
+	std::vector<uint8_t> tiles, subimg;
 	std::vector<int8_t> hmap;
 	std::vector<uint8_t> overlay;
 
