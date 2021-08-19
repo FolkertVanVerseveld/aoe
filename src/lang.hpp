@@ -17,6 +17,9 @@ enum class LangId {
 };
 
 enum class TextId {
+	// debug stuff
+	wip,
+	// general purpose
 	title,
 	language,
 	hello,

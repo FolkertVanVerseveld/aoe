@@ -64,6 +64,8 @@
 
 #define MODAL_LOADING "Loading..."
 #define MODAL_GLOBAL_SETTTINGS "Global settings"
+#define MODAL_ABOUT "About game"
+#define MODAL_WIP "Work in progress"
 
 #ifdef max
 #undef max
@@ -1732,6 +1734,142 @@ public:
 		max_width -= x_orig;
 	}
 
+	void textdim(ImFont *font, float size, ImVec2 &pos, const SDL_Rect &clip_rect, const std::string &str, float wrap_width, int align, float &max_width)
+	{
+		textdim(font, size, pos, clip_rect, str.c_str(), str.size(), wrap_width, align, max_width);
+	}
+
+	void textdim(ImFont *font, float size, ImVec2 &pos, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align, float &max_width)
+	{
+#ifndef IM_FLOOR
+#define IM_FLOOR(_VAL)                  ((float)(int)(_VAL))
+#endif
+		max_width = 0.0f;
+
+		if (!n)
+			return;
+
+		const char *text_end = text_begin + n;
+
+		pos.x = IM_FLOOR(pos.x + font->DisplayOffset.x);
+		pos.y = IM_FLOOR(pos.y + font->DisplayOffset.y);
+		float x = pos.x, x_orig = x;
+		float y = pos.y;
+		if (y > clip_rect.y + clip_rect.h)
+			return;
+
+		const float scale = size / font->FontSize;
+		const float line_height = font->FontSize * scale;
+		const bool word_wrap_enabled = wrap_width > 0.f;
+		const char *word_wrap_eol = NULL;
+
+		// Fast-forward to first visible line
+		const char *s = text_begin;
+		if (y + line_height < clip_rect.y && !word_wrap_enabled)
+			while (y + line_height < clip_rect.y && s < text_end) {
+				s = (const char*)memchr(s, '\n', text_end - s);
+				s = s ? s + 1 : text_end;
+				y += line_height;
+			}
+
+		// Align
+		float adjust = 0;
+
+		if (align != -1) {
+			for (const char *s = text_begin; s < text_end;) {
+				unsigned int c = (unsigned int)*s;
+				if (c < 0x80) {
+					++s;
+				} else {
+					s += ImTextCharFromUtf8(&c, s, text_end);
+					if (!c)
+						break;
+				}
+
+				if (c == '\r')
+					continue;
+
+				if (c == '\n')
+					break;
+
+				const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
+				if (!glyph)
+					continue;
+
+				adjust += glyph->AdvanceX * scale;
+			}
+
+			if (align == 0)
+				adjust *= 0.5f;
+		}
+
+		for (const char *s = text_begin; s < text_end;) {
+			if (word_wrap_enabled) {
+				if (!word_wrap_eol) {
+					word_wrap_eol = font->CalcWordWrapPositionA(scale, s, text_end, wrap_width - (x - pos.x));
+
+					if (word_wrap_eol == s)
+						++word_wrap_eol;
+				}
+
+				if (s >= word_wrap_eol) {
+					x = pos.x;
+					y += line_height;
+					word_wrap_eol = NULL;
+
+					// Wrapping skips upcoming blanks
+					while (s < text_end) {
+						const char *c = s;
+						if (*c == ' ' || *c == '\t') {
+							++s;
+						} else {
+							if (*c == '\n')
+								++s;
+							break;
+						}
+					}
+					continue;
+				}
+			}
+
+			// Decode and advance source
+			unsigned int c = (unsigned int)*s;
+			if (c < 0x80) {
+				++s;
+			} else {
+				s += ImTextCharFromUtf8(&c, s, text_end);
+				if (!c)
+					break;
+			}
+
+			if (c < 32) {
+				if (c == '\n') {
+					x = pos.x;
+					y += line_height;
+					if (y > clip_rect.y + clip_rect.h)
+						break; // break out of main loop
+					continue;
+				}
+				if (c == '\r')
+					continue;
+			}
+
+			const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
+			if (!glyph)
+				continue;
+
+			float char_width = glyph->AdvanceX * scale;
+			x += char_width;
+
+			if (x > max_width)
+				max_width = x;
+		}
+
+		pos.x = x;
+		pos.y = y;
+		max_width -= x_orig;
+	}
+
 	void slow_text(int fnt_id, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
 	{
 		glEnable(GL_TEXTURE_2D);
@@ -2169,7 +2307,7 @@ public:
 	std::map<AnimationId, unsigned> anims;
 	Hud hud;
 	int mouse_x, mouse_y;
-	bool working, global_settings;
+	bool working, global_settings, wip;
 	Worker &w_bkg;
 	Terrain terrain;
 	std::vector<Team> teams;
@@ -2177,7 +2315,7 @@ public:
 	std::vector<VirtualPlayer> vplayers;
 
 	// singleplayer menu state vars
-	unsigned player_count;
+	unsigned player_count; // 0 means 1 player!!
 
 	int lgy_index;
 	// orthogonal viewport
@@ -2192,8 +2330,8 @@ public:
 
 	AoE(Worker &w_bkg)
 		: video(), tex_bkg(), ts_next(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1)
-		, working(false), global_settings(false), w_bkg(w_bkg), terrain()
-		, player_count(1)
+		, working(false), global_settings(false), wip(false), w_bkg(w_bkg), terrain()
+		, player_count(0)
 		, lgy_index(2), left(0), right(0), top(0), bottom(0)
 		, cam_x(0), cam_y(0), cam_zoom(1.0f), show_drs(false), open_dlg(false), dlg_id(NULL)
 		, teams(), players(), vplayers()
@@ -2223,14 +2361,13 @@ public:
 
 				unsigned id, p_id;
 
-				id = vplayers.size();
-				p_id = players.size();
-
 				players.emplace_back(p_id = players.size(), 0, "default");
 				vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
 
 				players.emplace_back(p_id = players.size(), 0, "You");
 				vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
+
+				player_count = 0;
 				break;
 			}
 		}
@@ -2555,21 +2692,29 @@ public:
 		if (hud.listpopup(4, fnt_id, btn_x, btn_y, btn_w, btn_h, player_count, player_count_str, dlgcol.shade, dlgcol.bevel, false))
 			selected = 4;
 
+		int txt_x, txt_y, txt_w, txt_h;
+		txt_x = bnds.w * 46 / 1024;
+		txt_w = bnds.w * 270 / 1024;
+		txt_h = 38;
+
 		for (unsigned i = 1; i < vplayers.size(); ++i) {
 			btn_x = bnds.w * 272.0 / 1024.0;
-			btn_y = bnds.h * 134.0 / 768.0;
+			btn_y = bnds.h * 134.0 / 768.0 + 38 * (i - 1);
+			txt_y = bnds.h * 142 / 768 + 38 * (i - 1);
 
 			int id;
 
 			Player &p = players[vplayers[i].p_id];
 			btn_w = bnds.w * 220.0 / 1024.0;
 
+			hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, p.name, txt_w, -1);
+
 			if (hud.listpopup(id = 5 + 3 * (i - 1), fnt_id, btn_x, btn_y, btn_w, btn_h, p.civ_id, civs, 255, dlgcol.bevel))
 				selected = id;
 
 			btn_x = bnds.w * 496.0 / 1024.0;
 			btn_w = bnds.w * 48.0 / 1024.0;
-			btn_h = bnds.h * 32.0 / 768.0;
+			btn_h = 32;//bnds.h * 32.0 / 768.0;
 
 			if (hud.button(id = 6 + 3 * (i - 1), 4, btn_x, btn_y, btn_w, btn_h, "1", dlgcol.shade, dlgcol.bevel))
 				selected = id;
@@ -2580,8 +2725,6 @@ public:
 				selected = id;
 		}
 
-		int txt_x, txt_y, txt_w, txt_h;
-		txt_x = bnds.w * 46 / 1024;
 		txt_y = bnds.h * 480 / 768;
 		txt_w = 250;
 		txt_h = 20;
@@ -2603,7 +2746,7 @@ public:
 		txt_w = bnds.w * 66 / 1024;
 		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_team), txt_w, -1);
 
-		if (working)
+		if (working || selected < 0)
 			return;
 
 		switch (selected) {
@@ -2619,8 +2762,37 @@ public:
 			case 3: // ?
 				break;
 			case 4: // number of players
+				if (players.size() != player_count + 2) {
+					size_t adjust = player_count + 2;
+					if (adjust < players.size()) {
+						players.erase(players.begin() + adjust, players.end());
+						if (adjust < vplayers.size())
+							vplayers.erase(vplayers.begin() + adjust, vplayers.end());
+					} else {
+						for (unsigned i = players.size(); i < adjust; ++i) {
+							unsigned id, p_id;
+							std::string pname(std::string("Player ") + std::to_string(i));
+
+							players.emplace_back(p_id = players.size(), 0, pname);
+							vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
+						}
+					}
+				}
 				break;
-			case 5: // civ 1
+			default:
+				switch ((selected - 5) % 3) {
+					case 0: // civ
+					{
+						int index = (selected - 5) / 3;
+						Player &p = players[vplayers[index].p_id];
+						//p.civ_id =
+						break;
+					}
+					case 1: // controlling player
+						break;
+					case 2: // team
+						break;
+				}
 				break;
 		}
 	}
@@ -2803,13 +2975,32 @@ void ListPopup::display_popup(Hud &hud) {
 	if (align_left)
 		shade_bnds.x += btn_w + 2;
 
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_BLEND);
 	ImFont *font = fonts[fnt_id];
-	glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)font->ContainerAtlas->TexID);
-
 	float pos_x = (float)shade_bnds.x + 6.0f;
 	ImVec2 pos(pos_x, (float)shade_bnds.y + (btn_h - font_sizes[fnt_id]) * 0.5f);
+
+	GLfloat left = pos_x - 10.0f, top = pos.y - 8.0f, right = left, bottom = top;
+
+	for (unsigned i = 0; i < items.size(); ++i) {
+		float w = 0;
+		hud.textdim(font, font_sizes[fnt_id], pos, SDL_Rect{0, 0, eng->video.vp.w, eng->video.vp.h}, items[i], eng->video.vp.w, -1, w);
+		if (pos.x > right)
+			right = pos.x;
+		pos.x = pos_x;
+		pos.y += font_sizes[fnt_id];
+	}
+
+	right += 10.0f;
+	bottom = pos.y;
+
+	hud.shaderect(SDL_Rect{(int)left, (int)top, (int)(right - left), (int)(bottom - top)}, 120);
+
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)font->ContainerAtlas->TexID);
+
+	pos_x = (float)shade_bnds.x + 6.0f;
+	pos = ImVec2(pos_x, (float)shade_bnds.y + (btn_h - font_sizes[fnt_id]) * 0.5f);
 
 	item_bounds.resize(items.size());
 
@@ -3725,7 +3916,7 @@ int main(int, char**)
 				ImGui::End();
 			}
 
-			static bool was_working = false, was_global_settings = false;
+			static bool was_working = false, was_global_settings = false, was_wip = false;
 
 			if (aoe.global_settings) {
 				if (!was_global_settings)
@@ -3787,6 +3978,16 @@ int main(int, char**)
 				ImGui::EndPopup();
 			}
 
+			if (aoe.wip) {
+				if (!was_wip)
+					ImGui::OpenPopup(MODAL_WIP);
+
+				if (ImGui::BeginPopupModal(MODAL_WIP, NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+					ImGui::TextUnformatted(CTXT(TextId::wip));
+					ImGui::EndPopup();
+				}
+			}
+
 			if (aoe.working) {
 				if (!was_working)
 					ImGui::OpenPopup(MODAL_LOADING);
@@ -3800,6 +4001,7 @@ int main(int, char**)
 
 			was_working = aoe.working;
 			was_global_settings = aoe.global_settings;
+			was_wip = aoe.wip;
 
 			// Rendering
 			ImGui::Render();

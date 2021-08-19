@@ -32,6 +32,9 @@ enum LangId lang = LangId::standard;
 static std::vector<std::vector<std::string>> txts = {
 	// English
 	{
+		// debug
+		"Sorry, this feature or operation is not supported yet!",
+		// general purpose
 		"Age of Empires Remake",
 		"Language",
 		"Welcome to the free software remake of Age of Empires. This project is not affiliated with Microsoft or Ensemble Studios in any way. If you have paid for this remake edition, you have been ripped off.\n\nTo get started, you need to have the original game installed from CD-ROM to get this to work. The Definitive Edition on Steam is not supported yet.",
@@ -102,6 +105,9 @@ static std::vector<std::vector<std::string>> txts = {
 	//{},
 	// Nederlands
 	{
+		// debug
+		"Helaas wordt dit nog niet ondersteund!",
+		// algemeen gebruikte dingen
 		"Age of Empires Namaak",
 		"Taal",
 		"Welkom bij de free software Age of Empires Namaak-editie. Dit project is op geen enkele manier geassocieerd met Microsoft of Ensemble Studios. Als u betaald hebt voor deze namaak-editie, dan bent u belazerd en bedonderd.\n\nOm het spel te spelen heeft u de originele CD-ROM versie nodig. De Definitive Edition op Steam wordt nog niet ondersteund.",
@@ -165,6 +171,9 @@ static std::vector<std::vector<std::string>> txts = {
 	},
 	// Deutsch
 	{
+		// debug
+		"",
+		// general purpose
 		"Age of Empires Remake",
 		"Sprache",
 		"",//"Willkommen zum kostenlosen Software-Remake Age of Empires. Dieses Projekt ist in keiner Weise mit Microsoft oder Ensemble Studios verbunden. Wenn Sie für diese Remake-Edition bezahlt haben, wurden Sie abgezockt.\n\nUm loszulegen, muss das Originalspiel von der CD-ROM installiert sein, damit dies funktioniert. Die Definitive Edition auf Steam wird noch nicht unterstützt.",
