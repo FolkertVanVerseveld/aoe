@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 
 project (main)
 
-set(PROFILING TRUE)
+set(PROFILING FALSE)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,8 +33,8 @@ else()
 endif()
 
 # https://cmake.org/cmake/help/v3.0/command/file.html
-file(GLOB SOURCES "src/*.cpp" "src/imgui/*.cpp" "src/*.c" "${TRACY_SOURCES}")# "libs/gl3w/GL/gl3w.c")
+file(GLOB_RECURSE SOURCES "src/*.c" "src/*.cpp")# "libs/gl3w/GL/gl3w.c")
 
 include_directories(${SDL2_INCLUDE_DIRS} ${INCLUDE_WINDOWS})# "libs/gl3w")
-add_executable (main ${SOURCES})# ${GL3W_SOURCES})
+add_executable (main ${SOURCES} ${TRACY_SOURCES})# ${GL3W_SOURCES})
 target_link_libraries(main ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES} ${SDL2_MIXER_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})

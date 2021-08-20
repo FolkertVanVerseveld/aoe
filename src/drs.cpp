@@ -82,6 +82,9 @@ Image::Image(res_id id, unsigned idx, const DRS &drs, size_t size, unsigned p)
 Image::Image(res_id id, const io::Slp &slp, unsigned idx, size_t size, unsigned p)
 	: id(id), idx(idx), surf(std::nullopt), dynamic(load(slp, idx, p)) {}
 
+Image::Image(res_id id, unsigned idx, const std::vector<uint8_t> &pixels, const SDL_Rect &bnds, bool dynamic)
+	: id(id), idx(idx), surf(pixels), bnds(bnds), dynamic(dynamic) {}
+
 #pragma warning (disable: 26451)
 
 static unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
@@ -356,6 +359,27 @@ bool Image::load(const io::Slp &slp, unsigned idx, unsigned player) {
 	bnds.w = info->width;
 	bnds.h = info->height;
 	return dynamic;
+}
+
+Image Image::flip() const {
+	assert(surf.index() == 1);
+
+	std::vector<uint8_t> copy;
+	const std::vector<uint8_t> &pixels = std::get<std::vector<uint8_t>>(surf);
+
+	for (int y = 0; y < bnds.h; ++y) {
+		for (int x = 0; x < bnds.w; ++x) {
+			long pos = (long)y * bnds.w + (bnds.w - 1 - x);
+			copy.emplace_back(pixels[pos]);
+		}
+	}
+
+	// reverse hotspot
+	SDL_Rect flip_bnds;
+	flip_bnds.x = bnds.w - bnds.x; flip_bnds.y = bnds.y;
+	flip_bnds.w = bnds.w; flip_bnds.h = bnds.h;
+
+	return Image(id, idx, copy, flip_bnds, dynamic);
 }
 
 Animation::Animation(res_id id, const DRS &drs) : slp(drs.open_slp(id)), size(0), images(), id(id), image_count(0), dynamic(false) {

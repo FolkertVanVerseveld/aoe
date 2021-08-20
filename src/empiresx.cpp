@@ -574,9 +574,10 @@ class Preview final {
 public:
 	GLuint tex;
 	SDL_Rect bnds; // x,y are hotspot x and y. w,h are size
+	int offx, offy;
 	std::string alt;
 
-	Preview() : tex(0), bnds(), alt() {
+	Preview() : tex(0), bnds(), offx(0), offy(0), alt() {
 		glGenTextures(1, &tex);
 		if (!tex)
 			throw std::runtime_error("Cannot create preview texture");
@@ -606,10 +607,108 @@ public:
 	}
 
 	void show() {
-		if (!bnds.w || !bnds.h || !alt.empty())
+		if (!bnds.w || !bnds.h || !alt.empty()) {
 			ImGui::TextUnformatted(alt.empty() ? "(no image data)" : alt.c_str());
-		else
+		} else {
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offx);
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offy);
 			ImGui::Image((ImTextureID)tex, ImVec2((float)bnds.w, (float)bnds.h));
+		}
+	}
+};
+
+enum class UnitType {
+	chariot_archer,
+	archer,
+	improved_archer,
+	axeman,
+	swordsman,
+	ballista,
+	stone_thrower,
+	horse_archer,
+	cataphract,
+	max,
+};
+
+enum class UnitAction {
+	dead,
+	idle,
+	attack,
+};
+
+unsigned unit_type_drs[] = {202, 203, 204, 205, 206, 207, 208, 209, 210};
+
+class UnitView final {
+	UnitAction action;
+	UnitType type;
+	genie::Animation anim;
+	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal;
+	Preview preview;
+	unsigned player;
+	int offx, offy, subimage;
+	bool changed, flip;
+public:
+	UnitView(UnitType type)
+		: action(UnitAction::attack), type(type)
+		, anim(std::move(genie::assets.blobs[1]->open_anim((genie::res_id)unit_type_drs[(unsigned)type])))
+		, pal(genie::assets.blobs[2]->open_pal((unsigned)genie::DrsId::palette), SDL_FreePalette)
+		, preview(), player(0), offx(0), offy(0), changed(true), flip(false)
+	{
+		compute_offset();
+	}
+
+	void compute_offset() {
+		offx = offy = 0;
+
+		for (unsigned i = 0, n = anim.image_count; i < n; ++i) {
+			const genie::Image &img = anim.subimage(i, player);
+			offx = std::max(offx, img.bnds.x);
+			offy = std::max(offy, img.bnds.y);
+		}
+	}
+
+	void set_anim(UnitType type) {
+		anim = std::move(genie::assets.blobs[1]->open_anim((genie::res_id)unit_type_drs[(unsigned)type]));
+		compute_offset();
+		changed = true;
+	}
+
+	void show() {
+		if (ImGui::Begin("Unit viewer")) {
+			int rel_offx, rel_offy;
+
+			ImGui::Text("max offx: %d, max offy: %d", offx, offy);
+			changed |= ImGui::Checkbox("flip", &flip);
+			changed |= ImGui::SliderInputInt("subimage", &subimage, -anim.image_count + 1, 2 * anim.image_count);
+			if (subimage < 0)
+				subimage = anim.image_count + subimage % anim.image_count;
+			if (subimage >= anim.image_count)
+				subimage %= anim.image_count;
+
+			if (changed) {
+				const genie::Image &img = anim.subimage(subimage, player);
+
+				if (flip) {
+					genie::Image imgf(std::move(img.flip()));
+
+					preview.load(imgf, pal.get());
+
+					rel_offx = offx - imgf.bnds.x;
+					rel_offy = offy - imgf.bnds.y;
+				} else {
+					preview.load(img, pal.get());
+
+					rel_offx = offx - img.bnds.x;
+					rel_offy = offy - img.bnds.y;
+				}
+
+				preview.offx = rel_offx;
+				preview.offy = rel_offy;
+			}
+
+			preview.show();
+		}
+		ImGui::End();
 	}
 };
 
@@ -3330,6 +3429,7 @@ int main(int, char**)
 		}
 
 		DrsView drsview;
+		std::unique_ptr<UnitView> unitview;
 
 		// Main loop
 		while (running)
@@ -3388,7 +3488,6 @@ int main(int, char**)
 			}
 
 			video.idle();
-
 			aoe.working = w_bkg.progress(p);
 
 			// munch all OpenGL commands
@@ -3439,6 +3538,8 @@ int main(int, char**)
 									auto_detect = false;
 									w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
 								}
+
+								unitview.reset(new UnitView(UnitType::chariot_archer));
 								break;
 							case WorkTaskType::load_menu:
 								aoe.load_menu(std::get<MenuId>(res->task.data));
@@ -3476,6 +3577,9 @@ int main(int, char**)
 
 			// disable saving imgui.ini
 			io.IniFilename = NULL;
+
+			if (unitview.get())
+				unitview->show();
 
 			if (show_debug) {
 				if (aoe.tex_bkg.tex) {

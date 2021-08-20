@@ -84,6 +84,13 @@ struct Slp final {
 	Slp() : hdr(NULL), info(NULL), size(0) {}
 	Slp(void *data, size_t size) { reset(data, size); }
 
+	Slp &operator=(const Slp &rhs) {
+		hdr = rhs.hdr;
+		info = rhs.info;
+		size = rhs.size;
+		return *this;
+	}
+
 	void reset(void *data, size_t size);
 };
 
@@ -356,15 +363,29 @@ public:
 
 	Image(const Image&) = delete;
 	Image(Image&&) = default;
+private:
+	Image(res_id id, unsigned idx, const std::vector<uint8_t> &pixels, const SDL_Rect &bnds, bool dynamic);
+public:
 
 	bool load(const io::Slp &slp, unsigned idx, unsigned player=0);
+	// flip image horizontally
+	Image flip() const;
+
+	Image &operator=(Image &&rhs) noexcept {
+		id = rhs.id;
+		idx = rhs.idx;
+		surf.swap(rhs.surf);
+		bnds = rhs.bnds;
+		dynamic = rhs.dynamic;
+		return *this;
+	}
 
 	friend bool operator<(const Image &lhs, const Image &rhs);
 };
 
 class Animation final {
 public:
-	const io::Slp slp;
+	io::Slp slp;
 	size_t size;
 	std::unique_ptr<Image[]> images;
 	res_id id;
@@ -376,6 +397,16 @@ public:
 	Animation(Animation&&) = default;
 
 	const Image &subimage(unsigned index, unsigned player=0) const;
+
+	Animation &operator=(Animation &&rhs) noexcept {
+		slp = rhs.slp;
+		size = rhs.size;
+		images.swap(rhs.images);
+		id = rhs.id;
+		image_count = rhs.image_count;
+		dynamic = rhs.dynamic;
+		return *this;
+	}
 
 	friend bool operator<(const Animation &lhs, const Animation &rhs);
 };
@@ -410,7 +441,6 @@ public:
 
 	Dialog open_dlg(res_id id) const;
 	io::Slp open_slp(res_id id) const;
-	Image open_image(res_id id) const;
 	Animation open_anim(res_id id) const { return Animation(id, *this); }
 	Animation open_anim(DrsId id) const { return open_anim((res_id)id); }
 	SDL_Palette *open_pal(res_id id) const;
