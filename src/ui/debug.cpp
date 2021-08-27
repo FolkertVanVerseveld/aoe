@@ -1,21 +1,30 @@
 #include "all.hpp"
 
+#include "../engine.hpp"
+
 #include <atomic>
 
 extern std::atomic_bool running;
 
 namespace genie {
+
+extern AoE *eng;
+
 namespace ui {
 
-void TexturesWidget::display(Texture &tex) {
+void TexturesWidget::display() {
+	if (!visible)
+		return;
+
+	Texture &tex = eng->tex_bkg;
 	ImVec2 sz(300, 200);
 	ImGui::SetNextWindowSizeConstraints(sz, ImVec2(FLT_MAX, FLT_MAX));
 
-	ImGui::Begin("Texture map");
+	ImGui::Begin("Texture map", &visible);
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
-		ImGui::BeginChild("scrolling", sz, false, ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 		{
 			ImTextureID id = (ImTextureID)tex.tex;
 			ImGui::Image(id, ImVec2(tex.ts.bnds.w, tex.ts.bnds.h));
@@ -25,7 +34,7 @@ void TexturesWidget::display(Texture &tex) {
 	ImGui::End();
 }
 
-DebugUI::DebugUI() : show_gfx(false), tex() {}
+DebugUI::DebugUI() : tex() {}
 
 void DebugUI::display() {
 	if (!ImGui::BeginMainMenuBar())
@@ -43,7 +52,7 @@ void DebugUI::display() {
 	}
 
 	if (ImGui::BeginMenu("View")) {
-		ImGui::Checkbox("Graphics debugger", &show_gfx);
+		ImGui::Checkbox("Graphics debugger", &tex.visible);
 		ImGui::EndMenu();
 	}
 
@@ -52,6 +61,8 @@ void DebugUI::display() {
 	}
 
 	ImGui::EndMainMenuBar();
+
+	tex.display();
 }
 
 UI::UI() : m_show_debug(false), dbg() {}

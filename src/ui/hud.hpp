@@ -1,3 +1,4 @@
+/* Copyright 2019-2021 the Age of Empires Free Software Remake authors. See LEGAL for legal info */
 #pragma once
 
 #include "../imgui/imgui.h"
@@ -36,7 +37,7 @@ public:
 	bool opened, closed;
 	std::vector<SDL_Rect> item_bounds;
 
-	Popup() : opened(false) {}
+	Popup() : opened(false), closed(false), item_bounds() {}
 
 	virtual ~Popup() {}
 	/** Display popup visuals. */

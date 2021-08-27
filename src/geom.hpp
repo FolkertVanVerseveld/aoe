@@ -1,4 +1,4 @@
-/* Copyright 2020 Folkert van Verseveld. All rights reserved */
+/* Copyright 2020-2021 Folkert van Verseveld. All rights reserved */
 #pragma once
 
 #include <cassert>
@@ -9,6 +9,7 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <functional>
 
 #include <SDL2/SDL_opengl.h>
 

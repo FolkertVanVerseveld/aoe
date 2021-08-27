@@ -3,8 +3,11 @@
 #include <cassert>
 
 #include "ui/hud.hpp"
+#include "imgui/imgui_memory_editor.h"
+#include "audio.hpp"
 #include "prodcons.hpp"
 #include "geom.hpp"
+#include "scn.hpp"
 
 #include <SDL2/SDL.h>
 

@@ -9,11 +9,12 @@ namespace ui {
 
 class TexturesWidget final {
 public:
-	void display(Texture &tex);
+	bool visible;
+
+	void display();
 };
 
 class DebugUI final {
-	bool show_gfx;
 	TexturesWidget tex;
 public:
 	DebugUI();

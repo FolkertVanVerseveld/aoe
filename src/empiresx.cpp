@@ -19,14 +19,10 @@
 
 #include "../tracy/Tracy.hpp"
 
-#include "prodcons.hpp"
 #include "lang.hpp"
 #include "drs.hpp"
 #include "math.hpp"
-#include "audio.hpp"
 #include "graphics.hpp"
-#include "geom.hpp"
-#include "scn.hpp"
 #include "engine.hpp"
 
 #include "ui/all.hpp"
@@ -3315,24 +3311,6 @@ int main(int, char**)
 			ui.display();
 
 			if (show_debug) {
-				if (aoe.tex_bkg.tex) {
-					ImGui::Begin("Texture map");
-					{
-						ImVec2 sz(300, 200);
-						ImVec2 wsz = ImGui::GetWindowSize();
-						sz.x = std::max(wsz.x - 16.0f, sz.x);
-						sz.y = std::max(wsz.y - 35.0f, sz.y);
-
-						ImGui::BeginChild("scrolling", sz, false, ImGuiWindowFlags_HorizontalScrollbar);
-						{
-							ImTextureID tex = (ImTextureID)aoe.tex_bkg.tex;
-							ImGui::Image(tex, ImVec2(aoe.tex_bkg.ts.bnds.w, aoe.tex_bkg.ts.bnds.h));
-						}
-						ImGui::EndChild();
-					}
-					ImGui::End();
-				}
-
 				if (fs_has_root)
 					ImGui::PushFont(fonts[4]);
 
