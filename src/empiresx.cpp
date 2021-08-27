@@ -27,6 +27,9 @@
 #include "graphics.hpp"
 #include "geom.hpp"
 #include "scn.hpp"
+#include "engine.hpp"
+
+#include "ui/all.hpp"
 
 #include <cstdio>
 #include <ctime>
@@ -99,360 +102,254 @@ static const char *str_dim_lgy[] = {
 
 static bool show_debug;
 static bool fs_has_root;
-static std::atomic_bool running(true);
-
-enum class MenuId {
-	config,
-	start,
-	singleplayer,
-	editor,
-	scn_edit,
-};
+std::atomic_bool running(true);
 
 enum class SubMenuId {
 	singleplayer_menu,
 	singleplayer_game,
 };
 
-MenuId menu_id = MenuId::config;
+genie::MenuId menu_id = genie::MenuId::config;
 SubMenuId submenu_id = SubMenuId::singleplayer_menu;
 
-class AoE;
-
-AoE *eng = nullptr;
-
-static bool constexpr menu_is_game(MenuId id=menu_id) {
-	return id == MenuId::scn_edit;
+static bool constexpr menu_is_game(genie::MenuId id=menu_id) {
+	return id == genie::MenuId::scn_edit;
 }
-
-enum class WorkTaskType {
-	stop,
-	check_root,
-	load_menu,
-	play_music,
-};
-
-using FdlgItem = std::pair<std::string, std::string>;
-
-class WorkTask final {
-public:
-	WorkTaskType type;
-	std::variant<std::nullopt_t, FdlgItem, MenuId, genie::MusicId> data;
-
-	WorkTask(WorkTaskType t) : type(t), data(std::nullopt) {}
-
-	template<typename... Args>
-	WorkTask(WorkTaskType t, Args&&... args) : type(t), data(args...) {}
-};
-
-enum class WorkResultType {
-	stop,
-	success,
-	fail,
-};
-
-class WorkResult final {
-public:
-	WorkTask task;
-	WorkResultType type;
-	std::string what;
-
-	WorkResult(const WorkTask &task, WorkResultType rt) : task(task), type(rt), what() {}
-	WorkResult(const WorkTask &task, WorkResultType rt, const std::string &what) : task(task), type(rt), what(what) {}
-};
-
-struct WorkerProgress final {
-	std::atomic<unsigned> step;
-	unsigned total;
-	std::string desc;
-};
-
-// trick to abort worker thread on shutdown
-struct WorkInterrupt final {
-	WorkInterrupt() {}
-};
-
-namespace genie {
-
-Assets assets;
-
-}
-
-enum AnimationId {
-	desert,
-	grass,
-	water_shallow,
-	water_deep,
-	corner_water_desert,
-	corner_desert_grass,
-	overlay_water,
-	ui_buttons,
-};
-
-enum class GLcmdType {
-	stop,
-	set_bkg,
-	set_dlgcol,
-	set_anims,
-};
-
-struct GLcmd final {
-	GLcmdType type;
-	std::variant<std::nullopt_t, genie::Tilesheet, genie::DialogColors, std::map<AnimationId, unsigned>> data;
-
-	GLcmd(GLcmdType type) : type(type), data(std::nullopt) {}
-
-	template<typename... Args>
-	GLcmd(GLcmdType type, Args&&... args) : type(type), data(args...) {}
-};
-
-enum class GLcmdResultType {
-	stop,
-	error,
-};
-
-struct GLcmdResult final {
-	GLcmdResultType type;
-
-	GLcmdResult(GLcmdResultType type) : type(type) {}
-};
-
-/** OpenGL wrapper such that our main worker call do OpenGL stuff while running on another thread. */
-class GLchannel final {
-public:
-	ConcurrentChannel<GLcmd> cmds;
-	ConcurrentChannel<GLcmdResult> results;
-
-	GLchannel() : cmds(GLcmdType::stop, 10), results(GLcmdResultType::stop, 10) {}
-};
 
 static const unsigned anim_counts[] = {
 	7,
 	1,
 };
 
-static void anim_add(std::map<AnimationId, unsigned> &anims, genie::TilesheetBuilder &bld, unsigned idx, AnimationId anim, genie::DrsId id, SDL_Palette *pal)
+static void anim_add(std::map<genie::AnimationId, unsigned> &anims, genie::TilesheetBuilder &bld, unsigned idx, genie::AnimationId anim, genie::DrsId id, SDL_Palette *pal)
 {
 	unsigned pos = bld.add(idx, id, pal);
 	anims.emplace(anim, pos);
 }
 
-class Worker final {
-public:
-	ConcurrentChannel<WorkTask> tasks; // in
-	ConcurrentChannel<WorkResult> results; // out
-	GLchannel &ch;
+namespace genie {
 
-	std::mutex mut;
-	WorkerProgress p;
+AoE *eng = nullptr;
 
-	Worker(GLchannel &ch) : tasks(WorkTaskType::stop, 10), results(WorkResult{ WorkTaskType::stop, WorkResultType::stop }, 10), ch(ch), mut(), p() {}
+Assets assets;
 
-	int run() {
-		try {
-			while (tasks.is_open()) {
-				WorkTask task = tasks.consume();
+Worker::Worker(GLchannel &ch) : tasks(WorkTaskType::stop, 10), results(WorkResult{ WorkTaskType::stop, WorkResultType::stop }, 10), ch(ch), mut(), p() {}
 
-				switch (task.type) {
-					case WorkTaskType::stop:
-						continue;
-					case WorkTaskType::check_root:
-						check_root(std::get<FdlgItem>(task.data));
-						break;
-					case WorkTaskType::load_menu:
-						load_menu(task);
-						break;
-					case WorkTaskType::play_music:
-						genie::jukebox.play(std::get<genie::MusicId>(task.data));
-						break;
-					default:
-						assert("bad task type" == 0);
-						break;
-				}
-			}
-		} catch (WorkInterrupt&) {
-			done(WorkTaskType::stop, WorkResultType::stop);
-			return 1;
-		}
+int Worker::run() {
+	try {
+		while (tasks.is_open()) {
+			WorkTask task = tasks.consume();
 
-		return 0;
-	}
-
-	bool progress(WorkerProgress &p) {
-		std::unique_lock<std::mutex> lock(mut);
-
-		unsigned v = this->p.step.load();
-
-		p.desc = this->p.desc;
-		p.step.store(v);
-		p.total = this->p.total;
-
-		return v != p.total;
-	}
-
-private:
-	void start(unsigned total, unsigned step=0) {
-		std::unique_lock<std::mutex> lock(mut);
-		if (!running)
-			throw WorkInterrupt();
-		p.step = step;
-		p.total = total;
-	}
-
-	void set_desc(const std::string &s) {
-		std::unique_lock<std::mutex> lock(mut);
-		if (!running)
-			throw WorkInterrupt();
-		p.desc = s;
-	}
-
-	template<typename... Args>
-	void done(Args&&... args) {
-		std::unique_lock<std::mutex> lock(mut);
-		p.step = p.total;
-		results.produce(args...);
-	}
-
-	void load_menu(WorkTask &task) {
-		MenuId id = std::get<MenuId>(task.data);
-
-		start(4);
-		set_desc("Loading menu dialog");
-
-		// find corresponding dialog
-		const genie::res_id dlg_ids[] = {
-			(genie::res_id)-1,
-			(genie::res_id)genie::DrsId::menu_start,
-			(genie::res_id)genie::DrsId::menu_singleplayer,
-			(genie::res_id)genie::DrsId::menu_editor,
-			(genie::res_id)genie::DrsId::menu_scn_edit,
-		};
-
-		genie::Dialog dlg(genie::assets.blobs[2]->open_dlg(dlg_ids[(unsigned)id]));
-		++p.step;
-		set_desc("Loading backgrounds");
-
-		genie::TilesheetBuilder bld;
-
-		// add all backgrounds
-		for (int i = 0; i < IM_ARRAYSIZE(dim_lgy); ++i) {
-			dlg.set_bkg(i);
-			genie::Animation &anim = *dlg.bkganim.get();
-			bld.emplace(anim.subimage(0), dlg.pal.get());
-		}
-
-		std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal(genie::assets.open_pal(genie::DrsId::palette), SDL_FreePalette);
-		//bld.add(2, genie::DrsId::cursors, pal.get());
-
-		++p.step;
-		set_desc("Loading animations");
-
-		std::map<AnimationId, unsigned> anims;
-
-		// add any other images depending on the menu being loaded
-		// anim_counts should match number of bld.add lines!
-		switch (id) {
-			case MenuId::scn_edit:
-			{
-				anim_add(anims, bld, 4, AnimationId::desert, genie::DrsId::terrain_desert, pal.get());
-				anim_add(anims, bld, 4, AnimationId::grass, genie::DrsId::terrain_grass, pal.get());
-				anim_add(anims, bld, 4, AnimationId::water_shallow, genie::DrsId::terrain_water_shallow, pal.get());
-				anim_add(anims, bld, 4, AnimationId::water_deep, genie::DrsId::terrain_water_deep, pal.get());
-				anim_add(anims, bld, 0, AnimationId::corner_water_desert, genie::DrsId::corner_desert_water, pal.get());
-				anim_add(anims, bld, 0, AnimationId::corner_desert_grass, genie::DrsId::corner_desert_grass, pal.get());
-				anim_add(anims, bld, 0, AnimationId::overlay_water, genie::DrsId::overlay_water, pal.get());
-				break;
-			}
-			case MenuId::singleplayer:
-			{
-				std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> ui_pal(genie::assets.open_pal(genie::DrsId::ui_palette), SDL_FreePalette);
-
-				anim_add(anims, bld, 2, AnimationId::ui_buttons, genie::DrsId::ui_buttons, ui_pal.get());
-				break;
+			switch (task.type) {
+				case WorkTaskType::stop:
+					continue;
+				case WorkTaskType::check_root:
+					check_root(std::get<FdlgItem>(task.data));
+					break;
+				case WorkTaskType::load_menu:
+					load_menu(task);
+					break;
+				case WorkTaskType::play_music:
+					genie::jukebox.play(std::get<genie::MusicId>(task.data));
+					break;
+				default:
+					assert("bad task type" == 0);
+					break;
 			}
 		}
-
-
-		// send back to main thread
-		genie::Tilesheet ts(bld);
-		ch.cmds.produce(GLcmdType::set_bkg, ts);
-		ch.cmds.produce(GLcmdType::set_dlgcol, dlg.colors());
-		ch.cmds.produce(GLcmdType::set_anims, anims);
-
-		++p.step;
-		set_desc("Loading menu music");
-
-		switch (id) {
-			case MenuId::start:
-				genie::jukebox.play(genie::MusicId::open);
-				break;
-			case MenuId::editor:
-			case MenuId::singleplayer:
-				break;
-			case MenuId::scn_edit:
-				genie::jukebox.stop();
-				break;
-			default:
-				assert("bad menu id" == 0);
-				done(task, WorkResultType::fail);
-				return;
-		}
-
-		++p.step;
-		done(task, WorkResultType::success);
+	} catch (WorkInterrupt&) {
+		done(WorkTaskType::stop, WorkResultType::stop);
+		return 1;
 	}
 
-	void check_root(const FdlgItem &item) {
+	return 0;
+}
+
+bool Worker::progress(WorkerProgress &p) {
+	std::unique_lock<std::mutex> lock(mut);
+
+	unsigned v = this->p.step.load();
+
+	p.desc = this->p.desc;
+	p.step.store(v);
+	p.total = this->p.total;
+
+	return v != p.total;
+}
+
+void Worker::start(unsigned total, unsigned step) {
+	std::unique_lock<std::mutex> lock(mut);
+	if (!running)
+		throw WorkInterrupt();
+	p.step = step;
+	p.total = total;
+}
+
+void Worker::set_desc(const std::string &s) {
+	std::unique_lock<std::mutex> lock(mut);
+	if (!running)
+		throw WorkInterrupt();
+	p.desc = s;
+}
+
+void Worker::load_menu(WorkTask &task) {
+	MenuId id = std::get<MenuId>(task.data);
+
+	start(4);
+	set_desc("Loading menu dialog");
+
+	// find corresponding dialog
+	const genie::res_id dlg_ids[] = {
+		(genie::res_id)-1,
+		(genie::res_id)genie::DrsId::menu_start,
+		(genie::res_id)genie::DrsId::menu_singleplayer,
+		(genie::res_id)genie::DrsId::menu_editor,
+		(genie::res_id)genie::DrsId::menu_scn_edit,
+	};
+
+	genie::Dialog dlg(genie::assets.blobs[2]->open_dlg(dlg_ids[(unsigned)id]));
+	++p.step;
+	set_desc("Loading backgrounds");
+
+	genie::TilesheetBuilder bld;
+
+	// add all backgrounds
+	for (int i = 0; i < IM_ARRAYSIZE(dim_lgy); ++i) {
+		dlg.set_bkg(i);
+		genie::Animation &anim = *dlg.bkganim.get();
+		bld.emplace(anim.subimage(0), dlg.pal.get());
+	}
+
+	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal(genie::assets.open_pal(genie::DrsId::palette), SDL_FreePalette);
+	//bld.add(2, genie::DrsId::cursors, pal.get());
+
+	++p.step;
+	set_desc("Loading animations");
+
+	std::map<AnimationId, unsigned> anims;
+
+	// add any other images depending on the menu being loaded
+	// anim_counts should match number of bld.add lines!
+	switch (id) {
+		case MenuId::scn_edit:
+		{
+			anim_add(anims, bld, 4, AnimationId::desert, genie::DrsId::terrain_desert, pal.get());
+			anim_add(anims, bld, 4, AnimationId::grass, genie::DrsId::terrain_grass, pal.get());
+			anim_add(anims, bld, 4, AnimationId::water_shallow, genie::DrsId::terrain_water_shallow, pal.get());
+			anim_add(anims, bld, 4, AnimationId::water_deep, genie::DrsId::terrain_water_deep, pal.get());
+			anim_add(anims, bld, 0, AnimationId::corner_water_desert, genie::DrsId::corner_desert_water, pal.get());
+			anim_add(anims, bld, 0, AnimationId::corner_desert_grass, genie::DrsId::corner_desert_grass, pal.get());
+			anim_add(anims, bld, 0, AnimationId::overlay_water, genie::DrsId::overlay_water, pal.get());
+			break;
+		}
+		case MenuId::singleplayer:
+		{
+			std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> ui_pal(genie::assets.open_pal(genie::DrsId::ui_palette), SDL_FreePalette);
+
+			anim_add(anims, bld, 2, AnimationId::ui_buttons, genie::DrsId::ui_buttons, ui_pal.get());
+			break;
+		}
+	}
+
+
+	// send back to main thread
+	genie::Tilesheet ts(bld);
+	ch.cmds.produce(GLcmdType::set_bkg, ts);
+	ch.cmds.produce(GLcmdType::set_dlgcol, dlg.colors());
+	ch.cmds.produce(GLcmdType::set_anims, anims);
+
+	++p.step;
+	set_desc("Loading menu music");
+
+	switch (id) {
+		case MenuId::start:
+			genie::jukebox.play(genie::MusicId::open);
+			break;
+		case MenuId::editor:
+		case MenuId::singleplayer:
+			break;
+		case MenuId::scn_edit:
+			genie::jukebox.stop();
+			break;
+		default:
+			assert("bad menu id" == 0);
+			done(task, WorkResultType::fail);
+			return;
+	}
+
+	++p.step;
+	done(task, WorkResultType::success);
+}
+
+void Worker::check_root(const FdlgItem &item) {
 #define COUNT 5
 
-		genie::iofd fd[COUNT];
-		// windows doesn't care about case sensitivity, but we need to make sure this also works on *n*x
-		std::string fnames[COUNT] = {
-			"Border.drs",
-			"graphics.drs",
-			"Interfac.drs",
-			"sounds.drs",
-			"Terrain.drs"
-		};
+	genie::iofd fd[COUNT];
+	// windows doesn't care about case sensitivity, but we need to make sure this also works on *n*x
+	std::string fnames[COUNT] = {
+		"Border.drs",
+		"graphics.drs",
+		"Interfac.drs",
+		"sounds.drs",
+		"Terrain.drs"
+	};
 
-		std::string ttfnames[] = {
-			"arial.ttf",
-			"arialbd.ttf",
-			"comic.ttf",
-			"comicbd.ttf",
-			"COPRGTB.TTF",
-			"COPRGTL.TTF",
-		};
+	std::string ttfnames[] = {
+		"arial.ttf",
+		"arialbd.ttf",
+		"comic.ttf",
+		"comicbd.ttf",
+		"COPRGTB.TTF",
+		"COPRGTL.TTF",
+	};
 
-		struct ResChk final {
-			genie::res_id id;
-			unsigned type;
-		};
+	struct ResChk final {
+		genie::res_id id;
+		unsigned type;
+	};
 
-		// just list some important assests to take an educated guess if everything looks fine
-		const std::vector<std::vector<ResChk>> res = {
-			{ // border
-				{20000, 2}, {20001, 2}, {20002, 2}, {20003, 2}, {20004, 2}, {20006, 2},
-			},{ // graphics
-				{230, 2}, {254, 2}, {280, 2}, {418, 2}, {425, 2}, {463, 2},
-			},{ // interface
-				{50057, 0}, {50058, 0}, {50060, 0}, {50061, 0}, {50721, 2}, {50731, 2}, {50300, 3}, {50302, 3}, {50303, 3}, {50320, 3}, {50321, 3}, {50500, 0},
-			},{ // sounds
-				{5036, 3}, {5092, 3}, {5107, 3},
-			},{ // terrain
-				{15000, 2}, {15001, 2}, {15002, 2}, {15003, 2},
+	// just list some important assests to take an educated guess if everything looks fine
+	const std::vector<std::vector<ResChk>> res = {
+		{ // border
+			{20000, 2}, {20001, 2}, {20002, 2}, {20003, 2}, {20004, 2}, {20006, 2},
+		},{ // graphics
+			{230, 2}, {254, 2}, {280, 2}, {418, 2}, {425, 2}, {463, 2},
+		},{ // interface
+			{50057, 0}, {50058, 0}, {50060, 0}, {50061, 0}, {50721, 2}, {50731, 2}, {50300, 3}, {50302, 3}, {50303, 3}, {50320, 3}, {50321, 3}, {50500, 0},
+		},{ // sounds
+			{5036, 3}, {5092, 3}, {5107, 3},
+		},{ // terrain
+			{15000, 2}, {15001, 2}, {15002, 2}, {15003, 2},
+		}
+	};
+
+	start(3);
+	set_desc(TXT(TextId::work_drs));
+
+	std::string dir(item.first);
+
+	try {
+		for (unsigned i = 0; i < COUNT; ++i) {
+			size_t off;
+			std::string path(genie::drs_path(item.first, fnames[i], off));
+			if ((fd[i] = genie::open(path.c_str(), off)) == genie::fd_invalid) {
+				for (unsigned j = 0; j < i; ++j)
+					genie::close(fd[j]);
+
+				throw std::runtime_error(path);
 			}
-		};
-
-		start(3);
-		set_desc(TXT(TextId::work_drs));
-
-		std::string dir(item.first);
-
+		}
+	} catch (std::runtime_error &e) {
+		if (item.first == item.second) {
+			done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
+			return;
+		}
 		try {
+			dir = item.second;
+
 			for (unsigned i = 0; i < COUNT; ++i) {
 				size_t off;
-				std::string path(genie::drs_path(item.first, fnames[i], off));
+				std::string path(genie::drs_path(item.second, fnames[i], off));
 				if ((fd[i] = genie::open(path.c_str(), off)) == genie::fd_invalid) {
 					for (unsigned j = 0; j < i; ++j)
 						genie::close(fd[j]);
@@ -461,93 +358,76 @@ private:
 				}
 			}
 		} catch (std::runtime_error &e) {
-			if (item.first == item.second) {
-				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
-				return;
-			}
-			try {
-				dir = item.second;
-
-				for (unsigned i = 0; i < COUNT; ++i) {
-					size_t off;
-					std::string path(genie::drs_path(item.second, fnames[i], off));
-					if ((fd[i] = genie::open(path.c_str(), off)) == genie::fd_invalid) {
-						for (unsigned j = 0; j < i; ++j)
-							genie::close(fd[j]);
-
-						throw std::runtime_error(path);
-					}
-				}
-			} catch (std::runtime_error &e) {
-				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
-				return;
-			}
+			done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
+			return;
 		}
+	}
 
-		genie::assets.blobs.clear();
+	genie::assets.blobs.clear();
 
-		for (unsigned i = 0; i < COUNT; ++i) {
-			try {
-				genie::assets.blobs.emplace_back(new genie::DRS(fnames[i], fd[i], i != 3));
-			} catch (std::runtime_error &e) {
-				for (unsigned j = i + 1; j < COUNT; ++j)
-					genie::close(fd[j]);
+	for (unsigned i = 0; i < COUNT; ++i) {
+		try {
+			genie::assets.blobs.emplace_back(new genie::DRS(fnames[i], fd[i], i != 3));
+		} catch (std::runtime_error &e) {
+			for (unsigned j = i + 1; j < COUNT; ++j)
+				genie::close(fd[j]);
 
-				genie::assets.blobs.clear();
-				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
+			genie::assets.blobs.clear();
+			done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_path, e.what()));
+			return;
+		}
+	}
+
+	++p.step;
+	set_desc("Verifying data resource sets");
+
+	for (unsigned i = 0; i < res.size(); ++i) {
+		if (genie::assets.blobs[i]->empty()) {
+			done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_empty, fnames[i].c_str()));
+			return;
+		}
+		genie::DrsItem dummy;
+
+		const std::vector<ResChk> &l = res[i];
+		for (auto &r : l)
+			if (!genie::assets.blobs[i]->open_item(dummy, r.id, (genie::DrsType)r.type)) {
+				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_no_drs_item, (unsigned)r.id));
 				return;
 			}
-		}
+	}
 
-		++p.step;
-		set_desc("Verifying data resource sets");
+	++p.step;
+	set_desc("Looking for game fonts");
 
-		for (unsigned i = 0; i < res.size(); ++i) {
-			if (genie::assets.blobs[i]->empty()) {
-				done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_drs_empty, fnames[i].c_str()));
-				return;
-			}
-			genie::DrsItem dummy;
-
-			const std::vector<ResChk> &l = res[i];
-			for (auto &r : l)
-				if (!genie::assets.blobs[i]->open_item(dummy, r.id, (genie::DrsType)r.type)) {
-					done(WorkTaskType::check_root, WorkResultType::fail, TXTF(TextId::err_no_drs_item, (unsigned)r.id));
-					return;
-				}
-		}
-
-		++p.step;
-		set_desc("Looking for game fonts");
-
-		genie::assets.ttf.clear();
+	genie::assets.ttf.clear();
 
 #if WIN32
-		std::string base("C:\\Windows\\Fonts\\");
-		size_t off = 0;
+	std::string base("C:\\Windows\\Fonts\\");
+	size_t off = 0;
 #else
-		std::string base(dir + "/../system/fonts/");
-		size_t off = dir.size() + 1 + 2 + 1;
+	std::string base(dir + "/../system/fonts/");
+	size_t off = dir.size() + 1 + 2 + 1;
 #endif
 
-		for (unsigned i = 0; i < IM_ARRAYSIZE(ttfnames); ++i) {
-			try {
-				std::string path(base + ttfnames[i]);
-				genie::assets.ttf.emplace_back(new genie::Blob(path, genie::open(path, off), true));
-			} catch (std::runtime_error &e) {
-				done(WorkTaskType::check_root, WorkResultType::fail, e.what());
-				return;
-			}
+	for (unsigned i = 0; i < IM_ARRAYSIZE(ttfnames); ++i) {
+		try {
+			std::string path(base + ttfnames[i]);
+			genie::assets.ttf.emplace_back(new genie::Blob(path, genie::open(path, off), true));
+		} catch (std::runtime_error &e) {
+			done(WorkTaskType::check_root, WorkResultType::fail, e.what());
+			return;
 		}
-
-		++p.step;
-		genie::game_dir = dir;
-		done(WorkTaskType::check_root, WorkResultType::success, TXT(TextId::work_drs_success));
-#undef COUNT
 	}
-};
 
-static void worker_init(Worker &w, int &status) {
+	++p.step;
+	genie::game_dir = dir;
+	done(WorkTaskType::check_root, WorkResultType::success, TXT(TextId::work_drs_success));
+#undef COUNT
+}
+
+}
+
+static void worker_init(genie::Worker &w, int &status) {
 	status = w.run();
 }
 
@@ -1144,271 +1024,230 @@ class GlobalConfiguration;
 static constexpr bool contains(double left, double top, double right, double bottom, double x, double y) {
 	return x >= left && y >= top && x < right && y < bottom;
 }
+namespace genie {
 
-class VideoControl final {
-public:
-	int displays, display, mode;
-	bool aspect, legacy, fullscreen;
-	std::vector<SDL_Rect> bounds;
-	SDL_Rect size, winsize, vp;
+VideoControl::VideoControl() : displays(SDL_GetNumVideoDisplays()), display(0), mode(3), aspect(true), legacy(true), fullscreen(false), bounds(displays > 0 ? displays : 0), size(), winsize({0, 0, 800, 600}), vp() {
+	for (int i = 0; i < displays; ++i)
+		SDL_GetDisplayBounds(i, &bounds[i]);
+}
 
-	VideoControl() : displays(SDL_GetNumVideoDisplays()), display(0), mode(3), aspect(true), legacy(true), fullscreen(false), bounds(displays > 0 ? displays : 0), size(), winsize({0, 0, 800, 600}), vp() {
-		for (int i = 0; i < displays; ++i)
-			SDL_GetDisplayBounds(i, &bounds[i]);
+void VideoControl::motion(double &px, double &py, int x, int y) {
+	if (x < vp.x || y < vp.y || x >= vp.x + vp.w || y >= vp.y + vp.h) {
+		px = py = -1;
+		return;
 	}
 
-	void motion(double &px, double &py, int x, int y) {
-		if (x < vp.x || y < vp.y || x >= vp.x + vp.w || y >= vp.y + vp.h) {
-			px = py = -1;
-			return;
+	if (vp.w == size.w && vp.h == size.h) {
+		px = x; py = y;
+	} else {
+		px = (x - vp.x) * (double)(size.w - 2 * vp.x) / vp.w;
+		py = (y	- vp.y) * (double)(size.h - 2 * vp.y) / vp.h;
+	}
+}
+
+void VideoControl::idle() {
+	if (fullscreen)
+		return; // Disable mode determination
+
+	// Default to `Custom' mode
+	mode = 3;
+
+	for (int i = 0; i < IM_ARRAYSIZE(dim_lgy); ++i)
+		if (size.w == dim_lgy[i].w && size.h == dim_lgy[i].h) {
+			mode = i;
+			break;
 		}
 
-		if (vp.w == size.w && vp.h == size.h) {
-			px = x; py = y;
-		} else {
-			px = (x - vp.x) * (double)(size.w - 2 * vp.x) / vp.w;
-			py = (y	- vp.y) * (double)(size.h - 2 * vp.y) / vp.h;
-		}
+	if (!fullscreen) {
+		SDL_GetWindowSize(window, &winsize.w, &winsize.h);
+		SDL_GetWindowPosition(window, &winsize.x, &winsize.y);
 	}
+}
 
-	void idle() {
-		if (fullscreen)
-			return; // Disable mode determination
+void VideoControl::center() {
+	if (fullscreen)
+		return;
 
-		// Default to `Custom' mode
-		mode = 3;
+	int index = SDL_GetWindowDisplayIndex(window);
 
-		for (int i = 0; i < IM_ARRAYSIZE(dim_lgy); ++i)
-			if (size.w == dim_lgy[i].w && size.h == dim_lgy[i].h) {
-				mode = i;
-				break;
-			}
+	if (index < 0)
+		index = 0;
 
-		if (!fullscreen) {
-			SDL_GetWindowSize(window, &winsize.w, &winsize.h);
-			SDL_GetWindowPosition(window, &winsize.x, &winsize.y);
-		}
-	}
+	int left, top;
+	const SDL_Rect &d = bounds[index];
 
-	void center() {
-		if (fullscreen)
-			return;
+	left = d.x + (d.w - winsize.w) / 2;
+	top = d.y + (d.h - winsize.h) / 2;
 
-		int index = SDL_GetWindowDisplayIndex(window);
+	SDL_SetWindowPosition(window, left, top);
+}
 
-		if (index < 0)
-			index = 0;
+void VideoControl::set_fullscreen(bool enable) {
+	SDL_Rect bnds;
+	bool was_windowed = !(SDL_GetWindowFlags(window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP));
+	int index = SDL_GetWindowDisplayIndex(window);
 
-		int left, top;
-		const SDL_Rect &d = bounds[index];
+	if (index < 0)
+		index = 0;
 
-		left = d.x + (d.w - winsize.w) / 2;
-		top = d.y + (d.h - winsize.h) / 2;
+	SDL_GetWindowSize(window, &bnds.w, &bnds.h);
 
-		SDL_SetWindowPosition(window, left, top);
-	}
-
-	void set_fullscreen(bool enable) {
-		SDL_Rect bnds;
-		bool was_windowed = !(SDL_GetWindowFlags(window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP));
-		int index = SDL_GetWindowDisplayIndex(window);
-
-		if (index < 0)
-			index = 0;
-
-		SDL_GetWindowSize(window, &bnds.w, &bnds.h);
-
-		if (!enable) {
-			if (!was_windowed) {
-				SDL_SetWindowFullscreen(window, 0);
-				SDL_SetWindowPosition(window, winsize.x, winsize.y);
-			}
-
-			SDL_SetWindowSize(window, winsize.w, winsize.h);
-		} else if (was_windowed) {
-			SDL_SetWindowPosition(window, bounds[index].x, bounds[index].y);
-			SDL_SetWindowSize(window, bounds[index].w, bounds[index].h);
-
-			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+	if (!enable) {
+		if (!was_windowed) {
+			SDL_SetWindowFullscreen(window, 0);
+			SDL_SetWindowPosition(window, winsize.x, winsize.y);
 		}
 
-		fullscreen = enable;
+		SDL_SetWindowSize(window, winsize.w, winsize.h);
+	} else if (was_windowed) {
+		SDL_SetWindowPosition(window, bounds[index].x, bounds[index].y);
+		SDL_SetWindowSize(window, bounds[index].w, bounds[index].h);
+
+		SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 	}
 
-	void restore(GlobalConfiguration &cfg);
-};
+	fullscreen = enable;
+}
 
 static constexpr const char *defcfg = "settings.dat";
 static constexpr uint32_t cfghdr = 0x1b28d7a4; // Nothing special, just smashing some keys
 
-/**
- * Application-wide user-settings save/restore wrapper.
- * Currently only looks at current working directory for settings.dat.
- * Any errors are ignored.
- * TODO add custom installation path
- *
- * File format:
- * 00-03  magic identifier
- * 04     display index
- * 05     mode
- * 06     flags: 0x01 fullscreen, 0x02 music enabled, 0x04 sound enabled
- * 07     reserved
- * 18-27  display.x, display.y, display.w, display.h  display boundaries
- * 28-37  scrbnds.x, scrbnds.y, scrbnds.w, scrbnds.h  application boundaries
- * 38-39  music volume
- * 3a-3b  sound volume
- * 3c-3d  last valid game path length
- * 3e-XX  last valid game path string data
- */
-static class GlobalConfiguration final {
-public:
-	// video
-	int display_index, mode;
-	SDL_Rect display, scrbnds;
-	bool fullscreen;
-	// audio
-	bool msc_on, sfx_on;
-	int msc_vol, sfx_vol;
+void GlobalConfiguration::load(const VideoControl &video) {
+	display_index = video.display;
+	mode = video.mode;
+	display = video.bounds[display_index];
+	fullscreen = (SDL_GetWindowFlags(window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
 
-	std::string gamepath;
+	if (scrbnds.w < 1 || scrbnds.h < 1)
+		scrbnds = dim_lgy[2];
 
-	GlobalConfiguration() = default;
+	if (!fullscreen) {
+		SDL_GetWindowPosition(window, &scrbnds.x, &scrbnds.y);
+		SDL_GetWindowSize(window, &scrbnds.w, &scrbnds.h);
+	}
+}
 
-	void load(const VideoControl &video) {
-		display_index = video.display;
-		mode = video.mode;
-		display = video.bounds[display_index];
-		fullscreen = (SDL_GetWindowFlags(window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
+bool GlobalConfiguration::load() { return load(defcfg); }
+
+bool GlobalConfiguration::load(const char *fname) {
+	try {
+		std::ifstream in(fname, std::ios_base::binary);
+		in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+		uint8_t db; uint32_t dd;
+		int8_t b; int16_t w; int32_t d;
+
+		SDL_Rect display, scrbnds;
+		int display_index, mode;
+		bool fullscreen, msc_on, sfx_on;
+		int msc_vol, sfx_vol;
+
+		in.read((char*)&dd, 4);
+		if (dd != cfghdr)
+			throw std::runtime_error("bad magic header");
+
+		in.read((char*)&b, 1); display_index = b;
+		in.read((char*)&b, 1); mode = b;
+
+		in.read((char*)&db, 1);
+		fullscreen = (db & 0x01) != 0;
+		msc_on = (db & 0x02) != 0;
+		sfx_on = (db & 0x04) != 0;
+
+		in.read((char*)&b, 1);
+
+		in.read((char*)&d, 4); display.x = d;
+		in.read((char*)&d, 4); display.y = d;
+		in.read((char*)&d, 4); display.w = d;
+		in.read((char*)&d, 4); display.h = d;
+
+		if (display.w < 1 || display.h < 1)
+			throw std::runtime_error("invalid display size");
+
+		in.read((char*)&d, 4); scrbnds.x = d;
+		in.read((char*)&d, 4); scrbnds.y = d;
+		in.read((char*)&d, 4); scrbnds.w = d;
+		in.read((char*)&d, 4); scrbnds.h = d;
 
 		if (scrbnds.w < 1 || scrbnds.h < 1)
-			scrbnds = dim_lgy[2];
+			throw std::runtime_error("invalid application size");
 
-		if (!fullscreen) {
-			SDL_GetWindowPosition(window, &scrbnds.x, &scrbnds.y);
-			SDL_GetWindowSize(window, &scrbnds.w, &scrbnds.h);
-		}
+		in.read((char*)&w, 2); msc_vol = w;
+		in.read((char*)&w, 2); sfx_vol = w;
+
+		std::string gamepath;
+
+		in.read((char*)&w, 2); gamepath.resize(w, '\0');
+		in.read((char*)gamepath.data(), w);
+
+		this->display = display;
+		this->scrbnds = scrbnds;
+		this->display_index = display_index;
+		this->mode = mode;
+		this->fullscreen = fullscreen;
+		this->gamepath = gamepath;
+
+		genie::jukebox.msc(msc_on); genie::jukebox.msc_volume(msc_vol);
+		genie::jukebox.sfx(sfx_on); genie::jukebox.sfx_volume(sfx_vol);
+
+		return true;
+	} catch (std::ios_base::failure &f) {
+		fprintf(stderr, "%s: %s\n", fname, f.what());
+	} catch (std::runtime_error &e) {
+		fprintf(stderr, "%s: %s\n", fname, e.what());
 	}
 
-	bool load() { return load(defcfg); }
+	return false;
+}
 
-	bool load(const char *fname) {
-		try {
-			std::ifstream in(fname, std::ios_base::binary);
-			in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+void GlobalConfiguration::save() { save(defcfg); }
 
-			uint8_t db; uint32_t dd;
-			int8_t b; int16_t w; int32_t d;
+void GlobalConfiguration::save(const char *fname) {
+	try {
+		std::ofstream out(fname, std::ios_base::binary);
+		out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-			SDL_Rect display, scrbnds;
-			int display_index, mode;
-			bool fullscreen, msc_on, sfx_on;
-			int msc_vol, sfx_vol;
+		uint8_t db;
+		int8_t b; int16_t w; int32_t d;
 
-			in.read((char*)&dd, 4);
-			if (dd != cfghdr)
-				throw std::runtime_error("bad magic header");
+		out.write((char*)&cfghdr, 4);
 
-			in.read((char*)&b, 1); display_index = b;
-			in.read((char*)&b, 1); mode = b;
+		b = display_index; out.write((char*)&b, 1);
+		b = mode; out.write((char*)&b, 1);
 
-			in.read((char*)&db, 1);
-			fullscreen = (db & 0x01) != 0;
-			msc_on = (db & 0x02) != 0;
-			sfx_on = (db & 0x04) != 0;
+		db = 0;
+		if (fullscreen)
+			db |= 0x01;
+		if (genie::jukebox.msc_enabled())
+			db |= 0x02;
+		if (genie::jukebox.sfx_enabled())
+			db |= 0x04;
+		out.write((char*)&db, 1);
 
-			in.read((char*)&b, 1);
+		b = 0; out.write((char*)&b, 1);
 
-			in.read((char*)&d, 4); display.x = d;
-			in.read((char*)&d, 4); display.y = d;
-			in.read((char*)&d, 4); display.w = d;
-			in.read((char*)&d, 4); display.h = d;
+		d = display.x; out.write((char*)&d, 4);
+		d = display.y; out.write((char*)&d, 4);
+		d = display.w; out.write((char*)&d, 4);
+		d = display.h; out.write((char*)&d, 4);
 
-			if (display.w < 1 || display.h < 1)
-				throw std::runtime_error("invalid display size");
+		d = scrbnds.x; out.write((char*)&d, 4);
+		d = scrbnds.y; out.write((char*)&d, 4);
+		d = scrbnds.w; out.write((char*)&d, 4);
+		d = scrbnds.h; out.write((char*)&d, 4);
 
-			in.read((char*)&d, 4); scrbnds.x = d;
-			in.read((char*)&d, 4); scrbnds.y = d;
-			in.read((char*)&d, 4); scrbnds.w = d;
-			in.read((char*)&d, 4); scrbnds.h = d;
+		w = genie::jukebox.msc_volume(); out.write((char*)&w, 2);
+		w = genie::jukebox.sfx_volume(); out.write((char*)&w, 2);
 
-			if (scrbnds.w < 1 || scrbnds.h < 1)
-				throw std::runtime_error("invalid application size");
-
-			in.read((char*)&w, 2); msc_vol = w;
-			in.read((char*)&w, 2); sfx_vol = w;
-
-			std::string gamepath;
-
-			in.read((char*)&w, 2); gamepath.resize(w, '\0');
-			in.read((char*)gamepath.data(), w);
-
-			this->display = display;
-			this->scrbnds = scrbnds;
-			this->display_index = display_index;
-			this->mode = mode;
-			this->fullscreen = fullscreen;
-			this->gamepath = gamepath;
-
-			genie::jukebox.msc(msc_on); genie::jukebox.msc_volume(msc_vol);
-			genie::jukebox.sfx(sfx_on); genie::jukebox.sfx_volume(sfx_vol);
-
-			return true;
-		} catch (std::ios_base::failure &f) {
-			fprintf(stderr, "%s: %s\n", fname, f.what());
-		} catch (std::runtime_error &e) {
-			fprintf(stderr, "%s: %s\n", fname, e.what());
-		}
-
-		return false;
+		w = gamepath.length(); out.write((char*)&w, 2);
+		if (w)
+			out.write((char*)gamepath.data(), w);
+	} catch (std::ios_base::failure &f) {
+		fprintf(stderr, "%s: %s\n", fname, f.what());
 	}
+}
 
-	void save() { save(defcfg); }
-
-	void save(const char *fname) {
-		try {
-			std::ofstream out(fname, std::ios_base::binary);
-			out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-
-			uint8_t db;
-			int8_t b; int16_t w; int32_t d;
-
-			out.write((char*)&cfghdr, 4);
-
-			b = display_index; out.write((char*)&b, 1);
-			b = mode; out.write((char*)&b, 1);
-
-			db = 0;
-			if (fullscreen)
-				db |= 0x01;
-			if (genie::jukebox.msc_enabled())
-				db |= 0x02;
-			if (genie::jukebox.sfx_enabled())
-				db |= 0x04;
-			out.write((char*)&db, 1);
-
-			b = 0; out.write((char*)&b, 1);
-
-			d = display.x; out.write((char*)&d, 4);
-			d = display.y; out.write((char*)&d, 4);
-			d = display.w; out.write((char*)&d, 4);
-			d = display.h; out.write((char*)&d, 4);
-
-			d = scrbnds.x; out.write((char*)&d, 4);
-			d = scrbnds.y; out.write((char*)&d, 4);
-			d = scrbnds.w; out.write((char*)&d, 4);
-			d = scrbnds.h; out.write((char*)&d, 4);
-
-			w = genie::jukebox.msc_volume(); out.write((char*)&w, 2);
-			w = genie::jukebox.sfx_volume(); out.write((char*)&w, 2);
-
-			w = gamepath.length(); out.write((char*)&w, 2);
-			if (w)
-				out.write((char*)gamepath.data(), w);
-		} catch (std::ios_base::failure &f) {
-			fprintf(stderr, "%s: %s\n", fname, f.what());
-		}
-	}
-} settings;
+GlobalConfiguration settings;
 
 void VideoControl::restore(GlobalConfiguration &cfg) {
 	// only apply configuration if display settings match
@@ -1439,79 +1278,11 @@ void VideoControl::restore(GlobalConfiguration &cfg) {
 
 class Hud;
 
+}
+
 static ImFont *fonts[6];
 static int font_sizes[6] = {14, 14, 16, 16, 18, 32};
 
-class UI {
-public:
-	bool hot, active, enabled, selected;
-	SDL_Rect bnds;
-	double left, top, right, bottom;
-
-	unsigned id;
-
-	UI() : UI(-1) {}
-	UI(unsigned id) : hot(false), active(false), enabled(false), selected(false), bnds(), left(-1), top(-1), right(-1), bottom(-1), id(id) {}
-	virtual ~UI() {}
-
-	/** Display the component immediately. */
-	virtual void display(Hud&) = 0;
-	/** Apply new settings to component. */
-	virtual bool update(Hud&) = 0;
-};
-
-class Popup {
-public:
-	bool opened, closed;
-	std::vector<SDL_Rect> item_bounds;
-
-	Popup() : opened(false) {}
-
-	virtual ~Popup() {}
-	/** Display popup visuals. */
-	virtual void display_popup(Hud&) = 0;
-	virtual void item_select(unsigned index) = 0;
-};
-
-class Button : public UI {
-public:
-	SDL_Color cols[6];
-	int shade, fnt_id;
-	std::string label;
-
-	Button(unsigned id) : UI(id), cols(), shade(), fnt_id(-1), label() { enabled = true; }
-
-	void display(Hud&) override;
-	bool update(Hud&) override;
-};
-
-class ListPopup : public UI, public Popup {
-public:
-	SDL_Color cols[6];
-	int shade;
-	unsigned fnt_id;
-	std::string label;
-	bool align_left;
-
-	unsigned selected_item;
-	const std::vector<std::string> &items;
-
-	static constexpr int btn_w = 28, btn_h = 38;
-
-	ListPopup(unsigned id, unsigned fnt_id, unsigned selected, const std::vector<std::string> &items)
-		: UI(id), cols(), shade(), fnt_id(fnt_id), selected_item(selected), items(items), label(), align_left(false)
-	{
-		enabled = true;
-	}
-
-	void display(Hud&) override;
-	void display_popup(Hud&) override;
-	bool update(Hud&) override;
-
-	void item_select(unsigned index) override {
-		selected_item = index;
-	}
-};
 
 IMGUI_API int ImTextCharFromUtf8(unsigned int* out_char, const char* in_text, const char* in_text_end);
 
@@ -1525,358 +1296,272 @@ static const unsigned anim_count[] = {
 	68,
 };
 
-struct TileInfo final {
-	AnimationId id;
-	unsigned subimage;
+namespace genie {
 
-	TileInfo(AnimationId id, unsigned subimage) : id(id), subimage(subimage) {}
-};
+void Hud::reset() {
+	mouse_btn = 0;
+	mouse_btn_grab = 0;
+	ui_popup = nullptr;
+	items.clear();
+	keep.clear();
+}
 
-/**
- * Headup Display
- *
- * Note to self: never use GL_LINES to draw a bunch of lines next to each other,
- * because this will always break when the is in fullscreen or custom resolution as gaps may appear.
- * This can be mitigated by drawing rectangles on top of each other.
- */
-class Hud final {
-public:
-	std::map<unsigned, std::unique_ptr<UI>> items;
-	std::set<unsigned> keep;
+void Hud::reset(genie::Texture &tex) {
+	this->tex = &tex;
+	reset();
+}
 
-	SDL_Color cols[6];
-	double mouse_x, mouse_y;
-	double left, right, top, bottom;
-	bool align_left;
-	int shade, fnt_id;
-	Uint8 mouse_btn, mouse_btn_grab;
-	std::string m_text;
-	bool was_hot;
-	genie::Texture *tex;
+void Hud::down(SDL_MouseButtonEvent &ev) {
+	Uint8 db = ev.button;
+	mouse_btn |= SDL_BUTTON(db);
+	mouse_btn_grab &= ~SDL_BUTTON(db);
+}
 
-	//std::map<AnimationId, TileInfo> tiledata;
-	Popup *ui_popup;
+void Hud::up(SDL_MouseButtonEvent &ev) {
+	Uint8 db = ev.button;
+	mouse_btn &= ~SDL_BUTTON(db);
+	mouse_btn_grab &= ~SDL_BUTTON(db);
 
-	void reset() {
-		mouse_btn = 0;
-		mouse_btn_grab = 0;
-		ui_popup = nullptr;
-		items.clear();
-		keep.clear();
-	}
+	if (ui_popup) {
+		// determine selected element
+		for (unsigned i = 0; i < ui_popup->item_bounds.size(); ++i) {
+			SDL_Rect &bnds = ui_popup->item_bounds[i];
 
-	void reset(genie::Texture &tex) {
-		this->tex = &tex;
-		reset();
-	}
-
-	void down(SDL_MouseButtonEvent &ev) {
-		Uint8 db = ev.button;
-		mouse_btn |= SDL_BUTTON(db);
-		mouse_btn_grab &= ~SDL_BUTTON(db);
-	}
-
-	void up(SDL_MouseButtonEvent &ev) {
-		Uint8 db = ev.button;
-		mouse_btn &= ~SDL_BUTTON(db);
-		mouse_btn_grab &= ~SDL_BUTTON(db);
-
-		if (ui_popup) {
-			// determine selected element
-			for (unsigned i = 0; i < ui_popup->item_bounds.size(); ++i) {
-				SDL_Rect &bnds = ui_popup->item_bounds[i];
-
-				if (mouse_x >= bnds.x && mouse_y >= bnds.y && mouse_x < bnds.x + bnds.w && mouse_y < bnds.y + bnds.h) {
-					ui_popup->item_select(i);
-					break;
-				}
+			if (mouse_x >= bnds.x && mouse_y >= bnds.y && mouse_x < bnds.x + bnds.w && mouse_y < bnds.y + bnds.h) {
+				ui_popup->item_select(i);
+				break;
 			}
-
-			ui_popup->opened = false;
-			ui_popup->closed = true;
-			ui_popup = nullptr;
 		}
-	}
 
-	bool try_grab(Uint8 mask, bool hot) {
-		if (ui_popup)
+		ui_popup->opened = false;
+		ui_popup->closed = true;
+		ui_popup = nullptr;
+	}
+}
+
+bool Hud::try_grab(Uint8 mask, bool hot) {
+	if (ui_popup)
+		return false;
+
+	if (hot && (mouse_btn & mask) != 0) {
+		if (mouse_btn_grab & mask)
 			return false;
 
-		if (hot && (mouse_btn & mask) != 0) {
-			if (mouse_btn_grab & mask)
-				return false;
-
-			mouse_btn_grab |= mask;
-			return true;
-		}
-
-		return false;
+		mouse_btn_grab |= mask;
+		return true;
 	}
 
-	bool lost_grab(Uint8 mask, bool active) {
-		return active && (mouse_btn & mask) == 0;
-	}
+	return false;
+}
 
-	void display() {
-		for (unsigned id : keep)
-			items.find(id)->second->display(*this);
+bool Hud::lost_grab(Uint8 mask, bool active) {
+	return active && (mouse_btn & mask) == 0;
+}
+
+void Hud::display() {
+	for (unsigned id : keep)
+		items.find(id)->second->display(*this);
 
 #if 0
-		for (auto it = items.begin(); it != items.end();) {
-			if (keep.find(it->first) == keep.end())
-				it = items.erase(it);
-			else
-				++it;
-		}
+	for (auto it = items.begin(); it != items.end();) {
+		if (keep.find(it->first) == keep.end())
+			it = items.erase(it);
+		else
+			++it;
+	}
 #endif
-		// reset state
-		keep.clear();
+	// reset state
+	keep.clear();
 
-		if (ui_popup)
-			ui_popup->display_popup(*this);
+	if (ui_popup)
+		ui_popup->display_popup(*this);
+}
+
+bool Hud::button(unsigned id, unsigned fnt_id, double x, double y, double w, double h, const std::string &label, int shade, SDL_Color cols[6]) {
+	// copy state
+	left = x; top = y; right = x + w; bottom = y + h;
+	m_text = label;
+	this->fnt_id = fnt_id;
+	this->shade = shade;
+
+	for (unsigned i = 0; i < 6; ++i)
+		this->cols[i] = cols[i];
+
+	// register component
+	keep.emplace(id);
+
+	// create/update element
+	auto search = items.find(id);
+
+	bool b = false;
+
+	if (search == items.end()) {
+		auto btn = items.emplace(id, new Button(id)).first;
+		b = btn->second->update(*this);
+		if (btn->second->hot)
+			was_hot = true;
+	} else {
+		b = search->second->update(*this);
+		if (search->second->hot)
+			was_hot = true;
 	}
 
-	bool button(unsigned id, unsigned fnt_id, double x, double y, double w, double h, const std::string &label, int shade, SDL_Color cols[6]) {
-		// copy state
-		left = x; top = y; right = x + w; bottom = y + h;
-		m_text = label;
-		this->fnt_id = fnt_id;
-		this->shade = shade;
+	return b;
+}
 
-		for (unsigned i = 0; i < 6; ++i)
-			this->cols[i] = cols[i];
+bool Hud::listpopup(unsigned id, unsigned fnt_id, double x, double y, double w, double h, unsigned &selected, const std::vector<std::string> &elements, int shade, SDL_Color cols[6], bool left) {
+	// copy state
+	this->left = x; top = y; right = x + w; bottom = y + h;
+	this->fnt_id = fnt_id;
+	this->shade = shade;
+	this->align_left = left;
 
-		// register component
-		keep.emplace(id);
+	for (unsigned i = 0; i < 6; ++i)
+		this->cols[i] = cols[i];
 
-		// create/update element
-		auto search = items.find(id);
+	// register component
+	keep.emplace(id);
 
-		bool b = false;
+	// create/update element
+	auto search = items.find(id);
 
-		if (search == items.end()) {
-			auto btn = items.emplace(id, new Button(id)).first;
-			b = btn->second->update(*this);
-			if (btn->second->hot)
-				was_hot = true;
+	bool b = false;
+	ListPopup *ui = nullptr;
+
+	if (search == items.end()) {
+		auto popup = items.emplace(id, new ListPopup(id, fnt_id, selected, elements)).first;
+		ui = (ListPopup*)popup->second.get();
+	} else {
+		ui = (ListPopup*)search->second.get();
+	}
+
+	if (ui) {
+		if (ui->closed) {
+			ui->closed = false;
+			selected = ui->selected_item;
+			b |= true;
 		} else {
-			b = search->second->update(*this);
-			if (search->second->hot)
-				was_hot = true;
+			ui->selected_item = selected;
 		}
 
-		return b;
-	}
+		b |= ui->update(*this);
 
-	bool listpopup(unsigned id, unsigned fnt_id, double x, double y, double w, double h, unsigned &selected, const std::vector<std::string> &elements, int shade, SDL_Color cols[6], bool left=true) {
-		// copy state
-		this->left = x; top = y; right = x + w; bottom = y + h;
-		this->fnt_id = fnt_id;
-		this->shade = shade;
-		this->align_left = left;
+		if (ui->hot) {
+			was_hot = true;
 
-		for (unsigned i = 0; i < 6; ++i)
-			this->cols[i] = cols[i];
-
-		// register component
-		keep.emplace(id);
-
-		// create/update element
-		auto search = items.find(id);
-
-		bool b = false;
-		ListPopup *ui = nullptr;
-
-		if (search == items.end()) {
-			auto popup = items.emplace(id, new ListPopup(id, fnt_id, selected, elements)).first;
-			ui = (ListPopup*)popup->second.get();
-		} else {
-			ui = (ListPopup*)search->second.get();
-		}
-
-		if (ui) {
-			if (ui->closed) {
-				ui->closed = false;
-				selected = ui->selected_item;
-				b |= true;
-			} else {
-				ui->selected_item = selected;
-			}
-
-			b |= ui->update(*this);
-
-			if (ui->hot) {
-				was_hot = true;
-
-				if (b) {
-					ui->opened = true;
-					ui_popup = ui;
-				}
+			if (b) {
+				ui->opened = true;
+				ui_popup = ui;
 			}
 		}
-
-		return b;
 	}
 
-	void rect(SDL_Rect bnds, SDL_Color col[6]) {
-		glBegin(GL_QUADS);
-		{
-			GLdouble left = bnds.x, top = bnds.y, right = left + bnds.w, bottom = top + bnds.h;
-			// start with outermost layers
-			glColor4ub(col[0].r, col[0].g, col[0].b, 255);
-			glVertex2d(left, top); glVertex2d(right, top); glVertex2d(right, top + 1.); glVertex2d(left, top + 1.);
-			glVertex2d(right - 1., top); glVertex2d(right, top); glVertex2d(right, bottom); glVertex2d(right - 1., bottom);
+	return b;
+}
 
-			glColor4ub(col[1].r, col[1].g, col[1].b, 255);
-			glVertex2d(left + 1., top + 1.); glVertex2d(right - 1., top + 1.); glVertex2d(right - 1, top + 2); glVertex2i(left + 1., top + 2.);
-			glVertex2d(right - 2., top + 2.); glVertex2d(right - 1., top + 2.); glVertex2d(right - 1, bottom); glVertex2i(right - 2., bottom);
-
-			glColor4ub(col[2].r, col[2].g, col[2].b, 255);
-			glVertex2d(left + 2., top + 2.); glVertex2d(right - 2., top + 2.); glVertex2d(right - 2., top + 2.4); glVertex2d(left + 2., top + 2.4);
-			glVertex2d(right - 3., top + 2.); glVertex2d(right - 2., top + 2.); glVertex2d(right - 2., bottom); glVertex2d(right - 3., bottom);
-
-			// continue with outermost and use diagonal lines to ensure the overlapping area closes any gaps
-			glColor4ub(col[5].r, col[5].g, col[5].b, 255);
-			glVertex2d(left, top); glVertex2d(left + 1., top); glVertex2d(left + 1., bottom); glVertex2d(left, bottom);
-			glVertex2d(left, bottom - 1.); glVertex2d(right, bottom - 1.); glVertex2d(right, bottom); glVertex2d(left, bottom);
-
-			glColor4ub(col[4].r, col[4].g, col[4].b, 255);
-			glVertex2d(left + 1., top + 1.); glVertex2d(left + 2., top + 1.); glVertex2d(left + 2., bottom - 1.); glVertex2d(left + 1., bottom - 1.);
-			glVertex2d(left + 2., bottom - 2.); glVertex2d(right - 1., bottom - 2.); glVertex2d(right - 1., bottom - 1.); glVertex2d(left + 2., bottom - 1.);
-
-			glColor4ub(col[3].r, col[3].g, col[3].b, 255);
-			glVertex2d(left + 2., top + 2.); glVertex2d(left + 2.4, top + 2.); glVertex2d(left + 2.4, bottom - 2.); glVertex2d(left + 2., bottom - 2.);
-			glVertex2d(left + 2., bottom - 3.); glVertex2d(right - 2., bottom - 3.); glVertex2d(right - 2., bottom - 2.); glVertex2d(left + 2., bottom - 2.);
-		}
-		glEnd();
-	}
-
-	void shaderect(SDL_Rect bnds, int shade) {
-		if (shade >= 255)
-			return;
-
-		glBegin(GL_QUADS);
-		{
-			glColor4ub(0, 0, 0, shade);
-			glVertex2i(bnds.x, bnds.y); glVertex2i(bnds.x + bnds.w, bnds.y);
-			glVertex2i(bnds.x + bnds.w, bnds.y + bnds.h); glVertex2i(bnds.x, bnds.y + bnds.h);
-		}
-		glEnd();
-	}
-
-	void text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &str, float width, int align)
+void Hud::rect(SDL_Rect bnds, SDL_Color col[6]) {
+	glBegin(GL_QUADS);
 	{
-		text(font, size, pos, col, clip_rect, str.c_str(), str.size(), width, align);
-	}
+		GLdouble left = bnds.x, top = bnds.y, right = left + bnds.w, bottom = top + bnds.h;
+		// start with outermost layers
+		glColor4ub(col[0].r, col[0].g, col[0].b, 255);
+		glVertex2d(left, top); glVertex2d(right, top); glVertex2d(right, top + 1.); glVertex2d(left, top + 1.);
+		glVertex2d(right - 1., top); glVertex2d(right, top); glVertex2d(right, bottom); glVertex2d(right - 1., bottom);
 
-	void text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &str, float width, int align, float &max_width)
-	{
-		text(font, size, pos, col, clip_rect, str.c_str(), str.size(), width, align, max_width);
-	}
+		glColor4ub(col[1].r, col[1].g, col[1].b, 255);
+		glVertex2d(left + 1., top + 1.); glVertex2d(right - 1., top + 1.); glVertex2d(right - 1, top + 2); glVertex2i(left + 1., top + 2.);
+		glVertex2d(right - 2., top + 2.); glVertex2d(right - 1., top + 2.); glVertex2d(right - 1, bottom); glVertex2i(right - 2., bottom);
 
-	void text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
-	{
-		float dummy = 0;
-		text(font, size, pos, col, clip_rect, text_begin, n, wrap_width, align, dummy);
-	}
+		glColor4ub(col[2].r, col[2].g, col[2].b, 255);
+		glVertex2d(left + 2., top + 2.); glVertex2d(right - 2., top + 2.); glVertex2d(right - 2., top + 2.4); glVertex2d(left + 2., top + 2.4);
+		glVertex2d(right - 3., top + 2.); glVertex2d(right - 2., top + 2.); glVertex2d(right - 2., bottom); glVertex2d(right - 3., bottom);
 
-	void text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align, float &max_width)
+		// continue with outermost and use diagonal lines to ensure the overlapping area closes any gaps
+		glColor4ub(col[5].r, col[5].g, col[5].b, 255);
+		glVertex2d(left, top); glVertex2d(left + 1., top); glVertex2d(left + 1., bottom); glVertex2d(left, bottom);
+		glVertex2d(left, bottom - 1.); glVertex2d(right, bottom - 1.); glVertex2d(right, bottom); glVertex2d(left, bottom);
+
+		glColor4ub(col[4].r, col[4].g, col[4].b, 255);
+		glVertex2d(left + 1., top + 1.); glVertex2d(left + 2., top + 1.); glVertex2d(left + 2., bottom - 1.); glVertex2d(left + 1., bottom - 1.);
+		glVertex2d(left + 2., bottom - 2.); glVertex2d(right - 1., bottom - 2.); glVertex2d(right - 1., bottom - 1.); glVertex2d(left + 2., bottom - 1.);
+
+		glColor4ub(col[3].r, col[3].g, col[3].b, 255);
+		glVertex2d(left + 2., top + 2.); glVertex2d(left + 2.4, top + 2.); glVertex2d(left + 2.4, bottom - 2.); glVertex2d(left + 2., bottom - 2.);
+		glVertex2d(left + 2., bottom - 3.); glVertex2d(right - 2., bottom - 3.); glVertex2d(right - 2., bottom - 2.); glVertex2d(left + 2., bottom - 2.);
+	}
+	glEnd();
+}
+
+void Hud::shaderect(SDL_Rect bnds, int shade) {
+	if (shade >= 255)
+		return;
+
+	glBegin(GL_QUADS);
 	{
+		glColor4ub(0, 0, 0, shade);
+		glVertex2i(bnds.x, bnds.y); glVertex2i(bnds.x + bnds.w, bnds.y);
+		glVertex2i(bnds.x + bnds.w, bnds.y + bnds.h); glVertex2i(bnds.x, bnds.y + bnds.h);
+	}
+	glEnd();
+}
+
+void Hud::text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &str, float width, int align)
+{
+	text(font, size, pos, col, clip_rect, str.c_str(), str.size(), width, align);
+}
+
+void Hud::text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &str, float width, int align, float &max_width)
+{
+	text(font, size, pos, col, clip_rect, str.c_str(), str.size(), width, align, max_width);
+}
+
+void Hud::text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
+{
+	float dummy = 0;
+	text(font, size, pos, col, clip_rect, text_begin, n, wrap_width, align, dummy);
+}
+
+void Hud::text(ImFont *font, float size, ImVec2 &pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align, float &max_width)
+{
 #ifndef IM_FLOOR
 #define IM_FLOOR(_VAL)                  ((float)(int)(_VAL))
 #endif
-		max_width = 0.0f;
+	max_width = 0.0f;
 
-		if (!n)
-			return;
+	if (!n)
+		return;
 
-		const char *text_end = text_begin + n;
+	const char *text_end = text_begin + n;
 
-		pos.x = IM_FLOOR(pos.x + font->DisplayOffset.x);
-		pos.y = IM_FLOOR(pos.y + font->DisplayOffset.y);
-		float x = pos.x, x_orig = x;
-		float y = pos.y;
-		if (y > clip_rect.y + clip_rect.h)
-			return;
+	pos.x = IM_FLOOR(pos.x + font->DisplayOffset.x);
+	pos.y = IM_FLOOR(pos.y + font->DisplayOffset.y);
+	float x = pos.x, x_orig = x;
+	float y = pos.y;
+	if (y > clip_rect.y + clip_rect.h)
+		return;
 
-		const float scale = size / font->FontSize;
-		const float line_height = font->FontSize * scale;
-		const bool word_wrap_enabled = wrap_width > 0.f;
-		const char *word_wrap_eol = NULL;
+	const float scale = size / font->FontSize;
+	const float line_height = font->FontSize * scale;
+	const bool word_wrap_enabled = wrap_width > 0.f;
+	const char *word_wrap_eol = NULL;
 
-		// Fast-forward to first visible line
-		const char *s = text_begin;
-		if (y + line_height < clip_rect.y && !word_wrap_enabled)
-			while (y + line_height < clip_rect.y && s < text_end) {
-				s = (const char*)memchr(s, '\n', text_end - s);
-				s = s ? s + 1 : text_end;
-				y += line_height;
-			}
-
-		glColor4ub(col.r, col.g, col.b, col.a);
-		glBegin(GL_QUADS);
-
-		// Align
-		float adjust = 0;
-
-		if (align != -1) {
-			for (const char *s = text_begin; s < text_end;) {
-				unsigned int c = (unsigned int)*s;
-				if (c < 0x80) {
-					++s;
-				} else {
-					s += ImTextCharFromUtf8(&c, s, text_end);
-					if (!c)
-						break;
-				}
-
-				if (c == '\r')
-					continue;
-
-				if (c == '\n')
-					break;
-
-				const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
-				if (!glyph)
-					continue;
-
-				adjust += glyph->AdvanceX * scale;
-			}
-
-			if (align == 0)
-				adjust *= 0.5f;
+	// Fast-forward to first visible line
+	const char *s = text_begin;
+	if (y + line_height < clip_rect.y && !word_wrap_enabled)
+		while (y + line_height < clip_rect.y && s < text_end) {
+			s = (const char*)memchr(s, '\n', text_end - s);
+			s = s ? s + 1 : text_end;
+			y += line_height;
 		}
 
+	glColor4ub(col.r, col.g, col.b, col.a);
+	glBegin(GL_QUADS);
+
+	// Align
+	float adjust = 0;
+
+	if (align != -1) {
 		for (const char *s = text_begin; s < text_end;) {
-			if (word_wrap_enabled) {
-				if (!word_wrap_eol) {
-					word_wrap_eol = font->CalcWordWrapPositionA(scale, s, text_end, wrap_width - (x - pos.x));
-
-					if (word_wrap_eol == s)
-						++word_wrap_eol;
-				}
-
-				if (s >= word_wrap_eol) {
-					x = pos.x;
-					y += line_height;
-					word_wrap_eol = NULL;
-
-					// Wrapping skips upcoming blanks
-					while (s < text_end) {
-						const char *c = s;
-						if (*c == ' ' || *c == '\t') {
-							++s;
-						} else {
-							if (*c == '\n')
-								++s;
-							break;
-						}
-					}
-					continue;
-				}
-			}
-
-			// Decode and advance source
 			unsigned int c = (unsigned int)*s;
 			if (c < 0x80) {
 				++s;
@@ -1886,155 +1571,155 @@ public:
 					break;
 			}
 
-			if (c < 32) {
-				if (c == '\n') {
-					x = pos.x;
-					y += line_height;
-					if (y > clip_rect.y + clip_rect.h)
-						break; // break out of main loop
-					continue;
-				}
-				if (c == '\r')
-					continue;
-			}
+			if (c == '\r')
+				continue;
+
+			if (c == '\n')
+				break;
 
 			const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
 			if (!glyph)
 				continue;
 
-			float char_width = glyph->AdvanceX * scale;
-			if (glyph->Visible) {
-				// We don't do a second finer clipping test on the Y axis as we've already skipped anything before clip_rect.y and exit once we pass clip_rect.w
-				float x1 = x + glyph->X0 * scale - adjust;
-				float x2 = x + glyph->X1 * scale - adjust;
-				float y1 = y + glyph->Y0 * scale;
-				float y2 = y + glyph->Y1 * scale;
-
-				if (x1 <= clip_rect.x + clip_rect.w && x2 >= clip_rect.x) {
-					// Render a character
-					float u1 = glyph->U0;
-					float v1 = glyph->V0;
-					float u2 = glyph->U1;
-					float v2 = glyph->V1;
-
-					glTexCoord2f(u1, v1); glVertex2f(x1, y1);
-					glTexCoord2f(u2, v1); glVertex2f(x2, y1);
-					glTexCoord2f(u2, v2); glVertex2f(x2, y2);
-					glTexCoord2f(u1, v2); glVertex2f(x1, y2);
-				}
-			}
-			x += char_width;
-
-			if (x > max_width)
-				max_width = x;
+			adjust += glyph->AdvanceX * scale;
 		}
 
-		glEnd();
-
-		pos.x = x;
-		pos.y = y;
-		max_width -= x_orig;
+		if (align == 0)
+			adjust *= 0.5f;
 	}
 
-	void textdim(ImFont *font, float size, ImVec2 &pos, const SDL_Rect &clip_rect, const std::string &str, float wrap_width, int align, float &max_width)
-	{
-		textdim(font, size, pos, clip_rect, str.c_str(), str.size(), wrap_width, align, max_width);
+	for (const char *s = text_begin; s < text_end;) {
+		if (word_wrap_enabled) {
+			if (!word_wrap_eol) {
+				word_wrap_eol = font->CalcWordWrapPositionA(scale, s, text_end, wrap_width - (x - pos.x));
+
+				if (word_wrap_eol == s)
+					++word_wrap_eol;
+			}
+
+			if (s >= word_wrap_eol) {
+				x = pos.x;
+				y += line_height;
+				word_wrap_eol = NULL;
+
+				// Wrapping skips upcoming blanks
+				while (s < text_end) {
+					const char *c = s;
+					if (*c == ' ' || *c == '\t') {
+						++s;
+					} else {
+						if (*c == '\n')
+							++s;
+						break;
+					}
+				}
+				continue;
+			}
+		}
+
+		// Decode and advance source
+		unsigned int c = (unsigned int)*s;
+		if (c < 0x80) {
+			++s;
+		} else {
+			s += ImTextCharFromUtf8(&c, s, text_end);
+			if (!c)
+				break;
+		}
+
+		if (c < 32) {
+			if (c == '\n') {
+				x = pos.x;
+				y += line_height;
+				if (y > clip_rect.y + clip_rect.h)
+					break; // break out of main loop
+				continue;
+			}
+			if (c == '\r')
+				continue;
+		}
+
+		const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
+		if (!glyph)
+			continue;
+
+		float char_width = glyph->AdvanceX * scale;
+		if (glyph->Visible) {
+			// We don't do a second finer clipping test on the Y axis as we've already skipped anything before clip_rect.y and exit once we pass clip_rect.w
+			float x1 = x + glyph->X0 * scale - adjust;
+			float x2 = x + glyph->X1 * scale - adjust;
+			float y1 = y + glyph->Y0 * scale;
+			float y2 = y + glyph->Y1 * scale;
+
+			if (x1 <= clip_rect.x + clip_rect.w && x2 >= clip_rect.x) {
+				// Render a character
+				float u1 = glyph->U0;
+				float v1 = glyph->V0;
+				float u2 = glyph->U1;
+				float v2 = glyph->V1;
+
+				glTexCoord2f(u1, v1); glVertex2f(x1, y1);
+				glTexCoord2f(u2, v1); glVertex2f(x2, y1);
+				glTexCoord2f(u2, v2); glVertex2f(x2, y2);
+				glTexCoord2f(u1, v2); glVertex2f(x1, y2);
+			}
+		}
+		x += char_width;
+
+		if (x > max_width)
+			max_width = x;
 	}
 
-	void textdim(ImFont *font, float size, ImVec2 &pos, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align, float &max_width)
-	{
+	glEnd();
+
+	pos.x = x;
+	pos.y = y;
+	max_width -= x_orig;
+}
+
+void Hud::textdim(ImFont *font, float size, ImVec2 &pos, const SDL_Rect &clip_rect, const std::string &str, float wrap_width, int align, float &max_width)
+{
+	textdim(font, size, pos, clip_rect, str.c_str(), str.size(), wrap_width, align, max_width);
+}
+
+void Hud::textdim(ImFont *font, float size, ImVec2 &pos, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align, float &max_width)
+{
 #ifndef IM_FLOOR
 #define IM_FLOOR(_VAL)                  ((float)(int)(_VAL))
 #endif
-		max_width = 0.0f;
+	max_width = 0.0f;
 
-		if (!n)
-			return;
+	if (!n)
+		return;
 
-		const char *text_end = text_begin + n;
+	const char *text_end = text_begin + n;
 
-		pos.x = IM_FLOOR(pos.x + font->DisplayOffset.x);
-		pos.y = IM_FLOOR(pos.y + font->DisplayOffset.y);
-		float x = pos.x, x_orig = x;
-		float y = pos.y;
-		if (y > clip_rect.y + clip_rect.h)
-			return;
+	pos.x = IM_FLOOR(pos.x + font->DisplayOffset.x);
+	pos.y = IM_FLOOR(pos.y + font->DisplayOffset.y);
+	float x = pos.x, x_orig = x;
+	float y = pos.y;
+	if (y > clip_rect.y + clip_rect.h)
+		return;
 
-		const float scale = size / font->FontSize;
-		const float line_height = font->FontSize * scale;
-		const bool word_wrap_enabled = wrap_width > 0.f;
-		const char *word_wrap_eol = NULL;
+	const float scale = size / font->FontSize;
+	const float line_height = font->FontSize * scale;
+	const bool word_wrap_enabled = wrap_width > 0.f;
+	const char *word_wrap_eol = NULL;
 
-		// Fast-forward to first visible line
-		const char *s = text_begin;
-		if (y + line_height < clip_rect.y && !word_wrap_enabled)
-			while (y + line_height < clip_rect.y && s < text_end) {
-				s = (const char*)memchr(s, '\n', text_end - s);
-				s = s ? s + 1 : text_end;
-				y += line_height;
-			}
-
-		// Align
-		float adjust = 0;
-
-		if (align != -1) {
-			for (const char *s = text_begin; s < text_end;) {
-				unsigned int c = (unsigned int)*s;
-				if (c < 0x80) {
-					++s;
-				} else {
-					s += ImTextCharFromUtf8(&c, s, text_end);
-					if (!c)
-						break;
-				}
-
-				if (c == '\r')
-					continue;
-
-				if (c == '\n')
-					break;
-
-				const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
-				if (!glyph)
-					continue;
-
-				adjust += glyph->AdvanceX * scale;
-			}
-
-			if (align == 0)
-				adjust *= 0.5f;
+	// Fast-forward to first visible line
+	const char *s = text_begin;
+	if (y + line_height < clip_rect.y && !word_wrap_enabled)
+		while (y + line_height < clip_rect.y && s < text_end) {
+			s = (const char*)memchr(s, '\n', text_end - s);
+			s = s ? s + 1 : text_end;
+			y += line_height;
 		}
 
+	// Align
+	float adjust = 0;
+
+	if (align != -1) {
 		for (const char *s = text_begin; s < text_end;) {
-			if (word_wrap_enabled) {
-				if (!word_wrap_eol) {
-					word_wrap_eol = font->CalcWordWrapPositionA(scale, s, text_end, wrap_width - (x - pos.x));
-
-					if (word_wrap_eol == s)
-						++word_wrap_eol;
-				}
-
-				if (s >= word_wrap_eol) {
-					x = pos.x;
-					y += line_height;
-					word_wrap_eol = NULL;
-
-					// Wrapping skips upcoming blanks
-					while (s < text_end) {
-						const char *c = s;
-						if (*c == ' ' || *c == '\t') {
-							++s;
-						} else {
-							if (*c == '\n')
-								++s;
-							break;
-						}
-					}
-					continue;
-				}
-			}
-
-			// Decode and advance source
 			unsigned int c = (unsigned int)*s;
 			if (c < 0x80) {
 				++s;
@@ -2044,54 +1729,109 @@ public:
 					break;
 			}
 
-			if (c < 32) {
-				if (c == '\n') {
-					x = pos.x;
-					y += line_height;
-					if (y > clip_rect.y + clip_rect.h)
-						break; // break out of main loop
-					continue;
-				}
-				if (c == '\r')
-					continue;
-			}
+			if (c == '\r')
+				continue;
+
+			if (c == '\n')
+				break;
 
 			const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
 			if (!glyph)
 				continue;
 
-			float char_width = glyph->AdvanceX * scale;
-			x += char_width;
-
-			if (x > max_width)
-				max_width = x;
+			adjust += glyph->AdvanceX * scale;
 		}
 
-		pos.x = x;
-		pos.y = y;
-		max_width -= x_orig;
+		if (align == 0)
+			adjust *= 0.5f;
 	}
 
-	void slow_text(int fnt_id, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
-	{
-		glEnable(GL_TEXTURE_2D);
-		glEnable(GL_BLEND);
-		ImFont *font = fonts[fnt_id];
-		glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)font->ContainerAtlas->TexID);
-		text(font, size, pos, SDL_Color{0xff, 0xff, 0xff, 0xff}, clip_rect, text_begin, n, wrap_width, align);
-		glDisable(GL_TEXTURE_2D);
+	for (const char *s = text_begin; s < text_end;) {
+		if (word_wrap_enabled) {
+			if (!word_wrap_eol) {
+				word_wrap_eol = font->CalcWordWrapPositionA(scale, s, text_end, wrap_width - (x - pos.x));
+
+				if (word_wrap_eol == s)
+					++word_wrap_eol;
+			}
+
+			if (s >= word_wrap_eol) {
+				x = pos.x;
+				y += line_height;
+				word_wrap_eol = NULL;
+
+				// Wrapping skips upcoming blanks
+				while (s < text_end) {
+					const char *c = s;
+					if (*c == ' ' || *c == '\t') {
+						++s;
+					} else {
+						if (*c == '\n')
+							++s;
+						break;
+					}
+				}
+				continue;
+			}
+		}
+
+		// Decode and advance source
+		unsigned int c = (unsigned int)*s;
+		if (c < 0x80) {
+			++s;
+		} else {
+			s += ImTextCharFromUtf8(&c, s, text_end);
+			if (!c)
+				break;
+		}
+
+		if (c < 32) {
+			if (c == '\n') {
+				x = pos.x;
+				y += line_height;
+				if (y > clip_rect.y + clip_rect.h)
+					break; // break out of main loop
+				continue;
+			}
+			if (c == '\r')
+				continue;
+		}
+
+		const ImFontGlyph *glyph = font->FindGlyph((ImWchar)c);
+		if (!glyph)
+			continue;
+
+		float char_width = glyph->AdvanceX * scale;
+		x += char_width;
+
+		if (x > max_width)
+			max_width = x;
 	}
 
-	void slow_text(int fnt_id, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &text, float wrap_width, int align)
-	{
-		slow_text(fnt_id, size, pos, col, clip_rect, text.c_str(), text.size(), wrap_width, align);
-	}
+	pos.x = x;
+	pos.y = y;
+	max_width -= x_orig;
+}
 
-	void title(ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
-	{
-		slow_text(5, font_sizes[5], pos, col, clip_rect, text_begin, n, wrap_width, align);
-	}
-};
+void Hud::slow_text(int fnt_id, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
+{
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	ImFont *font = fonts[fnt_id];
+	glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)font->ContainerAtlas->TexID);
+	text(font, size, pos, SDL_Color{0xff, 0xff, 0xff, 0xff}, clip_rect, text_begin, n, wrap_width, align);
+	glDisable(GL_TEXTURE_2D);
+}
+
+void Hud::slow_text(int fnt_id, float size, ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const std::string &text, float wrap_width, int align)
+{
+	slow_text(fnt_id, size, pos, col, clip_rect, text.c_str(), text.size(), wrap_width, align);
+}
+
+void Hud::title(ImVec2 pos, SDL_Color col, const SDL_Rect &clip_rect, const char *text_begin, size_t n, float wrap_width, int align)
+{
+	slow_text(5, font_sizes[5], pos, col, clip_rect, text_begin, n, wrap_width, align);
+}
 
 void Button::display(Hud &hud) {
 	glEnable(GL_BLEND);
@@ -2179,309 +1919,224 @@ bool ListPopup::update(Hud &hud) {
 	return false;
 }
 
-/** Immovable object that cannot change state while a scenario is running. */
-class StaticObject final {
-public:
-	genie::Box<double> bounds; // screen position
-	size_t tpos;
-	int8_t height;
-	uint8_t id;
-	unsigned image_index; // if tpos != (size_t)-1 then subimage else animation index (e.g. debris)
+Terrain::Terrain() : tiles(), overlay(), w(20), h(20)
+	, left(0), right(0), bottom(1), top(1), tile_focus(-1), tile_focus_obj(nullptr)
+	, tiledata(), cam(), cam_moved(false)
+	, static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2))
+	, vis_static_objects(), cull_margin(-20), tex(nullptr)
+	, memedit(), filename(), filedata(), scn(nullptr) { resize(w, h); }
 
-	StaticObject() : bounds(), tpos((size_t)-1), height(0), id(1), image_index((unsigned)-1) {}
-	StaticObject(const genie::Box<double> &bounds, size_t tpos) : bounds(bounds), tpos(tpos), height(0), id(1), image_index(0) {}
-	StaticObject(const genie::Box<double> &bounds, unsigned anim_index) : bounds(bounds), tpos((size_t)-1), height(0), id(1), image_index(anim_index) {}
-};
+void Terrain::build_tiles(genie::Texture &tex) {
+	tiledata.clear();
 
-static genie::Box<double> getStaticObjectAABB(const StaticObject &obj) {
-	return obj.bounds;
+	for (unsigned i = 0; i < IM_ARRAYSIZE(anim_count); ++i) {
+		auto &strip = *tex.ts.animations.find(i);
+
+		for (unsigned j = 0; j < strip.tiles.size(); ++j)
+			tiledata.emplace_back((AnimationId)i, strip.tiles[j]);
+	}
 }
 
-static bool cmpStaticObject(const StaticObject &lhs, const StaticObject &rhs) {
-	assert(lhs.tpos != (size_t)-1);
-	return lhs.tpos == rhs.tpos;
-}
+void Terrain::init(genie::Texture &tex) {
+	build_tiles(tex);
 
-class Terrain final {
-public:
-	// duplicate information as static_objects also has this, but this eases tile info lookup
-	std::vector<uint8_t> tiles, subimg, overlay;
-	std::vector<int8_t> hmap;
-	int w, h;
+	// FIXME compute proper bounds
+	double hsize = (std::max<double>(right, bottom) + 640.0) / 2.0;
+	genie::Box<double> bounds(hsize, 0, hsize, hsize);
+	static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
 
-	int left, right, bottom, top;
-	long long tile_focus;
-	StaticObject *tile_focus_obj;
+	for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
+		for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
+			long long pos = (long long)y * w + x;
+			uint8_t id = tiles[pos];
+			int8_t height = hmap[pos];
 
-	static constexpr int tw = 64, th = 32, thw = tw / 2, thh = th / 2;
+			if (!id || id - 1 >= tiledata.size()) {
+				genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
+				static_objects.try_emplace(bounds, (size_t)pos);
+				continue;
+			}
 
-	std::vector<TileInfo> tiledata;
+			double x0, y0, x1, y1;
 
-	// data for unproject
-	GLfloat proj[16], mv[16];
-	GLint vp[4];
+			auto &t = tiledata[id - 1];
+			auto &strip = *tex.ts.animations.find(t.id);
+			auto &img = *tex.ts.images.find(t.subimage);
 
-	genie::Box<double> cam;
-	bool cam_moved;
-	// FIXME /int/float/
-	// images may have odd width or height dimensions, which breaks drawing and collision detection...
-	genie::Quadtree<StaticObject, decltype(getStaticObjectAABB), decltype(cmpStaticObject), double> static_objects;
-	std::vector<const StaticObject*> vis_static_objects;
-	float cull_margin;
+			x0 = right - img.bnds.x;
+			x1 = x0 + img.bnds.w;
+			y0 = bottom - img.bnds.y - height * thh;
+			y1 = y0 + img.bnds.h;
 
-	genie::Texture *tex;
-	MemoryEditor memedit;
-	std::string filename;
-	std::vector<uint8_t> filedata;
-	std::unique_ptr<genie::io::Scenario> scn;
-
-	Terrain() : tiles(), overlay(), w(20), h(20)
-		, left(0), right(0), bottom(1), top(1), tile_focus(-1), tile_focus_obj(nullptr)
-		, tiledata(), cam(), cam_moved(false)
-		, static_objects(std::bind(getStaticObjectAABB, std::placeholders::_1), std::bind(cmpStaticObject, std::placeholders::_1, std::placeholders::_2))
-		, vis_static_objects(), cull_margin(-20), tex(nullptr)
-		, memedit(), filename(), filedata(), scn(nullptr) { resize(w, h); }
-
-private:
-	void build_tiles(genie::Texture &tex) {
-		tiledata.clear();
-
-		for (unsigned i = 0; i < IM_ARRAYSIZE(anim_count); ++i) {
-			auto &strip = *tex.ts.animations.find(i);
-
-			for (unsigned j = 0; j < strip.tiles.size(); ++j)
-				tiledata.emplace_back((AnimationId)i, strip.tiles[j]);
+			genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
+			static_objects.try_emplace(bounds, (size_t)pos);
 		}
 	}
 
-public:
-	void load();
+	this->tex = &tex;
+	tile_focus_obj = nullptr;
+	tile_focus = -1;
+	set_view();
+}
 
-	void init(genie::Texture &tex) {
-		build_tiles(tex);
-
-		// FIXME compute proper bounds
-		double hsize = (std::max<double>(right, bottom) + 640.0) / 2.0;
-		genie::Box<double> bounds(hsize, 0, hsize, hsize);
-		static_objects.reset(bounds, 2 + std::max<int>(0, (int)floor(log(hsize) / log(4))));
-
-		for (int left = 0, top = 0, y = 0; y < h; ++y, left += thw, top -= thh) {
-			for (int right = left, bottom = top, x = 0; x < w; ++x, right += thw, bottom += thh) {
-				long long pos = (long long)y * w + x;
-				uint8_t id = tiles[pos];
-				int8_t height = hmap[pos];
-
-				if (!id || id - 1 >= tiledata.size()) {
-					genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
-					static_objects.try_emplace(bounds, (size_t)pos);
-					continue;
-				}
-
-				double x0, y0, x1, y1;
-
-				auto &t = tiledata[id - 1];
-				auto &strip = *tex.ts.animations.find(t.id);
-				auto &img = *tex.ts.images.find(t.subimage);
-
-				x0 = right - img.bnds.x;
-				x1 = x0 + img.bnds.w;
-				y0 = bottom - img.bnds.y - height * thh;
-				y1 = y0 + img.bnds.h;
-
-				genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
-				static_objects.try_emplace(bounds, (size_t)pos);
-			}
-		}
-
-		this->tex = &tex;
+void Terrain::invalidate_cam_focus(std::pair<StaticObject*, bool> ret, unsigned image_index, uint8_t id, int8_t height, bool update_focus) {
+	if (ret.second) {
+		ret.first->image_index = image_index;
+		ret.first->id = id;
+		ret.first->height = height;
+		if (update_focus)
+			tile_focus_obj = ret.first;
+	} else if (update_focus) {
 		tile_focus_obj = nullptr;
 		tile_focus = -1;
-		set_view();
 	}
+	set_view();
+}
 
-	void invalidate_cam_focus(std::pair<StaticObject*, bool> ret, unsigned image_index, uint8_t id, int8_t height, bool update_focus) {
-		if (ret.second) {
-			ret.first->image_index = image_index;
-			ret.first->id = id;
-			ret.first->height = height;
-			if (update_focus)
-				tile_focus_obj = ret.first;
-		} else if (update_focus) {
-			tile_focus_obj = nullptr;
-			tile_focus = -1;
-		}
-		set_view();
-	}
+void Terrain::update_tile(const StaticObject &obj) {
+	size_t pos = obj.tpos;
+	uint8_t id = tiles[pos];
+	int8_t height = hmap[pos];
+	bool update_focus = tile_focus_obj == &obj;
 
-	void update_tile(const StaticObject &obj) {
-		size_t pos = obj.tpos;
-		uint8_t id = tiles[pos];
-		int8_t height = hmap[pos];
-		bool update_focus = tile_focus_obj == &obj;
+	//double right = obj.bounds.center.x - obj.bounds.hsize.x;
+	//double bottom = obj.bounds.center.y - obj.bounds.hsize.y;
+	int y = obj.tpos / w, x = obj.tpos % w;
+	// height is not added as we can compute this manually
+	double right = (y + x) * thw, bottom = (x - y) * thh;
+	unsigned image_index = obj.image_index;
 
-		//double right = obj.bounds.center.x - obj.bounds.hsize.x;
-		//double bottom = obj.bounds.center.y - obj.bounds.hsize.y;
-		int y = obj.tpos / w, x = obj.tpos % w;
-		// height is not added as we can compute this manually
-		double right = (y + x) * thw, bottom = (x - y) * thh;
-		unsigned image_index = obj.image_index;
+	if (!static_objects.erase(obj))
+		assert("object should be removed" == 0);
 
-		if (!static_objects.erase(obj))
-			assert("object should be removed" == 0);
-
-		if (!id || id - 1 >= tiledata.size()) {
-			genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
-			auto ret = static_objects.try_emplace(bounds, (size_t)pos);
-			invalidate_cam_focus(ret, image_index, id, height, update_focus);
-			return;
-		}
-
-		double x0, y0, x1, y1;
-
-		auto &t = tiledata[id - 1];
-		auto &strip = *tex->ts.animations.find(t.id);
-		auto &img = *tex->ts.images.find(t.subimage);
-
-		x0 = right - img.bnds.x;
-		x1 = x0 + img.bnds.w;
-		y0 = bottom - img.bnds.y - (int)height * thh;
-		y1 = y0 + img.bnds.h;
-
-		genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
+	if (!id || id - 1 >= tiledata.size()) {
+		genie::Box<double> bounds((double)right + thw, (double)bottom + thh, thw, thh);
 		auto ret = static_objects.try_emplace(bounds, (size_t)pos);
 		invalidate_cam_focus(ret, image_index, id, height, update_focus);
+		return;
 	}
 
-	void resize(int w, int h) {
-		if (w < 1) w = 1;
-		if (h < 1) h = 1;
+	double x0, y0, x1, y1;
 
-		long long sz = (long long)w * h;
-		int pad_x = 10;
+	auto &t = tiledata[id - 1];
+	auto &strip = *tex->ts.animations.find(t.id);
+	auto &img = *tex->ts.images.find(t.subimage);
 
-		left = 0;
-		right = std::max<int>(w * tw, h * th);
-		bottom = w * thh;
-		top = -bottom;
+	x0 = right - img.bnds.x;
+	x1 = x0 + img.bnds.w;
+	y0 = bottom - img.bnds.y - (int)height * thh;
+	y1 = y0 + img.bnds.h;
 
-		tiles.resize(sz, 1);
-		subimg.resize(sz, 0);
-		hmap.resize(sz);
-		overlay.resize(sz);
+	genie::Box<double> bounds(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5);
+	auto ret = static_objects.try_emplace(bounds, (size_t)pos);
+	invalidate_cam_focus(ret, image_index, id, height, update_focus);
+}
 
-		this->w = w;
-		this->h = h;
+void Terrain::resize(int w, int h) {
+	if (w < 1) w = 1;
+	if (h < 1) h = 1;
+
+	long long sz = (long long)w * h;
+	int pad_x = 10;
+
+	left = 0;
+	right = std::max<int>(w * tw, h * th);
+	bottom = w * thh;
+	top = -bottom;
+
+	tiles.resize(sz, 1);
+	subimg.resize(sz, 0);
+	hmap.resize(sz);
+	overlay.resize(sz);
+
+	this->w = w;
+	this->h = h;
+}
+
+void Terrain::select(int mx, int my, int vpx, int vpy) {
+	// compute world coordinate
+	float pos[3], scr[3];
+
+	scr[0] = (float)(mx + vpx); scr[1] = float(vp[3] - my + vpy); scr[2] = 0;
+	tile_focus = -1;
+
+	try {
+		genie::unproject(pos, scr, mv, proj, vp);
+	} catch (std::runtime_error &e) {
+		fputs("unproject failed\n", stderr);
+		return;
 	}
 
-	void select(int mx, int my, int vpx, int vpy) {
-		// compute world coordinate
-		float pos[3], scr[3];
-
-		scr[0] = (float)(mx + vpx); scr[1] = float(vp[3] - my + vpy); scr[2] = 0;
-		tile_focus = -1;
-
-		try {
-			genie::unproject(pos, scr, mv, proj, vp);
-		} catch (std::runtime_error &e) {
-			fputs("unproject failed\n", stderr);
-			return;
-		}
-
-		// determine selected tile
+	// determine selected tile
 #if 1
-		for (auto it : vis_static_objects) {
-			auto &o = *it;
+	for (auto it : vis_static_objects) {
+		auto &o = *it;
 
-			if (o.tpos != (size_t)-1) {
-				size_t i = o.tpos;
-				uint8_t id = tiles[i];
-
-				if (!id || id - 1 > tiledata.size())
-					id = 1; // empty or invalid tiles should still be selectable
-
-				auto &t = tiledata[id - 1];
-				auto &strip = *tex->ts.animations.find(t.id);
-				auto &img = *tex->ts.images.find(t.subimage);
-
-				double left = o.bounds.center.x - o.bounds.hsize.x, top = o.bounds.center.y - o.bounds.hsize.y;
-
-				if (img.contains((int)(pos[0] - left), (int)(pos[1] - top))) {
-					tile_focus = (long long)i;
-					tile_focus_obj = const_cast<StaticObject*>(it);
-					break;
-				}
-			}
-		}
-#else
-		for (size_t i = 0; i < tiles.size(); ++i) {
+		if (o.tpos != (size_t)-1) {
+			size_t i = o.tpos;
 			uint8_t id = tiles[i];
 
 			if (!id || id - 1 > tiledata.size())
 				id = 1; // empty or invalid tiles should still be selectable
 
 			auto &t = tiledata[id - 1];
-			auto &strip = *tex.ts.animations.find(t.id);
-			auto &img = *tex.ts.images.find(t.subimage);
-			auto &gfx = tilegfx[i];
+			auto &strip = *tex->ts.animations.find(t.id);
+			auto &img = *tex->ts.images.find(t.subimage);
 
-			if (img.contains((int)(pos[0] - gfx.x), (int)(pos[1] - gfx.y))) {
+			double left = o.bounds.center.x - o.bounds.hsize.x, top = o.bounds.center.y - o.bounds.hsize.y;
+
+			if (img.contains((int)(pos[0] - left), (int)(pos[1] - top))) {
 				tile_focus = (long long)i;
+				tile_focus_obj = const_cast<StaticObject*>(it);
 				break;
 			}
 		}
+	}
+#else
+	for (size_t i = 0; i < tiles.size(); ++i) {
+		uint8_t id = tiles[i];
+
+		if (!id || id - 1 > tiledata.size())
+			id = 1; // empty or invalid tiles should still be selectable
+
+		auto &t = tiledata[id - 1];
+		auto &strip = *tex.ts.animations.find(t.id);
+		auto &img = *tex.ts.images.find(t.subimage);
+		auto &gfx = tilegfx[i];
+
+		if (img.contains((int)(pos[0] - gfx.x), (int)(pos[1] - gfx.y))) {
+			tile_focus = (long long)i;
+			break;
+		}
+	}
 #endif
-	}
+}
 
-	void set_view() {
-		float pos[3], scr[3];
-		genie::Point<double> lt, rb;
+void Terrain::set_view() {
+	float pos[3], scr[3];
+	genie::Point<double> lt, rb;
 
-		if (vp[2] < 1 || vp[3] < 1)
-			return;
+	if (vp[2] < 1 || vp[3] < 1)
+		return;
 
-		scr[0] = (float)(vp[0] - cull_margin); scr[1] = (float)(vp[3] - vp[1] + cull_margin); scr[2] = 0;
-		genie::unproject(pos, scr, mv, proj, vp);
-		lt.x = pos[0]; lt.y = pos[1];
+	scr[0] = (float)(vp[0] - cull_margin); scr[1] = (float)(vp[3] - vp[1] + cull_margin); scr[2] = 0;
+	genie::unproject(pos, scr, mv, proj, vp);
+	lt.x = pos[0]; lt.y = pos[1];
 
-		scr[0] = (float)(vp[0] + vp[2] + cull_margin); scr[1] = (float)(vp[1] - cull_margin); scr[2] = 0;
-		genie::unproject(pos, scr, mv, proj, vp);
-		rb.x = pos[0]; rb.y = pos[1];
+	scr[0] = (float)(vp[0] + vp[2] + cull_margin); scr[1] = (float)(vp[1] - cull_margin); scr[2] = 0;
+	genie::unproject(pos, scr, mv, proj, vp);
+	rb.x = pos[0]; rb.y = pos[1];
 
-		cam.hsize.x = (rb.x - lt.x) * 0.5;
-		cam.hsize.y = (rb.y - lt.y) * 0.5;
-		cam.center.x = lt.x + cam.hsize.x;
-		cam.center.y = lt.y + cam.hsize.y;
+	cam.hsize.x = (rb.x - lt.x) * 0.5;
+	cam.hsize.y = (rb.y - lt.y) * 0.5;
+	cam.center.x = lt.x + cam.hsize.x;
+	cam.center.y = lt.y + cam.hsize.y;
 
-		auto &obj = vis_static_objects;
-		obj.clear();
-		static_objects.collect(obj, cam);
-		cam_moved = false;
-	}
-
-	/* Draw terrain. Assumes glBegin hasn't been called yet and the texture is bound. */
-	void show(genie::Texture &tex);
-};
-
-class Player final {
-public:
-	unsigned id, civ_id;
-	std::string name;
-
-	Player(unsigned id, unsigned civ_id, const std::string &name) : id(id), civ_id(civ_id), name(name) {}
-};
-
-class VirtualPlayer final {
-public:
-	unsigned id, p_id;
-	std::string name;
-
-	VirtualPlayer(unsigned id, unsigned p_id, const std::string &name) : id(id), p_id(p_id), name(name) {}
-};
-
-class Team final {
-public:
-	std::string name;
-};
+	auto &obj = vis_static_objects;
+	obj.clear();
+	static_objects.collect(obj, cam);
+	cam_moved = false;
+}
 
 const std::vector<std::string> civs({
 	"Assyrian",
@@ -2500,603 +2155,572 @@ const std::vector<std::string> civs({
 
 const std::vector<std::string> player_count_str({"1", "2", "3", "4", "5", "6", "7", "8"});
 
-class AoE final {
-public:
-	VideoControl video;
-	genie::Texture tex_bkg;
-	genie::Tilesheet ts_next;
-	genie::DialogColors dlgcol;
-	std::map<AnimationId, unsigned> anims;
-	Hud hud;
-	int mouse_x, mouse_y;
-	bool working, global_settings, wip;
-	Worker &w_bkg;
-	Terrain terrain;
-	std::vector<Team> teams;
-	std::vector<Player> players;
-	std::vector<VirtualPlayer> vplayers;
+AoE::AoE(Worker &w_bkg)
+	: video(), tex_bkg(), ts_next(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1)
+	, working(false), global_settings(false), wip(false), w_bkg(w_bkg), terrain()
+	, player_count(0)
+	, lgy_index(2), left(0), right(0), top(0), bottom(0)
+	, cam_x(0), cam_y(0), cam_zoom(1.0f), show_drs(false), open_dlg(false), dlg_id(NULL)
+	, teams(), players(), vplayers()
+{
+	settings.load(video);
 
-	// singleplayer menu state vars
-	unsigned player_count; // 0 means 1 player!!
+	if (settings.load()) {
+		video.restore(settings);
+	}
+}
 
-	int lgy_index;
-	// orthogonal viewport
-	GLdouble left, right, top, bottom;
+void AoE::load_menu(MenuId id) {
+	ZoneScoped;
+	hud.reset(tex_bkg);
+	tex_bkg.ts = std::move(ts_next);
+	tex_bkg.ts.write(tex_bkg.tex);
 
-	float cam_x, cam_y, cam_zoom;
+	switch (id) {
+		case MenuId::scn_edit:
+			terrain.init(tex_bkg);
+			break;
+		case MenuId::singleplayer: {
+			submenu_id = SubMenuId::singleplayer_menu;
+			teams.clear();
+			players.clear();
+			vplayers.clear();
 
-	bool show_drs, open_dlg;
-	const char *dlg_id;
+			unsigned id, p_id;
 
-	static constexpr float zoom_min = 0.01f, zoom_max = 5.0f;
+			players.emplace_back(p_id = players.size(), 0, "default");
+			vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
 
-	AoE(Worker &w_bkg)
-		: video(), tex_bkg(), ts_next(), dlgcol(), hud(), mouse_x(-1), mouse_y(-1)
-		, working(false), global_settings(false), wip(false), w_bkg(w_bkg), terrain()
-		, player_count(0)
-		, lgy_index(2), left(0), right(0), top(0), bottom(0)
-		, cam_x(0), cam_y(0), cam_zoom(1.0f), show_drs(false), open_dlg(false), dlg_id(NULL)
-		, teams(), players(), vplayers()
+			players.emplace_back(p_id = players.size(), 0, "You");
+			vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
+
+			player_count = 0;
+			break;
+		}
+	}
+
+	menu_id = id;
+}
+
+void AoE::idle(SDL_Event &event) {
+	ZoneScoped;
+
+	switch (event.type) {
+		case SDL_MOUSEMOTION:
+			mouse_x = event.motion.x;
+			mouse_y = event.motion.y;
+			video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
+			break;
+		case SDL_MOUSEBUTTONDOWN:
+			hud.down(event.button);
+			mouse_x = event.button.x;
+			mouse_y = event.button.y;
+			video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
+
+			if (menu_is_game())
+				terrain.select(hud.mouse_x, hud.mouse_y, video.vp.x, video.vp.y);
+			break;
+		case SDL_MOUSEBUTTONUP:
+			mouse_x = event.button.x;
+			mouse_y = event.button.y;
+			video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
+			hud.up(event.button);
+			break;
+	}
+}
+
+void AoE::draw_background() {
+	ZoneScoped;
+	assert(tex_bkg.tex);
+	const genie::SubImage &img = tex_bkg.ts[lgy_index];
+
+	glBegin(GL_QUADS);
 	{
-		settings.load(video);
+		glTexCoord2f(img.s0, img.t0); glVertex2f(left, top);
+		glTexCoord2f(img.s1, img.t0); glVertex2f(right, top);
+		glTexCoord2f(img.s1, img.t1); glVertex2f(right, bottom);
+		glTexCoord2f(img.s0, img.t1); glVertex2f(left, bottom);
+	}
+	glEnd();
+}
 
-		if (settings.load()) {
-			video.restore(settings);
-		}
+void AoE::draw_terrain() {
+	ZoneScoped;
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	// center camera to make zooming and scrolling easier
+	GLdouble w = right - left, h = top - bottom;
+
+	glOrtho(-w * .5, w * .5, -h * .5, h * .5, -1, 1);
+	//glOrtho(left, right, bottom, top, -1, 1);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glScalef(cam_zoom, cam_zoom, 1.0f);
+	glTranslatef(-cam_x, -cam_y, 0);
+	terrain.show(tex_bkg);
+
+	// restore
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(left - 0.5, right - 0.5, bottom - 0.5, top - 0.5, -1, 1);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
+
+void AoE::display_editor(SDL_Rect bnds) {
+	ZoneScoped;
+	hud.rect(bnds, dlgcol.bevel);
+
+	double btn_x, btn_y, btn_w, btn_h, pad_y;
+
+	btn_w = bnds.w * 300.0 / 640.0;
+	btn_h = bnds.h * 40.0 / 480.0;
+	btn_x = bnds.w * 0.5 - btn_w * 0.5;
+	btn_y = bnds.h * 0.5;
+	pad_y = bnds.h * 10.0 / 480.0;
+
+	int selected = -1;
+
+	TextId ids[] = {
+		TextId::btn_scn_edit,
+		TextId::btn_cpn_edit,
+		TextId::btn_drs_edit,
+		TextId::btn_back,
+	};
+
+	for (int i = 0; i < IM_ARRAYSIZE(ids); ++i)
+		if (hud.button(i, 4, btn_x, btn_y + (i - 2) * (btn_h + pad_y), btn_w, btn_h, TXT(ids[i]), dlgcol.shade, dlgcol.bevel))
+			selected = i;
+
+	if (working)
+		return;
+
+	switch (selected) {
+		case 0:
+			show_drs = false;
+			w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::scn_edit);
+			break;
+		case 2:
+			show_drs = true;
+			break;
+		case 3:
+			show_drs = false;
+			w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
+			break;
+	}
+}
+
+void AoE::display_scn_edit(SDL_Rect bnds) {
+	ZoneScoped;
+	SDL_Rect top, bottom;
+
+	top.x = bnds.x; top.y = bnds.y; top.w = bnds.w; top.h = 51;
+	bottom.x = bnds.x; bottom.y = bnds.h - 143; bottom.w = bnds.w; bottom.h = 143;
+
+	double btn_x, btn_y, btn_w, btn_h, pad_x, pad_y;
+
+	pad_x = 3; pad_y = 5;
+	btn_w = 58; btn_h = 40;
+	btn_x = bnds.w - btn_w - pad_x; btn_y = pad_y;
+
+	int selected = -1;
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
+
+	glEnable(GL_BLEND);
+	draw_terrain();//terrain.show(tex_bkg);
+
+				   // NOTE y-coordinate for scissor is flipped
+				   // the coordinates are window global, so we need the video viewport as well
+	glEnable(GL_SCISSOR_TEST);
+	glScissor(video.vp.x, video.vp.y + video.vp.h - top.h, top.w, top.h);
+	draw_background();
+	glScissor(video.vp.x, video.vp.y, bottom.w, bottom.h);
+	draw_background();
+	glDisable(GL_SCISSOR_TEST);
+
+	glDisable(GL_TEXTURE_2D);
+
+
+	hud.rect(top, dlgcol.bevel);
+	hud.rect(bottom, dlgcol.bevel);
+
+	if (hud.button(0, 0, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_back), dlgcol.shade, dlgcol.bevel))
+		selected = 0;
+
+	btn_x = pad_x;
+
+	if (hud.button(1, 0, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_scn_load), dlgcol.shade, dlgcol.bevel))
+		selected = 1;
+
+	if (working)
+		return;
+
+	switch (selected) {
+		case 0:
+			w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::editor);
+			break;
+		case 1:
+			open_dlg = true;
+			dlg_id = FDLG_CHOOSE_SCN;
+			//fd->OpenDialog(FDLG_CHOOSE_SCN, CTXT(TextId::btn_scn_load), ".scn", genie::game_dir);
+			break;
+	}
+}
+
+void AoE::display_start(SDL_Rect bnds) {
+	ZoneScoped;
+	hud.rect(bnds, dlgcol.bevel);
+
+	double btn_x, btn_y, btn_w, btn_h, pad_y;
+
+	btn_w = bnds.w * 300.0 / 640.0;
+	btn_h = bnds.h * 40.0 / 480.0;
+	btn_x = bnds.w * 0.5 - btn_w * 0.5;
+	btn_y = bnds.h * 0.625;
+	pad_y = bnds.h * 10.0 / 480.0;
+
+	int selected = -1;
+
+	TextId ids[] = {
+		TextId::btn_singleplayer,
+		TextId::btn_multiplayer,
+		TextId::btn_main_settings,
+		TextId::btn_editor,
+		TextId::btn_quit,
+	};
+
+	for (int i = 0; i < 5; ++i)
+		if (hud.button(i, 4, btn_x, btn_y - btn_h * 0.5 + (i - 2) * (btn_h + pad_y), btn_w, btn_h, TXT(ids[i]), dlgcol.shade, dlgcol.bevel))
+			selected = i;
+
+	if (working)
+		return;
+
+	switch (selected) {
+		case 0: // single player
+			w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::singleplayer);
+			break;
+		case 1: // multiplayer
+			break;
+		case 2: // help
+			global_settings = true;
+			break;
+		case 3: // scenario builder
+			w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::editor);
+			break;
+		case 4: // exit
+			running = false;
+			break;
+	}
+}
+
+void AoE::display_singleplayer(SDL_Rect bnds) {
+	switch (submenu_id) {
+		case SubMenuId::singleplayer_game:
+			display_singleplayer_game(bnds);
+			break;
+		default:
+			display_singleplayer_menu(bnds);
+			break;
+	}
+}
+
+void AoE::display_singleplayer_menu(SDL_Rect bnds) {
+	ZoneScoped;
+	hud.rect(bnds, dlgcol.bevel);
+
+	double btn_x, btn_y, btn_w, btn_h, pad_y;
+
+	btn_w = bnds.w * 300.0 / 640.0;
+	btn_h = bnds.h * 40.0 / 480;
+	btn_x = bnds.w * 0.5 - btn_w * 0.5;
+	btn_y = bnds.h * 0.6;
+	pad_y = bnds.h * 10.0 / 480.0;
+
+	int selected = -1;
+
+	TextId ids[] = {
+		TextId::btn_random_map,
+		TextId::btn_missions,
+		TextId::btn_deathmatch,
+		TextId::btn_scenario,
+		TextId::btn_restore_game,
+		TextId::btn_cancel,
+	};
+
+	for (int i = 0; i < 6; ++i)
+		if (hud.button(i, 4, btn_x, btn_y - btn_h * 0.5 + (i - 3) * (btn_h + pad_y), btn_w, btn_h, TXT(ids[i]), dlgcol.shade, dlgcol.bevel))
+			selected = i;
+
+	int hdr_x = bnds.w / 2, hdr_y = bnds.h * 48 / 768;
+
+	const char *str = CTXT(TextId::title_singleplayer);
+	hud.title(ImVec2(hdr_x, hdr_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{0, 0, bnds.w, 64}, str, strlen(str), bnds.w, 0);
+
+	if (working)
+		return;
+
+	switch (selected) {
+		case 0: // random map
+			hud.reset();
+			submenu_id = SubMenuId::singleplayer_game;
+			break;
+		case 5: // cancel
+			w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
+			break;
+	}
+}
+
+void AoE::display_singleplayer_game(SDL_Rect bnds) {
+	ZoneScoped;
+	hud.rect(bnds, dlgcol.bevel);
+
+	double btn_x, btn_y, btn_w, btn_h, pad_x;
+
+	pad_x = bnds.w * 20.0 / 640.0;
+	btn_w = bnds.w * 240.0 / 640.0;
+	btn_h = bnds.h * 30.0 / 480.0;
+	btn_x = (bnds.w - pad_x) * 0.5 - btn_w;
+	btn_y = bnds.h * 704.0 / 768.0;
+
+	int selected = -1;
+
+	if (hud.button(0, 4, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_start_game), dlgcol.shade, dlgcol.bevel))
+		selected = 0;
+
+	btn_x = (bnds.w + pad_x) * 0.5;
+
+	if (hud.button(1, 4, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_cancel), dlgcol.shade, dlgcol.bevel))
+		selected = 1;
+
+	btn_x = bnds.w * 672.0 / 1024.0;
+	btn_y = bnds.h * 80.0 / 768.0;
+	btn_w = bnds.w * 336.0 / 1024.0;
+
+	if (hud.button(2, 4, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_game_settings), dlgcol.shade, dlgcol.bevel))
+		selected = 2;
+
+	int hdr_x = bnds.w / 2, hdr_y = bnds.h * 14 / 768;
+
+	const char *str = CTXT(TextId::title_singleplayer_game);
+	hud.title(ImVec2(hdr_x, hdr_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{0, 0, bnds.w, 64}, str, strlen(str), bnds.w, 0);
+
+	btn_x = bnds.w * 49.0 / 1024.0;
+	btn_y = bnds.h * 515.0 / 768.0;
+	btn_w = 112.0;
+	btn_h = 38.0;
+
+	int fnt_id = 4;
+
+	if (hud.listpopup(4, fnt_id, btn_x, btn_y, btn_w, btn_h, player_count, player_count_str, dlgcol.shade, dlgcol.bevel, false))
+		selected = 4;
+
+	int txt_x, txt_y, txt_w, txt_h;
+	txt_x = bnds.w * 46 / 1024;
+	txt_w = bnds.w * 270 / 1024;
+	txt_h = 38;
+
+	for (unsigned i = 1; i < vplayers.size(); ++i) {
+		btn_x = bnds.w * 272.0 / 1024.0;
+		btn_y = bnds.h * 134.0 / 768.0 + 38 * (i - 1);
+		txt_y = bnds.h * 142 / 768 + 38 * (i - 1);
+
+		int id;
+
+		Player &p = players[vplayers[i].p_id];
+		btn_w = bnds.w * 220.0 / 1024.0;
+
+		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, p.name, txt_w, -1);
+
+		if (hud.listpopup(id = 5 + 3 * (i - 1), fnt_id, btn_x, btn_y, btn_w, btn_h, p.civ_id, civs, 255, dlgcol.bevel))
+			selected = id;
+
+		btn_x = bnds.w * 496.0 / 1024.0;
+		btn_w = bnds.w * 48.0 / 1024.0;
+		btn_h = 32;//bnds.h * 32.0 / 768.0;
+
+		if (hud.button(id = 6 + 3 * (i - 1), 4, btn_x, btn_y, btn_w, btn_h, "1", dlgcol.shade, dlgcol.bevel))
+			selected = id;
+
+		btn_x = bnds.w * 608.0 / 1024.0;
+
+		if (hud.button(id = 7 + 3 * (i - 1), 4, btn_x, btn_y, btn_w, btn_h, "-", dlgcol.shade, dlgcol.bevel))
+			selected = id;
 	}
 
-	void load_menu(MenuId id) {
-		ZoneScoped;
-		hud.reset(tex_bkg);
-		tex_bkg.ts = std::move(ts_next);
-		tex_bkg.ts.write(tex_bkg.tex);
+	txt_y = bnds.h * 480 / 768;
+	txt_w = 250;
+	txt_h = 20;
 
-		switch (id) {
-			case MenuId::scn_edit:
-				terrain.init(tex_bkg);
-				break;
-			case MenuId::singleplayer: {
-				submenu_id = SubMenuId::singleplayer_menu;
-				teams.clear();
-				players.clear();
-				vplayers.clear();
+	hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_count), txt_w, -1);
 
-				unsigned id, p_id;
+	txt_y = bnds.h * 96 / 768;
+	hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_name), txt_w, -1);
 
-				players.emplace_back(p_id = players.size(), 0, "default");
-				vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
+	txt_x = bnds.w * 306 / 1024;
+	txt_w = bnds.w * 168 / 1024;
+	hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_civ), txt_w, -1);
 
-				players.emplace_back(p_id = players.size(), 0, "You");
-				vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
+	txt_x = bnds.w * 476 / 1024;
+	txt_w = bnds.w * 130 / 1024;
+	hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_id), txt_w, -1);
 
-				player_count = 0;
-				break;
+	txt_x = bnds.w * 606 / 1024;
+	txt_w = bnds.w * 66 / 1024;
+	hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_team), txt_w, -1);
+
+	if (working || selected < 0)
+		return;
+
+	switch (selected) {
+		case 0: // start game
+			break;
+		case 1: // cancel
+			hud.reset();
+			submenu_id = SubMenuId::singleplayer_menu;
+			//w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::singleplayer_menu);
+			break;
+		case 2: // settings
+			break;
+		case 3: // ?
+			break;
+		case 4: // number of players
+			if (players.size() != player_count + 2) {
+				size_t adjust = player_count + 2;
+				if (adjust < players.size()) {
+					players.erase(players.begin() + adjust, players.end());
+					if (adjust < vplayers.size())
+						vplayers.erase(vplayers.begin() + adjust, vplayers.end());
+				} else {
+					for (unsigned i = players.size(); i < adjust; ++i) {
+						unsigned id, p_id;
+						std::string pname(std::string("Player ") + std::to_string(i));
+
+						players.emplace_back(p_id = players.size(), 0, pname);
+						vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
+					}
+				}
 			}
-		}
-
-		menu_id = id;
-	}
-
-	void idle(SDL_Event &event) {
-		ZoneScoped;
-
-		switch (event.type) {
-			case SDL_MOUSEMOTION:
-				mouse_x = event.motion.x;
-				mouse_y = event.motion.y;
-				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
-				break;
-			case SDL_MOUSEBUTTONDOWN:
-				hud.down(event.button);
-				mouse_x = event.button.x;
-				mouse_y = event.button.y;
-				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
-
-				if (menu_is_game())
-					terrain.select(hud.mouse_x, hud.mouse_y, video.vp.x, video.vp.y);
-				break;
-			case SDL_MOUSEBUTTONUP:
-				mouse_x = event.button.x;
-				mouse_y = event.button.y;
-				video.motion(hud.mouse_x, hud.mouse_y, mouse_x, mouse_y);
-				hud.up(event.button);
-				break;
-		}
-	}
-
-	void draw_background() {
-		ZoneScoped;
-		assert(tex_bkg.tex);
-		const genie::SubImage &img = tex_bkg.ts[lgy_index];
-
-		glBegin(GL_QUADS);
-		{
-			glTexCoord2f(img.s0, img.t0); glVertex2f(left, top);
-			glTexCoord2f(img.s1, img.t0); glVertex2f(right, top);
-			glTexCoord2f(img.s1, img.t1); glVertex2f(right, bottom);
-			glTexCoord2f(img.s0, img.t1); glVertex2f(left, bottom);
-		}
-		glEnd();
-	}
-
-	void draw_terrain() {
-		ZoneScoped;
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		// center camera to make zooming and scrolling easier
-		GLdouble w = right - left, h = top - bottom;
-
-		glOrtho(-w * .5, w * .5, -h * .5, h * .5, -1, 1);
-		//glOrtho(left, right, bottom, top, -1, 1);
-
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glScalef(cam_zoom, cam_zoom, 1.0f);
-		glTranslatef(-cam_x, -cam_y, 0);
-		terrain.show(tex_bkg);
-
-		// restore
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(left - 0.5, right - 0.5, bottom - 0.5, top - 0.5, -1, 1);
-
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-	}
-
-	void display_editor(SDL_Rect bnds) {
-		ZoneScoped;
-		hud.rect(bnds, dlgcol.bevel);
-
-		double btn_x, btn_y, btn_w, btn_h, pad_y;
-
-		btn_w = bnds.w * 300.0 / 640.0;
-		btn_h = bnds.h * 40.0 / 480.0;
-		btn_x = bnds.w * 0.5 - btn_w * 0.5;
-		btn_y = bnds.h * 0.5;
-		pad_y = bnds.h * 10.0 / 480.0;
-
-		int selected = -1;
-
-		TextId ids[] = {
-			TextId::btn_scn_edit,
-			TextId::btn_cpn_edit,
-			TextId::btn_drs_edit,
-			TextId::btn_back,
-		};
-
-		for (int i = 0; i < IM_ARRAYSIZE(ids); ++i)
-			if (hud.button(i, 4, btn_x, btn_y + (i - 2) * (btn_h + pad_y), btn_w, btn_h, TXT(ids[i]), dlgcol.shade, dlgcol.bevel))
-				selected = i;
-
-		if (working)
-			return;
-
-		switch (selected) {
-			case 0:
-				show_drs = false;
-				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::scn_edit);
-				break;
-			case 2:
-				show_drs = true;
-				break;
-			case 3:
-				show_drs = false;
-				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
-				break;
-		}
-	}
-
-	void display_scn_edit(SDL_Rect bnds) {
-		ZoneScoped;
-		SDL_Rect top, bottom;
-
-		top.x = bnds.x; top.y = bnds.y; top.w = bnds.w; top.h = 51;
-		bottom.x = bnds.x; bottom.y = bnds.h - 143; bottom.w = bnds.w; bottom.h = 143;
-
-		double btn_x, btn_y, btn_w, btn_h, pad_x, pad_y;
-
-		pad_x = 3; pad_y = 5;
-		btn_w = 58; btn_h = 40;
-		btn_x = bnds.w - btn_w - pad_x; btn_y = pad_y;
-
-		int selected = -1;
-
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
-
-		glEnable(GL_BLEND);
-		draw_terrain();//terrain.show(tex_bkg);
-
-		// NOTE y-coordinate for scissor is flipped
-		// the coordinates are window global, so we need the video viewport as well
-		glEnable(GL_SCISSOR_TEST);
-		glScissor(video.vp.x, video.vp.y + video.vp.h - top.h, top.w, top.h);
-		draw_background();
-		glScissor(video.vp.x, video.vp.y, bottom.w, bottom.h);
-		draw_background();
-		glDisable(GL_SCISSOR_TEST);
-
-		glDisable(GL_TEXTURE_2D);
-
-
-		hud.rect(top, dlgcol.bevel);
-		hud.rect(bottom, dlgcol.bevel);
-
-		if (hud.button(0, 0, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_back), dlgcol.shade, dlgcol.bevel))
-			selected = 0;
-
-		btn_x = pad_x;
-
-		if (hud.button(1, 0, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_scn_load), dlgcol.shade, dlgcol.bevel))
-			selected = 1;
-
-		if (working)
-			return;
-
-		switch (selected) {
-			case 0:
-				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::editor);
-				break;
-			case 1:
-				open_dlg = true;
-				dlg_id = FDLG_CHOOSE_SCN;
-				//fd->OpenDialog(FDLG_CHOOSE_SCN, CTXT(TextId::btn_scn_load), ".scn", genie::game_dir);
-				break;
-		}
-	}
-
-	void display_start(SDL_Rect bnds) {
-		ZoneScoped;
-		hud.rect(bnds, dlgcol.bevel);
-
-		double btn_x, btn_y, btn_w, btn_h, pad_y;
-
-		btn_w = bnds.w * 300.0 / 640.0;
-		btn_h = bnds.h * 40.0 / 480.0;
-		btn_x = bnds.w * 0.5 - btn_w * 0.5;
-		btn_y = bnds.h * 0.625;
-		pad_y = bnds.h * 10.0 / 480.0;
-
-		int selected = -1;
-
-		TextId ids[] = {
-			TextId::btn_singleplayer,
-			TextId::btn_multiplayer,
-			TextId::btn_main_settings,
-			TextId::btn_editor,
-			TextId::btn_quit,
-		};
-
-		for (int i = 0; i < 5; ++i)
-			if (hud.button(i, 4, btn_x, btn_y - btn_h * 0.5 + (i - 2) * (btn_h + pad_y), btn_w, btn_h, TXT(ids[i]), dlgcol.shade, dlgcol.bevel))
-				selected = i;
-
-		if (working)
-			return;
-
-		switch (selected) {
-			case 0: // single player
-				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::singleplayer);
-				break;
-			case 1: // multiplayer
-				break;
-			case 2: // help
-				global_settings = true;
-				break;
-			case 3: // scenario builder
-				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::editor);
-				break;
-			case 4: // exit
-				running = false;
-				break;
-		}
-	}
-
-	void display_singleplayer(SDL_Rect bnds) {
-		switch (submenu_id) {
-			case SubMenuId::singleplayer_game:
-				display_singleplayer_game(bnds);
-				break;
-			default:
-				display_singleplayer_menu(bnds);
-				break;
-		}
-	}
-
-	void display_singleplayer_menu(SDL_Rect bnds) {
-		ZoneScoped;
-		hud.rect(bnds, dlgcol.bevel);
-
-		double btn_x, btn_y, btn_w, btn_h, pad_y;
-
-		btn_w = bnds.w * 300.0 / 640.0;
-		btn_h = bnds.h * 40.0 / 480;
-		btn_x = bnds.w * 0.5 - btn_w * 0.5;
-		btn_y = bnds.h * 0.6;
-		pad_y = bnds.h * 10.0 / 480.0;
-
-		int selected = -1;
-
-		TextId ids[] = {
-			TextId::btn_random_map,
-			TextId::btn_missions,
-			TextId::btn_deathmatch,
-			TextId::btn_scenario,
-			TextId::btn_restore_game,
-			TextId::btn_cancel,
-		};
-
-		for (int i = 0; i < 6; ++i)
-			if (hud.button(i, 4, btn_x, btn_y - btn_h * 0.5 + (i - 3) * (btn_h + pad_y), btn_w, btn_h, TXT(ids[i]), dlgcol.shade, dlgcol.bevel))
-				selected = i;
-
-		int hdr_x = bnds.w / 2, hdr_y = bnds.h * 48 / 768;
-
-		const char *str = CTXT(TextId::title_singleplayer);
-		hud.title(ImVec2(hdr_x, hdr_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{0, 0, bnds.w, 64}, str, strlen(str), bnds.w, 0);
-
-		if (working)
-			return;
-
-		switch (selected) {
-			case 0: // random map
-				hud.reset();
-				submenu_id = SubMenuId::singleplayer_game;
-				break;
-			case 5: // cancel
-				w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
-				break;
-		}
-	}
-
-	void display_singleplayer_game(SDL_Rect bnds) {
-		ZoneScoped;
-		hud.rect(bnds, dlgcol.bevel);
-
-		double btn_x, btn_y, btn_w, btn_h, pad_x;
-
-		pad_x = bnds.w * 20.0 / 640.0;
-		btn_w = bnds.w * 240.0 / 640.0;
-		btn_h = bnds.h * 30.0 / 480.0;
-		btn_x = (bnds.w - pad_x) * 0.5 - btn_w;
-		btn_y = bnds.h * 704.0 / 768.0;
-
-		int selected = -1;
-
-		if (hud.button(0, 4, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_start_game), dlgcol.shade, dlgcol.bevel))
-			selected = 0;
-
-		btn_x = (bnds.w + pad_x) * 0.5;
-
-		if (hud.button(1, 4, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_cancel), dlgcol.shade, dlgcol.bevel))
-			selected = 1;
-
-		btn_x = bnds.w * 672.0 / 1024.0;
-		btn_y = bnds.h * 80.0 / 768.0;
-		btn_w = bnds.w * 336.0 / 1024.0;
-
-		if (hud.button(2, 4, btn_x, btn_y, btn_w, btn_h, TXT(TextId::btn_game_settings), dlgcol.shade, dlgcol.bevel))
-			selected = 2;
-
-		int hdr_x = bnds.w / 2, hdr_y = bnds.h * 14 / 768;
-
-		const char *str = CTXT(TextId::title_singleplayer_game);
-		hud.title(ImVec2(hdr_x, hdr_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{0, 0, bnds.w, 64}, str, strlen(str), bnds.w, 0);
-
-		btn_x = bnds.w * 49.0 / 1024.0;
-		btn_y = bnds.h * 515.0 / 768.0;
-		btn_w = 112.0;
-		btn_h = 38.0;
-
-		int fnt_id = 4;
-
-		if (hud.listpopup(4, fnt_id, btn_x, btn_y, btn_w, btn_h, player_count, player_count_str, dlgcol.shade, dlgcol.bevel, false))
-			selected = 4;
-
-		int txt_x, txt_y, txt_w, txt_h;
-		txt_x = bnds.w * 46 / 1024;
-		txt_w = bnds.w * 270 / 1024;
-		txt_h = 38;
-
-		for (unsigned i = 1; i < vplayers.size(); ++i) {
-			btn_x = bnds.w * 272.0 / 1024.0;
-			btn_y = bnds.h * 134.0 / 768.0 + 38 * (i - 1);
-			txt_y = bnds.h * 142 / 768 + 38 * (i - 1);
-
-			int id;
-
-			Player &p = players[vplayers[i].p_id];
-			btn_w = bnds.w * 220.0 / 1024.0;
-
-			hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, p.name, txt_w, -1);
-
-			if (hud.listpopup(id = 5 + 3 * (i - 1), fnt_id, btn_x, btn_y, btn_w, btn_h, p.civ_id, civs, 255, dlgcol.bevel))
-				selected = id;
-
-			btn_x = bnds.w * 496.0 / 1024.0;
-			btn_w = bnds.w * 48.0 / 1024.0;
-			btn_h = 32;//bnds.h * 32.0 / 768.0;
-
-			if (hud.button(id = 6 + 3 * (i - 1), 4, btn_x, btn_y, btn_w, btn_h, "1", dlgcol.shade, dlgcol.bevel))
-				selected = id;
-
-			btn_x = bnds.w * 608.0 / 1024.0;
-
-			if (hud.button(id = 7 + 3 * (i - 1), 4, btn_x, btn_y, btn_w, btn_h, "-", dlgcol.shade, dlgcol.bevel))
-				selected = id;
-		}
-
-		txt_y = bnds.h * 480 / 768;
-		txt_w = 250;
-		txt_h = 20;
-
-		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_count), txt_w, -1);
-
-		txt_y = bnds.h * 96 / 768;
-		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_name), txt_w, -1);
-
-		txt_x = bnds.w * 306 / 1024;
-		txt_w = bnds.w * 168 / 1024;
-		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_civ), txt_w, -1);
-
-		txt_x = bnds.w * 476 / 1024;
-		txt_w = bnds.w * 130 / 1024;
-		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_id), txt_w, -1);
-
-		txt_x = bnds.w * 606 / 1024;
-		txt_w = bnds.w * 66 / 1024;
-		hud.slow_text(fnt_id, font_sizes[fnt_id], ImVec2(txt_x, txt_y), SDL_Color{0xff, 0xff, 0xff, 0xff}, SDL_Rect{txt_x, txt_y, txt_w, txt_h}, TXT(TextId::player_team), txt_w, -1);
-
-		if (working || selected < 0)
-			return;
-
-		switch (selected) {
-			case 0: // start game
-				break;
-			case 1: // cancel
-				hud.reset();
-				submenu_id = SubMenuId::singleplayer_menu;
-				//w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::singleplayer_menu);
-				break;
-			case 2: // settings
-				break;
-			case 3: // ?
-				break;
-			case 4: // number of players
-				if (players.size() != player_count + 2) {
-					size_t adjust = player_count + 2;
-					if (adjust < players.size()) {
-						players.erase(players.begin() + adjust, players.end());
-						if (adjust < vplayers.size())
-							vplayers.erase(vplayers.begin() + adjust, vplayers.end());
-					} else {
-						for (unsigned i = players.size(); i < adjust; ++i) {
-							unsigned id, p_id;
-							std::string pname(std::string("Player ") + std::to_string(i));
-
-							players.emplace_back(p_id = players.size(), 0, pname);
-							vplayers.emplace_back(id = vplayers.size(), p_id, players[p_id].name);
-						}
-					}
+			break;
+		default:
+			switch ((selected - 5) % 3) {
+				case 0: // civ
+				{
+					int index = (selected - 5) / 3;
+					Player &p = players[vplayers[index].p_id];
+					//p.civ_id =
+					break;
 				}
-				break;
-			default:
-				switch ((selected - 5) % 3) {
-					case 0: // civ
-					{
-						int index = (selected - 5) / 3;
-						Player &p = players[vplayers[index].p_id];
-						//p.civ_id =
-						break;
-					}
-					case 1: // controlling player
-						break;
-					case 2: // team
-						break;
-				}
-				break;
+				case 1: // controlling player
+					break;
+				case 2: // team
+					break;
+			}
+			break;
+	}
+}
+
+void AoE::display() {
+	ZoneScoped;
+	SDL_Rect bnds;
+
+	SDL_GetWindowSize(window, &bnds.w, &bnds.h);
+	SDL_GetWindowPosition(window, &bnds.x, &bnds.y);
+
+	video.vp = video.size = bnds;
+
+	lgy_index = 2;
+
+	// prevent division by zero
+	if (bnds.h < 1) bnds.h = 1;
+
+	long long need_w = bnds.w, need_h = bnds.h;
+	right = bottom = 1024;
+
+	if (video.aspect) {
+		need_w = bnds.w;
+		need_h = need_w * 3 / 4;
+
+		// if too big, project width onto aspect ratio of height
+		if (need_h > bnds.h) {
+			need_h = bnds.h;
+			need_w = need_h * 4 / 3;
 		}
+
+		right = need_w;
+		bottom = need_h;
+	} else {
+		right = bnds.w;
+		bottom = bnds.h;
 	}
 
-	void display() {
-		ZoneScoped;
-		SDL_Rect bnds;
-
-		SDL_GetWindowSize(window, &bnds.w, &bnds.h);
-		SDL_GetWindowPosition(window, &bnds.x, &bnds.y);
-
-		video.vp = video.size = bnds;
-
+	// find closest background to match dimensions
+	if (video.legacy) {
 		lgy_index = 2;
 
-		// prevent division by zero
-		if (bnds.h < 1) bnds.h = 1;
-
-		long long need_w = bnds.w, need_h = bnds.h;
-		right = bottom = 1024;
-
-		if (video.aspect) {
-			need_w = bnds.w;
-			need_h = need_w * 3 / 4;
-
-			// if too big, project width onto aspect ratio of height
-			if (need_h > bnds.h) {
-				need_h = bnds.h;
-				need_w = need_h * 4 / 3;
-			}
-
-			right = need_w;
-			bottom = need_h;
-		} else {
-			right = bnds.w;
-			bottom = bnds.h;
-		}
-
-		// find closest background to match dimensions
-		if (video.legacy) {
-			lgy_index = 2;
-
-			if (need_w <= 800)
-				lgy_index = bnds.w <= 640 ? 0 : 1;
-		}
-
-		// adjust viewport if aspect ratio differs
-		if (need_w != bnds.w || need_h != bnds.h) {
-			bnds.x = (bnds.w - need_w) / 2;
-			bnds.y = (bnds.h - need_h) / 2;
-
-			glViewport(video.vp.x = bnds.x, video.vp.y = bnds.y, video.vp.w = need_w, video.vp.h = need_h);
-			glClearColor(0, 0, 0, 0);
-			glClear(GL_COLOR_BUFFER_BIT);
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		} else {
-			video.vp.x = video.vp.y = 0;
-		}
-
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-
-		// glVertex2i will place coordinate on top-left of pixel, adjust orthogonal view to place them on the pixel's center
-		glOrtho(left - 0.5, right - 0.5, bottom - 0.5, top - 0.5, -1, 1);
-
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		glDisable(GL_BLEND);
-
-		if (menu_id != MenuId::config) {
-			bnds.x = left; bnds.y = top; bnds.w = right - left; bnds.h = bottom - top;
-
-			if (menu_id != MenuId::scn_edit) {
-				glEnable(GL_TEXTURE_2D);
-				glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
-				draw_background();
-				glDisable(GL_TEXTURE_2D);
-			}
-
-			hud.was_hot = false;
-
-			switch (menu_id) {
-				case MenuId::start:
-					display_start(bnds);
-					break;
-				case MenuId::editor:
-					display_editor(bnds);
-					break;
-				case MenuId::scn_edit:
-					display_scn_edit(bnds);
-					break;
-				case MenuId::singleplayer:
-					display_singleplayer(bnds);
-					break;
-			}
-
-			hud.display();
-		}
+		if (need_w <= 800)
+			lgy_index = bnds.w <= 640 ? 0 : 1;
 	}
-};
+
+	// adjust viewport if aspect ratio differs
+	if (need_w != bnds.w || need_h != bnds.h) {
+		bnds.x = (bnds.w - need_w) / 2;
+		bnds.y = (bnds.h - need_h) / 2;
+
+		glViewport(video.vp.x = bnds.x, video.vp.y = bnds.y, video.vp.w = need_w, video.vp.h = need_h);
+		glClearColor(0, 0, 0, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	} else {
+		video.vp.x = video.vp.y = 0;
+	}
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	// glVertex2i will place coordinate on top-left of pixel, adjust orthogonal view to place them on the pixel's center
+	glOrtho(left - 0.5, right - 0.5, bottom - 0.5, top - 0.5, -1, 1);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	glDisable(GL_BLEND);
+
+	if (menu_id != MenuId::config) {
+		bnds.x = left; bnds.y = top; bnds.w = right - left; bnds.h = bottom - top;
+
+		if (menu_id != MenuId::scn_edit) {
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, tex_bkg.tex);
+			draw_background();
+			glDisable(GL_TEXTURE_2D);
+		}
+
+		hud.was_hot = false;
+
+		switch (menu_id) {
+			case MenuId::start:
+				display_start(bnds);
+				break;
+			case MenuId::editor:
+				display_editor(bnds);
+				break;
+			case MenuId::scn_edit:
+				display_scn_edit(bnds);
+				break;
+			case MenuId::singleplayer:
+				display_singleplayer(bnds);
+				break;
+		}
+
+		hud.display();
+	}
+}
 
 void ListPopup::display(Hud &hud) {
 	glEnable(GL_BLEND);
@@ -3402,6 +3026,8 @@ void Terrain::show(genie::Texture &tex) {
 	}
 }
 
+}
+
 // Main code
 int main(int, char**)
 {
@@ -3499,17 +3125,18 @@ int main(int, char**)
 	imgui_addons::ImGuiFileBrowser fd;
 
 	bool fs_choose_root = false, auto_detect = false;
-	GLchannel glch;
-	Worker w_bkg(glch);
+	genie::GLchannel glch;
+	genie::Worker w_bkg(glch);
 	int err_bkg;
 
 	std::thread t_bkg(worker_init, std::ref(w_bkg), std::ref(err_bkg));
-	WorkerProgress p = { 0 };
+	genie::WorkerProgress p = { 0 };
 	std::string bkg_result;
 
-	AoE aoe(w_bkg);
-	eng = &aoe;
-	VideoControl &video = aoe.video;
+	genie::AoE aoe(w_bkg);
+	genie::eng = &aoe;
+	genie::VideoControl &video = aoe.video;
+	genie::ui::UI ui;
 
 	// some stuff needs to be cleaned up before we shut down, so we need another scope here
 	{
@@ -3521,13 +3148,13 @@ int main(int, char**)
 		auto_paths.emplace("/media/cdrom");
 #endif
 
-		if (settings.gamepath.length())
-			auto_paths.emplace(settings.gamepath.c_str());
+		if (genie::settings.gamepath.length())
+			auto_paths.emplace(genie::settings.gamepath.c_str());
 
 		if (!auto_paths.empty()) {
 			auto_detect = true;
 			std::string path(auto_paths.top());
-			w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
+			w_bkg.tasks.produce(genie::WorkTaskType::check_root, std::make_pair(path, path));
 			auto_paths.pop();
 		}
 
@@ -3577,6 +3204,7 @@ int main(int, char**)
 						switch (event.key.keysym.sym) {
 							case SDLK_BACKQUOTE:
 								show_debug = !show_debug;
+								ui.show_debug(!ui.show_debug());
 								break;
 							case SDLK_F11:
 								video.set_fullscreen(!video.fullscreen);
@@ -3594,18 +3222,18 @@ int main(int, char**)
 			aoe.working = w_bkg.progress(p);
 
 			// munch all OpenGL commands
-			for (std::optional<GLcmd> cmd; cmd = glch.cmds.try_consume(), cmd.has_value();) {
+			for (std::optional<genie::GLcmd> cmd; cmd = glch.cmds.try_consume(), cmd.has_value();) {
 				switch (cmd->type) {
-					case GLcmdType::stop:
+					case genie::GLcmdType::stop:
 						break;
-					case GLcmdType::set_bkg:
+					case genie::GLcmdType::set_bkg:
 						aoe.ts_next = std::move(std::get<genie::Tilesheet>(cmd->data));
 						break;
-					case GLcmdType::set_dlgcol:
+					case genie::GLcmdType::set_dlgcol:
 						aoe.dlgcol = std::move(std::get<genie::DialogColors>(cmd->data));
 						break;
-					case GLcmdType::set_anims:
-						aoe.anims = std::move(std::get<std::map<AnimationId, unsigned>>(cmd->data));
+					case genie::GLcmdType::set_anims:
+						aoe.anims = std::move(std::get<std::map<genie::AnimationId, unsigned>>(cmd->data));
 						break;
 					default:
 						assert("bad opengl command" == 0);
@@ -3614,13 +3242,13 @@ int main(int, char**)
 			}
 
 			// munch all results
-			for (std::optional<WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
+			for (std::optional<genie::WorkResult> res; res = w_bkg.results.try_consume(), res.has_value();) {
 				switch (res->type) {
-					case WorkResultType::success:
+					case genie::WorkResultType::success:
 						switch (res->task.type) {
-							case WorkTaskType::stop:
+							case genie::WorkTaskType::stop:
 								break;
-							case WorkTaskType::check_root:
+							case genie::WorkTaskType::check_root:
 								// build font cache
 								io.Fonts->Clear();
 								io.Fonts->AddFontDefault();
@@ -3639,26 +3267,26 @@ int main(int, char**)
 								// start game automatically on auto detect
 								if (auto_detect) {
 									auto_detect = false;
-									w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
+									w_bkg.tasks.produce(genie::WorkTaskType::load_menu, genie::MenuId::start);
 								}
 
 								unitview.reset(new UnitView());
 								break;
-							case WorkTaskType::load_menu:
-								aoe.load_menu(std::get<MenuId>(res->task.data));
+							case genie::WorkTaskType::load_menu:
+								aoe.load_menu(std::get<genie::MenuId>(res->task.data));
 								break;
 							default:
 								assert("bad task type" == 0);
 								break;
 						}
 						break;
-					case WorkResultType::stop:
+					case genie::WorkResultType::stop:
 						break;
-					case WorkResultType::fail:
+					case genie::WorkResultType::fail:
 						// try next one
 						if (!auto_paths.empty()) {
 							std::string path(auto_paths.top());
-							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(path, path));
+							w_bkg.tasks.produce(genie::WorkTaskType::check_root, std::make_pair(path, path));
 							auto_paths.pop();
 							aoe.working = true;
 						} else {
@@ -3683,6 +3311,8 @@ int main(int, char**)
 
 			if (unitview.get())
 				unitview->show();
+
+			ui.display();
 
 			if (show_debug) {
 				if (aoe.tex_bkg.tex) {
@@ -3712,7 +3342,6 @@ int main(int, char**)
 
 				if (ImGui::Begin("Debug control")) {
 					ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-					ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 					ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
 
 					if (ImGui::BeginTabBar("dbgtabs")) {
@@ -3788,7 +3417,7 @@ int main(int, char**)
 
 							if (ImGui::Combo("Background tune", &music_id, genie::msc_names, genie::msc_count)) {
 								id = (genie::MusicId)music_id;
-								w_bkg.tasks.produce(WorkTaskType::play_music, id);
+								w_bkg.tasks.produce(genie::WorkTaskType::play_music, id);
 							}
 
 							if (ImGui::Button("Panic")) {
@@ -3875,7 +3504,7 @@ int main(int, char**)
 			static bool show_about = false;
 
 			switch (menu_id) {
-				case MenuId::config:
+				case genie::MenuId::config:
 					ImGui::Begin("Startup configuration", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus);
 					{
 						ImGui::SetWindowSize(io.DisplaySize);
@@ -3904,8 +3533,8 @@ int main(int, char**)
 							printf("fname = %s\npath = %s\n", fname.c_str(), path.c_str());
 
 							fs_has_root = false;
-							settings.gamepath = path;
-							w_bkg.tasks.produce(WorkTaskType::check_root, std::make_pair(fname, path));
+							genie::settings.gamepath = path;
+							w_bkg.tasks.produce(genie::WorkTaskType::check_root, std::make_pair(fname, path));
 						}
 
 						if (aoe.working != working)
@@ -3921,12 +3550,12 @@ int main(int, char**)
 							ImGui::SameLine();
 
 							if (ImGui::Button(CTXT(TextId::btn_startup)))
-								w_bkg.tasks.produce(WorkTaskType::load_menu, MenuId::start);
+								w_bkg.tasks.produce(genie::WorkTaskType::load_menu, genie::MenuId::start);
 						}
 					}
 					ImGui::End();
 					break;
-				case MenuId::scn_edit:
+				case genie::MenuId::scn_edit:
 					ImGui::Begin("Map Editor");
 					{
 						static int w = 20, h = 20;
@@ -4091,25 +3720,6 @@ int main(int, char**)
 					break;
 			}
 
-#if 0
-			if (aoe.global_settings || show_debug) {
-				// candidates for language image: flag 460: 0-9, priest convert 604: 0-9
-				ImGui::Begin(CTXT(TextId::dlg_global), show_debug ? NULL : &aoe.global_settings, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-				{
-					ImGui::SetWindowSize(ImVec2(240, 140));
-					ImGui::SetWindowPos(ImVec2(8, 8));
-
-					if (ImGui::Button(CTXT(TextId::btn_about)))
-						show_about = true;
-
-					lang_current = int(lang);
-					ImGui::Combo(CTXT(TextId::language), &lang_current, langs, int(LangId::max));
-					lang = (LangId)genie::clamp(0, lang_current, int(LangId::max) - 1);
-				}
-				ImGui::End();
-			}
-#endif
-
 			if (show_about) {
 				ImGui::Begin("About", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 				ImGui::SetWindowSize(io.DisplaySize);
@@ -4228,7 +3838,7 @@ int main(int, char**)
 			SDL_GL_SwapWindow(window);
 		}
 
-		settings.load(video);
+		genie::settings.load(video);
 	}
 
 	// try to stop worker
@@ -4236,7 +3846,7 @@ int main(int, char**)
 	// in that case, wait up to 3 seconds
 	w_bkg.tasks.stop();
 
-	settings.save();
+	genie::settings.save();
 
 	auto future = std::async(std::launch::async, &std::thread::join, &t_bkg);
 	if (future.wait_for(std::chrono::seconds(3)) == std::future_status::timeout)

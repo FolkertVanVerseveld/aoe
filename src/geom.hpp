@@ -1,4 +1,6 @@
 /* Copyright 2020 Folkert van Verseveld. All rights reserved */
+#pragma once
+
 #include <cassert>
 
 #include <type_traits>
