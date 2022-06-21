@@ -23,7 +23,7 @@ file(COPY ${AOE_DLLS} DESTINATION ${CMAKE_BINARY_DIR})
 include_directories("../imgui/" "../imgui/backends" ${SDL2_INCLUDE_DIRS})
 
 add_executable(empires "main.cpp" ${AOE_SRC} ${IMGUI_SRC})
-add_executable(testempires ${AOE_TEST} ${AOE_SRC})
+add_executable(testempires ${AOE_TEST} ${AOE_SRC} ${IMGUI_SRC})
 
 target_link_libraries(empires ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(testempires ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
