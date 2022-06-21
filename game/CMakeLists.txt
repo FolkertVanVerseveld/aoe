@@ -13,10 +13,16 @@ find_package(OpenGL REQUIRED)
 file(GLOB AOE_SRC "src/*.cpp")
 file(GLOB AOE_TEST "tests/*.cpp")
 
+file(GLOB IMGUI_CORE_SRC "../imgui/*.cpp")
+set(IMGUI_BACKEND_SRC "../imgui/backends/imgui_impl_sdl.cpp" "../imgui/backends/imgui_impl_opengl3.cpp")
+set(IMGUI_SRC ${IMGUI_CORE_SRC} ${IMGUI_BACKEND_SRC})
+
 file(GLOB AOE_DLLS "*.dll")
 file(COPY ${AOE_DLLS} DESTINATION ${CMAKE_BINARY_DIR})
 
-add_executable(empires "main.cpp" ${AOE_SRC})
+include_directories("../imgui/" "../imgui/backends" ${SDL2_INCLUDE_DIRS})
+
+add_executable(empires "main.cpp" ${AOE_SRC} ${IMGUI_SRC})
 add_executable(testempires ${AOE_TEST} ${AOE_SRC})
 
 target_link_libraries(empires ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
