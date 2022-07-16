@@ -1,4 +1,5 @@
 #include "../src/sdl.hpp"
+#include "../src/time.h"
 
 #include <cstddef>
 #include <cstring>
@@ -7,6 +8,8 @@
 #include <stdexcept>
 
 namespace aoe {
+
+static bool skip_chk_stall;
 
 class SDL_guard final {
 public:
@@ -64,12 +67,12 @@ static bool sdl_error() {
 	return fail;
 }
 
-static void sdl_quit_before_init() {
+static void quit_before_init() {
 	SDL_Quit();
 	chkerr();
 }
 
-static void sdl_init_video() {
+static void init() {
 	SDL_Init(0);
 	SDL_GetNumVideoDisplays();
 	if (!is_error())
@@ -77,13 +80,36 @@ static void sdl_init_video() {
 	SDL_Quit();
 }
 
-static void sdl_init_all() {
+static bool init_check_stall() {
+	timespec before, after;
+
+	clock_gettime(CLOCK_MONOTONIC, &before);
+	SDL_Init(SDL_INIT_VIDEO);
+	chkerr();
+	SDL_Quit();
+	clock_gettime(CLOCK_MONOTONIC, &after);
+
+	double dt_ref = elapsed_time(&before, &after);
+
+	clock_gettime(CLOCK_MONOTONIC, &before);
 	SDL_Init(SDL_INIT_EVERYTHING);
 	chkerr();
 	SDL_Quit();
+	clock_gettime(CLOCK_MONOTONIC, &after);
+
+	double dt = elapsed_time(&before, &after);
+	double slowdown = dt / dt_ref;
+
+	if (dt > 10 && slowdown > 3) {
+		fprintf(stderr, "%s: dt_ref=%.2f sec, dt=%.2f sec (slowdown of %.2f)\n", __func__, dt_ref, dt, slowdown);
+		fprintf(stderr, "%s: compiled for SDL %d.%d.%d\n", __func__, SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL);
+		return true;
+	}
+
+	return false;
 }
 
-static void sdl_query_displays() {
+static void query_displays() {
 	SDL_guard sdl;
 
 	int count = SDL_GetNumVideoDisplays();
@@ -98,10 +124,15 @@ void sdl_runall() {
 		return;
 	}
 
-	sdl_quit_before_init();
-	sdl_init_video();
-	sdl_init_all();
-	sdl_query_displays();
+	quit_before_init();
+	init();
+
+	if (!skip_chk_stall)
+		init_check_stall();
+	else
+		fprintf(stderr, "%s: skip init_check_stall\n", __func__);
+
+	query_displays();
 }
 
 }
