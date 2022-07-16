@@ -54,7 +54,7 @@ bool InputTextMultiline(const char *label, std::string &buf, const ImVec2 &size,
 /* Wrapper to get combo elements from c++ vector<string>. */
 static bool vec_get(void *data, int idx, const char **out)
 {
-	std::vector<std::string> *lst = (decltype(lst))data;
+	const std::vector<std::string> *lst = (decltype(lst))data;
 
 	if (idx < 0 || idx >= lst->size())
 		return false;
@@ -63,9 +63,9 @@ static bool vec_get(void *data, int idx, const char **out)
 	return true;
 }
 
-bool Combo(const char *label, int &idx, std::vector<std::string> &lst, int popup_max_height_in_items)
+bool Combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height_in_items)
 {
-	return ImGui::Combo(label, &idx, vec_get, &lst, lst.size(), popup_max_height_in_items);
+	return ImGui::Combo(label, &idx, vec_get, (void*)&lst, lst.size(), popup_max_height_in_items);
 }
 
 }

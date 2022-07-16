@@ -9,9 +9,14 @@
 #include <imgui_impl_sdl.h>
 #include <imgui_impl_opengl3.h>
 
+#include "nominmax.hpp"
 #include "ui.hpp"
 
+#include <algorithm>
+
 namespace aoe {
+
+const std::vector<std::string> civs{ "oerkneuzen", "sukkols", "medeas", "jasons" };
 
 namespace ui {
 
@@ -44,17 +49,81 @@ void Frame::str(const char *s) {
 	ImGui::TextUnformatted(s);
 }
 
-bool Frame::chkbox(const char *s, bool &b) {
+static bool chkbox(const char *s, bool &b) {
 	return ImGui::Checkbox(s, &b);
+}
+
+bool Frame::chkbox(const char *s, bool &b) {
+	return ui::chkbox(s, b);
 }
 
 bool Frame::btn(const char *s, const ImVec2 &sz) {
 	return ImGui::Button(s, sz);
 }
+bool Frame::xbtn(const char *s, const ImVec2 &sz) {
+	ImGui::BeginDisabled();
+	bool b = ImGui::Button(s, sz);
+	ImGui::EndDisabled();
+	return b;
+}
 
-bool Frame::scalar(const char *label, uint32_t &v) {
+bool Frame::combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height) {
+	if (label && *label == '#') {
+		ImGui::PushItemWidth(-1);
+		bool b = ImGui::Combo(label, idx, lst, popup_max_height);
+		ImGui::PopItemWidth();
+		return b;
+	}
+
+	return ImGui::Combo(label, idx, lst, popup_max_height);
+}
+
+static bool scalar(const char *label, int32_t &v, int32_t step) {
+	static_assert(sizeof(v) == sizeof(int32_t));
+
+	if (label && *label == '#') {
+		ImGui::PushItemWidth(-1);
+		bool b = ImGui::InputScalar(label, ImGuiDataType_S32, &v, step ? (const void *)&step : NULL);
+		ImGui::PopItemWidth();
+		return b;
+	}
+
+	return ImGui::InputScalar(label, ImGuiDataType_U32, &v, step ? (const void *)&step : NULL);
+}
+
+static bool scalar(const char *label, uint32_t &v, uint32_t step) {
 	static_assert(sizeof(v) == sizeof(uint32_t));
-	return ImGui::InputScalar(label, ImGuiDataType_U32, &v);
+
+	if (label && *label == '#') {
+		ImGui::PushItemWidth(-1);
+		bool b = ImGui::InputScalar(label, ImGuiDataType_U32, &v, step ? (const void *)&step : NULL);
+		ImGui::PopItemWidth();
+		return b;
+	}
+
+	return ImGui::InputScalar(label, ImGuiDataType_U32, &v, step ? (const void*)&step : NULL);
+}
+
+bool Frame::scalar(const char *label, int32_t &v, int32_t step) {
+	return ui::scalar(label, v, step);
+}
+
+bool Frame::scalar(const char *label, uint32_t &v, uint32_t step) {
+	return ui::scalar(label, v, step);
+}
+
+static bool text(const char *label, std::string &buf, ImGuiInputTextFlags flags) {
+	if (label && *label == '#') {
+		ImGui::PushItemWidth(-1);
+		bool b = ImGui::InputText(label, buf, flags);
+		ImGui::PopItemWidth();
+		return b;
+	}
+	return ImGui::InputText(label, buf, flags);
+}
+
+bool Frame::text(const char *label, std::string &buf, ImGuiInputTextFlags flags) {
+	return ui::text(label, buf, flags);
 }
 
 void Frame::sl() {
@@ -142,6 +211,30 @@ void Row::fmt(const char *s, ...) {
 	next();
 }
 
+bool Row::chkbox(const char *s, bool &v) {
+	bool b = ui::chkbox(s, v);
+	next();
+	return b;
+}
+
+bool Row::scalar(const char *label, int32_t &v, int32_t step) {
+	bool b = ui::scalar(label, v, step);
+	next();
+	return b;
+}
+
+bool Row::scalar(const char *label, uint32_t &v, uint32_t step) {
+	bool b = ui::scalar(label, v, step);
+	next();
+	return b;
+}
+
+bool Row::text(const char *label, std::string &buf, ImGuiInputTextFlags flags) {
+	bool b = ui::text(label, buf, flags);
+	next();
+	return b;
+}
+
 }
 
 using namespace ui;
@@ -168,25 +261,62 @@ void Engine::show_multiplayer_host() {
 	{
 		Table t;
 
-		if (t.begin("PlayerTable", 4)) {
-			t.row(-1, {"Name", "Civ", "Player", "Team"});
+		if (t.begin("PlayerTable", 5)) {
+			t.row(-1, {"Type", "Name", "Civ", "Player", "Team"});
 
-			for (unsigned i = 0; i < 8; ++i) {
-				Row r(4, i);
+			unsigned del = scn.players.size();
+			unsigned from = 0, to = 0;
 
-				r.fmt("player %u", i + 1);
-				r.str("Macedonian");
-				r.fmt("%u", i + 1);
-				r.str("-");
+			for (unsigned i = 0; i < scn.players.size(); ++i) {
+				Row r(5, i);
+				PlayerSetting &p = scn.players[i];
+
+				if (f.btn("X"))
+					del = i;
+				f.sl();
+				if (f.btn("^")) {
+					from = (i + scn.players.size() - 1) % scn.players.size();
+					to = i;
+				}
+				f.sl();
+				if (f.btn("V")) {
+					from = i;
+					to = (i + 1) % scn.players.size();
+				}
+				f.sl();
+				r.chkbox("AI", p.ai);
+
+				r.text("##0", p.name);
+
+				f.combo("##1", p.civ, civs);
+				r.next();
+
+				p.index = std::max(1u, p.index);
+				r.scalar("##2", p.index, 1);
+
+				p.team = std::max(1u, p.team);
+				r.scalar("##3", p.team, 1);
+			}
+
+			if (del >= 0 && del < scn.players.size())
+				scn.players.erase(scn.players.begin() + del);
+
+			if (from != to && !scn.players.empty()) {
+				PlayerSetting tmp = scn.players[from];
+				scn.players[from] = scn.players[to];
+				scn.players[to] = tmp;
 			}
 		}
 	}
+
+	if (f.btn("+"))
+		scn.players.emplace_back();
 
 	ImGui::EndChild();
 	ImGui::BeginChild("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar);
 	f.str("Chat");
 	// TODO add chat
-	ImGui::InputText("##", chat_line);
+	f.text("##", chat_line);
 	ImGui::EndChild();
 	ImGui::EndChild();
 
@@ -213,7 +343,9 @@ void Engine::show_multiplayer_host() {
 
 	f.sl();
 
-	if (f.btn("Start Game"))
+	if (scn.players.empty())
+		f.xbtn("Start Game");
+	else if (f.btn("Start Game"))
 		menu_state = MenuState::multiplayer_game;
 
 	f.sl();

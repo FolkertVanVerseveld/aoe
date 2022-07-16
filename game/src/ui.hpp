@@ -25,10 +25,16 @@ public:
 	void close();
 
 	void str(const char*);
+
 	bool chkbox(const char*, bool&);
 	bool btn(const char*, const ImVec2 &sz=ImVec2(0, 0));
+	bool xbtn(const char*, const ImVec2 &sz=ImVec2(0, 0)); // like btn, but disabled
+	bool combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height_in_items=-1);
 
-	bool scalar(const char *label, uint32_t &v);
+	// typed input fields
+	bool scalar(const char *label, int32_t &v, int32_t step=0);
+	bool scalar(const char *label, uint32_t &v, uint32_t step=0);
+	bool text(const char *label, std::string &buf, ImGuiInputTextFlags flags=0);
 
 	void sl(); // SameLine
 
@@ -59,10 +65,18 @@ public:
 
 	void next();
 
+	// similar to Frame's functions but these all automagically call next upon return
 	void str(const char*);
 	void strs(std::initializer_list<const char*>);
 
-	void fmt(const char *s, ...);
+	void fmt(const char*, ...);
+
+	bool chkbox(const char*, bool&);
+
+	// typed input fields
+	bool scalar(const char *label, int32_t &v, int32_t step=0);
+	bool scalar(const char *label, uint32_t &v, uint32_t step=0);
+	bool text(const char *label, std::string &buf, ImGuiInputTextFlags flags=0);
 };
 
 }

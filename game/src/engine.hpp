@@ -32,9 +32,12 @@ public:
 class PlayerSetting final {
 public:
 	std::string name;
-	unsigned civ;
+	bool ai;
+	int civ;
 	unsigned index; // may overlap
 	unsigned team;
+
+	PlayerSetting() : name(), ai(false), civ(0), index(1), team(1) {}
 };
 
 class ScenarioSettings final {
@@ -47,7 +50,7 @@ public:
 	unsigned width, height;
 	unsigned popcap;
 
-	ScenarioSettings() : players(), fixed_start(true), explored(false), all_technologies(false), cheating(false), width(48), height(48), popcap(100) {}
+	ScenarioSettings() : players(8), fixed_start(true), explored(false), all_technologies(false), cheating(false), width(48), height(48), popcap(100) {}
 };
 
 class Engine final {
