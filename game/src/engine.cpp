@@ -74,11 +74,19 @@ void Config::save(const std::string &path) {
 	write(out, vp);
 }
 
+ScenarioSettings::ScenarioSettings()
+	: players(8)
+	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
+	, square(true), width(48), height(48)
+	, popcap(100)
+	, age(1), seed(1)
+	, res(200, 200, 0, 0) {}
+
 Engine::Engine()
 	: net(), show_demo(false)
 	, connection_mode(0), connection_port(32768), connection_host("")
 	, menu_state(MenuState::init), multiplayer_ready(false), cfg("config"), scn()
-	, chat_line()
+	, chat_line(), chat()
 {
 	std::lock_guard<std::mutex> lk(m_eng);
 	if (eng)
@@ -202,6 +210,7 @@ int Engine::mainloop() {
 	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 #pragma warning(default: 26812)
 	SDL_Window *window = SDL_CreateWindow("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, window_flags);
+	SDL_SetWindowMinimumSize(window, 640, 480);
 	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 	SDL_GL_MakeCurrent(window, gl_context);
 	SDL_GL_SetSwapInterval(1); // Enable vsync

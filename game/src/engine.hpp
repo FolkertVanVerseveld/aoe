@@ -4,11 +4,18 @@
 
 #include "sdl.hpp"
 
+#include <deque>
 #include <mutex>
 #include <string>
 #include <vector>
 
 namespace aoe {
+
+namespace ui {
+
+class Frame;
+
+}
 
 enum class MenuState {
 	init,
@@ -29,6 +36,13 @@ public:
 	void save(const std::string&);
 };
 
+struct Resources final {
+	int food, wood, gold, stone;
+
+	Resources() : food(0), wood(0), gold(0), stone(0) {}
+	Resources(int f, int w, int g, int s) : food(f), wood(w), gold(g), stone(s) {}
+};
+
 class PlayerSetting final {
 public:
 	std::string name;
@@ -47,10 +61,15 @@ public:
 	bool explored;
 	bool all_technologies;
 	bool cheating;
+	bool square;
 	unsigned width, height;
 	unsigned popcap;
+	unsigned age;
+	unsigned seed;
 
-	ScenarioSettings() : players(8), fixed_start(true), explored(false), all_technologies(false), cheating(false), width(48), height(48), popcap(100) {}
+	Resources res;
+
+	ScenarioSettings();
 };
 
 class Engine final {
@@ -68,6 +87,7 @@ class Engine final {
 	Config cfg;
 	ScenarioSettings scn;
 	std::string chat_line;
+	std::deque<std::string> chat;
 public:
 	Engine();
 	~Engine();
@@ -77,6 +97,8 @@ private:
 	void display();
 	void show_init();
 	void show_multiplayer_host();
+	void show_mph_tbl(ui::Frame &f);
+	void show_mph_cfg(ui::Frame &f);
 	void show_menubar();
 };
 

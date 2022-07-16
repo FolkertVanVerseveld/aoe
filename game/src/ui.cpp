@@ -49,6 +49,15 @@ void Frame::str(const char *s) {
 	ImGui::TextUnformatted(s);
 }
 
+void Frame::fmt(const char *s, ...) {
+	va_list args;
+	va_start(args, s);
+
+	ImGui::TextV(s, args);
+
+	va_end(args);
+}
+
 static bool chkbox(const char *s, bool &b) {
 	return ImGui::Checkbox(s, &b);
 }
@@ -250,7 +259,7 @@ void Engine::show_multiplayer_host() {
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
-	f.str("Multiplayer game");
+	f.fmt("Multiplayer game - %u %s", scn.players.size(), scn.players.size() == 1 ? "player" : "players");
 
 	float frame_height = 0.85f;
 	float player_height = 0.7f;
@@ -258,6 +267,51 @@ void Engine::show_multiplayer_host() {
 
 	ImGui::BeginChild("LeftFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.7f, ImGui::GetWindowHeight() * frame_height));
 	ImGui::BeginChild("PlayerFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+	show_mph_tbl(f);
+
+	ImGui::EndChild();
+	ImGui::BeginChild("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar);
+	f.str("Chat");
+	ImGui::BeginChild("ChatHistory", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * 0.55f), true);
+
+	for (std::string &s : chat)
+		f.str(s.c_str());
+
+	ImGui::EndChild();
+
+	if (f.text("##", chat_line, ImGuiInputTextFlags_EnterReturnsTrue)) {
+		chat.emplace_back(chat_line);
+		chat_line.clear();
+	}
+	ImGui::EndChild();
+	ImGui::EndChild();
+
+	f.sl();
+	ImGui::BeginChild("SettingsFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, ImGui::GetWindowHeight() * frame_height), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+	show_mph_cfg(f);
+
+	ImGui::EndChild();
+
+	f.chkbox("I'm Ready!", multiplayer_ready);
+
+	f.sl();
+
+	if (scn.players.empty())
+		f.xbtn("Start Game");
+	else if (f.btn("Start Game"))
+		menu_state = MenuState::multiplayer_game;
+
+	f.sl();
+
+	if (f.btn("Cancel"))
+		menu_state = MenuState::init;
+}
+
+void Engine::show_mph_tbl(ui::Frame &f) {
+	bool has_ai = false;
+
 	{
 		Table t;
 
@@ -286,6 +340,8 @@ void Engine::show_multiplayer_host() {
 				f.sl();
 				r.chkbox("AI", p.ai);
 
+				if (p.ai) has_ai = true;
+
 				r.text("##0", p.name);
 
 				f.combo("##1", p.civ, civs);
@@ -309,49 +365,74 @@ void Engine::show_multiplayer_host() {
 		}
 	}
 
+	{
+		int i = 0;
+		ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(i / 7.0f, 0.6f, 0.6f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(i / 7.0f, 0.7f, 0.7f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(i / 7.0f, 0.8f, 0.8f));
+
+		if (has_ai) {
+			if (f.btn("Clear AI")) {
+				std::vector<PlayerSetting> scn2;
+
+				for (PlayerSetting &p : scn.players)
+					if (!p.ai)
+						scn2.emplace_back(p);
+
+				scn.players = scn2;
+			}
+		} else if (f.btn("Clear")) {
+			scn.players.clear();
+		}
+
+		ImGui::PopStyleColor(3);
+
+		f.sl();
+	}
+
 	if (f.btn("+"))
 		scn.players.emplace_back();
 
-	ImGui::EndChild();
-	ImGui::BeginChild("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar);
-	f.str("Chat");
-	// TODO add chat
-	f.text("##", chat_line);
-	ImGui::EndChild();
-	ImGui::EndChild();
-
 	f.sl();
-	ImGui::BeginChild("SettingsFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, ImGui::GetWindowHeight() * frame_height), false, ImGuiWindowFlags_HorizontalScrollbar);
-	if (ImGui::Button("Settings")) {
-	}
 
+	if (f.btn("+10"))
+		for (unsigned i = 0; i < 10; ++i)
+			scn.players.emplace_back();
+
+	while (scn.players.size() > 255)
+		scn.players.pop_back();
+}
+
+void Engine::show_mph_cfg(ui::Frame &f) {
 	f.str("Scenario: Random map");
+	f.scalar("seed", scn.seed);
 
-	f.scalar("Map width", scn.width);
-	f.scalar("Map height", scn.height);
+	f.str("Size:");
+	f.sl();
+	f.chkbox("squared", scn.square);
+	scn.width = std::clamp(scn.width, 8u, 65536u);
+	if (f.scalar("Width", scn.width, 1) && scn.square)
+		scn.height = scn.width;
+	scn.height = std::clamp(scn.height, 8u, 65536u);
+	if (f.scalar("Height", scn.height, 1) && scn.square)
+		scn.width = scn.height;
 
 	f.chkbox("Fixed position", scn.fixed_start);
 	f.chkbox("Reveal map", scn.explored);
 	f.chkbox("Full Tech Tree", scn.all_technologies);
 	f.chkbox("Enable cheating", scn.cheating);
 
-	f.scalar("Population limit", scn.popcap);
+	scn.age = std::clamp(scn.age, 1u, 4u);
+	f.scalar("Age", scn.age, 1);
 
-	ImGui::EndChild();
+	scn.popcap = std::clamp(scn.popcap, 5u, 1000u);
+	f.scalar("Max pop.", scn.popcap, 5);
 
-	f.chkbox("I'm Ready!", multiplayer_ready);
-
-	f.sl();
-
-	if (scn.players.empty())
-		f.xbtn("Start Game");
-	else if (f.btn("Start Game"))
-		menu_state = MenuState::multiplayer_game;
-
-	f.sl();
-
-	if (f.btn("Cancel"))
-		menu_state = MenuState::init;
+	f.str("Resources:");
+	f.scalar("food", scn.res.food, 10);
+	f.scalar("wood", scn.res.wood, 10);
+	f.scalar("gold", scn.res.gold, 10);
+	f.scalar("stone", scn.res.stone, 10);
 }
 
 }

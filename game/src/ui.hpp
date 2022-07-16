@@ -25,6 +25,7 @@ public:
 	void close();
 
 	void str(const char*);
+	void fmt(const char*, ...);
 
 	bool chkbox(const char*, bool&);
 	bool btn(const char*, const ImVec2 &sz=ImVec2(0, 0));
