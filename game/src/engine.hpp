@@ -2,7 +2,7 @@
 
 #include "net.hpp"
 
-#include <SDL2/SDL_rect.h>
+#include "sdl.hpp"
 
 #include <mutex>
 #include <string>
@@ -56,7 +56,7 @@ class Engine final {
 	bool show_demo;
 	int connection_mode;
 	unsigned short connection_port;
-	char connection_host[32];
+	char connection_host[256]; // 253 according to https://web.archive.org/web/20190518124533/https://devblogs.microsoft.com/oldnewthing/?p=7873
 	MenuState menu_state;
 
 	// multiplayer_host

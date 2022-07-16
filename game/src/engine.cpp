@@ -1,14 +1,24 @@
 #include "engine.hpp"
 
+#include "sdl.hpp"
+#include "string.hpp"
+
 #include <imgui.h>
 #include <imgui_impl_sdl.h>
 #include <imgui_impl_opengl3.h>
 
-#include <SDL2/SDL.h>
+#if _WIN32 || defined(AOE_SDL_NO_PREFIX)
+#if defined(IMGUI_IMPL_OPENGL_ES2)
+#include <SDL_opengles2.h>
+#else
+#include <SDL_opengl.h>
+#endif
+#else
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <SDL2/SDL_opengles2.h>
 #else
 #include <SDL2/SDL_opengl.h>
+#endif
 #endif
 
 #include "imgui_user.hpp"
@@ -121,7 +131,7 @@ void Engine::show_init() {
 		ImGui::InputText("host", connection_host, sizeof(connection_host));
 		ImGui::SameLine();
 		if (ImGui::Button("localhost"))
-			strcpy(connection_host, "127.0.0.1");
+			strncpy0(connection_host, "127.0.0.1", sizeof(connection_host));
 	}
 
 	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
@@ -137,95 +147,6 @@ void Engine::show_init() {
 
 	if (ImGui::Button("quit"))
 		throw 0;
-
-	ImGui::End();
-}
-
-void Engine::show_multiplayer_host() {
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(vp->WorkPos);
-
-	if (!ImGui::Begin("multiplayer host", NULL, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
-		ImGui::End();
-		return;
-	}
-
-	ImGui::SetWindowSize(vp->WorkSize);
-
-	ImGui::TextUnformatted("Multiplayer game");
-
-	float frame_height = 0.85f;
-	float player_height = 0.7f;
-	float frame_margin = 0.075f;
-
-	ImGui::BeginChild("LeftFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.7f, ImGui::GetWindowHeight() * frame_height));
-	ImGui::BeginChild("PlayerFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar);
-	ImGui::BeginTable("PlayerTable", 4);
-
-	ImGui::PushID(-1);
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::TextUnformatted("Name");
-	ImGui::TableNextColumn();
-	ImGui::TextUnformatted("Civ");
-	ImGui::TableNextColumn();
-	ImGui::TextUnformatted("Player");
-	ImGui::TableNextColumn();
-	ImGui::TextUnformatted("Team");
-	ImGui::PopID();
-
-	for (unsigned i = 0; i < 8; ++i) {
-		ImGui::PushID(i);
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Text("player %u", i + 1);
-		ImGui::TableNextColumn();
-		ImGui::TextUnformatted("Macedonian");
-		ImGui::TableNextColumn();
-		ImGui::Text("%u", i + 1);
-		ImGui::TableNextColumn();
-		ImGui::TextUnformatted("-");
-		ImGui::PopID();
-	}
-	ImGui::EndTable();
-	ImGui::EndChild();
-	ImGui::BeginChild("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar);
-	ImGui::TextUnformatted("Chat");
-	// TODO add chat
-	ImGui::InputText("##", chat_line);
-	ImGui::EndChild();
-	ImGui::EndChild();
-
-	ImGui::SameLine();
-	ImGui::BeginChild("SettingsFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, ImGui::GetWindowHeight() * frame_height), false, ImGuiWindowFlags_HorizontalScrollbar);
-	if (ImGui::Button("Settings")) {
-	}
-
-	ImGui::TextUnformatted("Scenario: Random map");
-
-	ImGui::InputScalar("Map width", ImGuiDataType_U32, &scn.width);
-	ImGui::InputScalar("Map height", ImGuiDataType_U32, &scn.height);
-
-	ImGui::Checkbox("Fixed position", &scn.fixed_start);
-	ImGui::Checkbox("Reveal map", &scn.explored);
-	ImGui::Checkbox("Full Tech Tree", &scn.all_technologies);
-	ImGui::Checkbox("Enable cheating", &scn.cheating);
-
-	ImGui::InputScalar("Population limit", ImGuiDataType_U32, &scn.popcap);
-
-	ImGui::EndChild();
-
-	ImGui::Checkbox("I'm Ready!", &multiplayer_ready);
-
-	ImGui::SameLine();
-
-	if (ImGui::Button("Start Game"))
-		menu_state = MenuState::multiplayer_game;
-
-	ImGui::SameLine();
-
-	if (ImGui::Button("Cancel"))
-		menu_state = MenuState::init;
 
 	ImGui::End();
 }
@@ -247,14 +168,7 @@ void Engine::display() {
 }
 
 int Engine::mainloop() {
-	// Setup SDL
-	// (Some versions of SDL before <2.0.10 appears to have performance/stalling issues on a minority of Windows systems,
-	// depending on whether SDL_INIT_GAMECONTROLLER is enabled or disabled.. updating to latest version of SDL is recommended!)
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
-	{
-		printf("Error: %s\n", SDL_GetError());
-		return -1;
-	}
+	SDL sdl;
 
 	// Decide GL+GLSL versions
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -284,7 +198,9 @@ int Engine::mainloop() {
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+#pragma warning(disable: 26812)
 	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+#pragma warning(default: 26812)
 	SDL_Window *window = SDL_CreateWindow("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, window_flags);
 	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 	SDL_GL_MakeCurrent(window, gl_context);
@@ -348,26 +264,7 @@ int Engine::mainloop() {
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
 
-		// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
-		{
-			static float f = 0.0f;
-			static int counter = 0;
-
-			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-			ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-
-			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-			ImGui::ColorEdit3("clear color", (float *)&clear_color); // Edit 3 floats representing a color
-
-			if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-				counter++;
-			ImGui::SameLine();
-			ImGui::Text("counter = %d", counter);
-
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-			ImGui::End();
-		}
+		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
 		display();
 
@@ -387,7 +284,6 @@ int Engine::mainloop() {
 
 	SDL_GL_DeleteContext(gl_context);
 	SDL_DestroyWindow(window);
-	SDL_Quit();
 
 	return 0;
 }

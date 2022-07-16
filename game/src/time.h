@@ -48,10 +48,15 @@ static int clock_gettime(int dummy, struct timespec *spec)
 // END code taken from https://stackoverflow.com/questions/5404277/porting-clock-gettime-to-windows
 #endif
 
+#pragma warning(push)
+#pragma warning(disable: 26451)
+
 static double elapsed_time(const struct timespec *start, const struct timespec *end)
 {
 	return (double)end->tv_sec - start->tv_sec + (end->tv_nsec - start->tv_nsec) / 1000000000.0;
 }
+
+#pragma warning(pop)
 
 #if __cplusplus
 }

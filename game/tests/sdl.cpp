@@ -4,12 +4,14 @@
 #include <cstddef>
 #include <cstring>
 
+#include <cstdio>
+
 #include <memory>
 #include <stdexcept>
 
 namespace aoe {
 
-static bool skip_chk_stall;
+static bool skip_chk_stall = true;
 
 class SDL_guard final {
 public:
@@ -114,8 +116,77 @@ static void query_displays() {
 
 	int count = SDL_GetNumVideoDisplays();
 	chkerr();
-	if (count < 1)
+	if (count < 1) {
 		fprintf(stderr, "%s: expected positive count, but got %d\n", __func__, count);
+		return;
+	}
+
+	printf("%s: detected %d %s\n", __func__, count, count == 1 ? "display" : "displays");
+
+	for (int i = 0; i < count; ++i) {
+		SDL_Rect bnds;
+
+		if (SDL_GetDisplayBounds(i, &bnds)) {
+			fprintf(stderr, "%s: unknown bounds for display %d: %s\n", __func__, i, SDL_GetError());
+			SDL_ClearError();
+			continue;
+		}
+
+		printf("display %d: %4dx%4d at %4d,%4d\n", i, bnds.w, bnds.h, bnds.x, bnds.y);
+	}
+
+	for (int i = 0; i < count; ++i) {
+		SDL_Rect bnds, bnds2;
+
+		SDL_GetDisplayBounds(i, &bnds);
+		SDL_GetDisplayUsableBounds(i, &bnds2);
+
+		putchar('\n');
+		printf("display %d:\n", i);
+		printf("  resolution : %4dx%4d at %4d,%4d\n", bnds.w, bnds.h, bnds.x, bnds.y);
+		printf("  usable area: %4dx%4d at %4d,%4d\n", bnds2.w, bnds2.h, bnds2.x, bnds2.y);
+
+		double aspect = (double)bnds.w / bnds.h;
+
+		// try to determine exact ratio
+		long long llw = (long long)bnds.w, llh = (long long)bnds.h;
+		char *fmt = "unknown format";
+
+		// check both ways as we may have rounding errors.
+		// i didn't verify this formula, so there might be situations were it isn't exact
+		if (llw / 4 * 3 == llh && llh / 3 * 4 == llw)
+			fmt = "4:3";
+		else if (llw / 16 * 9 == llh && llh / 9 * 16 == llw)
+			fmt = "16:9";
+		else if (llw / 21 * 9 == llh && llh / 9 * 21 == llw)
+			fmt = "21:9";
+
+		printf("  aspect ratio: %s (%.2f)\n", fmt, aspect);
+
+		int modes = SDL_GetNumDisplayModes(i);
+		if (modes < 0) {
+			fprintf(stderr, "%s: no modes found for display %d\n", __func__, i);
+			continue;
+		}
+
+		printf("  display modes: %d\n", modes);
+
+#if 0
+		for (int j = 0; j < modes; ++j) {
+			SDL_DisplayMode m;
+
+			if (SDL_GetDisplayMode(i, j, &m)) {
+				fprintf(stderr, "%s: bad mode %d for display %d: %s\n", __func__, j, i, SDL_GetError());
+				continue;
+			}
+
+			printf("\n  mode %d:\n", j);
+			printf("    resolution: %4dx%4d\n", m.w, m.h);
+		}
+#endif
+	}
+
+	chkerr();
 }
 
 void sdl_runall() {
