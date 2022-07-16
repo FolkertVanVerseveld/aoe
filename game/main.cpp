@@ -14,6 +14,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "runtime error: %s\n", e.what());
 	} catch (const std::exception &e) {
 		fprintf(stderr, "internal error: %s\n", e.what());
+	} catch (int v) {
+		return v;
 	}
 	return 1;
 }

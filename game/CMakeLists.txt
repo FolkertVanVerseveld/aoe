@@ -17,6 +17,9 @@ file(GLOB IMGUI_CORE_SRC "../imgui/*.cpp")
 set(IMGUI_BACKEND_SRC "../imgui/backends/imgui_impl_sdl.cpp" "../imgui/backends/imgui_impl_opengl3.cpp")
 set(IMGUI_SRC ${IMGUI_CORE_SRC} ${IMGUI_BACKEND_SRC})
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSDL_MAIN_HANDLED")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSDL_MAIN_HANDLED")
+
 file(GLOB AOE_DLLS "*.dll")
 file(COPY ${AOE_DLLS} DESTINATION ${CMAKE_BINARY_DIR})
 

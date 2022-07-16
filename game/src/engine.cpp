@@ -11,17 +11,65 @@
 #include <SDL2/SDL_opengl.h>
 #endif
 
+#include "imgui_user.hpp"
+
 #include <cstdio>
+#include <cstdint>
 
 #include <mutex>
 #include <memory>
+
+#include <fstream>
+#include <stdexcept>
+#include <string>
 
 namespace aoe {
 
 Engine *eng;
 std::mutex m_eng;
 
-Engine::Engine() : show_demo(false) {
+static const char *connection_modes[] = {"host game", "join game"};
+
+static void write(std::ofstream &out, SDL_Rect r) {
+	static_assert(sizeof(int) == sizeof(int32_t));
+	out.write((const char *)&r.x, sizeof r.x);
+	out.write((const char *)&r.y, sizeof r.y);
+	out.write((const char *)&r.w, sizeof r.w);
+	out.write((const char *)&r.h, sizeof r.h);
+}
+
+Config::Config() : Config("") {}
+Config::Config(const std::string &s) : bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s) {}
+
+Config::~Config() {
+	if (path.empty())
+		return;
+
+	try {
+		save(path);
+	} catch (std::exception&) {}
+}
+
+void Config::save(const std::string &path) {
+	std::ofstream out(path, std::ios_base::binary | std::ios_base::trunc);
+
+	// let c++ take care of any errors
+	out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+
+	uint32_t magic = 0x06ce09f6;
+
+	out.write((const char*)&magic, sizeof magic);
+	write(out, bnds);
+	write(out, display);
+	write(out, vp);
+}
+
+Engine::Engine()
+	: net(), show_demo(false)
+	, connection_mode(0), connection_port(32768), connection_host("")
+	, menu_state(MenuState::init), multiplayer_ready(false), cfg("config"), scn()
+	, chat_line()
+{
 	std::lock_guard<std::mutex> lk(m_eng);
 	if (eng)
 		throw std::runtime_error("there can be only one");
@@ -41,7 +89,7 @@ void Engine::show_menubar() {
 
 	if (ImGui::BeginMenu("File")) {
 		if (ImGui::MenuItem("Quit"))
-			exit(0);
+			throw 0;
 
 		ImGui::EndMenu();
 	}
@@ -54,8 +102,145 @@ void Engine::show_menubar() {
 	ImGui::EndMainMenuBar();
 }
 
+void Engine::show_init() {
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos); 
+
+	if (!ImGui::Begin("init", NULL, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
+		ImGui::End();
+		return;
+	}
+
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	//ImGui::TextUnformatted("welcome to the free software age of empires setup launcher");
+
+	ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes));
+
+	if (connection_mode == 1) {
+		ImGui::InputText("host", connection_host, sizeof(connection_host));
+		ImGui::SameLine();
+		if (ImGui::Button("localhost"))
+			strcpy(connection_host, "127.0.0.1");
+	}
+
+	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
+
+	if (ImGui::Button("start")) {
+		switch (connection_mode) {
+			case 0: menu_state = MenuState::multiplayer_host; break;
+			case 1: break;
+		}
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("quit"))
+		throw 0;
+
+	ImGui::End();
+}
+
+void Engine::show_multiplayer_host() {
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos);
+
+	if (!ImGui::Begin("multiplayer host", NULL, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
+		ImGui::End();
+		return;
+	}
+
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	ImGui::TextUnformatted("Multiplayer game");
+
+	float frame_height = 0.85f;
+	float player_height = 0.7f;
+	float frame_margin = 0.075f;
+
+	ImGui::BeginChild("LeftFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.7f, ImGui::GetWindowHeight() * frame_height));
+	ImGui::BeginChild("PlayerFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::BeginTable("PlayerTable", 4);
+
+	ImGui::PushID(-1);
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::TextUnformatted("Name");
+	ImGui::TableNextColumn();
+	ImGui::TextUnformatted("Civ");
+	ImGui::TableNextColumn();
+	ImGui::TextUnformatted("Player");
+	ImGui::TableNextColumn();
+	ImGui::TextUnformatted("Team");
+	ImGui::PopID();
+
+	for (unsigned i = 0; i < 8; ++i) {
+		ImGui::PushID(i);
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Text("player %u", i + 1);
+		ImGui::TableNextColumn();
+		ImGui::TextUnformatted("Macedonian");
+		ImGui::TableNextColumn();
+		ImGui::Text("%u", i + 1);
+		ImGui::TableNextColumn();
+		ImGui::TextUnformatted("-");
+		ImGui::PopID();
+	}
+	ImGui::EndTable();
+	ImGui::EndChild();
+	ImGui::BeginChild("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::TextUnformatted("Chat");
+	// TODO add chat
+	ImGui::InputText("##", chat_line);
+	ImGui::EndChild();
+	ImGui::EndChild();
+
+	ImGui::SameLine();
+	ImGui::BeginChild("SettingsFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, ImGui::GetWindowHeight() * frame_height), false, ImGuiWindowFlags_HorizontalScrollbar);
+	if (ImGui::Button("Settings")) {
+	}
+
+	ImGui::TextUnformatted("Scenario: Random map");
+
+	ImGui::InputScalar("Map width", ImGuiDataType_U32, &scn.width);
+	ImGui::InputScalar("Map height", ImGuiDataType_U32, &scn.height);
+
+	ImGui::Checkbox("Fixed position", &scn.fixed_start);
+	ImGui::Checkbox("Reveal map", &scn.explored);
+	ImGui::Checkbox("Full Tech Tree", &scn.all_technologies);
+	ImGui::Checkbox("Enable cheating", &scn.cheating);
+
+	ImGui::InputScalar("Population limit", ImGuiDataType_U32, &scn.popcap);
+
+	ImGui::EndChild();
+
+	ImGui::Checkbox("I'm Ready!", &multiplayer_ready);
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("Start Game"))
+		menu_state = MenuState::multiplayer_game;
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("Cancel"))
+		menu_state = MenuState::init;
+
+	ImGui::End();
+}
+
 void Engine::display() {
 	show_menubar();
+
+	switch (menu_state) {
+		case MenuState::multiplayer_host:
+			show_multiplayer_host();
+			break;
+		default:
+			show_init();
+			break;
+	}
 
 	if (show_demo)
 		ImGui::ShowDemoWindow(&show_demo);
@@ -65,7 +250,7 @@ int Engine::mainloop() {
 	// Setup SDL
 	// (Some versions of SDL before <2.0.10 appears to have performance/stalling issues on a minority of Windows systems,
 	// depending on whether SDL_INIT_GAMECONTROLLER is enabled or disabled.. updating to latest version of SDL is recommended!)
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
 	{
 		printf("Error: %s\n", SDL_GetError());
 		return -1;
