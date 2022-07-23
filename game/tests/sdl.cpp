@@ -11,7 +11,7 @@
 
 namespace aoe {
 
-static bool skip_chk_stall = true;
+static bool skip_chk_stall = false;
 
 class SDL_guard final {
 public:

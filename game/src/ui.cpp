@@ -121,6 +121,11 @@ bool Frame::scalar(const char *label, uint32_t &v, uint32_t step) {
 	return ui::scalar(label, v, step);
 }
 
+bool Frame::scalar(const char *label, uint32_t &v, uint32_t step, uint32_t min, uint32_t max) {
+	v = std::clamp(v, min, max);
+	return ui::scalar(label, v, step);
+}
+
 static bool text(const char *label, std::string &buf, ImGuiInputTextFlags flags) {
 	if (label && *label == '#') {
 		ImGui::PushItemWidth(-1);
@@ -281,8 +286,13 @@ void Engine::show_multiplayer_host() {
 	ImGui::EndChild();
 
 	if (f.text("##", chat_line, ImGuiInputTextFlags_EnterReturnsTrue)) {
-		chat.emplace_back(chat_line);
+		if (chat_line == "/clear" || chat_line == "/cls")
+			chat.clear();
+		else
+			chat.emplace_back(chat_line);
+
 		chat_line.clear();
+		ImGui::SetKeyboardFocusHere(-1);
 	}
 	ImGui::EndChild();
 	ImGui::EndChild();
@@ -409,12 +419,11 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 
 	f.str("Size:");
 	f.sl();
-	f.chkbox("squared", scn.square);
-	scn.width = std::clamp(scn.width, 8u, 65536u);
-	if (f.scalar("Width", scn.width, 1) && scn.square)
+	if (f.chkbox("squared", scn.square) && scn.square)
+		scn.width = scn.height;
+	if (f.scalar("Width", scn.width, 1, 8, 65536) && scn.square)
 		scn.height = scn.width;
-	scn.height = std::clamp(scn.height, 8u, 65536u);
-	if (f.scalar("Height", scn.height, 1) && scn.square)
+	if (f.scalar("Height", scn.height, 1, 8, 65536) && scn.square)
 		scn.width = scn.height;
 
 	f.chkbox("Fixed position", scn.fixed_start);
@@ -422,11 +431,8 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 	f.chkbox("Full Tech Tree", scn.all_technologies);
 	f.chkbox("Enable cheating", scn.cheating);
 
-	scn.age = std::clamp(scn.age, 1u, 4u);
-	f.scalar("Age", scn.age, 1);
-
-	scn.popcap = std::clamp(scn.popcap, 5u, 1000u);
-	f.scalar("Max pop.", scn.popcap, 5);
+	f.scalar("Age", scn.age, 1, 1, 4);
+	f.scalar("Max pop.", scn.popcap, 5, 5, 1000);
 
 	f.str("Resources:");
 	f.scalar("food", scn.res.food, 10);
