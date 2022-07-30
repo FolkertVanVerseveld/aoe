@@ -77,15 +77,17 @@ void Config::save(const std::string &path) {
 ScenarioSettings::ScenarioSettings()
 	: players(8)
 	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
-	, square(true), width(48), height(48)
+	, square(true), restricted(true), width(48), height(48)
 	, popcap(100)
-	, age(1), seed(1)
+	, age(1), seed(1), villagers(3)
 	, res(200, 200, 0, 0) {}
 
 Engine::Engine()
 	: net(), show_demo(false)
 	, connection_mode(0), connection_port(32768), connection_host("")
-	, menu_state(MenuState::init), multiplayer_ready(false), cfg("config"), scn()
+	, menu_state(MenuState::init)
+	, multiplayer_ready(false), m_show_menubar(true)
+	, cfg("config"), scn()
 	, chat_line(), chat()
 {
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -102,7 +104,7 @@ Engine::~Engine() {
 }
 
 void Engine::show_menubar() {
-	if (!ImGui::BeginMainMenuBar())
+	if (!m_show_menubar || !ImGui::BeginMainMenuBar())
 		return;
 
 	if (ImGui::BeginMenu("File")) {
@@ -261,11 +263,31 @@ int Engine::mainloop() {
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
 		{
-			ImGui_ImplSDL2_ProcessEvent(&event);
-			if (event.type == SDL_QUIT)
-				done = true;
-			if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-				done = true;
+			bool p;
+
+			switch (event.type) {
+				case SDL_QUIT:
+					done = true;
+					break;
+				case SDL_WINDOWEVENT:
+					ImGui_ImplSDL2_ProcessEvent(&event);
+					if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
+						done = true;
+					break;
+				case SDL_KEYUP:
+					p = ImGui_ImplSDL2_ProcessEvent(&event);
+					if (!(p && io.WantCaptureKeyboard)) {
+						switch (event.key.keysym.sym) {
+							case SDLK_BACKQUOTE:
+								m_show_menubar = !m_show_menubar;
+								break;
+						}
+					}
+					break;
+				default:
+					ImGui_ImplSDL2_ProcessEvent(&event);
+					break;
+			}
 		}
 
 		// Start the Dear ImGui frame

@@ -94,7 +94,7 @@ static bool init_check_stall() {
 	double dt_ref = elapsed_time(&before, &after);
 
 	clock_gettime(CLOCK_MONOTONIC, &before);
-	SDL_Init(SDL_INIT_EVERYTHING);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER);
 	chkerr();
 	SDL_Quit();
 	clock_gettime(CLOCK_MONOTONIC, &after);

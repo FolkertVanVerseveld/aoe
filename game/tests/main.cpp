@@ -5,6 +5,7 @@
 namespace aoe {
 
 extern void sdl_runall();
+extern void net_runall();
 
 static void engine_create_delete() {
 	Engine eng;
@@ -22,22 +23,6 @@ static void engine_create_twice() {
 static void engine_runall() {
 	engine_create_delete();
 	engine_create_twice();
-}
-
-static void net_create_delete() {
-	Net net;
-	(void)net;
-}
-
-static void net_create_twice() {
-	Net net, net2;
-	(void)net;
-	(void)net2;
-}
-
-static void net_runall() {
-	net_create_delete();
-	net_create_twice();
 }
 
 static void runall() {

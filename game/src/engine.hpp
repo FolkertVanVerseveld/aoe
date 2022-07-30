@@ -62,10 +62,12 @@ public:
 	bool all_technologies;
 	bool cheating;
 	bool square;
+	bool restricted; // allow other players to also change settings
 	unsigned width, height;
 	unsigned popcap;
 	unsigned age;
 	unsigned seed;
+	unsigned villagers;
 
 	Resources res;
 
@@ -83,6 +85,7 @@ class Engine final {
 
 	// multiplayer_host
 	bool multiplayer_ready;
+	bool m_show_menubar;
 
 	Config cfg;
 	ScenarioSettings scn;

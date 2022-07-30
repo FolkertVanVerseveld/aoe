@@ -430,6 +430,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 	f.chkbox("Reveal map", scn.explored);
 	f.chkbox("Full Tech Tree", scn.all_technologies);
 	f.chkbox("Enable cheating", scn.cheating);
+	f.chkbox("Host makes settings", scn.restricted);
 
 	f.scalar("Age", scn.age, 1, 1, 4);
 	f.scalar("Max pop.", scn.popcap, 5, 5, 1000);
@@ -439,6 +440,8 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 	f.scalar("wood", scn.res.wood, 10);
 	f.scalar("gold", scn.res.gold, 10);
 	f.scalar("stone", scn.res.stone, 10);
+
+	f.scalar("villagers", scn.villagers, 1, scn.res.food < 50 ? 1 : 0, scn.popcap);
 }
 
 }
