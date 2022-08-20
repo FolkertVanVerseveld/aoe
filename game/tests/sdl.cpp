@@ -190,6 +190,8 @@ static void query_displays() {
 }
 
 void sdl_runall() {
+	puts("sdl");
+
 	if (sdl_error()) {
 		fprintf(stderr, "%s: cannot do error checking. skipping!\n", __func__);
 		return;

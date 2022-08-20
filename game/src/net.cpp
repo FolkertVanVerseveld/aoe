@@ -96,6 +96,12 @@ TcpSocket::~TcpSocket() {
 	closesocket(s);
 }
 
+void TcpSocket::open() {
+	close();
+	if ((s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
+		throw std::runtime_error("socket failed");
+}
+
 void TcpSocket::close() {
 	if (!closesocket(s))
 		s = INVALID_SOCKET;
@@ -331,12 +337,14 @@ int TcpSocket::recv(void *dst, int len, unsigned tries) {
 }
 
 void TcpSocket::recv_fully(void *ptr, int len) {
-	int in = recv(ptr, len, 0);
-	if (in != len) {
-		if (in < 0)
-			in = 0;
-		throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
-	}
+	int in;
+
+	if ((in = recv(ptr, len, 0)) == len)
+		return;
+
+	if (in < 0)
+		in = 0;
+	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
 ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0) {}

@@ -208,7 +208,7 @@ static void tcp_bind_bad_address() {
 	TcpSocket tcp;
 	try {
 		tcp.bind("a.b.c.d", 1234);
-		fprintf(stderr, "%s: should not recognize a.b.c.d\n", __func__);
+		fprintf(stderr, "%s: should not accept a.b.c.d\n", __func__);
 	} catch (std::runtime_error&) {}
 }
 
@@ -322,8 +322,13 @@ static void main_receive_int(int chk, bool equal) {
 		SOCKET s = server.accept();
 		TcpSocket peer(s);
 
-		int v = chk - 1, in;
-		in = peer.recv(&v, 1);
+		int v = chk ^ 0x5a5a5a5a, in = 0;
+		try {
+			in = peer.recv(&v, 1);
+		} catch (std::runtime_error &e) {
+			if (equal)
+				fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		}
 
 		if (equal) {
 			if (in != 1)
@@ -342,6 +347,20 @@ static void main_receive_int(int chk, bool equal) {
 }
 
 static void main_send_int(int v) {
+	try {
+		TcpSocket client;
+
+		client.connect("127.0.0.1", 80);
+		int out = client.send(&v, 1);
+
+		if (out != 1)
+			fprintf(stderr, "%s: written %u bytes, but %d %s sent\n", __func__, (unsigned)v, out, out == 1 ? "byte" : "bytes");
+	} catch (std::runtime_error &e) {
+		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+	}
+}
+
+static void main_send_short(short v) {
 	try {
 		TcpSocket client;
 
@@ -433,9 +452,15 @@ static void tcp_exchange_int() {
 }
 
 static void tcp_send_fail() {
-	Net net;
 	int chk = 0xcafebabe;
 	std::thread t1(main_receive_int, chk, false), t2(main_connect);
+	t1.join();
+	t2.join();
+}
+
+static void tcp_send_less_than_recv() {
+	int chk = 0xcafebabe;
+	std::thread t1(main_receive_int, chk, false), t2(main_send_short, chk);
 	t1.join();
 	t2.join();
 }
@@ -447,6 +472,12 @@ static void tcp_connect_all() {
 	tcp_exchange();
 }
 
+static void tcp_send_all() {
+	Net net;
+	tcp_send_fail();
+	tcp_send_less_than_recv();
+}
+
 static void tcp_runall() {
 	puts("tcp");
 	tcp_init_all();
@@ -455,7 +486,32 @@ static void tcp_runall() {
 	tcp_listen_all();
 	tcp_connect_all();
 	tcp_exchange_int();
-	tcp_send_fail();
+	tcp_send_all();
+}
+
+static void ssock_init_fail() {
+	try {
+		ServerSocket s;
+		(void)s;
+		fprintf(stderr, "%s: ssock created without network subsystem\n", __func__);
+	} catch (std::exception&) {}
+}
+
+static void ssock_init_delete() {
+	ServerSocket s;
+	(void)s;
+}
+
+static void ssock_init_stop() {
+	ServerSocket s;
+	s.stop();
+}
+
+static void ssock_runall() {
+	ssock_init_fail();
+	Net net;
+	ssock_init_delete();
+	ssock_init_stop();
 }
 
 void net_runall() {
@@ -464,6 +520,8 @@ void net_runall() {
 	net_start_twice();
 	adapters();
 	tcp_runall();
+	puts("ssock");
+	ssock_runall();
 }
 
 }

@@ -36,6 +36,11 @@ void Server::stop() {
 	m_running = false;
 }
 
+void Server::close() {
+	stop();
+	s.close();
+}
+
 Client::Client() : s(), port(0), m_connected(false), m() {}
 
 Client::~Client() {
@@ -50,7 +55,7 @@ void Client::stop() {
 
 void Client::start(const char *host, uint16_t port) {
 	std::lock_guard<std::mutex> lk(m);
-	s.close();
+	s.open();
 	m_connected = false;
 
 	s.connect(host, port);

@@ -23,6 +23,7 @@ public:
 
 	void start(uint16_t port);
 	void stop();
+	void close(); // this will block till everything is stopped
 
 	bool running() const noexcept { return m_running; }
 

@@ -30,6 +30,7 @@ public:
 	TcpSocket(TcpSocket &&s) noexcept : s(std::exchange(s.s, INVALID_SOCKET)) {}
 	~TcpSocket();
 
+	void open(); // manually create socket, closes old one
 	void close();
 
 	// server mode functions
