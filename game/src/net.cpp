@@ -96,6 +96,11 @@ TcpSocket::~TcpSocket() {
 	closesocket(s);
 }
 
+void TcpSocket::close() {
+	if (!closesocket(s))
+		s = INVALID_SOCKET;
+}
+
 SOCKET TcpSocket::accept() {
 	return ::accept(s, NULL, NULL);
 }
@@ -332,6 +337,38 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 			in = 0;
 		throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 	}
+}
+
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0) {}
+
+ServerSocket::~ServerSocket() { stop(); }
+
+void ServerSocket::stop() {
+	if (h != INVALID_HANDLE_VALUE)
+		if (!epoll_close(h))
+			h = INVALID_HANDLE_VALUE;
+
+	s.close();
+}
+
+int ServerSocket::mainloop(uint16_t port, int backlog) {
+	s.bind("127.0.0.1", port);
+	s.listen(backlog);
+
+	SOCKET host = s.accept();
+	if (host == INVALID_SOCKET)
+		return 1;
+
+	// not sure if rebind will work
+	s.bind("0.0.0.0", port);
+	s.listen(backlog);
+
+	if ((h = epoll_create1(0)) == INVALID_HANDLE_VALUE)
+		return 1;
+
+	;
+
+	return 0;
 }
 
 }

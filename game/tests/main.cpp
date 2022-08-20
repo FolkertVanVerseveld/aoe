@@ -6,6 +6,7 @@ namespace aoe {
 
 extern void sdl_runall();
 extern void net_runall();
+extern void server_runall();
 
 static void engine_create_delete() {
 	Engine eng;
@@ -27,6 +28,7 @@ static void engine_runall() {
 
 static void runall() {
 	net_runall();
+	server_runall();
 	sdl_runall();
 	engine_runall();
 }

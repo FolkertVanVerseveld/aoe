@@ -3,11 +3,16 @@
 #include "net.hpp"
 
 #include "sdl.hpp"
+#include "game.hpp"
+#include "server.hpp"
+
+#include "ctpl_stl.hpp"
 
 #include <deque>
 #include <mutex>
 #include <string>
 #include <vector>
+#include <condition_variable>
 
 namespace aoe {
 
@@ -36,44 +41,6 @@ public:
 	void save(const std::string&);
 };
 
-struct Resources final {
-	int food, wood, gold, stone;
-
-	Resources() : food(0), wood(0), gold(0), stone(0) {}
-	Resources(int f, int w, int g, int s) : food(f), wood(w), gold(g), stone(s) {}
-};
-
-class PlayerSetting final {
-public:
-	std::string name;
-	bool ai;
-	int civ;
-	unsigned index; // may overlap
-	unsigned team;
-
-	PlayerSetting() : name(), ai(false), civ(0), index(1), team(1) {}
-};
-
-class ScenarioSettings final {
-public:
-	std::vector<PlayerSetting> players;
-	bool fixed_start;
-	bool explored;
-	bool all_technologies;
-	bool cheating;
-	bool square;
-	bool restricted; // allow other players to also change settings
-	unsigned width, height;
-	unsigned popcap;
-	unsigned age;
-	unsigned seed;
-	unsigned villagers;
-
-	Resources res;
-
-	ScenarioSettings();
-};
-
 class Engine final {
 	Net net;
 
@@ -81,7 +48,7 @@ class Engine final {
 	int connection_mode;
 	unsigned short connection_port;
 	char connection_host[256]; // 253 according to https://web.archive.org/web/20190518124533/https://devblogs.microsoft.com/oldnewthing/?p=7873
-	MenuState menu_state;
+	MenuState menu_state, next_menu_state;
 
 	// multiplayer_host
 	bool multiplayer_ready;
@@ -91,18 +58,28 @@ class Engine final {
 	ScenarioSettings scn;
 	std::string chat_line;
 	std::deque<std::string> chat;
+	std::mutex m, m_async, m_ui;
+	std::unique_ptr<Server> server;
+	std::unique_ptr<Client> client;
+	std::condition_variable cv_server_start;
+	ctpl::thread_pool tp;
 public:
 	Engine();
 	~Engine();
 
 	int mainloop();
 private:
+	void idle();
+
 	void display();
 	void show_init();
 	void show_multiplayer_host();
 	void show_mph_tbl(ui::Frame &f);
 	void show_mph_cfg(ui::Frame &f);
 	void show_menubar();
+
+	void start_server(uint16_t port);
+	void stop_server();
 };
 
 extern Engine *eng;

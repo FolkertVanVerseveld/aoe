@@ -311,12 +311,18 @@ void Engine::show_multiplayer_host() {
 	if (scn.players.empty())
 		f.xbtn("Start Game");
 	else if (f.btn("Start Game"))
-		menu_state = MenuState::multiplayer_game;
+		;// next_menu_state = MenuState::multiplayer_game;
 
 	f.sl();
 
-	if (f.btn("Cancel"))
-		menu_state = MenuState::init;
+	if (f.btn("Cancel")) {
+		try {
+			stop_server();
+			next_menu_state = MenuState::init;
+		} catch (std::exception &e) {
+			fprintf(stderr, "%s: cannot stop server: %s\n", __func__, e.what());
+		}
+	}
 }
 
 void Engine::show_mph_tbl(ui::Frame &f) {

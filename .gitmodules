@@ -4,3 +4,6 @@
 [submodule "tracy"]
 	path = tracy
 	url = https://github.com/wolfpld/tracy.git
+[submodule "wepoll"]
+	path = wepoll
+	url = https://github.com/piscisaureus/wepoll.git

@@ -11,6 +11,8 @@
 #include <winsock2.h>
 #endif
 
+#include <wepoll.h>
+
 namespace aoe {
 
 class Net final {
@@ -27,6 +29,8 @@ public:
 	TcpSocket(const TcpSocket &) = delete;
 	TcpSocket(TcpSocket &&s) noexcept : s(std::exchange(s.s, INVALID_SOCKET)) {}
 	~TcpSocket();
+
+	void close();
 
 	// server mode functions
 
@@ -82,6 +86,19 @@ public:
 		s = std::exchange(other.s, INVALID_SOCKET);
 		return *this;
 	}
+};
+
+class ServerSocket final {
+	TcpSocket s;
+	HANDLE h;
+	uint16_t port;
+public:
+	ServerSocket();
+	~ServerSocket();
+
+	void stop();
+
+	int mainloop(uint16_t port, int backlog);
 };
 
 }

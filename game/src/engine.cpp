@@ -32,6 +32,8 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <chrono>
+#include <thread>
 
 namespace aoe {
 
@@ -85,10 +87,11 @@ ScenarioSettings::ScenarioSettings()
 Engine::Engine()
 	: net(), show_demo(false)
 	, connection_mode(0), connection_port(32768), connection_host("")
-	, menu_state(MenuState::init)
+	, menu_state(MenuState::init), next_menu_state(MenuState::init)
 	, multiplayer_ready(false), m_show_menubar(true)
 	, cfg("config"), scn()
-	, chat_line(), chat()
+	, chat_line(), chat(), m(), m_async(), m_ui(), server()
+	, tp(2)
 {
 	std::lock_guard<std::mutex> lk(m_eng);
 	if (eng)
@@ -98,6 +101,7 @@ Engine::Engine()
 }
 
 Engine::~Engine() {
+	stop_server();
 	std::lock_guard<std::mutex> lk(m_eng);
 	assert(eng);
 	eng = nullptr;
@@ -124,7 +128,7 @@ void Engine::show_menubar() {
 
 void Engine::show_init() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(vp->WorkPos); 
+	ImGui::SetNextWindowPos(vp->WorkPos);
 
 	if (!ImGui::Begin("init", NULL, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
 		ImGui::End();
@@ -148,7 +152,14 @@ void Engine::show_init() {
 
 	if (ImGui::Button("start")) {
 		switch (connection_mode) {
-			case 0: menu_state = MenuState::multiplayer_host; break;
+			case 0:
+				try {
+					start_server(connection_port);
+					next_menu_state = MenuState::multiplayer_host;
+				} catch (std::exception &e) {
+					fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
+				}
+				break;
 			case 1: break;
 		}
 	}
@@ -175,6 +186,44 @@ void Engine::display() {
 
 	if (show_demo)
 		ImGui::ShowDemoWindow(&show_demo);
+}
+
+void Engine::start_server(uint16_t port) {
+	tp.push([this](int id, uint16_t port) {
+		try {
+			{
+				std::lock_guard<std::mutex> lk(m);
+				server.reset(new Server(port));
+			}
+			cv_server_start.notify_all();
+			// XXX this is racy and i don't like it... but we just cannot keep the lock for the complete function call as there will be no way to cancel it without deadlocking...
+			server->mainloop(id);
+		} catch (std::exception &e) {
+			fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
+		}
+	}, port);
+
+	// wait for server to start
+	using namespace std::chrono_literals;
+
+	std::unique_lock<std::mutex> lk(m);
+	if (cv_server_start.wait_for(lk, 500ms, [&] {return server.get() != nullptr; })) {
+		// TODO start client
+		puts("todo start client");
+	} else {
+		// error time out
+		fprintf(stderr, "%s: cannot start server: internal server error\n", __func__);
+		server->stop();
+	}
+}
+
+void Engine::stop_server() {
+	std::lock_guard<std::mutex> lk(m);
+	server.reset();
+}
+
+void Engine::idle() {
+	menu_state = next_menu_state;
 }
 
 int Engine::mainloop() {
@@ -249,7 +298,7 @@ int Engine::mainloop() {
 	//IM_ASSERT(font != NULL);
 
 	// Our state
-	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+	ImVec4 clear_color(0.45f, 0.55f, 0.60f, 1.00f);
 
 	// Main loop
 	bool done = false;
@@ -296,7 +345,7 @@ int Engine::mainloop() {
 		ImGui::NewFrame();
 
 		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
+		idle();
 		display();
 
 		// Rendering

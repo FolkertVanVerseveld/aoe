@@ -10,7 +10,7 @@ if(UNIX)
 endif()
 find_package(OpenGL REQUIRED)
 
-file(GLOB AOE_SRC "src/*.cpp")
+file(GLOB AOE_SRC "src/*.cpp" "../wepoll/wepoll.c")
 file(GLOB AOE_TEST "tests/*.cpp")
 
 file(GLOB IMGUI_CORE_SRC "../imgui/*.cpp")
@@ -20,7 +20,7 @@ set(IMGUI_SRC ${IMGUI_CORE_SRC} ${IMGUI_BACKEND_SRC})
 file(GLOB AOE_DLLS "*.dll")
 file(COPY ${AOE_DLLS} DESTINATION ${CMAKE_BINARY_DIR})
 
-include_directories("../imgui/" "../imgui/backends" ${SDL2_INCLUDE_DIRS})
+include_directories("../imgui/" "../imgui/backends" ${SDL2_INCLUDE_DIRS} "../wepoll/")
 
 add_executable(empires "main.cpp" ${AOE_SRC} ${IMGUI_SRC})
 add_executable(testempires ${AOE_TEST} ${AOE_SRC} ${IMGUI_SRC})
