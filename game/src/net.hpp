@@ -97,7 +97,11 @@ public:
 	ServerSocket();
 	~ServerSocket();
 
+	void open(const char *addr, uint16_t port, unsigned backlog=1);
+	SOCKET accept();
+
 	void stop();
+	void close();
 
 	int mainloop(uint16_t port, int backlog);
 };

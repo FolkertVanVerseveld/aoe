@@ -351,11 +351,23 @@ ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
+void ServerSocket::open(const char *addr, uint16_t port, unsigned backlog) {
+	s.bind(addr, port);
+	s.listen(backlog);
+}
+
+SOCKET ServerSocket::accept() {
+	return s.accept();
+}
+
 void ServerSocket::stop() {
 	if (h != INVALID_HANDLE_VALUE)
 		if (!epoll_close(h))
 			h = INVALID_HANDLE_VALUE;
+}
 
+void ServerSocket::close() {
+	stop();
 	s.close();
 }
 

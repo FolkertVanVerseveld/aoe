@@ -64,7 +64,7 @@ static void client_stop_early() {
 	c.stop();
 }
 
-static void client_runall() {
+static void client_tests() {
 	puts("client");
 	client_init_delete();
 	client_stop_early();
@@ -106,12 +106,12 @@ static void connect_too_early() {
 }
 
 static void connect_too_late() {
-	Server s(1234);
+	Server s(default_port);
 	s.close();
 
 	try {
 		Client c;
-		c.start("127.0.0.1", default_port);
+		c.start(default_host, default_port);
 		fprintf(stderr, "%s: should not be able to connect to %s:%d\n", __func__, default_host, default_port);
 	} catch (std::runtime_error&) {}
 }
@@ -124,19 +124,56 @@ static void connect_runall() {
 	connect_test(true);
 }
 
-void server_runall() {
-	puts("server");
-	server_create_fail();
-	client_create_fail();
-	Net n;
+static void echo_test(bool close) {
+	Server s(default_port);
+	std::thread t1([&] { s.mainloop(-1); if (close) s.close(); });
+
+	Client c;
+	c.start(default_host, default_port);
+
+	char buf[32];
+
+	for (unsigned i = 0; i < sizeof buf; ++i)
+		buf[i] = i * 3 + 5;
+
+	c.send(buf, sizeof buf);
+	c.recv(buf, sizeof buf);
+
+	bool equal = true;
+
+	for (unsigned i = 0; equal && i < sizeof buf; ++i)
+		if (buf[i] != i * 3 + 5) {
+			equal = false;
+			fprintf(stderr, "%s: bad data: expected %d, got %d\n", __func__, i * 3 + 5, buf[i]);
+		}
+
+	c.stop();
+	t1.join();
+}
+
+static void data_exchange_runall() {
+	puts("data exchange");
+	echo_test(false);
+	echo_test(true);
+}
+
+static void server_tests() {
 	server_create_delete();
 	server_create_twice();
 	server_stop_early();
 	server_init_lazy();
 	server_create_port();
+}
 
-	client_runall();
+void server_runall() {
+	puts("server");
+	server_create_fail();
+	client_create_fail();
+	Net n;
+	server_tests();
+	client_tests();
 	connect_runall();
+	data_exchange_runall();
 }
 
 }

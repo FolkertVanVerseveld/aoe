@@ -11,8 +11,7 @@
 namespace aoe {
 
 class Server final {
-	TcpSocket s;
-	uint16_t port;
+	ServerSocket s;
 	std::atomic<bool> m_running;
 	std::mutex m;
 public:
@@ -44,6 +43,14 @@ public:
 	void stop();
 
 	bool connected() const noexcept { return m_connected; }
+
+	template<typename T> void send(T *ptr, int len) {
+		s.send_fully(ptr, len);
+	}
+
+	template<typename T> void recv(T *ptr, int len) {
+		s.recv_fully(ptr, len);
+	}
 };
 
 }

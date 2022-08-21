@@ -4,7 +4,7 @@
 
 namespace aoe {
 
-Server::Server() : s(), port(0), m_running(false), m() {}
+Server::Server() : s(), m_running(false), m() {}
 
 Server::Server(uint16_t port) : Server() {
 	start(port);
@@ -16,18 +16,27 @@ Server::~Server() {
 
 void Server::start(uint16_t port) {
 	std::lock_guard<std::mutex> lk(m);
-
 	m_running = false;
 
-	s.bind("127.0.0.1", port);
-	s.listen(max_players);
-	this->port = port;
-
+	s.open("127.0.0.1", port);
 	m_running = true;
 }
 
 int Server::mainloop(int) {
-	s.accept();
+	SOCKET host;
+
+	if ((host = s.accept()) == INVALID_SOCKET)
+		return -1;
+
+	TcpSocket peer(host);
+	char buf[32];
+	int in;
+
+	// just echo anything the client sends for now
+	while ((in = peer.recv(buf, sizeof buf)) > 0) {
+		peer.send(buf, in);
+	}
+
 	return 0;
 }
 
