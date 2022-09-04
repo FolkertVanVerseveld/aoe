@@ -103,6 +103,10 @@ public:
 	void stop();
 	void close();
 
+	/**
+	 * Start event loop to accept host and peers and manage all incoming network I/O.
+	 * NOTE: on Windows, this will call WSAStartup (just once) when the epoll library starts up.
+	 */
 	int mainloop(uint16_t port, int backlog);
 };
 

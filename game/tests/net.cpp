@@ -14,6 +14,9 @@
 
 namespace aoe {
 
+static const char *default_host = "127.0.0.1";
+static const uint16_t default_port = 1234;
+
 static void net_start_stop() {
 	Net net;
 	(void)net;
@@ -286,7 +289,7 @@ static void tcp_connect_timeout() {
 	Net net;
 	TcpSocket tcp;
 	try {
-		tcp.connect("127.0.0.1", 1234);
+		tcp.connect(default_host, 80);
 		fprintf(stderr, "%s: should timeout\n", __func__);
 	} catch (std::runtime_error&) {}
 }
@@ -294,7 +297,7 @@ static void tcp_connect_timeout() {
 static void main_accept() {
 	try {
 		TcpSocket server;
-		server.bind("127.0.0.1", 80);
+		server.bind(default_host, 80);
 		server.listen(1);
 		SOCKET s = server.accept();
 		//printf("%s: s=%p\n", __func__, (void*)s);
@@ -306,7 +309,7 @@ static void main_accept() {
 static void main_connect() {
 	try {
 		TcpSocket client;
-		client.connect("127.0.0.1", 80);
+		client.connect(default_host, 80);
 	} catch (std::runtime_error &e) {
 		fprintf(stderr, "%s: got %s\n", __func__, e.what());
 	}
@@ -316,7 +319,7 @@ static void main_receive_int(int chk, bool equal) {
 	try {
 		TcpSocket server;
 
-		server.bind("127.0.0.1", 80);
+		server.bind(default_host, 80);
 		server.listen(1);
 
 		SOCKET s = server.accept();
@@ -350,7 +353,7 @@ static void main_send_int(int v) {
 	try {
 		TcpSocket client;
 
-		client.connect("127.0.0.1", 80);
+		client.connect(default_host, 80);
 		int out = client.send(&v, 1);
 
 		if (out != 1)
@@ -381,7 +384,7 @@ static void main_exchange_receive(unsigned step)
 	try {
 		TcpSocket server;
 
-		server.bind("127.0.0.1", 1234);
+		server.bind(default_host, default_port);
 		server.listen(1);
 
 		SOCKET s = server.accept();
@@ -409,7 +412,7 @@ static void main_exchange_send(unsigned step)
 {
 	try {
 		TcpSocket client;
-		client.connect("127.0.0.1", 1234);
+		client.connect(default_host, default_port);
 
 		unsigned tbl[256]{ 0 };
 
@@ -507,11 +510,50 @@ static void ssock_init_stop() {
 	s.stop();
 }
 
+static void ssock_open_stop() {
+	ServerSocket s;
+	s.open(default_host, default_port);
+	s.stop();
+}
+
+static void ssock_connect_stop() {
+	ServerSocket s;
+	s.open(default_host, default_port);
+	std::thread t1([&] {
+		TcpSocket dummy;
+		dummy.connect(default_host, default_port);
+		dummy.close();
+	});
+	SOCKET peer = s.accept();
+	t1.join();
+}
+
+static void ssock_mainloop() {
+	std::thread t1([&] {
+		ServerSocket s;
+		int err = s.mainloop(default_port, 1);
+		if (err)
+			fprintf(stderr, "ssock_mainloop.%s: mainloop failed\n", __func__);
+	});
+	TcpSocket dummy;
+	dummy.connect(default_host, default_port);
+	dummy.close();
+	t1.join();
+}
+
 static void ssock_runall() {
 	ssock_init_fail();
 	Net net;
 	ssock_init_delete();
 	ssock_init_stop();
+	ssock_open_stop();
+	puts("ssock connect");
+	ssock_connect_stop();
+	ssock_mainloop();
+#if _WIN32
+	// hack to compensate on windows for epoll library
+	WSACleanup();
+#endif
 }
 
 void net_runall() {

@@ -74,7 +74,7 @@ void NetPkg::set_protocol(uint16_t version) {
 uint16_t NetPkg::protocol_version() {
 	ntoh();
 
-	if ((NetPkgType)hdr.type != NetPkgType::set_protocol)
+	if ((NetPkgType)hdr.type != NetPkgType::set_protocol || hdr.payload != 2)
 		throw std::runtime_error("not a protocol network packet");
 
 	const uint16_t *dw = (const uint16_t *)data.data();

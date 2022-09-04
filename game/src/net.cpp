@@ -2,6 +2,7 @@
 
 #include <cstdio>
 
+#include <atomic>
 #include <string>
 
 #if _WIN32
@@ -46,6 +47,8 @@ static void wsa_generic_error(const char *prefix, int code) noexcept(false)
 	throw std::runtime_error(msg);
 }
 
+std::atomic<unsigned> initnet(0);
+
 Net::Net() {
 	WORD version = MAKEWORD(2, 2);
 	WSADATA wsa = { 0 };
@@ -68,6 +71,8 @@ Net::Net() {
 				throw std::runtime_error(std::string("wsa: winsock error code ") + std::to_string(r));
 			break;
 	}
+
+	++initnet;
 }
 
 Net::~Net() {
@@ -83,6 +88,8 @@ Net::~Net() {
 		case WSAENETDOWN: fprintf(stderr, "%s: winsock failed\n", __func__); break;
 		case WSAEINPROGRESS: fprintf(stderr, "%s: winsock is blocked\n", __func__); break;
 	}
+
+	--initnet;
 }
 
 TcpSocket::TcpSocket() : s(INVALID_SOCKET) {
@@ -379,10 +386,12 @@ int ServerSocket::mainloop(uint16_t port, int backlog) {
 	if (host == INVALID_SOCKET)
 		return 1;
 
-	// not sure if rebind will work
+	// socket cannot be rebound. recreate socket
+	s.open();
 	s.bind("0.0.0.0", port);
 	s.listen(backlog);
 
+	// NOTE: on Windows, epoll* will call WSAStartup once
 	if ((h = epoll_create1(0)) == INVALID_HANDLE_VALUE)
 		return 1;
 

@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 
+#include "util.hpp"
+
 namespace aoe {
 
 static const char *default_host = "127.0.0.1";
@@ -11,7 +13,7 @@ static void server_create_fail() {
 	try {
 		Server s;
 		(void)s;
-		fprintf(stderr, "%s: server created with no network subsystem\n", __func__);
+		FAIL("server created with no network subsystem\n");
 	} catch (std::runtime_error&) {}
 }
 
@@ -19,7 +21,7 @@ static void client_create_fail() {
 	try {
 		Client c;
 		(void)c;
-		fprintf(stderr, "%s: client created with no network subsystem\n", __func__);
+		FAIL("client created with no network subsystem\n");
 	} catch (std::runtime_error&) {}
 }
 
@@ -79,21 +81,21 @@ static void connect_test(bool close) {
 
 	// verify: client connected, server running
 	if (!c.connected())
-		fprintf(stderr, "%s: client should be connected to %s:%d\n", __func__, default_host, default_port);
+		FAIL("client should be connected to %s:%d\n", default_host, default_port);
 	if (!s.running())
-		fprintf(stderr, "%s: server should be running at %s:%d\n", __func__, default_host, default_port);
+		FAIL("server should be running at %s:%d\n", default_host, default_port);
 
 	c.stop();
 
 	// verify: client disconnected, server thread still running
 	if (c.connected())
-		fprintf(stderr, "%s: client should be disconnected from %s:%d\n", __func__, default_host, default_port);
+		FAIL("client should be disconnected from %s:%d\n", default_host, default_port);
 
 	t1.join();
 
 	// verify: server should be running if close is false, stopped otherwise
 	if (close == s.running())
-		fprintf(stderr, "%s: server should %s at %s:%d\n", __func__, close ? "have closed" : "still be running", default_host, default_port);
+		FAIL("server should %s at %s:%d\n", close ? "have closed" : "still be running", default_host, default_port);
 }
 
 static void connect_too_early() {
@@ -101,7 +103,7 @@ static void connect_too_early() {
 
 	try {
 		c.start(default_host, default_port);
-		fprintf(stderr, "%s: should not be able to connect to %s:%d\n", __func__, default_host, default_port);
+		FAIL("should not be able to connect to %s:%d\n", default_host, default_port);
 	} catch (std::runtime_error&) {}
 }
 
@@ -112,7 +114,7 @@ static void connect_too_late() {
 	try {
 		Client c;
 		c.start(default_host, default_port);
-		fprintf(stderr, "%s: should not be able to connect to %s:%d\n", __func__, default_host, default_port);
+		FAIL("should not be able to connect to %s:%d\n", default_host, default_port);
 	} catch (std::runtime_error&) {}
 }
 
@@ -144,7 +146,7 @@ static void echo_test(bool close) {
 	for (unsigned i = 0; equal && i < sizeof buf; ++i)
 		if (buf[i] != i * 3 + 5) {
 			equal = false;
-			fprintf(stderr, "%s: bad data: expected %d, got %d\n", __func__, i * 3 + 5, buf[i]);
+			FAIL("bad data: expected %d, got %d\n", i * 3 + 5, buf[i]);
 		}
 
 	c.stop();
