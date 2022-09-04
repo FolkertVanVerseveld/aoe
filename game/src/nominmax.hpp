@@ -2,3 +2,5 @@
 
 #undef max
 #undef min
+
+#include <algorithm>

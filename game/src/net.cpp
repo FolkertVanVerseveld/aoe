@@ -1,9 +1,12 @@
 #include "net.hpp"
 
 #include <cstdio>
+#include <cassert>
 
 #include <atomic>
 #include <string>
+
+#include "nominmax.hpp"
 
 #if _WIN32
 #include <winsock2.h>
@@ -48,6 +51,22 @@ static void wsa_generic_error(const char *prefix, int code) noexcept(false)
 }
 
 std::atomic<unsigned> initnet(0);
+
+void set_nonblocking(SOCKET s, bool nonbl) {
+	u_long arg = !!nonbl;
+	if (!ioctlsocket(s, FIONBIO, &arg))
+		return;
+
+	int r;
+
+	switch (r = WSAGetLastError()) {
+		case WSAEFAULT:
+			throw std::runtime_error("wsa: argument address fault");
+		default:
+			wsa_generic_error("wsa: cannot change non-blocking mode", r);
+			break;
+	}
+}
 
 Net::Net() {
 	WORD version = MAKEWORD(2, 2);
@@ -116,6 +135,10 @@ void TcpSocket::close() {
 
 SOCKET TcpSocket::accept() {
 	return ::accept(s, NULL, NULL);
+}
+
+SOCKET TcpSocket::accept(sockaddr &a, int &sz) {
+	return ::accept(s, &a, &sz);
 }
 
 void TcpSocket::bind(const char *address, uint16_t port) {
@@ -354,7 +377,7 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
-ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0) {}
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), data_lock(), data_in(), data_out(), cv_data_in(), tp(), running(false), proper_packet(nullptr) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
@@ -363,14 +386,23 @@ void ServerSocket::open(const char *addr, uint16_t port, unsigned backlog) {
 	s.listen(backlog);
 }
 
-SOCKET ServerSocket::accept() {
-	return s.accept();
-}
-
 void ServerSocket::stop() {
+	for (const epoll_event &ev : events) {
+		SOCKET s = ev.data.sock;
+		::closesocket(s);
+	}
+
+	events.clear();
+	peers.clear();
+
 	if (h != INVALID_HANDLE_VALUE)
 		if (!epoll_close(h))
 			h = INVALID_HANDLE_VALUE;
+
+	running = false;
+
+	cv_data_in.notify_all();
+	tp.stop(true);
 }
 
 void ServerSocket::close() {
@@ -378,26 +410,219 @@ void ServerSocket::close() {
 	s.close();
 }
 
-int ServerSocket::mainloop(uint16_t port, int backlog) {
-	s.bind("127.0.0.1", port);
-	s.listen(backlog);
+int ServerSocket::add_fd(SOCKET s) {
+	epoll_event ev{ 0 };
+	ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP;
+	ev.data.fd = s;
 
-	SOCKET host = s.accept();
-	if (host == INVALID_SOCKET)
-		return 1;
+	return epoll_ctl(h, EPOLL_CTL_ADD, s, &ev);
+}
 
-	// socket cannot be rebound. recreate socket
-	s.open();
+void ServerSocket::incoming() {
+	while (1) {
+		sockaddr in_addr;
+		int in_len;
+		SOCKET infd;
+		char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+
+		hbuf[0] = sbuf[0] = '\0';
+
+		if ((infd = s.accept(in_addr, in_len = sizeof in_addr)) == INVALID_SOCKET) {
+			int r = WSAGetLastError();
+
+			if (r == WSAEINPROGRESS || r == WSAEWOULDBLOCK)
+				return; // all peers have been accepted. stop
+
+			wsa_generic_error("ssock incoming", r);
+			return;
+		}
+
+		if (getnameinfo(&in_addr, in_len, hbuf, sizeof hbuf, sbuf, sizeof sbuf, NI_NUMERICHOST | NI_NUMERICSERV)) {
+			// force drop
+			::closesocket(infd);
+			continue;
+		}
+
+		// set up peer
+		printf("%s: descriptor %u: %s:%s\n", __func__, (unsigned)infd, hbuf, sbuf);
+		set_nonblocking(infd);
+		if (add_fd(infd))
+			throw std::runtime_error("ssock: add_fd failed");
+		auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(infd), std::forward_as_tuple(hbuf, sbuf));
+		assert(ins.second);
+
+		// check if peer is host
+		const Peer &p = ins.first->second;
+		if (p.host == "127.0.0.1") {
+			printf("%s: host joined at service %s\n", __func__, sbuf);
+			peer_host = infd;
+		}
+	}
+}
+
+bool ServerSocket::io_step(int idx) {
+	epoll_event &ev = events.at(idx);
+	SOCKET s = ev.data.sock;
+	return recv_step(s) && send_step(s);
+}
+
+bool ServerSocket::insert_data(SOCKET s, const char *buf, int count) {
+	std::unique_lock<std::mutex> lk(data_lock);
+
+	auto ins = data_in.try_emplace(s);
+	if (!ins.second)
+		return false;
+
+	auto it = ins.first;
+	for (int i = 0; i < count; ++i)
+		it->second.emplace_back(buf[i]);
+
+	int processed = proper_packet(it->second);
+
+	// remove bytes if asked to do so
+	for (; processed < 0 && !it->second.empty(); ++processed)
+		it->second.pop_front();
+
+	return processed > 0;
+}
+
+bool ServerSocket::recv_step(SOCKET s) {
+	std::unique_lock<std::mutex> lk(data_lock, std::defer_lock);
+
+	while (1) {
+		int count;
+		char buf[512];
+
+		count = ::recv(s, buf, sizeof buf, 0);
+		if (count < 0) {
+			int r = WSAGetLastError();
+
+			if (r != WSAEWOULDBLOCK) {
+				fprintf(stderr, "%s: recv failed: code %d\n", __func__, r);
+				return false;
+			}
+
+			return true;
+		}
+
+		if (count == 0)
+			return false; // peer send shutdown request or has closed socket
+
+		printf("%s: received %d %s\n", __func__, count, count == 1 ? "byte" : "bytes");
+
+		if (insert_data(s, buf, count))
+			cv_data_in.notify_one();
+	}
+}
+
+bool ServerSocket::send_step(SOCKET s) {
+	std::unique_lock<std::mutex> lk(data_lock);
+
+	auto it = data_out.find(s);
+	if (it == data_out.end())
+		return false;
+
+	auto &q = it->second;
+	while (!q.empty()) {
+		long long count;
+		char buf[1024];
+		unsigned out = std::min(sizeof buf, q.size());
+
+		for (unsigned i = 0; i < out; ++i)
+			buf[i] = q[i];
+
+		// s may be closed after this unlock, but this way, we give a brief moment for other threads to kick in
+		lk.unlock();
+
+		count = ::send(s, buf, out, 0);
+		if (count < 0) {
+			int r = WSAGetLastError();
+
+			if (r != WSAEWOULDBLOCK) {
+				fprintf(stderr, "%s: send failed: code %d\n", __func__, r);
+				return false;
+			}
+
+			return true;
+		}
+
+		if (count == 0)
+			return false; // peer send shutdown request or has closed socket
+
+		lk.lock();
+		// remove data from queue
+		q.erase(q.begin(), q.begin() + count);
+	}
+
+	return true;
+}
+
+void ServerSocket::recv_loop(int idx) {
+	printf("%s: start thread %d\n", __func__, idx);
+
+	while (running) {
+		std::unique_lock<std::mutex> lk(data_lock);
+		cv_data_in.wait(lk);
+	}
+
+	printf("%s: thread %d dies\n", __func__, idx);
+}
+
+void ServerSocket::reset(unsigned maxevents, unsigned threads) {
+	printf("%s: maxevents %u, threads %u\n", __func__, maxevents, threads);
+	events.resize(maxevents);
+	peers.clear();
+	peer_host = INVALID_SOCKET;
+
+	tp.stop();
+	tp.resize(threads);
+
+	running = true;
+
+	for (int i = 0; i < threads; ++i)
+		tp.push([&](int idx) { recv_loop(idx); });
+}
+
+int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), unsigned maxevents, unsigned threads) {
+	reset(maxevents, threads);
+	this->proper_packet = proper_packet;
+
 	s.bind("0.0.0.0", port);
 	s.listen(backlog);
 
-	// NOTE: on Windows, epoll* will call WSAStartup once
+	// NOTE: on Windows, epoll(7) will call WSAStartup once
 	if ((h = epoll_create1(0)) == INVALID_HANDLE_VALUE)
 		return 1;
 
-	;
+	if (add_fd(s.s))
+		return 1;
 
-	return 0;
+	s.set_nonblocking();
+
+	for (int nfds; (nfds = epoll_wait(h, events.data(), events.size(), -1)) >= 0;) {
+		for (int i = 0; i < nfds; ++i) {
+			epoll_event *ev = &events[i];
+
+			if (ev->data.fd == s.s) {
+				incoming();
+			} else if (!io_step(i)) {
+				// error or done: close fd
+				SOCKET s = ev->data.sock;
+				::closesocket(s);
+				int r = peers.erase(s);
+				assert(r == 1);
+
+				// if socket was host: terminate server
+				if (s == peer_host) {
+					stop();
+					return 0;
+				}
+			}
+		}
+	}
+
+	stop();
+	return 1;
 }
 
 }

@@ -528,10 +528,18 @@ static void ssock_connect_stop() {
 	t1.join();
 }
 
+static int pkg_eat(const std::deque<uint8_t> &q) {
+	return (int)(-(long long)q.size()); // always drop the data we receive. nom nom nom
+}
+
+static int pkg_echo(const std::deque<uint8_t> &q) {
+	return !q.empty() ? 1 : 0; // always accept the data if the queue isn't empty
+}
+
 static void ssock_mainloop() {
 	std::thread t1([&] {
 		ServerSocket s;
-		int err = s.mainloop(default_port, 1);
+		int err = s.mainloop(default_port, 1, pkg_eat);
 		if (err)
 			fprintf(stderr, "ssock_mainloop.%s: mainloop failed\n", __func__);
 	});
@@ -539,6 +547,43 @@ static void ssock_mainloop() {
 	dummy.connect(default_host, default_port);
 	dummy.close();
 	t1.join();
+}
+
+static void ssock_mainloop_send() {
+	std::thread t1([&] {
+		ServerSocket s;
+		int err = s.mainloop(default_port, 1, pkg_eat);
+		if (err)
+			fprintf(stderr, "ssock_mainloop_send.%s: mainloop failed\n", __func__);
+	});
+	TcpSocket dummy;
+	char *msg = "Hello, k thx goodbye.";
+	dummy.connect(default_host, default_port);
+	dummy.send_fully(msg, strlen(msg) + 1);
+	dummy.close();
+	t1.join();
+}
+
+static void ssock_mainloop_echo() {
+	std::thread t1([&] {
+		ServerSocket s;
+		int err = s.mainloop(default_port, 1, pkg_echo);
+		if (err)
+			fprintf(stderr, "ssock_mainloop_echo.%s: mainloop failed\n", __func__);
+	});
+	TcpSocket dummy;
+	char *msg = "Hello, k thx goodbye.";
+	dummy.connect(default_host, default_port);
+	dummy.send_fully(msg, strlen(msg) + 1);
+	std::vector<char> buf(strlen(msg) + 1, '\0');
+	try {
+		dummy.recv_fully(buf.data(), (int)buf.size());
+	} catch (const std::exception &e) {
+		fprintf(stderr, "%s: failed to receive reply: %s\n", __func__, e.what());
+	}
+	dummy.close();
+	t1.join();
+
 }
 
 static void ssock_runall() {
@@ -550,6 +595,8 @@ static void ssock_runall() {
 	puts("ssock connect");
 	ssock_connect_stop();
 	ssock_mainloop();
+	ssock_mainloop_send();
+	ssock_mainloop_echo();
 #if _WIN32
 	// hack to compensate on windows for epoll library
 	WSACleanup();
