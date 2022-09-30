@@ -125,10 +125,9 @@ class ServerSocket final {
 	SOCKET peer_host;
 	std::mutex data_lock;
 	std::map<SOCKET, std::deque<uint8_t>> data_in, data_out;
-	std::condition_variable cv_data_in;
-	ctpl::thread_pool tp;
 	std::atomic_bool running;
 	int (*proper_packet)(const std::deque<uint8_t>&);
+	bool (*process_packet)(std::deque<uint8_t> &in, std::deque<uint8_t> &out, int arg);
 public:
 	ServerSocket();
 	~ServerSocket();
@@ -148,14 +147,17 @@ public:
 	 * int (*proper_packet)(const std::deque<uint8_t>&):
 	 *   determines whether the packet received so far is complete
 	 *   returns 0 if it needs more data
-	 *   returns a positive number to indicate X bytes are going to be processed
+	 *   returns a positive number to indicate at least one packet has been received.
 	 *   returns a negative number to drop the first X bytes in the queue. E.g.: -3 indicates 3 bytes have to be removed
+	 * 
+	 * bool (*process_packet)(std::deque<uint8_t> &in, std::deque<uint8_t> &out):
+	 *   process received packet that's considered valid according to proper_packet reading from in and sending any response to out
 	 *
 	 * XXX: drop maxevents and just do backlog * 2 ?? we need to test this
 	 */
-	int mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), unsigned maxevents=256, unsigned threads=2);
+	int mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(std::deque<uint8_t> &in, std::deque<uint8_t> &out, int arg), unsigned maxevents=256);
 private:
-	void reset(unsigned maxevents, unsigned threads);
+	void reset(unsigned maxevents);
 
 	int add_fd(SOCKET s);
 
@@ -164,10 +166,6 @@ private:
 
 	bool recv_step(SOCKET s);
 	bool send_step(SOCKET s);
-
-	bool insert_data(SOCKET s, const char *buf, int count);
-
-	void recv_loop(int idx);
 };
 
 }

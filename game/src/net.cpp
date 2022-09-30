@@ -377,7 +377,7 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
-ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), data_lock(), data_in(), data_out(), cv_data_in(), tp(), running(false), proper_packet(nullptr) {}
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), data_lock(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
@@ -400,9 +400,6 @@ void ServerSocket::stop() {
 			h = INVALID_HANDLE_VALUE;
 
 	running = false;
-
-	cv_data_in.notify_all();
-	tp.stop(true);
 }
 
 void ServerSocket::close() {
@@ -466,26 +463,6 @@ bool ServerSocket::io_step(int idx) {
 	return recv_step(s) && send_step(s);
 }
 
-bool ServerSocket::insert_data(SOCKET s, const char *buf, int count) {
-	std::unique_lock<std::mutex> lk(data_lock);
-
-	auto ins = data_in.try_emplace(s);
-	if (!ins.second)
-		return false;
-
-	auto it = ins.first;
-	for (int i = 0; i < count; ++i)
-		it->second.emplace_back(buf[i]);
-
-	int processed = proper_packet(it->second);
-
-	// remove bytes if asked to do so
-	for (; processed < 0 && !it->second.empty(); ++processed)
-		it->second.pop_front();
-
-	return processed > 0;
-}
-
 bool ServerSocket::recv_step(SOCKET s) {
 	std::unique_lock<std::mutex> lk(data_lock, std::defer_lock);
 
@@ -510,8 +487,28 @@ bool ServerSocket::recv_step(SOCKET s) {
 
 		printf("%s: received %d %s\n", __func__, count, count == 1 ? "byte" : "bytes");
 
-		if (insert_data(s, buf, count))
-			cv_data_in.notify_one();
+		lk.lock();
+
+		auto ins = data_in.try_emplace(s);
+		auto it = ins.first;
+		for (int i = 0; i < count; ++i)
+			it->second.emplace_back(buf[i]);
+
+		int processed = proper_packet(it->second);
+
+		// remove bytes if asked to do so
+		for (; processed < 0 && !it->second.empty(); ++processed)
+			it->second.pop_front();
+
+		auto outs = data_out.try_emplace(s);
+		auto out = outs.first;
+
+		bool keep_alive = process_packet(it->second, out->second, processed);
+
+		lk.unlock();
+
+		if (!keep_alive)
+			return false;
 	}
 }
 
@@ -524,11 +521,11 @@ bool ServerSocket::send_step(SOCKET s) {
 
 	auto &q = it->second;
 	while (!q.empty()) {
-		long long count;
+		int count;
 		char buf[1024];
-		unsigned out = std::min(sizeof buf, q.size());
+		int out = (int)std::min(sizeof buf, q.size());
 
-		for (unsigned i = 0; i < out; ++i)
+		for (int i = 0; i < out; ++i)
 			buf[i] = q[i];
 
 		// s may be closed after this unlock, but this way, we give a brief moment for other threads to kick in
@@ -557,35 +554,19 @@ bool ServerSocket::send_step(SOCKET s) {
 	return true;
 }
 
-void ServerSocket::recv_loop(int idx) {
-	printf("%s: start thread %d\n", __func__, idx);
-
-	while (running) {
-		std::unique_lock<std::mutex> lk(data_lock);
-		cv_data_in.wait(lk);
-	}
-
-	printf("%s: thread %d dies\n", __func__, idx);
-}
-
-void ServerSocket::reset(unsigned maxevents, unsigned threads) {
-	printf("%s: maxevents %u, threads %u\n", __func__, maxevents, threads);
+void ServerSocket::reset(unsigned maxevents) {
+	printf("%s: maxevents %u\n", __func__, maxevents);
 	events.resize(maxevents);
 	peers.clear();
 	peer_host = INVALID_SOCKET;
 
-	tp.stop();
-	tp.resize(threads);
-
 	running = true;
-
-	for (int i = 0; i < threads; ++i)
-		tp.push([&](int idx) { recv_loop(idx); });
 }
 
-int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), unsigned maxevents, unsigned threads) {
-	reset(maxevents, threads);
+int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(std::deque<uint8_t> &in, std::deque<uint8_t> &out, int arg), unsigned maxevents) {
+	reset(maxevents);
 	this->proper_packet = proper_packet;
+	this->process_packet = process_packet;
 
 	s.bind("0.0.0.0", port);
 	s.listen(backlog);
