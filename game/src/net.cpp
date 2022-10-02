@@ -501,6 +501,11 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 
 		int processed = proper_packet(it->second);
 
+		if (processed < 1) {
+			lk.unlock();
+			continue;
+		}
+
 		// remove bytes if asked to do so
 		for (; processed < 0 && !it->second.empty(); ++processed)
 			it->second.pop_front();
@@ -508,7 +513,13 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 		auto outs = data_out.try_emplace(s);
 		auto out = outs.first;
 
-		bool keep_alive = process_packet(p, it->second, out->second, processed, process_arg);
+		bool keep_alive = false;
+		
+		try {
+			keep_alive = process_packet(p, it->second, out->second, processed, process_arg);
+		} catch (const std::runtime_error &e) {
+			fprintf(stderr, "%s: failed to process for (%s,%s): %s\n", __func__, p.host.c_str(), p.server.c_str(), e.what());
+		}
 
 		lk.unlock();
 

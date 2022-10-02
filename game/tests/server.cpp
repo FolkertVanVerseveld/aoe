@@ -121,29 +121,39 @@ static void echo_test(bool close) {
 
 	Client c;
 	c.start(default_host, default_port);
-#if 1
 	c.send_protocol(1);
 	uint16_t prot = c.recv_protocol();
 
 	if (prot != 1u)
 		FAIL("bad protocol: expected %u, got %u\n", 1u, prot);
-#else
-	char buf[32];
 
-	for (unsigned i = 0; i < sizeof buf; ++i)
-		buf[i] = i * 3 + 5;
+	c.stop();
+	t1.join();
+}
 
-	c.send(buf, sizeof buf);
-	c.recv(buf, sizeof buf);
+static void protocol_test() {
+	Server s;
+	std::thread t1([&] { s.mainloop(1, default_port, 1); s.close(); });
 
-	bool equal = true;
+	Client c;
+	uint16_t prot;
 
-	for (unsigned i = 0; equal && i < sizeof buf; ++i)
-		if (buf[i] != i * 3 + 5) {
-			equal = false;
-			FAIL("bad data: expected %d, got %d\n", i * 3 + 5, buf[i]);
-		}
-#endif
+	c.start(default_host, default_port);
+	// request newer version
+	c.send_protocol(2);
+
+	if ((prot = c.recv_protocol()) != 1u)
+		FAIL("bad protocol: expected %u, got %u\n", 1u, prot);
+
+	// request older version
+	c.send_protocol(0);
+	if ((prot = c.recv_protocol()) != 1u)
+		FAIL("bad protocol: expected %u, got %u\n", 1u, prot);
+
+	// request same version
+	c.send_protocol(1);
+	if ((prot = c.recv_protocol()) != 1u)
+		FAIL("bad protocol: expected %u, got %u\n", 1u, prot);
 
 	c.stop();
 	t1.join();
@@ -153,6 +163,7 @@ static void data_exchange_runall() {
 	puts("data exchange");
 	echo_test(false);
 	echo_test(true);
+	protocol_test();
 }
 
 static void server_tests() {

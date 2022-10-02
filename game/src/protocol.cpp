@@ -106,6 +106,8 @@ NetPkg::NetPkg(std::deque<uint8_t> &q) : hdr(0, 0, false), data() {
 	// convert to native ordering
 	ntoh();
 
+	printf("%s: munch %u bytes. nom nom nom\n", __func__, need + NetPkgHdr::size);
+
 	// all good, remove from q
 	for (unsigned i = 0; i < need + NetPkgHdr::size; ++i)
 		q.pop_front();

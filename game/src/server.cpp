@@ -10,16 +10,6 @@ Server::~Server() {
 	stop();
 }
 
-#if 0
-void Server::start(uint16_t port) {
-	std::lock_guard<std::mutex> lk(m);
-	m_running = false;
-
-	s.open("127.0.0.1", port);
-	m_running = true;
-}
-#endif
-
 struct pkg {
 	uint16_t length;
 	uint16_t type;
@@ -77,23 +67,6 @@ static bool pkg_process(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8
 }
 
 int Server::mainloop(int, uint16_t port, uint16_t protocol) {
-#if 0
-	SOCKET host;
-
-	if ((host = s.accept()) == INVALID_SOCKET)
-		return -1;
-
-	TcpSocket peer(host);
-	char buf[32];
-	int in;
-
-	// just echo anything the client sends for now
-	while ((in = peer.recv(buf, sizeof buf)) > 0) {
-		peer.send(buf, in);
-	}
-
-	return 0;
-#else
 	this->port = port;
 	this->protocol = protocol;
 
@@ -101,7 +74,6 @@ int Server::mainloop(int, uint16_t port, uint16_t protocol) {
 	int r = s.mainloop(port, 10, pkg_check_proper, pkg_process, this);
 
 	return r;
-#endif
 }
 
 void Server::stop() {
