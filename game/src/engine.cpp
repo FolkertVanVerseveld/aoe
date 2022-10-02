@@ -193,11 +193,11 @@ void Engine::start_server(uint16_t port) {
 		try {
 			{
 				std::lock_guard<std::mutex> lk(m);
-				server.reset(new Server(port));
+				server.reset(new Server);
 			}
 			cv_server_start.notify_all();
 			// XXX this is racy and i don't like it... but we just cannot keep the lock for the complete function call as there will be no way to cancel it without deadlocking...
-			server->mainloop(id);
+			server->mainloop(id, port, 1);
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
 		}

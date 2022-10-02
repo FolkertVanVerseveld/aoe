@@ -536,9 +536,9 @@ static int pkg_echo(const std::deque<uint8_t> &q) {
 	return !q.empty() ? 1 : 0; // always accept the data if the queue isn't empty
 }
 
-static bool process_dummy(std::deque<uint8_t>&, std::deque<uint8_t>&, int) { return true; }
+static bool process_dummy(const Peer &, std::deque<uint8_t>&, std::deque<uint8_t>&, int, void*) { return true; }
 
-static bool process_echo(std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) {
+static bool process_echo(const Peer&, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void*) {
 	for (; !in.empty(); in.pop_front())
 		out.emplace_back(in.front());
 
@@ -548,7 +548,7 @@ static bool process_echo(std::deque<uint8_t> &in, std::deque<uint8_t> &out, int 
 static void ssock_mainloop() {
 	std::thread t1([&] {
 		ServerSocket s;
-		int err = s.mainloop(default_port, 1, pkg_eat, process_dummy);
+		int err = s.mainloop(default_port, 1, pkg_eat, process_dummy, nullptr);
 		if (err)
 			fprintf(stderr, "ssock_mainloop.%s: mainloop failed\n", __func__);
 	});
@@ -561,7 +561,7 @@ static void ssock_mainloop() {
 static void ssock_mainloop_send() {
 	std::thread t1([&] {
 		ServerSocket s;
-		int err = s.mainloop(default_port, 1, pkg_eat, process_dummy);
+		int err = s.mainloop(default_port, 1, pkg_eat, process_dummy, nullptr);
 		if (err)
 			fprintf(stderr, "ssock_mainloop_send.%s: mainloop failed\n", __func__);
 	});
@@ -576,7 +576,7 @@ static void ssock_mainloop_send() {
 static void ssock_mainloop_echo() {
 	std::thread t1([&] {
 		ServerSocket s;
-		int err = s.mainloop(default_port, 1, pkg_echo, process_echo);
+		int err = s.mainloop(default_port, 1, pkg_echo, process_echo, nullptr);
 		if (err)
 			fprintf(stderr, "ssock_mainloop_echo.%s: mainloop failed\n", __func__);
 	});
@@ -595,7 +595,6 @@ static void ssock_mainloop_echo() {
 	}
 	dummy.close();
 	t1.join();
-
 }
 
 static void ssock_runall() {

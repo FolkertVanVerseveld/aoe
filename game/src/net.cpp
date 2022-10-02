@@ -377,7 +377,7 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
-ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), data_lock(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr) {}
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), data_lock(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr), process_arg(nullptr) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
@@ -460,10 +460,15 @@ void ServerSocket::incoming() {
 bool ServerSocket::io_step(int idx) {
 	epoll_event &ev = events.at(idx);
 	SOCKET s = ev.data.sock;
-	return recv_step(s) && send_step(s);
+
+	auto it = peers.find(s);
+	if (it == peers.end())
+		return false;
+
+	return recv_step(it->second, s) && send_step(s);
 }
 
-bool ServerSocket::recv_step(SOCKET s) {
+bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 	std::unique_lock<std::mutex> lk(data_lock, std::defer_lock);
 
 	while (1) {
@@ -503,7 +508,7 @@ bool ServerSocket::recv_step(SOCKET s) {
 		auto outs = data_out.try_emplace(s);
 		auto out = outs.first;
 
-		bool keep_alive = process_packet(it->second, out->second, processed);
+		bool keep_alive = process_packet(p, it->second, out->second, processed, process_arg);
 
 		lk.unlock();
 
@@ -563,12 +568,16 @@ void ServerSocket::reset(unsigned maxevents) {
 	running = true;
 }
 
-int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(std::deque<uint8_t> &in, std::deque<uint8_t> &out, int arg), unsigned maxevents) {
+int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents) {
+	if (backlog < 1)
+		return 1;
+
 	reset(maxevents);
 	this->proper_packet = proper_packet;
 	this->process_packet = process_packet;
+	this->process_arg = process_arg;
 
-	s.bind("0.0.0.0", port);
+	s.bind(port);
 	s.listen(backlog);
 
 	// NOTE: on Windows, epoll(7) will call WSAStartup once

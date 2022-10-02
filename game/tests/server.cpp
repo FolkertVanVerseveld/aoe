@@ -41,19 +41,8 @@ static void server_stop_early() {
 	s.stop();
 }
 
-static void server_init_lazy() {
-	Server s;
-	s.start(default_port);
-	s.stop();
-}
-
-static void server_create_port() {
-	Server s(default_port);
-	(void)s;
-}
-
 static void f(Server &s) {
-	s.mainloop(-1);
+	s.mainloop(1, default_port, 0);
 }
 
 static void client_init_delete() {
@@ -73,8 +62,8 @@ static void client_tests() {
 }
 
 static void connect_test(bool close) {
-	Server s(default_port);
-	std::thread t1([&] { s.mainloop(-1); if (close) s.close(); });
+	Server s;
+	std::thread t1([&] { s.mainloop(1, default_port, 0); if (close) s.close(); });
 
 	Client c;
 	c.start(default_host, default_port);
@@ -82,8 +71,8 @@ static void connect_test(bool close) {
 	// verify: client connected, server running
 	if (!c.connected())
 		FAIL("client should be connected to %s:%d\n", default_host, default_port);
-	if (!s.running())
-		FAIL("server should be running at %s:%d\n", default_host, default_port);
+	if (!s.active())
+		FAIL("server should be activated at %s:%d\n", default_host, default_port);
 
 	c.stop();
 
@@ -94,8 +83,8 @@ static void connect_test(bool close) {
 	t1.join();
 
 	// verify: server should be running if close is false, stopped otherwise
-	if (close == s.running())
-		FAIL("server should %s at %s:%d\n", close ? "have closed" : "still be running", default_host, default_port);
+	if (close == s.active())
+		FAIL("server should %s at %s:%d\n", close ? "have not be active" : "still be activated", default_host, default_port);
 }
 
 static void connect_too_early() {
@@ -108,7 +97,7 @@ static void connect_too_early() {
 }
 
 static void connect_too_late() {
-	Server s(default_port);
+	Server s;
 	s.close();
 
 	try {
@@ -127,12 +116,18 @@ static void connect_runall() {
 }
 
 static void echo_test(bool close) {
-	Server s(default_port);
-	std::thread t1([&] { s.mainloop(-1); if (close) s.close(); });
+	Server s;
+	std::thread t1([&] { s.mainloop(1, default_port, 1); if (close) s.close(); });
 
 	Client c;
 	c.start(default_host, default_port);
+#if 1
+	c.send_protocol(1);
+	uint16_t prot = c.recv_protocol();
 
+	if (prot != 1u)
+		FAIL("bad protocol: expected %u, got %u\n", 1u, prot);
+#else
 	char buf[32];
 
 	for (unsigned i = 0; i < sizeof buf; ++i)
@@ -148,6 +143,7 @@ static void echo_test(bool close) {
 			equal = false;
 			FAIL("bad data: expected %d, got %d\n", i * 3 + 5, buf[i]);
 		}
+#endif
 
 	c.stop();
 	t1.join();
@@ -163,8 +159,6 @@ static void server_tests() {
 	server_create_delete();
 	server_create_twice();
 	server_stop_early();
-	server_init_lazy();
-	server_create_port();
 }
 
 void server_runall() {

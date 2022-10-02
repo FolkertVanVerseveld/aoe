@@ -48,6 +48,7 @@ public:
 
 	// server mode functions
 
+	void bind(uint16_t port) { bind("0.0.0.0", port); }
 	void bind(const char *address, uint16_t port);
 	void listen(int backlog);
 	SOCKET accept();
@@ -113,6 +114,10 @@ public:
 	const std::string host, server;
 
 	Peer(const char *host, const char *server) : host(host), server(server) {}
+
+	friend bool operator<(const Peer &lhs, const Peer &rhs) {
+		return std::tie(lhs.host, lhs.server) < std::tie(rhs.host, rhs.server);
+	}
 };
 
 // TODO make multi thread-safe: mutex for open, stop, close, parts of mainloop
@@ -127,7 +132,8 @@ class ServerSocket final {
 	std::map<SOCKET, std::deque<uint8_t>> data_in, data_out;
 	std::atomic_bool running;
 	int (*proper_packet)(const std::deque<uint8_t>&);
-	bool (*process_packet)(std::deque<uint8_t> &in, std::deque<uint8_t> &out, int arg);
+	bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg);
+	void *process_arg;
 public:
 	ServerSocket();
 	~ServerSocket();
@@ -150,12 +156,13 @@ public:
 	 *   returns a positive number to indicate at least one packet has been received.
 	 *   returns a negative number to drop the first X bytes in the queue. E.g.: -3 indicates 3 bytes have to be removed
 	 * 
-	 * bool (*process_packet)(std::deque<uint8_t> &in, std::deque<uint8_t> &out):
+	 * bool (*process_packet)(std::deque<uint8_t> &in, std::deque<uint8_t> &out, int arg):
 	 *   process received packet that's considered valid according to proper_packet reading from in and sending any response to out
-	 *
-	 * XXX: drop maxevents and just do backlog * 2 ?? we need to test this
+	 *   the received data is in in, the data to be sent can be put in out.
+	 *   arg is the value that was returned by proper_packet. arg will always be positive.
+	 *   return false if you want to drop the connected client. true to keep it open.
 	 */
-	int mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(std::deque<uint8_t> &in, std::deque<uint8_t> &out, int arg), unsigned maxevents=256);
+	int mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents=256);
 private:
 	void reset(unsigned maxevents);
 
@@ -164,7 +171,7 @@ private:
 	void incoming();
 	bool io_step(int idx);
 
-	bool recv_step(SOCKET s);
+	bool recv_step(const Peer &p, SOCKET s);
 	bool send_step(SOCKET s);
 };
 
