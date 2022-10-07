@@ -32,9 +32,7 @@ static int pkg_check_proper(const std::deque<uint8_t> &q) {
 	NetPkgHdr h(data.v[0], data.v[1], false);
 	h.ntoh();
 
-	unsigned need = data.v[1];
-
-	return need >= q.size() - NetPkgHdr::size;
+	return q.size() - NetPkgHdr::size >= h.payload;
 }
 
 bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req) {

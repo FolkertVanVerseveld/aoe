@@ -490,7 +490,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 		if (count == 0)
 			return false; // peer send shutdown request or has closed socket
 
-		printf("%s: received %d %s\n", __func__, count, count == 1 ? "byte" : "bytes");
+		//printf("%s: received %d %s\n", __func__, count, count == 1 ? "byte" : "bytes");
 
 		lk.lock();
 
@@ -501,20 +501,23 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 
 		int processed = proper_packet(it->second);
 
+		// remove bytes if asked to do so
+		for (; processed < 0 && !it->second.empty(); ++processed)
+			it->second.pop_front();
+
+		// skip processing if packet is improper
 		if (processed < 1) {
 			lk.unlock();
 			continue;
 		}
 
-		// remove bytes if asked to do so
-		for (; processed < 0 && !it->second.empty(); ++processed)
-			it->second.pop_front();
+		assert(proper_packet(it->second) > 0);
 
 		auto outs = data_out.try_emplace(s);
 		auto out = outs.first;
 
 		bool keep_alive = false;
-		
+
 		try {
 			keep_alive = process_packet(p, it->second, out->second, processed, process_arg);
 		} catch (const std::runtime_error &e) {
@@ -580,9 +583,6 @@ void ServerSocket::reset(unsigned maxevents) {
 }
 
 int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents) {
-	if (backlog < 1)
-		return 1;
-
 	reset(maxevents);
 	this->proper_packet = proper_packet;
 	this->process_packet = process_packet;

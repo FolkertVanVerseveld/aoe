@@ -48,6 +48,10 @@ public:
 	void hton();
 
 	void write(std::deque<uint8_t> &q);
+
+	size_t size() const noexcept {
+		return NetPkgHdr::size + data.size();
+	}
 };
 
 class ClientInfo final {

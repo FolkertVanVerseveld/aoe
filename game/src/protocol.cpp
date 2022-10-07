@@ -1,5 +1,6 @@
 #include "server.hpp"
 
+#include <cassert>
 #include <stdexcept>
 #include <string>
 
@@ -100,13 +101,14 @@ NetPkg::NetPkg(std::deque<uint8_t> &q) : hdr(0, 0, false), data() {
 	// read data
 	this->data.resize(need);
 
+	if (q.size() < need + NetPkgHdr::size)
+		throw std::runtime_error("missing pkg data");
+
 	for (unsigned i = 0; i < need; ++i)
 		this->data[i] = q[i + NetPkgHdr::size];
 
 	// convert to native ordering
 	ntoh();
-
-	printf("%s: munch %u bytes. nom nom nom\n", __func__, need + NetPkgHdr::size);
 
 	// all good, remove from q
 	for (unsigned i = 0; i < need + NetPkgHdr::size; ++i)
@@ -140,21 +142,44 @@ NetPkgType NetPkg::type() {
 }
 
 void Client::send(NetPkg &pkg) {
+#if 0
+	char buf[4096];
+	assert(pkg.size() < sizeof(buf));
+
 	pkg.hton();
-	send(&pkg.hdr.type);
-	send(&pkg.hdr.payload);
+
+	uint16_t *dw = (uint16_t *)buf;
+	dw[0] = pkg.hdr.type;
+	dw[1] = pkg.hdr.payload;
+	memcpy(&dw[2], pkg.data.data(), pkg.data.size());
+
+	send(buf, pkg.size());
+#else
+	pkg.hton();
+
+	uint16_t v[2];
+	v[0] = pkg.hdr.type;
+	v[1] = pkg.hdr.payload;
+
+	send(v, 2);
 	send(pkg.data.data(), pkg.data.size());
+#endif
 }
 
 NetPkg Client::recv() {
 	NetPkg pkg;
 	unsigned payload;
 
-	recv(&pkg.hdr.type);
-	recv(&pkg.hdr.payload);
+	uint16_t dw[2];
+
+	recv(dw, 2);
+
+	pkg.hdr.type = dw[0];
+	pkg.hdr.payload = dw[1];
 
 	payload = ntohs(pkg.hdr.payload);
 	pkg.data.resize(payload);
+
 	recv(pkg.data.data(), payload);
 
 	pkg.ntoh();
