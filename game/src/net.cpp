@@ -490,8 +490,6 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 		if (count == 0)
 			return false; // peer send shutdown request or has closed socket
 
-		//printf("%s: received %d %s\n", __func__, count, count == 1 ? "byte" : "bytes");
-
 		lk.lock();
 
 		auto ins = data_in.try_emplace(s);

@@ -36,6 +36,8 @@ public:
 	bool cheating;
 	bool square;
 	bool restricted; // allow other players to also change settings
+	bool reorder; // allow to move players up and down in the list
+	bool hosting;
 	unsigned width, height;
 	unsigned popcap;
 	unsigned age;
@@ -45,6 +47,10 @@ public:
 	Resources res;
 
 	ScenarioSettings();
+
+	constexpr bool is_enabled() const noexcept {
+		return hosting || !restricted;
+	}
 };
 
 }

@@ -69,17 +69,25 @@ public:
 
 	int mainloop();
 private:
+	static constexpr float frame_height = 0.85f, player_height = 0.7f, frame_margin = 0.075f;
+
 	void idle();
 
 	void display();
 	void show_init();
+
 	void show_multiplayer_host();
 	void show_mph_tbl(ui::Frame &f);
+	void show_mph_tbl_footer(ui::Frame &f, bool has_ai);
 	void show_mph_cfg(ui::Frame &f);
+	void show_mph_chat(ui::Frame &f);
+
 	void show_menubar();
 
 	void start_server(uint16_t port);
 	void stop_server();
+
+	void start_client(const char *host, uint16_t port);
 };
 
 extern Engine *eng;

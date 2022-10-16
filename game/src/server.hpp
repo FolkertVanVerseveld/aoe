@@ -52,6 +52,8 @@ public:
 	size_t size() const noexcept {
 		return NetPkgHdr::size + data.size();
 	}
+private:
+	void set_hdr(NetPkgType type);
 };
 
 class ClientInfo final {
@@ -105,6 +107,8 @@ public:
 
 	void send(NetPkg&);
 	NetPkg recv();
+
+	// protocol api functions
 
 	void send_protocol(uint16_t version);
 	uint16_t recv_protocol();

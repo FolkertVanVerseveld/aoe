@@ -20,29 +20,31 @@ const std::vector<std::string> civs{ "oerkneuzen", "sukkols", "medeas", "jasons"
 
 namespace ui {
 
-Frame::Frame() : open(false) {}
+Frame::Frame() : open(false), active(false) {}
 
 Frame::~Frame() {
-	if (open)
+	if (active) // frames always have to be closed
 		close();
 }
 
 bool Frame::begin(const char *name, ImGuiWindowFlags flags) {
 	assert(!open);
 	open = ImGui::Begin(name, NULL, flags);
+	active = true;
 	return open;
 }
 
 bool Frame::begin(const char *name, bool &p_open, ImGuiWindowFlags flags) {
 	assert(!open);
 	open = ImGui::Begin(name, &p_open, flags);
+	active = true;
 	return open;
 }
 
 void Frame::close() {
-	assert(open);
+	assert(active);
 	ImGui::End();
-	open = false;
+	active = open = false;
 }
 
 void Frame::str(const char *s) {
@@ -69,6 +71,7 @@ bool Frame::chkbox(const char *s, bool &b) {
 bool Frame::btn(const char *s, const ImVec2 &sz) {
 	return ImGui::Button(s, sz);
 }
+
 bool Frame::xbtn(const char *s, const ImVec2 &sz) {
 	ImGui::BeginDisabled();
 	bool b = ImGui::Button(s, sz);
@@ -97,7 +100,7 @@ static bool scalar(const char *label, int32_t &v, int32_t step) {
 		return b;
 	}
 
-	return ImGui::InputScalar(label, ImGuiDataType_U32, &v, step ? (const void *)&step : NULL);
+	return ImGui::InputScalar(label, ImGuiDataType_S32, &v, step ? (const void *)&step : NULL);
 }
 
 static bool scalar(const char *label, uint32_t &v, uint32_t step) {
@@ -142,6 +145,26 @@ bool Frame::text(const char *label, std::string &buf, ImGuiInputTextFlags flags)
 
 void Frame::sl() {
 	ImGui::SameLine();
+}
+
+Child::Child() : open(false), active(false) {}
+
+Child::~Child() {
+	if (active) // children always have to be closed
+		close();
+}
+
+bool Child::begin(const char *str_id, const ImVec2 &size, bool border, ImGuiWindowFlags extra_flags) {
+	assert(!open);
+	open = ImGui::BeginChild(str_id, size, border, extra_flags);
+	active = true;
+	return open;
+}
+
+void Child::close() {
+	assert(active);
+	ImGui::EndChild();
+	active = open = false;
 }
 
 Table::Table() : open(false) {}
@@ -253,6 +276,31 @@ bool Row::text(const char *label, std::string &buf, ImGuiInputTextFlags flags) {
 
 using namespace ui;
 
+void Engine::show_mph_chat(ui::Frame &f) {
+	Child cf;
+	if (!cf.begin("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar))
+		return;
+
+	f.str("Chat");
+	{
+		Child ch;
+		if (ch.begin("ChatHistory", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * 0.55f), true)) {
+			for (std::string &s : chat)
+				f.str(s.c_str());
+		}
+	}
+
+	if (f.text("##", chat_line, ImGuiInputTextFlags_EnterReturnsTrue)) {
+		if (chat_line == "/clear" || chat_line == "/cls")
+			chat.clear();
+		else
+			chat.emplace_back(chat_line);
+
+		chat_line.clear();
+		ImGui::SetKeyboardFocusHere(-1);
+	}
+}
+
 void Engine::show_multiplayer_host() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(vp->WorkPos);
@@ -266,52 +314,38 @@ void Engine::show_multiplayer_host() {
 
 	f.fmt("Multiplayer game - %u %s", scn.players.size(), scn.players.size() == 1 ? "player" : "players");
 
-	float frame_height = 0.85f;
-	float player_height = 0.7f;
-	float frame_margin = 0.075f;
-
 	ImGui::BeginChild("LeftFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.7f, ImGui::GetWindowHeight() * frame_height));
 	ImGui::BeginChild("PlayerFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar);
 
 	show_mph_tbl(f);
 
 	ImGui::EndChild();
-	ImGui::BeginChild("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar);
-	f.str("Chat");
-	ImGui::BeginChild("ChatHistory", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * 0.55f), true);
-
-	for (std::string &s : chat)
-		f.str(s.c_str());
-
-	ImGui::EndChild();
-
-	if (f.text("##", chat_line, ImGuiInputTextFlags_EnterReturnsTrue)) {
-		if (chat_line == "/clear" || chat_line == "/cls")
-			chat.clear();
-		else
-			chat.emplace_back(chat_line);
-
-		chat_line.clear();
-		ImGui::SetKeyboardFocusHere(-1);
-	}
-	ImGui::EndChild();
+	show_mph_chat(f);
 	ImGui::EndChild();
 
 	f.sl();
-	ImGui::BeginChild("SettingsFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, ImGui::GetWindowHeight() * frame_height), false, ImGuiWindowFlags_HorizontalScrollbar);
-
-	show_mph_cfg(f);
-
-	ImGui::EndChild();
+	{
+		Child c;
+		if (c.begin("SettingsFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, ImGui::GetWindowHeight() * frame_height), false, ImGuiWindowFlags_HorizontalScrollbar))
+			show_mph_cfg(f);
+	}
 
 	f.chkbox("I'm Ready!", multiplayer_ready);
 
 	f.sl();
 
-	if (scn.players.empty())
+	if (scn.players.empty()) {
 		f.xbtn("Start Game");
-	else if (f.btn("Start Game"))
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+			ImGui::BeginTooltip();
+			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+			ImGui::TextUnformatted("Game cannot be started without players. You can add players with `+' and `+10'.");
+			ImGui::PopTextWrapPos();
+			ImGui::EndTooltip();
+		}
+	} else if (f.btn("Start Game")) {
 		;// next_menu_state = MenuState::multiplayer_game;
+	}
 
 	f.sl();
 
@@ -325,62 +359,7 @@ void Engine::show_multiplayer_host() {
 	}
 }
 
-void Engine::show_mph_tbl(ui::Frame &f) {
-	bool has_ai = false;
-
-	{
-		Table t;
-
-		if (t.begin("PlayerTable", 5)) {
-			t.row(-1, {"Type", "Name", "Civ", "Player", "Team"});
-
-			unsigned del = scn.players.size();
-			unsigned from = 0, to = 0;
-
-			for (unsigned i = 0; i < scn.players.size(); ++i) {
-				Row r(5, i);
-				PlayerSetting &p = scn.players[i];
-
-				if (f.btn("X"))
-					del = i;
-				f.sl();
-				if (f.btn("^")) {
-					from = (i + scn.players.size() - 1) % scn.players.size();
-					to = i;
-				}
-				f.sl();
-				if (f.btn("V")) {
-					from = i;
-					to = (i + 1) % scn.players.size();
-				}
-				f.sl();
-				r.chkbox("AI", p.ai);
-
-				if (p.ai) has_ai = true;
-
-				r.text("##0", p.name);
-
-				f.combo("##1", p.civ, civs);
-				r.next();
-
-				p.index = std::max(1u, p.index);
-				r.scalar("##2", p.index, 1);
-
-				p.team = std::max(1u, p.team);
-				r.scalar("##3", p.team, 1);
-			}
-
-			if (del >= 0 && del < scn.players.size())
-				scn.players.erase(scn.players.begin() + del);
-
-			if (from != to && !scn.players.empty()) {
-				PlayerSetting tmp = scn.players[from];
-				scn.players[from] = scn.players[to];
-				scn.players[to] = tmp;
-			}
-		}
-	}
-
+void Engine::show_mph_tbl_footer(ui::Frame &f, bool has_ai) {
 	{
 		int i = 0;
 		ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(i / 7.0f, 0.6f, 0.6f));
@@ -415,39 +394,130 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 		for (unsigned i = 0; i < 10; ++i)
 			scn.players.emplace_back();
 
+	f.sl();
+
+	f.chkbox("Reorder", scn.reorder);
+}
+
+void Engine::show_mph_tbl(ui::Frame &f) {
+	bool has_ai = false;
+
+	{
+		Table t;
+
+		if (t.begin("PlayerTable", 5)) {
+			t.row(-1, {"Type", "Name", "Civ", "Player", "Team"});
+
+			unsigned del = scn.players.size();
+			unsigned from = 0, to = 0;
+
+			for (unsigned i = 0; i < scn.players.size(); ++i) {
+				Row r(5, i);
+				PlayerSetting &p = scn.players[i];
+
+				if (f.btn("X"))
+					del = i;
+
+				if (scn.reorder) {
+					f.sl();
+					if (f.btn("^")) {
+						from = (i + scn.players.size() - 1) % scn.players.size();
+						to = i;
+					}
+					f.sl();
+					if (f.btn("V")) {
+						from = i;
+						to = (i + 1) % scn.players.size();
+					}
+				}
+
+				f.sl();
+				r.chkbox("AI", p.ai);
+
+				if (p.ai) has_ai = true;
+
+				r.text("##0", p.name);
+
+				f.combo("##1", p.civ, civs);
+				r.next();
+
+				p.index = std::max(1u, p.index);
+				r.scalar("##2", p.index, 1);
+
+				p.team = std::max(1u, p.team);
+				r.scalar("##3", p.team, 1);
+			}
+
+			if (del >= 0 && del < scn.players.size())
+				scn.players.erase(scn.players.begin() + del);
+
+			if (from != to && !scn.players.empty()) {
+				PlayerSetting tmp = scn.players[from];
+				scn.players[from] = scn.players[to];
+				scn.players[to] = tmp;
+			}
+		}
+	}
+
+	show_mph_tbl_footer(f, has_ai);
+
 	while (scn.players.size() > 255)
 		scn.players.pop_back();
 }
 
 void Engine::show_mph_cfg(ui::Frame &f) {
 	f.str("Scenario: Random map");
-	f.scalar("seed", scn.seed);
+	if (!scn.is_enabled()) {
+		f.fmt("seed: %u", scn.seed);
+		f.fmt("size: %ux%u", scn.width, scn.height);
 
-	f.str("Size:");
-	f.sl();
-	if (f.chkbox("squared", scn.square) && scn.square)
-		scn.width = scn.height;
-	if (f.scalar("Width", scn.width, 1, 8, 65536) && scn.square)
-		scn.height = scn.width;
-	if (f.scalar("Height", scn.height, 1, 8, 65536) && scn.square)
-		scn.width = scn.height;
+		ImGui::BeginDisabled();
+		f.chkbox("Fixed position", scn.fixed_start);
+		f.chkbox("Reveal map", scn.explored);
+		f.chkbox("Full Tech Tree", scn.all_technologies);
+		f.chkbox("Enable cheating", scn.cheating);
+		ImGui::EndDisabled();
 
-	f.chkbox("Fixed position", scn.fixed_start);
-	f.chkbox("Reveal map", scn.explored);
-	f.chkbox("Full Tech Tree", scn.all_technologies);
-	f.chkbox("Enable cheating", scn.cheating);
-	f.chkbox("Host makes settings", scn.restricted);
+		f.fmt("Age: %u", scn.age);
+		f.fmt("Max pop.: %u", scn.popcap);
 
-	f.scalar("Age", scn.age, 1, 1, 4);
-	f.scalar("Max pop.", scn.popcap, 5, 5, 1000);
+		f.str("Resources:");
+		f.fmt("food: %u", scn.res.food);
+		f.fmt("wood: %u", scn.res.wood);
+		f.fmt("gold: %u", scn.res.gold);
+		f.fmt("stone: %u", scn.res.stone);
 
-	f.str("Resources:");
-	f.scalar("food", scn.res.food, 10);
-	f.scalar("wood", scn.res.wood, 10);
-	f.scalar("gold", scn.res.gold, 10);
-	f.scalar("stone", scn.res.stone, 10);
+		f.fmt("villagers: %u", scn.villagers);
+	} else {
+		f.scalar("seed", scn.seed);
 
-	f.scalar("villagers", scn.villagers, 1, scn.res.food < 50 ? 1 : 0, scn.popcap);
+		f.str("Size:");
+		f.sl();
+		if (f.chkbox("squared", scn.square) && scn.square)
+			scn.width = scn.height;
+		if (f.scalar("Width", scn.width, 1, 8, 65536) && scn.square)
+			scn.height = scn.width;
+		if (f.scalar("Height", scn.height, 1, 8, 65536) && scn.square)
+			scn.width = scn.height;
+
+		f.chkbox("Fixed position", scn.fixed_start);
+		f.chkbox("Reveal map", scn.explored);
+		f.chkbox("Full Tech Tree", scn.all_technologies);
+		f.chkbox("Enable cheating", scn.cheating);
+		if (scn.hosting)
+			f.chkbox("Host makes settings", scn.restricted);
+
+		f.scalar("Age", scn.age, 1, 1, 4);
+		f.scalar("Max pop.", scn.popcap, 5, 5, 1000);
+
+		f.str("Resources:");
+		f.scalar("food", scn.res.food, 10);
+		f.scalar("wood", scn.res.wood, 10);
+		f.scalar("gold", scn.res.gold, 10);
+		f.scalar("stone", scn.res.stone, 10);
+
+		f.scalar("villagers", scn.villagers, 1, scn.res.food < 50 ? 1 : 0, scn.popcap);
+	}
 }
 
 }

@@ -79,7 +79,7 @@ void Config::save(const std::string &path) {
 ScenarioSettings::ScenarioSettings()
 	: players(8)
 	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
-	, square(true), restricted(true), width(48), height(48)
+	, square(true), restricted(true), reorder(false), hosting(false), width(48), height(48)
 	, popcap(100)
 	, age(1), seed(1), villagers(3)
 	, res(200, 200, 0, 0) {}
@@ -155,12 +155,21 @@ void Engine::show_init() {
 			case 0:
 				try {
 					start_server(connection_port);
+					scn.hosting = true;
 					next_menu_state = MenuState::multiplayer_host;
 				} catch (std::exception &e) {
 					fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
 				}
 				break;
-			case 1: break;
+			case 1:
+				try {
+					start_client(connection_host, connection_port);
+					scn.hosting = false;
+					next_menu_state = MenuState::multiplayer_host;
+				} catch (std::exception &e) {
+					fprintf(stderr, "%s: cannot join server: %s\n", __func__, e.what());
+				}
+				break;
 		}
 	}
 
@@ -188,6 +197,11 @@ void Engine::display() {
 		ImGui::ShowDemoWindow(&show_demo);
 }
 
+void Engine::start_client(const char *host, uint16_t port) {
+	client.reset(new Client());
+	client->start(host, port);
+}
+
 void Engine::start_server(uint16_t port) {
 	tp.push([this](int id, uint16_t port) {
 		try {
@@ -208,8 +222,7 @@ void Engine::start_server(uint16_t port) {
 
 	std::unique_lock<std::mutex> lk(m);
 	if (cv_server_start.wait_for(lk, 500ms, [&] {return server.get() != nullptr; })) {
-		// TODO start client
-		puts("todo start client");
+		start_client("127.0.0.1", port);
 	} else {
 		// error time out
 		fprintf(stderr, "%s: cannot start server: internal server error\n", __func__);

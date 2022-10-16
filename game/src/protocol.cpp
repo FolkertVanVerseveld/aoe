@@ -115,15 +115,19 @@ NetPkg::NetPkg(std::deque<uint8_t> &q) : hdr(0, 0, false), data() {
 		q.pop_front();
 }
 
-void NetPkg::set_protocol(uint16_t version) {
-	hdr.type = (unsigned)NetPkgType::set_protocol;
+void NetPkg::set_hdr(NetPkgType type) {
 	hdr.native_ordering = true;
+	hdr.type = (unsigned)type;
+	hdr.payload = data.size();
+}
+
+void NetPkg::set_protocol(uint16_t version) {
 	data.resize(2);
 
 	uint16_t *dw = (uint16_t*)data.data();
 	*dw = version;
 
-	hdr.payload = data.size();
+	set_hdr(NetPkgType::set_protocol);
 }
 
 uint16_t NetPkg::protocol_version() {
@@ -142,19 +146,6 @@ NetPkgType NetPkg::type() {
 }
 
 void Client::send(NetPkg &pkg) {
-#if 0
-	char buf[4096];
-	assert(pkg.size() < sizeof(buf));
-
-	pkg.hton();
-
-	uint16_t *dw = (uint16_t *)buf;
-	dw[0] = pkg.hdr.type;
-	dw[1] = pkg.hdr.payload;
-	memcpy(&dw[2], pkg.data.data(), pkg.data.size());
-
-	send(buf, pkg.size());
-#else
 	pkg.hton();
 
 	uint16_t v[2];
@@ -163,7 +154,6 @@ void Client::send(NetPkg &pkg) {
 
 	send(v, 2);
 	send(pkg.data.data(), pkg.data.size());
-#endif
 }
 
 NetPkg Client::recv() {

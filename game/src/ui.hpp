@@ -15,7 +15,7 @@ namespace aoe {
 namespace ui {
 
 class Frame final {
-	bool open;
+	bool open, active;
 public:
 	Frame();
 	~Frame();
@@ -40,6 +40,18 @@ public:
 	bool text(const char *label, std::string &buf, ImGuiInputTextFlags flags=0);
 
 	void sl(); // SameLine
+
+	constexpr operator bool() const noexcept { return open; }
+};
+
+class Child final {
+	bool open, active;
+public:
+	Child();
+	~Child();
+
+	bool begin(const char *str_id, const ImVec2 &size, bool border, ImGuiWindowFlags extra_flags=0);
+	void close();
 
 	constexpr operator bool() const noexcept { return open; }
 };
