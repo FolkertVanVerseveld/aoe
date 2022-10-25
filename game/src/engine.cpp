@@ -91,7 +91,7 @@ Engine::Engine()
 	, multiplayer_ready(false), m_show_menubar(true)
 	, cfg("config"), scn()
 	, chat_line(), chat(), m(), m_async(), m_ui(), server()
-	, tp(2)
+	, tp(2), popups()
 {
 	std::lock_guard<std::mutex> lk(m_eng);
 	if (eng)
@@ -159,6 +159,7 @@ void Engine::show_init() {
 					next_menu_state = MenuState::multiplayer_host;
 				} catch (std::exception &e) {
 					fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
+					push_error(std::string("cannot start server: ") + e.what());
 				}
 				break;
 			case 1:
@@ -168,6 +169,7 @@ void Engine::show_init() {
 					next_menu_state = MenuState::multiplayer_host;
 				} catch (std::exception &e) {
 					fprintf(stderr, "%s: cannot join server: %s\n", __func__, e.what());
+					push_error(std::string("cannot join server: ") + e.what());
 				}
 				break;
 		}
@@ -195,6 +197,18 @@ void Engine::display() {
 
 	if (show_demo)
 		ImGui::ShowDemoWindow(&show_demo);
+
+	if (!popups.empty()) {
+		ui::Popup &p = popups.front();
+		if (!p.show()) {
+			ImGui::CloseCurrentPopup();
+			popups.pop();
+		}
+	}
+}
+
+void Engine::push_error(const std::string &msg) {
+	popups.emplace(msg, ui::PopupType::error);
 }
 
 void Engine::start_client(const char *host, uint16_t port) {
@@ -214,6 +228,7 @@ void Engine::start_server(uint16_t port) {
 			server->mainloop(id, port, 1);
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
+			push_error(std::string("cannot start server: ") + e.what());
 		}
 	}, port);
 
@@ -226,6 +241,7 @@ void Engine::start_server(uint16_t port) {
 	} else {
 		// error time out
 		fprintf(stderr, "%s: cannot start server: internal server error\n", __func__);
+		push_error("cannot start server: internal server error");
 		server->stop();
 	}
 }

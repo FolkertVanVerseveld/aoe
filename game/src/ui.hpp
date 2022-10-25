@@ -50,7 +50,7 @@ public:
 	Child();
 	~Child();
 
-	bool begin(const char *str_id, const ImVec2 &size, bool border, ImGuiWindowFlags extra_flags=0);
+	bool begin(const char *str_id, const ImVec2 &size, bool border=false, ImGuiWindowFlags extra_flags=0);
 	void close();
 
 	constexpr operator bool() const noexcept { return open; }
@@ -92,6 +92,31 @@ public:
 	bool scalar(const char *label, int32_t &v, int32_t step=0);
 	bool scalar(const char *label, uint32_t &v, uint32_t step=0);
 	bool text(const char *label, std::string &buf, ImGuiInputTextFlags flags=0);
+};
+
+class HSVcol {
+	int i;
+public:
+	HSVcol(int i);
+	~HSVcol();
+};
+
+enum PopupType {
+	error,
+	warning,
+	info,
+};
+
+class Popup final {
+	bool active;
+public:
+	std::string title;
+	std::string description;
+	PopupType type;
+
+	Popup(const std::string &description, PopupType type);
+
+	bool show();
 };
 
 }

@@ -272,6 +272,42 @@ bool Row::text(const char *label, std::string &buf, ImGuiInputTextFlags flags) {
 	return b;
 }
 
+HSVcol::HSVcol(int i) : i(i) {
+	ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(i / 7.0f, 0.6f, 0.6f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(i / 7.0f, 0.7f, 0.7f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(i / 7.0f, 0.8f, 0.8f));
+}
+
+HSVcol::~HSVcol() {
+	ImGui::PopStyleColor(3);
+}
+
+Popup::Popup(const std::string &description, PopupType type) : active(false), title(""), description(description), type(type) {
+	switch (type) {
+		case PopupType::error: title = "Error"; break;
+		case PopupType::warning: title = "Warning"; break;
+		default: title = "???"; break;
+	}
+}
+
+bool Popup::show() {
+	if (!active) {
+		active = true;
+		ImGui::OpenPopup(title.c_str());
+	}
+
+	ImGui::SetNextWindowSize(ImVec2(400, 0));
+
+	if (ImGui::BeginPopupModal(title.c_str(), &active)) {
+		ImGui::TextWrapped("%s", description.c_str());
+		if (ImGui::Button("OK"))
+			active = false;
+		ImGui::EndPopup();
+	}
+
+	return active;
+}
+
 }
 
 using namespace ui;
@@ -314,14 +350,15 @@ void Engine::show_multiplayer_host() {
 
 	f.fmt("Multiplayer game - %u %s", scn.players.size(), scn.players.size() == 1 ? "player" : "players");
 
-	ImGui::BeginChild("LeftFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.7f, ImGui::GetWindowHeight() * frame_height));
-	ImGui::BeginChild("PlayerFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar);
-
-	show_mph_tbl(f);
-
-	ImGui::EndChild();
-	show_mph_chat(f);
-	ImGui::EndChild();
+	{
+		Child lf;
+		if (lf.begin("LeftFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.7f, ImGui::GetWindowHeight() * frame_height))) {
+			Child pf;
+			if (pf.begin("PlayerFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar))
+				show_mph_tbl(f);
+		}
+		show_mph_chat(f);
+	}
 
 	f.sl();
 	{
@@ -336,13 +373,8 @@ void Engine::show_multiplayer_host() {
 
 	if (scn.players.empty()) {
 		f.xbtn("Start Game");
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-			ImGui::BeginTooltip();
-			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-			ImGui::TextUnformatted("Game cannot be started without players. You can add players with `+' and `+10'.");
-			ImGui::PopTextWrapPos();
-			ImGui::EndTooltip();
-		}
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::Tooltip("Game cannot be started without players. You can add players with `+' and `+10'.");
 	} else if (f.btn("Start Game")) {
 		;// next_menu_state = MenuState::multiplayer_game;
 	}
@@ -355,16 +387,14 @@ void Engine::show_multiplayer_host() {
 			next_menu_state = MenuState::init;
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: cannot stop server: %s\n", __func__, e.what());
+			push_error(std::string("cannot stop server: ") + e.what());
 		}
 	}
 }
 
 void Engine::show_mph_tbl_footer(ui::Frame &f, bool has_ai) {
 	{
-		int i = 0;
-		ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(i / 7.0f, 0.6f, 0.6f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(i / 7.0f, 0.7f, 0.7f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(i / 7.0f, 0.8f, 0.8f));
+		HSVcol hsv(0);
 
 		if (has_ai) {
 			if (f.btn("Clear AI")) {
@@ -379,8 +409,6 @@ void Engine::show_mph_tbl_footer(ui::Frame &f, bool has_ai) {
 		} else if (f.btn("Clear")) {
 			scn.players.clear();
 		}
-
-		ImGui::PopStyleColor(3);
 
 		f.sl();
 	}

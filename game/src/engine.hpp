@@ -5,9 +5,11 @@
 #include "sdl.hpp"
 #include "game.hpp"
 #include "server.hpp"
+#include "ui.hpp"
 
 #include "ctpl_stl.hpp"
 
+#include <queue>
 #include <deque>
 #include <mutex>
 #include <string>
@@ -63,6 +65,8 @@ class Engine final {
 	std::unique_ptr<Client> client;
 	std::condition_variable cv_server_start;
 	ctpl::thread_pool tp;
+
+	std::queue<ui::Popup> popups;
 public:
 	Engine();
 	~Engine();
@@ -88,6 +92,8 @@ private:
 	void stop_server();
 
 	void start_client(const char *host, uint16_t port);
+public:
+	void push_error(const std::string &msg);
 };
 
 extern Engine *eng;

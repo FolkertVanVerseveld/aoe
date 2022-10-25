@@ -68,4 +68,13 @@ bool Combo(const char *label, int &idx, const std::vector<std::string> &lst, int
 	return ImGui::Combo(label, &idx, vec_get, (void*)&lst, lst.size(), popup_max_height_in_items);
 }
 
+void Tooltip(const char *str, float width)
+{
+	ImGui::BeginTooltip();
+	ImGui::PushTextWrapPos(ImGui::GetFontSize() * width);
+	ImGui::TextUnformatted(str);
+	ImGui::PopTextWrapPos();
+	ImGui::EndTooltip();
+}
+
 }
