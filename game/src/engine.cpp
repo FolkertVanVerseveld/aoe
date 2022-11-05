@@ -97,7 +97,8 @@ Engine::Engine()
 	, multiplayer_ready(false), m_show_menubar(true)
 	, cfg("config"), scn()
 	, chat_line(), chat(), m(), m_async(), m_ui(), server()
-	, tp(2), ui_tasks(), ui_mod_id(), ui_cbs(), popups()
+	, tp(2), ui_tasks(), ui_mod_id(), popups()
+	, tsk_start_server{ invalid_ref }, async_tasks(0)
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -163,6 +164,7 @@ void Engine::show_init() {
 	if (ImGui::Button("start")) {
 		switch (connection_mode) {
 			case 0:
+#if 0
 				try {
 					start_server(connection_port);
 					scn.hosting = true;
@@ -171,6 +173,9 @@ void Engine::show_init() {
 					fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
 					push_error(std::string("cannot start server: ") + e.what());
 				}
+#else
+				start_server2(connection_port);
+#endif
 				break;
 			case 1:
 				try {
@@ -189,19 +194,6 @@ void Engine::show_init() {
 
 	if (ImGui::Button("quit"))
 		throw 0;
-
-	if (ImGui::Button("dummy")) {
-		tp.push([this](int id) {
-			try {
-				UI_TaskInfo info(ui_async("just wasting time", id, 2));
-				Sleep(2000);
-				info.next("still waiting");
-				Sleep(1000);
-			} catch (UI_TaskError &f) {
-				fprintf(stderr, "%s: %s\n", __func__, f.what());
-			}
-		});
-	}
 
 	ImGui::End();
 }
@@ -330,6 +322,65 @@ void Engine::stop_server() {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m);
 	server.reset();
+	tsk_start_server = invalid_ref;
+}
+
+void Engine::start_server2(uint16_t port) {
+	ZoneScoped;
+
+	tp.push([this](int id, uint16_t port) {
+		ZoneScoped;
+
+		try {
+			UI_TaskInfo info(ui_async("Starting server", "Creating network area", id, 2));
+
+			// ensures that tsk_start_server is always in a reliable state
+			class TskGuard final {
+			public:
+				bool good;
+
+				TskGuard(UI_TaskInfo &info) : good(false) {
+					std::lock_guard<std::mutex> lock(m_eng);
+					if (eng) {
+						assert(eng->tsk_start_server == invalid_ref);
+						eng->tsk_start_server = info.get_ref();
+					}
+				}
+
+				~TskGuard() {
+					std::lock_guard<std::mutex> lock(m_eng);
+					if (!eng)
+						return;
+
+					eng->tsk_start_server = invalid_ref;
+
+					if (!good)
+						eng->server.reset();
+					else
+						eng->trigger_server_started();
+				}
+			} guard(info);
+
+			server.reset(new Server);
+
+			tp.push([this](int id, uint16_t port) {
+				server->mainloop(id, port, 1);
+			}, port);
+
+			info.next("Connecting to host");
+
+			start_client("127.0.0.1", port);
+
+			guard.good = true;
+		} catch (std::exception &e) {
+			fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
+		}
+	}, port);
+}
+
+void Engine::trigger_server_started() {
+	std::lock_guard<std::mutex> lock(m_async);
+	async_tasks |= (unsigned)EngineAsyncTask::server_started;
 }
 
 void Engine::idle() {
@@ -343,24 +394,29 @@ void Engine::idle_async() {
 
 	std::lock_guard<std::mutex> lock(m_async);
 
-	for (; !ui_cbs.empty(); ui_cbs.pop()) {
-		UI_Callback &cb = ui_cbs.front();
-		cb.run();
+	if (async_tasks) {
+		if (async_tasks & (unsigned)EngineAsyncTask::server_started)
+			next_menu_state = MenuState::multiplayer_host;
 	}
+
+	async_tasks = 0;
 }
 
-UI_TaskInfo Engine::ui_async(const std::string &title, int thread_id, unsigned steps, TaskFlags flags) {
+UI_TaskInfo Engine::ui_async(const std::string &title, const std::string &desc, int thread_id, unsigned steps, TaskFlags flags) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_ui);
-	auto ref = ui_tasks.emplace(flags, title, "", 0, steps);
+	auto ref = ui_tasks.emplace(flags, title, desc, 0, steps);
 	return UI_TaskInfo(ref.first->first, (TaskFlags)flags);
 }
 
 bool Engine::ui_async_stop(IdPoolRef ref) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_ui);
 	return ui_tasks.try_invalidate(ref);
 }
 
 UI_TaskInfo::~UI_TaskInfo() {
+	ZoneScoped;
 	// just tell engine task has completed, we don't care if it succeeds
 	std::lock_guard<std::mutex> lock(m_eng);
 	if (eng)
@@ -374,6 +430,7 @@ static void tsk_check_throw(const UI_TaskInfo &info) {
 }
 
 void Engine::ui_async_set_desc(UI_TaskInfo &info, const std::string &s) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_ui);
 	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
 	if (tsk)
@@ -383,6 +440,7 @@ void Engine::ui_async_set_desc(UI_TaskInfo &info, const std::string &s) {
 }
 
 void Engine::ui_async_set_total(UI_TaskInfo &info, unsigned total) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_ui);
 	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
 	if (tsk)
@@ -392,6 +450,7 @@ void Engine::ui_async_set_total(UI_TaskInfo &info, unsigned total) {
 }
 
 void Engine::ui_async_next(UI_TaskInfo &info) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_ui);
 	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
 	if (tsk)
@@ -401,6 +460,7 @@ void Engine::ui_async_next(UI_TaskInfo &info) {
 }
 
 void Engine::ui_async_next(UI_TaskInfo &info, const std::string &s) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_ui);
 	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
 	if (tsk) {
@@ -412,24 +472,28 @@ void Engine::ui_async_next(UI_TaskInfo &info, const std::string &s) {
 }
 
 void UI_TaskInfo::set_total(unsigned total) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_eng);
 	if (eng)
 		eng->ui_async_set_total(*this, total);
 }
 
 void UI_TaskInfo::set_desc(const std::string &s) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_eng);
 	if (eng)
 		eng->ui_async_set_desc(*this, s);
 }
 
 void UI_TaskInfo::next() {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_eng);
 	if (eng)
 		eng->ui_async_next(*this);
 }
 
 void UI_TaskInfo::next(const std::string &s) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_eng);
 	if (eng)
 		eng->ui_async_next(*this, s);

@@ -44,6 +44,10 @@ public:
 	void save(const std::string&);
 };
 
+enum class EngineAsyncTask {
+	server_started = 1 << 0,
+};
+
 class Engine final {
 	Net net;
 
@@ -69,9 +73,10 @@ class Engine final {
 
 	IdPool<UI_Task> ui_tasks;
 	int ui_mod_id;
-	std::queue<UI_Callback> ui_cbs;
-
 	std::queue<ui::Popup> popups;
+	IdPoolRef tsk_start_server;
+
+	unsigned async_tasks;
 public:
 	Engine();
 	~Engine();
@@ -98,12 +103,14 @@ private:
 	void start_server(uint16_t port);
 	void stop_server();
 
+	void start_server2(uint16_t port);
+
 	void start_client(const char *host, uint16_t port);
 public:
 	void push_error(const std::string &msg);
 
 	// API for asynchronous tasks
-	UI_TaskInfo ui_async(const std::string &title, int thread_id, unsigned steps, TaskFlags flags=TaskFlags::all);
+	UI_TaskInfo ui_async(const std::string &title, const std::string &desc, int thread_id, unsigned steps, TaskFlags flags=TaskFlags::all);
 	bool ui_async_stop(IdPoolRef);
 	bool ui_async_stop(UI_TaskInfo &tsk) { return ui_async_stop(tsk.get_ref()); }
 
@@ -111,6 +118,8 @@ public:
 	void ui_async_set_total(UI_TaskInfo &info, unsigned total);
 	void ui_async_next(UI_TaskInfo &info);
 	void ui_async_next(UI_TaskInfo &info, const std::string &s);
+
+	void trigger_server_started();
 };
 
 extern Engine *eng;

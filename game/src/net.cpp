@@ -16,6 +16,8 @@
 #pragma comment(lib, "ws2_32.lib")
 #endif
 
+#include <tracy/Tracy.hpp>
+
 // TODO merge common errors
 
 namespace aoe {
@@ -382,11 +384,13 @@ ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), 
 ServerSocket::~ServerSocket() { stop(); }
 
 void ServerSocket::open(const char *addr, uint16_t port, unsigned backlog) {
+	ZoneScoped;
 	s.bind(addr, port);
 	s.listen(backlog);
 }
 
 void ServerSocket::stop() {
+	ZoneScoped;
 	for (const epoll_event &ev : events) {
 		SOCKET s = ev.data.sock;
 		::closesocket(s);
@@ -403,11 +407,13 @@ void ServerSocket::stop() {
 }
 
 void ServerSocket::close() {
+	ZoneScoped;
 	stop();
 	s.close();
 }
 
 int ServerSocket::add_fd(SOCKET s) {
+	ZoneScoped;
 	epoll_event ev{ 0 };
 	ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP;
 	ev.data.fd = s;
@@ -416,6 +422,8 @@ int ServerSocket::add_fd(SOCKET s) {
 }
 
 void ServerSocket::incoming() {
+	ZoneScoped;
+
 	while (1) {
 		sockaddr in_addr;
 		int in_len;
@@ -458,6 +466,8 @@ void ServerSocket::incoming() {
 }
 
 bool ServerSocket::io_step(int idx) {
+	ZoneScoped;
+
 	epoll_event &ev = events.at(idx);
 	SOCKET s = ev.data.sock;
 
@@ -469,6 +479,7 @@ bool ServerSocket::io_step(int idx) {
 }
 
 bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
+	ZoneScoped;
 	std::unique_lock<std::mutex> lk(data_lock, std::defer_lock);
 
 	while (1) {
@@ -530,6 +541,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 }
 
 bool ServerSocket::send_step(SOCKET s) {
+	ZoneScoped;
 	std::unique_lock<std::mutex> lk(data_lock);
 
 	auto it = data_out.find(s);
@@ -572,6 +584,7 @@ bool ServerSocket::send_step(SOCKET s) {
 }
 
 void ServerSocket::reset(unsigned maxevents) {
+	ZoneScoped;
 	printf("%s: maxevents %u\n", __func__, maxevents);
 	events.resize(maxevents);
 	peers.clear();
@@ -581,6 +594,7 @@ void ServerSocket::reset(unsigned maxevents) {
 }
 
 int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents) {
+	ZoneScoped;
 	reset(maxevents);
 	this->proper_packet = proper_packet;
 	this->process_packet = process_packet;

@@ -14,15 +14,6 @@ enum class TaskFlags {
 
 // XXX make int, uiint UI_TaskRef?
 
-class UI_Callback {
-protected:
-	IdPoolRef id;
-public:
-	UI_Callback(IdPoolRef id) : id(id) {}
-
-	virtual void run() = 0;
-};
-
 class UI_TaskError : public std::runtime_error {
 public:
 	explicit UI_TaskError(const std::string &msg) : std::runtime_error(msg) {}
