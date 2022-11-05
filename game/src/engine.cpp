@@ -1,5 +1,6 @@
 #include "engine.hpp"
 
+#include "legacy.hpp"
 #include "sdl.hpp"
 #include "string.hpp"
 
@@ -96,7 +97,7 @@ Engine::Engine()
 	, multiplayer_ready(false), m_show_menubar(true)
 	, cfg("config"), scn()
 	, chat_line(), chat(), m(), m_async(), m_ui(), server()
-	, tp(2), popups()
+	, tp(2), ui_tasks(), ui_mod_id(), ui_cbs(), popups()
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -189,6 +190,19 @@ void Engine::show_init() {
 	if (ImGui::Button("quit"))
 		throw 0;
 
+	if (ImGui::Button("dummy")) {
+		tp.push([this](int id) {
+			try {
+				UI_TaskInfo info(ui_async("just wasting time", id, 2));
+				Sleep(2000);
+				info.next("still waiting");
+				Sleep(1000);
+			} catch (UI_TaskError &f) {
+				fprintf(stderr, "%s: %s\n", __func__, f.what());
+			}
+		});
+	}
+
 	ImGui::End();
 }
 
@@ -208,12 +222,65 @@ void Engine::display() {
 	if (show_demo)
 		ImGui::ShowDemoWindow(&show_demo);
 
+	display_ui_tasks();
+
 	if (!popups.empty()) {
 		ui::Popup &p = popups.front();
 		if (!p.show()) {
 			ImGui::CloseCurrentPopup();
 			popups.pop();
 		}
+	}
+}
+
+void Engine::display_ui_tasks() {
+	ZoneScoped;
+
+	// XXX this is racey but okay ish?
+	if (!ui_tasks.size())
+		return;
+
+	std::lock_guard<std::mutex> lock(m_ui);
+
+	ImGui::OpenPopup("tasks");
+
+	ImGui::SetNextWindowSize(ImVec2(400, 0));
+
+	if (ImGui::BeginPopupModal("tasks", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		int i = 0;
+		bool cancellable = false;
+
+		for (auto it = eng->ui_tasks.begin(); it != eng->ui_tasks.end(); ++i) {
+			UI_Task &tsk = it->second;
+
+			float f = (float)tsk.steps / tsk.total;
+			ImGui::TextWrapped("%s", tsk.title.c_str());
+			ImGui::ProgressBar(f, ImVec2(-1, 0));
+			if (!tsk.desc.empty())
+				ImGui::TextWrapped("%s", tsk.desc.c_str());
+
+			std::string str("Cancel##" + std::to_string(i));
+
+			if ((unsigned)tsk.flags & (unsigned)TaskFlags::cancellable)
+				cancellable = true;
+
+			if (((unsigned)tsk.flags & (unsigned)TaskFlags::cancellable) && ImGui::Button(str.c_str()))
+				it = eng->ui_tasks.erase(it);
+			else
+				++it;
+		}
+
+		if (cancellable && ImGui::Button("Cancel all tasks")) {
+			for (auto it = eng->ui_tasks.begin(); it != eng->ui_tasks.end(); ++i) {
+				UI_Task &tsk = it->second;
+				if ((unsigned)tsk.flags & (unsigned)TaskFlags::cancellable)
+					it = eng->ui_tasks.erase(it);
+				else
+					++it;
+			}
+		}
+
+		ImGui::EndPopup();
 	}
 }
 
@@ -230,6 +297,7 @@ void Engine::start_client(const char *host, uint16_t port) {
 void Engine::start_server(uint16_t port) {
 	ZoneScoped;
 	tp.push([this](int id, uint16_t port) {
+		ZoneScoped;
 		try {
 			{
 				std::lock_guard<std::mutex> lk(m);
@@ -265,7 +333,106 @@ void Engine::stop_server() {
 }
 
 void Engine::idle() {
+	ZoneScoped;
+	idle_async();
 	menu_state = next_menu_state;
+}
+
+void Engine::idle_async() {
+	ZoneScoped;
+
+	std::lock_guard<std::mutex> lock(m_async);
+
+	for (; !ui_cbs.empty(); ui_cbs.pop()) {
+		UI_Callback &cb = ui_cbs.front();
+		cb.run();
+	}
+}
+
+UI_TaskInfo Engine::ui_async(const std::string &title, int thread_id, unsigned steps, TaskFlags flags) {
+	std::lock_guard<std::mutex> lock(m_ui);
+	auto ref = ui_tasks.emplace(flags, title, "", 0, steps);
+	return UI_TaskInfo(ref.first->first, (TaskFlags)flags);
+}
+
+bool Engine::ui_async_stop(IdPoolRef ref) {
+	std::lock_guard<std::mutex> lock(m_ui);
+	return ui_tasks.try_invalidate(ref);
+}
+
+UI_TaskInfo::~UI_TaskInfo() {
+	// just tell engine task has completed, we don't care if it succeeds
+	std::lock_guard<std::mutex> lock(m_eng);
+	if (eng)
+		(void)eng->ui_async_stop(*this);
+}
+
+/* Throw if task is interruptable. */
+static void tsk_check_throw(const UI_TaskInfo &info) {
+	if ((unsigned)info.get_flags() & (unsigned)TaskFlags::cancellable)
+		throw UI_TaskError("interrupted");
+}
+
+void Engine::ui_async_set_desc(UI_TaskInfo &info, const std::string &s) {
+	std::lock_guard<std::mutex> lock(m_ui);
+	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
+	if (tsk)
+		tsk->desc = s;
+	else
+		tsk_check_throw(info);
+}
+
+void Engine::ui_async_set_total(UI_TaskInfo &info, unsigned total) {
+	std::lock_guard<std::mutex> lock(m_ui);
+	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
+	if (tsk)
+		tsk->total = total;
+	else
+		tsk_check_throw(info);
+}
+
+void Engine::ui_async_next(UI_TaskInfo &info) {
+	std::lock_guard<std::mutex> lock(m_ui);
+	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
+	if (tsk)
+		tsk->steps = std::min(tsk->steps + 1u, tsk->total);
+	else
+		tsk_check_throw(info);
+}
+
+void Engine::ui_async_next(UI_TaskInfo &info, const std::string &s) {
+	std::lock_guard<std::mutex> lock(m_ui);
+	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
+	if (tsk) {
+		tsk->steps = std::min(tsk->steps + 1u, tsk->total);
+		tsk->desc = s;
+	} else {
+		tsk_check_throw(info);
+	}
+}
+
+void UI_TaskInfo::set_total(unsigned total) {
+	std::lock_guard<std::mutex> lock(m_eng);
+	if (eng)
+		eng->ui_async_set_total(*this, total);
+}
+
+void UI_TaskInfo::set_desc(const std::string &s) {
+	std::lock_guard<std::mutex> lock(m_eng);
+	if (eng)
+		eng->ui_async_set_desc(*this, s);
+}
+
+void UI_TaskInfo::next() {
+	std::lock_guard<std::mutex> lock(m_eng);
+	if (eng)
+		eng->ui_async_next(*this);
+}
+
+void UI_TaskInfo::next(const std::string &s) {
+	std::lock_guard<std::mutex> lock(m_eng);
+	if (eng)
+		eng->ui_async_next(*this, s);
 }
 
 int Engine::mainloop() {
@@ -303,8 +470,8 @@ int Engine::mainloop() {
 #pragma warning(disable: 26812)
 	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 #pragma warning(default: 26812)
-	SDL_Window *window = SDL_CreateWindow("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, window_flags);
-	SDL_SetWindowMinimumSize(window, 640, 480);
+	SDL_Window *window = SDL_CreateWindow("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN, window_flags);
+	SDL_SetWindowMinimumSize(window, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 	SDL_GL_MakeCurrent(window, gl_context);
 	SDL_GL_SetSwapInterval(1); // Enable vsync

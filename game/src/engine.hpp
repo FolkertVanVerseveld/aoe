@@ -2,6 +2,7 @@
 
 #include "net.hpp"
 
+#include "async.hpp"
 #include "sdl.hpp"
 #include "game.hpp"
 #include "server.hpp"
@@ -66,6 +67,10 @@ class Engine final {
 	std::condition_variable cv_server_start;
 	ctpl::thread_pool tp;
 
+	IdPool<UI_Task> ui_tasks;
+	int ui_mod_id;
+	std::queue<UI_Callback> ui_cbs;
+
 	std::queue<ui::Popup> popups;
 public:
 	Engine();
@@ -76,15 +81,17 @@ private:
 	static constexpr float frame_height = 0.85f, player_height = 0.7f, frame_margin = 0.075f;
 
 	void idle();
+	void idle_async();
 
 	void display();
+	void display_ui_tasks();
 	void show_init();
 
 	void show_multiplayer_host();
-	void show_mph_tbl(ui::Frame &f);
+	void show_mph_tbl(ui::Frame&);
 	void show_mph_tbl_footer(ui::Frame &f, bool has_ai);
-	void show_mph_cfg(ui::Frame &f);
-	void show_mph_chat(ui::Frame &f);
+	void show_mph_cfg(ui::Frame&);
+	void show_mph_chat(ui::Frame&);
 
 	void show_menubar();
 
@@ -94,6 +101,16 @@ private:
 	void start_client(const char *host, uint16_t port);
 public:
 	void push_error(const std::string &msg);
+
+	// API for asynchronous tasks
+	UI_TaskInfo ui_async(const std::string &title, int thread_id, unsigned steps, TaskFlags flags=TaskFlags::all);
+	bool ui_async_stop(IdPoolRef);
+	bool ui_async_stop(UI_TaskInfo &tsk) { return ui_async_stop(tsk.get_ref()); }
+
+	void ui_async_set_desc(UI_TaskInfo &info, const std::string &s);
+	void ui_async_set_total(UI_TaskInfo &info, unsigned total);
+	void ui_async_next(UI_TaskInfo &info);
+	void ui_async_next(UI_TaskInfo &info, const std::string &s);
 };
 
 extern Engine *eng;
