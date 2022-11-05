@@ -101,7 +101,7 @@ public:
 	~HSVcol();
 };
 
-enum PopupType {
+enum class PopupType {
 	error,
 	warning,
 	info,

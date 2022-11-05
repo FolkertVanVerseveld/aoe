@@ -35,6 +35,10 @@
 #include <chrono>
 #include <thread>
 
+#include "nominmax.hpp"
+
+#include <tracy/Tracy.hpp>
+
 namespace aoe {
 
 Engine *eng;
@@ -63,6 +67,7 @@ Config::~Config() {
 }
 
 void Config::save(const std::string &path) {
+	ZoneScoped;
 	std::ofstream out(path, std::ios_base::binary | std::ios_base::trunc);
 
 	// let c++ take care of any errors
@@ -93,6 +98,7 @@ Engine::Engine()
 	, chat_line(), chat(), m(), m_async(), m_ui(), server()
 	, tp(2), popups()
 {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
 	if (eng)
 		throw std::runtime_error("there can be only one");
@@ -101,6 +107,7 @@ Engine::Engine()
 }
 
 Engine::~Engine() {
+	ZoneScoped;
 	stop_server();
 	std::lock_guard<std::mutex> lk(m_eng);
 	assert(eng);
@@ -108,6 +115,7 @@ Engine::~Engine() {
 }
 
 void Engine::show_menubar() {
+	ZoneScoped;
 	if (!m_show_menubar || !ImGui::BeginMainMenuBar())
 		return;
 
@@ -127,6 +135,7 @@ void Engine::show_menubar() {
 }
 
 void Engine::show_init() {
+	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(vp->WorkPos);
 
@@ -184,6 +193,7 @@ void Engine::show_init() {
 }
 
 void Engine::display() {
+	ZoneScoped;
 	show_menubar();
 
 	switch (menu_state) {
@@ -212,11 +222,13 @@ void Engine::push_error(const std::string &msg) {
 }
 
 void Engine::start_client(const char *host, uint16_t port) {
+	ZoneScoped;
 	client.reset(new Client());
 	client->start(host, port);
 }
 
 void Engine::start_server(uint16_t port) {
+	ZoneScoped;
 	tp.push([this](int id, uint16_t port) {
 		try {
 			{
@@ -247,6 +259,7 @@ void Engine::start_server(uint16_t port) {
 }
 
 void Engine::stop_server() {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m);
 	server.reset();
 }
@@ -256,6 +269,7 @@ void Engine::idle() {
 }
 
 int Engine::mainloop() {
+	ZoneScoped;
 	SDL sdl;
 
 	// Decide GL+GLSL versions
@@ -384,6 +398,7 @@ int Engine::mainloop() {
 		glClear(GL_COLOR_BUFFER_BIT);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(window);
+		FrameMark;
 	}
 
 	// Cleanup
