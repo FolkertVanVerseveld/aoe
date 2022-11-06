@@ -379,7 +379,7 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
-ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), data_lock(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr), process_arg(nullptr) {}
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr), process_arg(nullptr), step(false) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
@@ -391,17 +391,23 @@ void ServerSocket::open(const char *addr, uint16_t port, unsigned backlog) {
 
 void ServerSocket::stop() {
 	ZoneScoped;
+
+	std::unique_lock<std::mutex> lk(peer_ev_lock);
+
 	for (const epoll_event &ev : events) {
-		SOCKET s = ev.data.sock;
+		SOCKET s = ev.data.sock; // sometimes race here
+		del_fd(s);
 		::closesocket(s);
 	}
 
 	events.clear();
-	peers.clear();
+	peers.clear(); // sometimes race here
 
 	if (h != INVALID_HANDLE_VALUE)
 		if (!epoll_close(h))
 			h = INVALID_HANDLE_VALUE;
+
+	lk.unlock();
 
 	running = false;
 }
@@ -415,10 +421,18 @@ void ServerSocket::close() {
 int ServerSocket::add_fd(SOCKET s) {
 	ZoneScoped;
 	epoll_event ev{ 0 };
-	ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP;
+	ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET;
 	ev.data.fd = s;
 
 	return epoll_ctl(h, EPOLL_CTL_ADD, s, &ev);
+}
+
+int ServerSocket::del_fd(SOCKET s) {
+	ZoneScoped;
+	epoll_event ev{ 0 };
+	ev.data.fd = s;
+
+	return epoll_ctl(h, EPOLL_CTL_DEL, s, &ev);
 }
 
 void ServerSocket::incoming() {
@@ -468,6 +482,8 @@ void ServerSocket::incoming() {
 bool ServerSocket::io_step(int idx) {
 	ZoneScoped;
 
+	std::unique_lock<std::mutex> lk(peer_ev_lock);
+
 	epoll_event &ev = events.at(idx);
 	SOCKET s = ev.data.sock;
 
@@ -475,7 +491,11 @@ bool ServerSocket::io_step(int idx) {
 	if (it == peers.end())
 		return false;
 
-	return recv_step(it->second, s) && send_step(s);
+	bool r = recv_step(it->second, s);
+
+	lk.unlock();
+
+	return r && send_step(s);
 }
 
 bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
@@ -501,6 +521,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 		if (count == 0)
 			return false; // peer send shutdown request or has closed socket
 
+		step = true;
 		lk.lock();
 
 		auto ins = data_in.try_emplace(s);
@@ -546,7 +567,7 @@ bool ServerSocket::send_step(SOCKET s) {
 
 	auto it = data_out.find(s);
 	if (it == data_out.end())
-		return false;
+		return true;
 
 	auto &q = it->second;
 	while (!q.empty()) {
@@ -575,6 +596,7 @@ bool ServerSocket::send_step(SOCKET s) {
 		if (count == 0)
 			return false; // peer send shutdown request or has closed socket
 
+		step = true;
 		lk.lock();
 		// remove data from queue
 		q.erase(q.begin(), q.begin() + count);
@@ -590,7 +612,17 @@ void ServerSocket::reset(unsigned maxevents) {
 	peers.clear();
 	peer_host = INVALID_SOCKET;
 
+	data_in.clear();
+	data_out.clear();
+
 	running = true;
+}
+
+void ServerSocket::remove_peer(SOCKET s) {
+	del_fd(s);
+	::closesocket(s);
+	int r = peers.erase(s);
+	assert(r == 1);
 }
 
 int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents) {
@@ -612,18 +644,20 @@ int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(cons
 
 	s.set_nonblocking();
 
-	for (int nfds; (nfds = epoll_wait(h, events.data(), events.size(), -1)) >= 0;) {
+	step = false;
+
+	for (int nfds; (nfds = epoll_wait(h, events.data(), events.size(), -1)) >= 0; step = false) {
 		for (int i = 0; i < nfds; ++i) {
 			epoll_event *ev = &events[i];
+			printf("events = %08X\n", ev->events);
 
 			if (ev->data.fd == s.s) {
+				step = true;
 				incoming();
 			} else if (!io_step(i)) {
 				// error or done: close fd
 				SOCKET s = ev->data.sock;
-				::closesocket(s);
-				int r = peers.erase(s);
-				assert(r == 1);
+				remove_peer(s);
 
 				// if socket was host: terminate server
 				if (s == peer_host) {
@@ -631,6 +665,11 @@ int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(cons
 					return 0;
 				}
 			}
+		}
+
+		if (!step) {
+			puts("polling");
+			Sleep(50);
 		}
 	}
 

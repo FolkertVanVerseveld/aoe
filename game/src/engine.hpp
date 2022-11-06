@@ -102,6 +102,7 @@ private:
 
 	void start_server(uint16_t port);
 	void stop_server();
+	void stop_server_now();
 
 	void start_server2(uint16_t port);
 

@@ -103,6 +103,9 @@ void Client::start(const char *host, uint16_t port) {
 
 	s.connect(host, port);
 	m_connected = true;
+
+	send_protocol(1);
+	printf("prot=%u\n", recv_protocol());
 }
 
 void Client::send_protocol(uint16_t version) {

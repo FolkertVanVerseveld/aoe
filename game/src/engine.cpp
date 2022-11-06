@@ -110,10 +110,10 @@ Engine::Engine()
 
 Engine::~Engine() {
 	ZoneScoped;
-	stop_server();
 	std::lock_guard<std::mutex> lk(m_eng);
 	assert(eng);
 	eng = nullptr;
+	stop_server_now();
 }
 
 void Engine::show_menubar() {
@@ -318,11 +318,24 @@ void Engine::start_server(uint16_t port) {
 	}
 }
 
+void Engine::stop_server_now() {
+	ZoneScoped;
+
+	std::lock_guard<std::mutex> lk(m);
+	if (server) {
+		server->close();
+		tsk_start_server = invalid_ref;
+	}
+}
+
 void Engine::stop_server() {
 	ZoneScoped;
-	std::lock_guard<std::mutex> lk(m);
-	server.reset();
-	tsk_start_server = invalid_ref;
+
+	tp.push([this](int id) {
+		std::lock_guard<std::mutex> lk(m_eng);
+		if (eng)
+			stop_server_now();
+	});
 }
 
 void Engine::start_server2(uint16_t port) {
@@ -355,7 +368,7 @@ void Engine::start_server2(uint16_t port) {
 					eng->tsk_start_server = invalid_ref;
 
 					if (!good)
-						eng->server.reset();
+						eng->stop_server();
 					else
 						eng->trigger_server_started();
 				}

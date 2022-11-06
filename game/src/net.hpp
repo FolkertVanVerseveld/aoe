@@ -19,6 +19,11 @@
 
 #include <wepoll.h>
 
+// wepoll does not support EPOLLET
+#ifndef EPOLLET
+#define EPOLLET 0
+#endif
+
 #include "ctpl_stl.hpp"
 
 namespace aoe {
@@ -128,12 +133,13 @@ class ServerSocket final {
 	std::vector<epoll_event> events;
 	std::map<SOCKET, Peer> peers;
 	SOCKET peer_host;
-	std::mutex data_lock;
+	std::mutex peer_ev_lock, data_lock;
 	std::map<SOCKET, std::deque<uint8_t>> data_in, data_out;
 	std::atomic_bool running;
 	int (*proper_packet)(const std::deque<uint8_t>&);
 	bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg);
 	void *process_arg;
+	bool step;
 public:
 	ServerSocket();
 	~ServerSocket();
@@ -167,12 +173,15 @@ private:
 	void reset(unsigned maxevents);
 
 	int add_fd(SOCKET s);
+	int del_fd(SOCKET s);
 
 	void incoming();
 	bool io_step(int idx);
 
 	bool recv_step(const Peer &p, SOCKET s);
 	bool send_step(SOCKET s);
+
+	void remove_peer(SOCKET s);
 };
 
 }
