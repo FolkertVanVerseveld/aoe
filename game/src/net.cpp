@@ -312,12 +312,11 @@ int TcpSocket::send(const void *ptr, int len, unsigned tries) {
 	if (out != SOCKET_ERROR && out >= 0)
 		return out;
 
-	if (out < 0)
-		throw std::runtime_error(std::string("wsa: send failed: unknown return code ") + std::to_string(out));
-
 	int err = WSAGetLastError();
 
 	switch (err) {
+		case 0:
+			throw std::runtime_error(std::string("wsa: send failed: unknown return code ") + std::to_string(out));
 		default:
 			wsa_generic_error("wsa: send failed", err);
 			break;
@@ -389,7 +388,7 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
-ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr), process_arg(nullptr), step(false) {}
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr), process_arg(nullptr), step(false), poll_us(50u * 1000ull), id(std::this_thread::get_id()) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
@@ -625,14 +624,8 @@ void ServerSocket::reset(unsigned maxevents) {
 	data_in.clear();
 	data_out.clear();
 
+	id = std::this_thread::get_id();
 	running = true;
-}
-
-void ServerSocket::remove_peer(SOCKET s) {
-	del_fd(s);
-	::closesocket(s);
-	int r = peers.erase(s);
-	assert(r == 1);
 }
 
 int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents) {
@@ -654,12 +647,13 @@ int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(cons
 
 	s.set_nonblocking();
 
+	std::vector<SOCKET> closing;
 	step = false;
 
 	for (int nfds; (nfds = epoll_wait(h, events.data(), events.size(), -1)) >= 0; step = false) {
 		for (int i = 0; i < nfds; ++i) {
 			epoll_event *ev = &events[i];
-			printf("events = %08X\n", ev->events);
+			//printf("events = %08X\n", ev->events);
 
 			if (ev->data.fd == s.s) {
 				step = true;
@@ -667,19 +661,37 @@ int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(cons
 			} else if (!io_step(i)) {
 				// error or done: close fd
 				SOCKET s = ev->data.sock;
-				remove_peer(s);
 
 				// if socket was host: terminate server
 				if (s == peer_host) {
 					stop();
 					return 0;
 				}
+
+				// postpone closing socket to the end
+				closing.emplace_back(s);
 			}
 		}
 
-		if (!step) {
-			puts("polling");
-			Sleep(50);
+		if (!closing.empty()) {
+			std::lock_guard<std::mutex> lk(peer_ev_lock);
+
+			while (!closing.empty()) {
+				SOCKET sock = closing.back();
+
+				del_fd(sock);
+				::closesocket(sock);
+				peers.erase(sock);
+
+				closing.pop_back();
+			}
+		}
+
+		unsigned long long dt = poll_us.load(std::memory_order_relaxed);
+
+		if (!step && dt) {
+			//puts("polling");
+			std::this_thread::sleep_for(std::chrono::microseconds(dt));
 		}
 	}
 

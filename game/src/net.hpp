@@ -9,6 +9,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <thread>
 
 #include <condition_variable>
 #include <utility>
@@ -142,6 +143,8 @@ class ServerSocket final {
 	bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg);
 	void *process_arg;
 	bool step;
+	std::atomic<unsigned long long> poll_us;
+	std::atomic<std::thread::id> id;
 public:
 	ServerSocket();
 	~ServerSocket();
@@ -171,6 +174,13 @@ public:
 	 *   return false if you want to drop the connected client. true to keep it open.
 	 */
 	int mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents=256);
+
+	/**
+	 * Change poll timeout (0 to disable). Note that this is only used on systems
+	 * that don't support edge triggered events for epoll(7), like Windows.
+	 * Defaults to 50,000us (50 milliseconds).
+	 */
+	void set_poll_timeout(unsigned long long microseconds) { poll_us = microseconds; }
 private:
 	void reset(unsigned maxevents);
 
@@ -182,8 +192,6 @@ private:
 
 	bool recv_step(const Peer &p, SOCKET s);
 	bool send_step(SOCKET s);
-
-	void remove_peer(SOCKET s);
 };
 
 }

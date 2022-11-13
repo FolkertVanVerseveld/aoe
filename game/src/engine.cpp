@@ -409,7 +409,7 @@ void Engine::idle_async() {
 
 	// copy popups
 	for (; !popups_async.empty(); popups_async.pop())
-		popups.emplace(popups.front());
+		popups.emplace(popups_async.front());
 
 	if (async_tasks) {
 		if (async_tasks & (unsigned)EngineAsyncTask::server_started) {
