@@ -96,9 +96,9 @@ Engine::Engine()
 	, menu_state(MenuState::init), next_menu_state(MenuState::init)
 	, multiplayer_ready(false), m_show_menubar(true)
 	, cfg("config"), scn()
-	, chat_line(), chat(), m(), m_async(), m_ui(), server()
-	, tp(2), ui_tasks(), ui_mod_id(), popups()
-	, tsk_start_server{ invalid_ref }, async_tasks(0)
+	, chat_line(), chat(), server()
+	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
+	, tsk_start_server{ invalid_ref }, async_tasks(0), running(false), logic_gamespeed(1.0f)
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -111,8 +111,11 @@ Engine::Engine()
 Engine::~Engine() {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
+
 	assert(eng);
 	eng = nullptr;
+
+	running = false;
 	stop_server_now();
 }
 
@@ -164,20 +167,10 @@ void Engine::show_init() {
 	if (ImGui::Button("start")) {
 		switch (connection_mode) {
 			case 0:
-#if 0
-				try {
-					start_server(connection_port);
-					scn.hosting = true;
-					next_menu_state = MenuState::multiplayer_host;
-				} catch (std::exception &e) {
-					fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
-					push_error(std::string("cannot start server: ") + e.what());
-				}
-#else
-				start_server2(connection_port);
-#endif
+				start_server(connection_port);
 				break;
 			case 1:
+#if 0
 				try {
 					start_client(connection_host, connection_port);
 					scn.hosting = false;
@@ -186,6 +179,9 @@ void Engine::show_init() {
 					fprintf(stderr, "%s: cannot join server: %s\n", __func__, e.what());
 					push_error(std::string("cannot join server: ") + e.what());
 				}
+#else
+				start_client(connection_host, connection_port);
+#endif
 				break;
 		}
 	}
@@ -277,60 +273,55 @@ void Engine::display_ui_tasks() {
 }
 
 void Engine::push_error(const std::string &msg) {
-	popups.emplace(msg, ui::PopupType::error);
+	std::lock_guard<std::mutex> lock(m_async);
+	popups_async.emplace(msg, ui::PopupType::error);
 }
 
-void Engine::start_client(const char *host, uint16_t port) {
+void Engine::start_client_now(const char *host, uint16_t port) {
 	ZoneScoped;
+
 	client.reset(new Client());
 	client->start(host, port);
 }
 
-void Engine::start_server(uint16_t port) {
+void Engine::start_client(const char *host, uint16_t port) {
 	ZoneScoped;
-	tp.push([this](int id, uint16_t port) {
+
+	reserve_threads(1);
+	tp.push([this](int id, const char *host, uint16_t port) {
 		ZoneScoped;
+
 		try {
-			{
-				std::lock_guard<std::mutex> lk(m);
-				server.reset(new Server);
-			}
-			cv_server_start.notify_all();
-			// XXX this is racy and i don't like it... but we just cannot keep the lock for the complete function call as there will be no way to cancel it without deadlocking...
-			server->mainloop(id, port, 1);
+			UI_TaskInfo info(ui_async("Starting client", "Creating network area", id, 2));
+
+			client.reset(new Client());
+
+			info.next("Connecting to host");
+
+			client->start(host, port);
+
+			trigger_client_connected();
 		} catch (std::exception &e) {
-			fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
-			push_error(std::string("cannot start server: ") + e.what());
+			fprintf(stderr, "%s: cannot connect to server: %s\n", __func__, e.what());
+			push_error(std::string("cannot connect to server: ") + e.what());
 		}
-	}, port);
-
-	// wait for server to start
-	using namespace std::chrono_literals;
-
-	std::unique_lock<std::mutex> lk(m);
-	if (cv_server_start.wait_for(lk, 500ms, [&] {return server.get() != nullptr; })) {
-		start_client("127.0.0.1", port);
-	} else {
-		// error time out
-		fprintf(stderr, "%s: cannot start server: internal server error\n", __func__);
-		push_error("cannot start server: internal server error");
-		server->stop();
-	}
+	}, host, port);
 }
 
-void Engine::stop_server_now() {
+void Engine::stop_server_now(IdPoolRef ref) {
 	ZoneScoped;
 
 	std::lock_guard<std::mutex> lk(m);
 	if (server) {
 		server->close();
-		tsk_start_server = invalid_ref;
+		tsk_start_server = ref;
 	}
 }
 
 void Engine::stop_server() {
 	ZoneScoped;
 
+	reserve_threads(1);
 	tp.push([this](int id) {
 		std::lock_guard<std::mutex> lk(m_eng);
 		if (eng)
@@ -338,9 +329,10 @@ void Engine::stop_server() {
 	});
 }
 
-void Engine::start_server2(uint16_t port) {
+void Engine::start_server(uint16_t port) {
 	ZoneScoped;
 
+	reserve_threads(2);
 	tp.push([this](int id, uint16_t port) {
 		ZoneScoped;
 
@@ -354,10 +346,8 @@ void Engine::start_server2(uint16_t port) {
 
 				TskGuard(UI_TaskInfo &info) : good(false) {
 					std::lock_guard<std::mutex> lock(m_eng);
-					if (eng) {
-						assert(eng->tsk_start_server == invalid_ref);
-						eng->tsk_start_server = info.get_ref();
-					}
+					if (eng)
+						eng->stop_server_now(info.get_ref());
 				}
 
 				~TskGuard() {
@@ -374,7 +364,12 @@ void Engine::start_server2(uint16_t port) {
 				}
 			} guard(info);
 
-			server.reset(new Server);
+			{
+				std::lock_guard<std::mutex> lk(m);
+				// there should be either no server or an inactive one
+				assert(!server || !server->active());
+				server.reset(new Server);
+			}
 
 			tp.push([this](int id, uint16_t port) {
 				server->mainloop(id, port, 1);
@@ -382,7 +377,7 @@ void Engine::start_server2(uint16_t port) {
 
 			info.next("Connecting to host");
 
-			start_client("127.0.0.1", port);
+			start_client_now("127.0.0.1", port);
 
 			guard.good = true;
 		} catch (std::exception &e) {
@@ -396,6 +391,11 @@ void Engine::trigger_server_started() {
 	async_tasks |= (unsigned)EngineAsyncTask::server_started;
 }
 
+void Engine::trigger_client_connected() {
+	std::lock_guard<std::mutex> lock(m_async);
+	async_tasks |= (unsigned)EngineAsyncTask::client_connected;
+}
+
 void Engine::idle() {
 	ZoneScoped;
 	idle_async();
@@ -407,9 +407,20 @@ void Engine::idle_async() {
 
 	std::lock_guard<std::mutex> lock(m_async);
 
+	// copy popups
+	for (; !popups_async.empty(); popups_async.pop())
+		popups.emplace(popups.front());
+
 	if (async_tasks) {
-		if (async_tasks & (unsigned)EngineAsyncTask::server_started)
+		if (async_tasks & (unsigned)EngineAsyncTask::server_started) {
+			scn.hosting = true;
 			next_menu_state = MenuState::multiplayer_host;
+		}
+
+		if (async_tasks & (unsigned)EngineAsyncTask::client_connected) {
+			scn.hosting = false;
+			next_menu_state = MenuState::multiplayer_host;
+		}
 	}
 
 	async_tasks = 0;
@@ -512,8 +523,61 @@ void UI_TaskInfo::next(const std::string &s) {
 		eng->ui_async_next(*this, s);
 }
 
+void Engine::tick() {
+	ZoneScoped;
+}
+
+void Engine::eventloop(int id) {
+	ZoneScoped;
+
+	auto last = std::chrono::steady_clock::now();
+	double dt = 0;
+	bool measured = false;
+
+	while (running.load()) {
+		// recompute as logic_gamespeed may change
+		double interval_inv = (double)logic_gamespeed * DEFAULT_TICKS_PER_SECOND;
+		double interval = 1 / std::max(0.01, interval_inv);
+
+		auto now = std::chrono::steady_clock::now();
+		std::chrono::duration<double> elapsed = now - last;
+		last = now;
+		dt += elapsed.count();
+
+		size_t steps = (size_t)(dt * interval_inv);
+
+		// do steps
+		for (; steps; --steps)
+			tick();
+
+		dt = fmod(dt, interval);
+
+		unsigned us = 0;
+
+		if (!steps)
+			us = (unsigned)(interval * 1000 * 1000);
+		// 100000000
+
+		if (us > 500)
+			std::this_thread::sleep_for(std::chrono::microseconds(us));
+	}
+}
+
+void Engine::reserve_threads(int n) {
+	if (tp.n_idle() >= n)
+		return;
+
+	printf("%s: grow %d\n", __func__, n);
+	tp.resize(tp.size() + n);
+}
+
 int Engine::mainloop() {
 	ZoneScoped;
+
+	running = true;
+	reserve_threads(1);
+	tp.push([this](int id) { printf("%d\n", !!running.load()); eventloop(id); });
+
 	SDL sdl;
 
 	// Decide GL+GLSL versions

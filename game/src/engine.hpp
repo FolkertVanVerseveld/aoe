@@ -46,6 +46,7 @@ public:
 
 enum class EngineAsyncTask {
 	server_started = 1 << 0,
+	client_connected = 1 << 1,
 };
 
 class Engine final {
@@ -73,10 +74,12 @@ class Engine final {
 
 	IdPool<UI_Task> ui_tasks;
 	int ui_mod_id;
-	std::queue<ui::Popup> popups;
+	std::queue<ui::Popup> popups, popups_async;
 	IdPoolRef tsk_start_server;
 
 	unsigned async_tasks;
+	std::atomic<bool> running;
+	std::atomic<float> logic_gamespeed;
 public:
 	Engine();
 	~Engine();
@@ -84,6 +87,9 @@ public:
 	int mainloop();
 private:
 	static constexpr float frame_height = 0.85f, player_height = 0.7f, frame_margin = 0.075f;
+
+	void eventloop(int id);
+	void tick();
 
 	void idle();
 	void idle_async();
@@ -102,11 +108,12 @@ private:
 
 	void start_server(uint16_t port);
 	void stop_server();
-	void stop_server_now();
-
-	void start_server2(uint16_t port);
+	void stop_server_now(IdPoolRef ref=invalid_ref);
 
 	void start_client(const char *host, uint16_t port);
+	void start_client_now(const char *host, uint16_t port);
+
+	void reserve_threads(int n);
 public:
 	void push_error(const std::string &msg);
 
@@ -121,6 +128,7 @@ public:
 	void ui_async_next(UI_TaskInfo &info, const std::string &s);
 
 	void trigger_server_started();
+	void trigger_client_connected();
 };
 
 extern Engine *eng;

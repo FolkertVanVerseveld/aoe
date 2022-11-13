@@ -174,8 +174,12 @@ static void server_tests() {
 
 void server_runall() {
 	puts("server");
+#if TRACY_ENABLE
+	fprintf(stderr, "%s: skipping server/client create fail because tracy already has initialised network layer\n", __func__);
+#else
 	server_create_fail();
 	client_create_fail();
+#endif
 	Net n;
 	server_tests();
 	client_tests();

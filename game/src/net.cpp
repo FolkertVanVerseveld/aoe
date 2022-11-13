@@ -93,7 +93,8 @@ Net::Net() {
 			break;
 	}
 
-	++initnet;
+	unsigned v = ++initnet;
+	(void)v;// printf("%s: initnet=%u\n", __func__, v);
 }
 
 Net::~Net() {
@@ -110,13 +111,17 @@ Net::~Net() {
 		case WSAEINPROGRESS: fprintf(stderr, "%s: winsock is blocked\n", __func__); break;
 	}
 
-	--initnet;
+	unsigned v = --initnet;
+	(void)v;// printf("%s: initnet=%u\n", __func__, v);
 }
 
-TcpSocket::TcpSocket() : s(INVALID_SOCKET) {
+TcpSocket::TcpSocket() : s((int)INVALID_SOCKET) {
+	SOCKET sock;
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-socket
-	if ((s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
+	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
 		throw std::runtime_error("socket failed");
+
+	s.store(sock);
 }
 
 TcpSocket::~TcpSocket() {
@@ -125,9 +130,12 @@ TcpSocket::~TcpSocket() {
 }
 
 void TcpSocket::open() {
+	SOCKET sock;
 	close();
-	if ((s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
+	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
 		throw std::runtime_error("socket failed");
+
+	s.store(sock);
 }
 
 void TcpSocket::close() {
@@ -144,6 +152,7 @@ SOCKET TcpSocket::accept(sockaddr &a, int &sz) {
 }
 
 void TcpSocket::bind(const char *address, uint16_t port) {
+	const auto sock = s.load(std::memory_order_relaxed);
 	sockaddr_in dst{ 0 };
 
 	dst.sin_family = AF_INET;
@@ -151,7 +160,7 @@ void TcpSocket::bind(const char *address, uint16_t port) {
 	dst.sin_port = htons(port);
 
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-bind
-	int r = ::bind(s, (const sockaddr *)&dst, sizeof dst);
+	int r = ::bind(sock, (const sockaddr *)&dst, sizeof dst);
 
 	if (r == 0)
 		return;
@@ -184,8 +193,9 @@ void TcpSocket::listen(int backlog) {
 	if (backlog < 1)
 		throw std::runtime_error("listen failed: backlog must be positive");
 
+	const auto sock = s.load(std::memory_order_relaxed);
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-listen
-	int r = ::listen(s, backlog);
+	int r = ::listen(sock, backlog);
 
 	if (r == 0)
 		return;
@@ -216,9 +226,7 @@ void TcpSocket::listen(int backlog) {
 }
 
 void TcpSocket::connect(const char *address, uint16_t port) {
-	(void)address;
-	(void)port;
-
+	const auto sock = s.load(std::memory_order_relaxed);
 	sockaddr_in dst{ 0 };
 
 	dst.sin_family = AF_INET;
@@ -226,7 +234,7 @@ void TcpSocket::connect(const char *address, uint16_t port) {
 	dst.sin_port = htons(port);
 
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
-	int r = ::connect(s, (const sockaddr *)&dst, sizeof dst);
+	int r = ::connect(sock, (const sockaddr *)&dst, sizeof dst);
 
 	if (r == 0)
 		return;
@@ -276,11 +284,12 @@ void TcpSocket::connect(const char *address, uint16_t port) {
 }
 
 int TcpSocket::try_send(const void *ptr, int len, unsigned tries) noexcept {
+	const auto sock = s.load(std::memory_order_relaxed);
 	int written = 0;
 
 	while (written < len) {
 		int rem = len - written;
-		int out = ::send(s, (const char *)ptr + written, rem, 0);
+		int out = ::send(sock, (const char *)ptr + written, rem, 0);
 
 		if (out <= 0) {
 			if (!written)
@@ -327,11 +336,12 @@ void TcpSocket::send_fully(const void *ptr, int len) {
 }
 
 int TcpSocket::try_recv(void *dst, int len, unsigned tries) noexcept {
+	const auto sock = s.load(std::memory_order_relaxed);
 	int read = 0;
 
 	while (read < len) {
 		int rem = len - read;
-		int in = ::recv(s, (char *)dst + read, rem, 0);
+		int in = ::recv(sock, (char *)dst + read, rem, 0);
 
 		if (in <= 0) {
 			if (!read)

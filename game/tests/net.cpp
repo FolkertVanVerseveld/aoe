@@ -184,9 +184,13 @@ static void tcp_init() {
 }
 
 static void tcp_init_all() {
+#if TRACY_ENABLE
+	fprintf(stderr, "%s: skipping tcp init because tracy already has initialised network layer\n", __func__);
+#else
 	tcp_init_too_early();
 	tcp_init_too_late();
 	tcp_init();
+#endif
 }
 
 static void tcp_bad_accept() {
@@ -481,7 +485,28 @@ static void tcp_send_all() {
 	tcp_send_less_than_recv();
 }
 
+static void kill_net() {
+	int ret;
+
+	while ((ret = WSACleanup()) != 0) {}
+
+	switch (ret) {
+		case WSANOTINITIALISED: break;
+		case WSAENETDOWN:
+			fprintf(stderr, "%s: net down\n", __func__);
+			break;
+		case WSAEINPROGRESS:
+			fprintf(stderr, "%s: in progress\n", __func__);
+			break;
+		default:
+			fprintf(stderr, "%s: unexpected error code %X\n", __func__, ret);
+			break;
+	}
+}
+
 static void tcp_runall() {
+	//kill_net();
+
 	puts("tcp");
 	tcp_init_all();
 	tcp_bad_accept();
@@ -493,11 +518,15 @@ static void tcp_runall() {
 }
 
 static void ssock_init_fail() {
+#if TRACY_ENABLE
+	fprintf(stderr, "%s: skipping ssock_init_fail because tracy already has initialised network layer\n", __func__);
+#else
 	try {
 		ServerSocket s;
 		(void)s;
 		fprintf(stderr, "%s: ssock created without network subsystem\n", __func__);
 	} catch (std::exception&) {}
+#endif
 }
 
 static void ssock_init_delete() {

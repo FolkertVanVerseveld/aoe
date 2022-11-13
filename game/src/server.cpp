@@ -75,7 +75,6 @@ int Server::mainloop(int, uint16_t port, uint16_t protocol) {
 }
 
 void Server::stop() {
-	std::lock_guard<std::mutex> lk(m);
 	m_active = false;
 }
 

@@ -4,6 +4,7 @@
 
 #include <stdexcept>
 
+#include <atomic>
 #include <deque>
 #include <vector>
 #include <map>
@@ -39,13 +40,13 @@ class ServerSocket;
 void set_nonblocking(SOCKET s, bool nonbl=true);
 
 class TcpSocket final {
-	SOCKET s;
+	std::atomic<int> s;
 	friend ServerSocket;
 public:
 	TcpSocket();
-	TcpSocket(SOCKET s) : s(s) {}
+	TcpSocket(SOCKET s) : s((int)s) {}
 	TcpSocket(const TcpSocket &) = delete;
-	TcpSocket(TcpSocket &&s) noexcept : s(std::exchange(s.s, INVALID_SOCKET)) {}
+	TcpSocket(TcpSocket &&s) noexcept : s(s.s.load()) { s.s.store((int)INVALID_SOCKET); }
 	~TcpSocket();
 
 	void open(); // manually create socket, closes old one
@@ -109,7 +110,8 @@ public:
 
 	TcpSocket &operator=(TcpSocket &&other) noexcept
 	{
-		s = std::exchange(other.s, INVALID_SOCKET);
+		s.store(other.s.load());
+		other.s.store((int)INVALID_SOCKET);
 		return *this;
 	}
 };
