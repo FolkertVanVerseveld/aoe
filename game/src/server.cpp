@@ -1,6 +1,6 @@
 #include "server.hpp"
 
-#include "game.hpp"
+#include "engine.hpp"
 
 namespace aoe {
 
@@ -35,12 +35,20 @@ static int pkg_check_proper(const std::deque<uint8_t> &q) {
 	return q.size() - NetPkgHdr::size >= h.payload;
 }
 
+void Server::broadcast(NetPkg &pkg, bool include_host) {
+	std::vector<uint8_t> v;
+	pkg.write(v);
+	s.broadcast(v.data(), v.size(), include_host);
+}
+
 bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req) {
 	printf("%s: (%s,%s) requests protocol %u. answer protocol %u\n", __func__, p.host.c_str(), p.server.c_str(), req, protocol);
 
 	NetPkg pkg;
 	pkg.set_protocol(protocol);
 	pkg.write(out);
+
+	broadcast(pkg);
 
 	return true;
 }
@@ -51,6 +59,9 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 	switch (pkg.type()) {
 		case NetPkgType::set_protocol:
 			return chk_protocol(p, out, pkg.protocol_version());
+		case NetPkgType::chat_text:
+			broadcast(pkg);
+			break;
 		default:
 			throw "invalid type";
 	}
@@ -103,8 +114,47 @@ void Client::start(const char *host, uint16_t port) {
 	s.connect(host, port);
 	m_connected = true;
 
+	std::thread t(&Client::mainloop, std::ref(*this));
+	t.detach();
+}
+
+void Client::add_chat_text(const std::string &s) {
+	std::lock_guard<std::mutex> lk(m_eng);
+	printf("server says: \"%s\"\n", s.c_str());
+	if (eng)
+		eng->add_chat_text(s);
+}
+
+void Client::mainloop() {
 	send_protocol(1);
-	printf("prot=%u\n", recv_protocol());
+
+	try {
+		while (m_connected) {
+			NetPkg pkg = recv();
+
+			switch (pkg.type()) {
+				case NetPkgType::set_protocol:
+					printf("prot=%u\n", pkg.protocol_version());
+					break;
+				case NetPkgType::chat_text:
+					add_chat_text(pkg.chat_text());
+					break;
+				default:
+					printf("%s: type=%X\n", __func__, pkg.type());
+					break;
+			}
+		}
+	} catch (std::runtime_error &e) {
+		fprintf(stderr, "%s: client stopped: %s\n", __func__, e.what());
+
+		std::lock_guard<std::mutex> lk(m_eng);
+		if (eng) {
+			eng->trigger_multiplayer_stop();
+			if (!eng->is_hosting()) {
+				eng->push_error("Game session aborted");
+			}
+		}
+	}
 }
 
 void Client::send_protocol(uint16_t version) {
@@ -116,6 +166,12 @@ void Client::send_protocol(uint16_t version) {
 uint16_t Client::recv_protocol() {
 	NetPkg pkg = recv();
 	return pkg.protocol_version();
+}
+
+void Client::send_chat_text(const std::string &s) {
+	NetPkg pkg;
+	pkg.set_chat_text(s);
+	send(pkg);
 }
 
 }

@@ -5,6 +5,7 @@
 #include <mutex>
 #include <deque>
 #include <vector>
+#include <thread>
 
 #if _WIN32
 #include "../../wepoll/wepoll.h"
@@ -14,6 +15,7 @@ namespace aoe {
 
 enum class NetPkgType {
 	set_protocol,
+	chat_text,
 };
 
 struct NetPkgHdr final {
@@ -42,12 +44,16 @@ public:
 	void set_protocol(uint16_t version);
 	uint16_t protocol_version();
 
+	void set_chat_text(const std::string&);
+	std::string chat_text();
+
 	NetPkgType type();
 
 	void ntoh();
 	void hton();
 
 	void write(std::deque<uint8_t> &q);
+	void write(std::vector<uint8_t> &q);
 
 	size_t size() const noexcept {
 		return NetPkgHdr::size + data.size();
@@ -80,6 +86,8 @@ public:
 	bool process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out);
 private:
 	bool chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req);
+
+	void broadcast(NetPkg &pkg, bool include_host=true);
 };
 
 class Client final {
@@ -95,6 +103,12 @@ public:
 	void start(const char *host, uint16_t port);
 	void stop();
 
+private:
+	void mainloop();
+
+	void add_chat_text(const std::string &s);
+
+public:
 	bool connected() const noexcept { return m_connected; }
 
 	template<typename T> void send(T *ptr, int len=1) {
@@ -112,6 +126,8 @@ public:
 
 	void send_protocol(uint16_t version);
 	uint16_t recv_protocol();
+
+	void send_chat_text(const std::string&);
 };
 
 }

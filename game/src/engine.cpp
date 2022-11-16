@@ -98,7 +98,7 @@ Engine::Engine()
 	, cfg("config"), scn()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
-	, tsk_start_server{ invalid_ref }, async_tasks(0), running(false), logic_gamespeed(1.0f)
+	, tsk_start_server{ invalid_ref }, chat_async(), async_tasks(0), running(false), logic_gamespeed(1.0f), scroll_to_bottom(false)
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -386,14 +386,26 @@ void Engine::start_server(uint16_t port) {
 	}, port);
 }
 
-void Engine::trigger_server_started() {
+void Engine::trigger_async_flags(unsigned f) {
 	std::lock_guard<std::mutex> lock(m_async);
-	async_tasks |= (unsigned)EngineAsyncTask::server_started;
+	async_tasks |= (unsigned)f;
+}
+
+void Engine::trigger_server_started() {
+	trigger_async_flags(EngineAsyncTask::server_started);
 }
 
 void Engine::trigger_client_connected() {
-	std::lock_guard<std::mutex> lock(m_async);
-	async_tasks |= (unsigned)EngineAsyncTask::client_connected;
+	trigger_async_flags(EngineAsyncTask::client_connected);
+}
+
+void Engine::trigger_multiplayer_stop() {
+	trigger_async_flags(EngineAsyncTask::multiplayer_stopped);
+}
+
+bool Engine::is_hosting() {
+	std::lock_guard<std::mutex> lk(m);
+	return server.get() != nullptr;
 }
 
 void Engine::idle() {
@@ -421,9 +433,30 @@ void Engine::idle_async() {
 			scn.hosting = false;
 			next_menu_state = MenuState::multiplayer_host;
 		}
+
+		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_stopped)
+			cancel_multiplayer_host();
 	}
 
 	async_tasks = 0;
+
+	for (; !chat_async.empty(); chat_async.pop())
+		chat.emplace_back(chat_async.front());
+}
+
+void Engine::add_chat_text(const std::string &s) {
+	std::lock_guard<std::mutex> lk(m_async);
+	chat_async.emplace(s);
+}
+
+void Engine::cancel_multiplayer_host() {
+	try {
+		stop_server();
+		next_menu_state = MenuState::init;
+	} catch (std::exception &e) {
+		fprintf(stderr, "%s: cannot stop server: %s\n", __func__, e.what());
+		push_error(std::string("cannot stop server: ") + e.what());
+	}
 }
 
 UI_TaskInfo Engine::ui_async(const std::string &title, const std::string &desc, int thread_id, unsigned steps, TaskFlags flags) {

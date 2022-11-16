@@ -323,14 +323,21 @@ void Engine::show_mph_chat(ui::Frame &f) {
 		if (ch.begin("ChatHistory", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * 0.55f), true)) {
 			for (std::string &s : chat)
 				f.str(s.c_str());
+
+			if (scroll_to_bottom) {
+				scroll_to_bottom = false;
+				ImGui::SetScrollHereY(1.0f);
+			}
 		}
 	}
 
 	if (f.text("##", chat_line, ImGuiInputTextFlags_EnterReturnsTrue)) {
 		if (chat_line == "/clear" || chat_line == "/cls")
 			chat.clear();
-		else
-			chat.emplace_back(chat_line);
+		else {
+			client->send_chat_text(chat_line);
+			scroll_to_bottom = true;
+		}
 
 		chat_line.clear();
 		ImGui::SetKeyboardFocusHere(-1);
@@ -381,15 +388,8 @@ void Engine::show_multiplayer_host() {
 
 	f.sl();
 
-	if (f.btn("Cancel")) {
-		try {
-			stop_server();
-			next_menu_state = MenuState::init;
-		} catch (std::exception &e) {
-			fprintf(stderr, "%s: cannot stop server: %s\n", __func__, e.what());
-			push_error(std::string("cannot stop server: ") + e.what());
-		}
-	}
+	if (f.btn("Cancel"))
+		cancel_multiplayer_host();
 }
 
 void Engine::show_mph_tbl_footer(ui::Frame &f, bool has_ai) {

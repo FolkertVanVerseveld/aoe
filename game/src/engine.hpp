@@ -47,6 +47,7 @@ public:
 enum class EngineAsyncTask {
 	server_started = 1 << 0,
 	client_connected = 1 << 1,
+	multiplayer_stopped = 1 << 2,
 };
 
 class Engine final {
@@ -76,10 +77,13 @@ class Engine final {
 	int ui_mod_id;
 	std::queue<ui::Popup> popups, popups_async;
 	IdPoolRef tsk_start_server;
+	std::queue<std::string> chat_async;
 
 	unsigned async_tasks;
 	std::atomic<bool> running;
 	std::atomic<float> logic_gamespeed;
+
+	bool scroll_to_bottom;
 public:
 	Engine();
 	~Engine();
@@ -104,6 +108,8 @@ private:
 	void show_mph_cfg(ui::Frame&);
 	void show_mph_chat(ui::Frame&);
 
+	void cancel_multiplayer_host();
+
 	void show_menubar();
 
 	void start_server(uint16_t port);
@@ -114,6 +120,9 @@ private:
 	void start_client_now(const char *host, uint16_t port);
 
 	void reserve_threads(int n);
+
+	void trigger_async_flags(unsigned f);
+	void trigger_async_flags(EngineAsyncTask t) { trigger_async_flags((unsigned)t); }
 public:
 	void push_error(const std::string &msg);
 
@@ -129,6 +138,11 @@ public:
 
 	void trigger_server_started();
 	void trigger_client_connected();
+	void trigger_multiplayer_stop();
+
+	bool is_hosting();
+
+	void add_chat_text(const std::string &s);
 };
 
 extern Engine *eng;

@@ -119,9 +119,10 @@ public:
 
 class Peer final {
 public:
+	const SOCKET sock;
 	const std::string host, server;
 
-	Peer(const char *host, const char *server) : host(host), server(server) {}
+	Peer(SOCKET sock, const char *host, const char *server) : sock(sock), host(host), server(server) {}
 
 	friend bool operator<(const Peer &lhs, const Peer &rhs) {
 		return std::tie(lhs.host, lhs.server) < std::tie(rhs.host, rhs.server);
@@ -136,14 +137,16 @@ class ServerSocket final {
 	std::vector<epoll_event> events;
 	std::map<SOCKET, Peer> peers;
 	SOCKET peer_host;
-	std::mutex peer_ev_lock, data_lock;
+	std::mutex peer_ev_lock, data_lock, m_pending;
 	std::map<SOCKET, std::deque<uint8_t>> data_in, data_out;
-	std::atomic_bool running;
+	std::atomic<bool> running;
 	int (*proper_packet)(const std::deque<uint8_t>&);
 	bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg);
 	void *process_arg;
 	bool step;
 	std::atomic<unsigned long long> poll_us;
+	std::vector<SOCKET> closing;
+	std::map<SOCKET, std::deque<uint8_t>> send_pending;
 	std::atomic<std::thread::id> id;
 public:
 	ServerSocket();
@@ -172,6 +175,8 @@ public:
 	 *   the received data is in in, the data to be sent can be put in out.
 	 *   arg is the value that was returned by proper_packet. arg will always be positive.
 	 *   return false if you want to drop the connected client. true to keep it open.
+	 * 
+	 * Keep in mind that proper_packet and process_packet are called directly from this mainloop. This means that any pending incoming network data processing will be halted until the callbacks are completed. For best responsiveness, forward the data to another thread to process it.
 	 */
 	int mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents=256);
 
@@ -181,6 +186,9 @@ public:
 	 * Defaults to 50,000us (50 milliseconds).
 	 */
 	void set_poll_timeout(unsigned long long microseconds) { poll_us = microseconds; }
+
+	void send(const Peer &p, const void *ptr, int len);
+	void broadcast(const void *ptr, int len, bool include_host=true);
 private:
 	void reset(unsigned maxevents);
 
@@ -192,6 +200,12 @@ private:
 
 	bool recv_step(const Peer &p, SOCKET s);
 	bool send_step(SOCKET s);
+
+	bool event_step(int idx);
+	void reduce_peers();
+	void flush_queue();
+
+	void queue_out(const Peer &p, const void *ptr, int len);
 };
 
 }

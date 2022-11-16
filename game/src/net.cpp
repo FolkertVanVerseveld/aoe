@@ -363,12 +363,12 @@ int TcpSocket::recv(void *dst, int len, unsigned tries) {
 	if (in != SOCKET_ERROR && in >= 0)
 		return in;
 
-	if (in < 0)
-		throw std::runtime_error(std::string("wsa: recv failed: unknown return code ") + std::to_string(in));
-
 	int err = WSAGetLastError();
 
 	switch (err) {
+		case 0:
+			if (in < 0)
+				throw std::runtime_error(std::string("wsa: recv failed: unknown return code ") + std::to_string(in));
 		default:
 			wsa_generic_error("wsa: recv failed", err);
 			break;
@@ -388,7 +388,7 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
-ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr), process_arg(nullptr), step(false), poll_us(50u * 1000ull), id(std::this_thread::get_id()) {}
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), m_pending(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr), process_arg(nullptr), step(false), poll_us(50u * 1000ull), closing(), send_pending(), id(std::this_thread::get_id()) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
@@ -476,12 +476,12 @@ void ServerSocket::incoming() {
 		set_nonblocking(infd);
 		if (add_fd(infd))
 			throw std::runtime_error("ssock: add_fd failed");
-		auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(infd), std::forward_as_tuple(hbuf, sbuf));
+		auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(infd), std::forward_as_tuple(infd, hbuf, sbuf));
 		assert(ins.second);
 
 		// check if peer is host
 		const Peer &p = ins.first->second;
-		if (p.host == "127.0.0.1") {
+		if (peer_host == INVALID_SOCKET && p.host == "127.0.0.1") {
 			printf("%s: host joined at service %s\n", __func__, sbuf);
 			peer_host = infd;
 		}
@@ -624,8 +624,143 @@ void ServerSocket::reset(unsigned maxevents) {
 	data_in.clear();
 	data_out.clear();
 
+	closing.clear();
 	id = std::this_thread::get_id();
 	running = true;
+}
+
+void ServerSocket::reduce_peers() {
+	ZoneScoped;
+
+	if (closing.empty())
+		return;
+
+	std::unique_lock<std::mutex> plk(peer_ev_lock), dlk(data_lock), slk(m_pending);
+
+	while (!closing.empty()) {
+		SOCKET sock = closing.back();
+
+		del_fd(sock);
+		::closesocket(sock);
+		peers.erase(sock);
+		data_out.erase(sock);
+		send_pending.erase(sock);
+
+		closing.pop_back();
+	}
+}
+
+bool ServerSocket::event_step(int idx) {
+	ZoneScoped;
+
+	epoll_event *ev = &events[idx];
+	//printf("events = %08X\n", ev->events);
+
+	if (ev->data.fd == s.s) {
+		step = true;
+		incoming();
+	} else if (!io_step(idx)) {
+		// error or done: close fd
+		SOCKET s = ev->data.sock;
+
+		// if socket was host: terminate server
+		if (s == peer_host)
+			return false;
+
+		// postpone closing socket to the end
+		closing.emplace_back(s);
+	}
+
+	return true;
+}
+
+void ServerSocket::queue_out(const Peer &p, const void *ptr, int len) {
+	SOCKET sock = p.sock;
+
+	auto it = send_pending.find(sock);
+	if (it == send_pending.end())
+		it = send_pending.try_emplace(sock).first;
+
+	std::deque<uint8_t> &out = it->second;
+
+	const uint8_t *src = (const uint8_t *)ptr;
+
+	for (int i = 0; i < len; ++i)
+		out.emplace_back(src[i]);
+}
+
+void ServerSocket::send(const Peer &p, const void *ptr, int len) {
+	std::lock_guard<std::mutex> lk(m_pending);
+	queue_out(p, ptr, len);
+}
+
+void ServerSocket::broadcast(const void *ptr, int len, bool include_host) {
+	const auto id = this->id.load(std::memory_order_relaxed);
+
+	std::unique_lock<std::mutex> lk(m_pending, std::defer_lock);
+	std::unique_lock<std::mutex> plk(peer_ev_lock, std::defer_lock);
+
+	// only lock if not ran from mainloop thread
+	if (std::this_thread::get_id() != id)
+		std::lock(lk, plk);
+	else
+		lk.lock();
+
+	for (auto kv : peers) {
+		const auto p = kv.second;
+
+		if (!include_host && peer_host == p.sock)
+			continue;
+
+		queue_out(p, ptr, len);
+	}
+}
+
+void ServerSocket::flush_queue() {
+	std::lock_guard<std::mutex> lk(m_pending);
+
+	if (send_pending.empty())
+		return;
+
+	for (auto it = send_pending.begin(); it != send_pending.end();) {
+		auto kv = *it;
+		SOCKET sock = kv.first;
+		auto q = kv.second;
+
+		// remove if nothing to send anymore
+		if (q.empty()) {
+			it = send_pending.erase(it);
+			continue;
+		}
+
+		// try to send any pending data
+		std::unique_lock<std::mutex> lk(data_lock);
+
+		auto it2 = data_out.find(sock);
+		std::deque<uint8_t> *q2 = nullptr;
+
+		if (it2 == data_out.end()) {
+			// no data_out item: use queue from send_pending
+			q2 = &data_out.try_emplace(sock).first->second;
+		} else {
+			// data_out item present
+			q2 = &it2->second;
+
+			// this step is really important: if the out queue from send_step is not empty, there is no way we can guarantee that the api layer has sent a full message. so we have to wait for that queue to become depleted first.
+			if (!q2->empty()) {
+				++it;
+				continue;
+			}
+		}
+
+		// prepare to send
+		std::swap(*q2, q);
+		it = send_pending.erase(it);
+
+		lk.unlock();
+
+		send_step(sock);
+	}
 }
 
 int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents) {
@@ -646,46 +781,17 @@ int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(cons
 		return 1;
 
 	s.set_nonblocking();
-
-	std::vector<SOCKET> closing;
 	step = false;
 
 	for (int nfds; (nfds = epoll_wait(h, events.data(), events.size(), -1)) >= 0; step = false) {
-		for (int i = 0; i < nfds; ++i) {
-			epoll_event *ev = &events[i];
-			//printf("events = %08X\n", ev->events);
-
-			if (ev->data.fd == s.s) {
-				step = true;
-				incoming();
-			} else if (!io_step(i)) {
-				// error or done: close fd
-				SOCKET s = ev->data.sock;
-
-				// if socket was host: terminate server
-				if (s == peer_host) {
-					stop();
-					return 0;
-				}
-
-				// postpone closing socket to the end
-				closing.emplace_back(s);
+		for (int i = 0; i < nfds; ++i)
+			if (!event_step(i)) {
+				stop();
+				return 0;
 			}
-		}
 
-		if (!closing.empty()) {
-			std::lock_guard<std::mutex> lk(peer_ev_lock);
-
-			while (!closing.empty()) {
-				SOCKET sock = closing.back();
-
-				del_fd(sock);
-				::closesocket(sock);
-				peers.erase(sock);
-
-				closing.pop_back();
-			}
-		}
+		reduce_peers();
+		flush_queue();
 
 		unsigned long long dt = poll_us.load(std::memory_order_relaxed);
 
