@@ -471,6 +471,8 @@ void ServerSocket::incoming() {
 			continue;
 		}
 
+		hbuf[NI_MAXHOST - 1] = sbuf[NI_MAXSERV - 1] = '\0';
+
 		// set up peer
 		printf("%s: descriptor %u: %s:%s\n", __func__, (unsigned)infd, hbuf, sbuf);
 		set_nonblocking(infd);

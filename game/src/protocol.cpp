@@ -35,6 +35,9 @@ void NetPkg::ntoh() {
 			dw[0] = ntohs(dw[0]);
 			break;
 		}
+		case NetPkgType::start_game:
+			// no payload
+			break;
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -53,6 +56,9 @@ void NetPkg::hton() {
 			dw[0] = htons(dw[0]);
 			break;
 		}
+		case NetPkgType::start_game:
+			// no payload
+			break;
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -190,6 +196,11 @@ std::string NetPkg::chat_text() {
 	memcpy(s.data(), &dw[1], n);
 
 	return s;
+}
+
+void NetPkg::set_start_game() {
+	data.clear();
+	set_hdr(NetPkgType::start_game);
 }
 
 NetPkgType NetPkg::type() {

@@ -202,6 +202,9 @@ void Engine::display() {
 		case MenuState::multiplayer_host:
 			show_multiplayer_host();
 			break;
+		case MenuState::multiplayer_game:
+			show_multiplayer_game();
+			break;
 		default:
 			show_init();
 			break;
@@ -403,6 +406,10 @@ void Engine::trigger_multiplayer_stop() {
 	trigger_async_flags(EngineAsyncTask::multiplayer_stopped);
 }
 
+void Engine::trigger_multiplayer_started() {
+	trigger_async_flags(EngineAsyncTask::multiplayer_started);
+}
+
 bool Engine::is_hosting() {
 	std::lock_guard<std::mutex> lk(m);
 	return server.get() != nullptr;
@@ -436,12 +443,21 @@ void Engine::idle_async() {
 
 		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_stopped)
 			cancel_multiplayer_host();
+
+		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_started)
+			start_multiplayer_game();
 	}
 
 	async_tasks = 0;
 
 	for (; !chat_async.empty(); chat_async.pop())
 		chat.emplace_back(chat_async.front());
+}
+
+void Engine::start_multiplayer_game() {
+	ZoneScoped;
+
+	next_menu_state = MenuState::multiplayer_game;
 }
 
 void Engine::add_chat_text(const std::string &s) {
@@ -451,11 +467,15 @@ void Engine::add_chat_text(const std::string &s) {
 
 void Engine::cancel_multiplayer_host() {
 	try {
-		stop_server();
+		if (server)
+			stop_server();
+		else
+			client->stop();
+
 		next_menu_state = MenuState::init;
 	} catch (std::exception &e) {
-		fprintf(stderr, "%s: cannot stop server: %s\n", __func__, e.what());
-		push_error(std::string("cannot stop server: ") + e.what());
+		fprintf(stderr, "%s: cannot stop multiplayer: %s\n", __func__, e.what());
+		push_error(std::string("cannot stop multiplayer: ") + e.what());
 	}
 }
 

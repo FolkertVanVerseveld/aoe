@@ -312,6 +312,20 @@ bool Popup::show() {
 
 using namespace ui;
 
+void Engine::show_chat_line(ui::Frame &f) {
+	if (f.text("##", chat_line, ImGuiInputTextFlags_EnterReturnsTrue)) {
+		if (chat_line == "/clear" || chat_line == "/cls")
+			chat.clear();
+		else {
+			client->send_chat_text(chat_line);
+			scroll_to_bottom = true;
+		}
+
+		chat_line.clear();
+		ImGui::SetKeyboardFocusHere(-1);
+	}
+}
+
 void Engine::show_mph_chat(ui::Frame &f) {
 	Child cf;
 	if (!cf.begin("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar))
@@ -331,16 +345,93 @@ void Engine::show_mph_chat(ui::Frame &f) {
 		}
 	}
 
-	if (f.text("##", chat_line, ImGuiInputTextFlags_EnterReturnsTrue)) {
-		if (chat_line == "/clear" || chat_line == "/cls")
-			chat.clear();
-		else {
-			client->send_chat_text(chat_line);
-			scroll_to_bottom = true;
+	show_chat_line(f);
+}
+
+void Engine::show_multiplayer_game() {
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+
+	if (ImGui::BeginMainMenuBar()) {
+		ImGui::Text("F: %u W: %u G: %u S: %u %s", 1, 2, 3, 4, "antiquity age");
+
+
+		if (ImGui::Button("Diplomacy")) {
+
 		}
 
-		chat_line.clear();
-		ImGui::SetKeyboardFocusHere(-1);
+		if (ImGui::BeginMenu("Menu")) {
+			if (ImGui::MenuItem("Quit")) {
+				cancel_multiplayer_host();
+			}
+			ImGui::EndMenu();
+		}
+
+		ImGui::EndMainMenuBar();
+	}
+
+	{
+		Frame f;
+
+		ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x, vp->WorkPos.y));
+
+		if (f.begin("Chat", ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
+			ImGui::SetWindowSize(ImVec2(400, 0));
+
+			{
+				Child ch;
+
+				if (ch.begin("ChatHistory", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * 0.8f), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+
+					for (std::string &s : chat)
+						ImGui::TextWrapped("%s", s.c_str());
+
+				ImGui::SetScrollHereY(1.0f);
+			}
+
+			show_chat_line(f);
+		}
+	}
+
+	{
+		Frame f;
+
+		float w = vp->WorkSize.x;
+		float hud_h = 160;
+
+		ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x, vp->WorkPos.y + vp->WorkSize.y - hud_h));
+
+		if (f.begin("HUD", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
+			ImGui::SetWindowSize(ImVec2(w, hud_h));
+			{
+				Child lf;
+
+				//ImGui::SetCursorPosX(off_x);
+
+				if (lf.begin("IconFrame", ImVec2(160, 0))) {
+					ImGui::TextUnformatted("icon here...");
+				}
+			}
+
+			f.sl();
+
+			{
+				Child mf;
+
+				if (mf.begin("ControlFrame", ImVec2(w - 160 - 180, 0))) {
+					ImGui::TextUnformatted("control buttons here...");
+				}
+			}
+
+			f.sl();
+
+			{
+				Child rf;
+
+				if (rf.begin("MinimapFrame", ImVec2(180, 0))) {
+					ImGui::TextUnformatted("minimap here...");
+				}
+			}
+		}
 	}
 }
 
@@ -383,7 +474,7 @@ void Engine::show_multiplayer_host() {
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGui::Tooltip("Game cannot be started without players. You can add players with `+' and `+10'.");
 	} else if (f.btn("Start Game")) {
-		;// next_menu_state = MenuState::multiplayer_game;
+		client->send_start_game();
 	}
 
 	f.sl();

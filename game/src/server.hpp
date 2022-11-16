@@ -16,6 +16,7 @@ namespace aoe {
 enum class NetPkgType {
 	set_protocol,
 	chat_text,
+	start_game,
 };
 
 struct NetPkgHdr final {
@@ -46,6 +47,8 @@ public:
 
 	void set_chat_text(const std::string&);
 	std::string chat_text();
+
+	void set_start_game();
 
 	NetPkgType type();
 
@@ -107,6 +110,7 @@ private:
 	void mainloop();
 
 	void add_chat_text(const std::string &s);
+	void start_game();
 
 public:
 	bool connected() const noexcept { return m_connected; }
@@ -128,6 +132,7 @@ public:
 	uint16_t recv_protocol();
 
 	void send_chat_text(const std::string&);
+	void send_start_game();
 };
 
 }

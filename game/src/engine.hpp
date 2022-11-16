@@ -48,6 +48,7 @@ enum class EngineAsyncTask {
 	server_started = 1 << 0,
 	client_connected = 1 << 1,
 	multiplayer_stopped = 1 << 2,
+	multiplayer_started = 1 << 3,
 };
 
 class Engine final {
@@ -107,8 +108,11 @@ private:
 	void show_mph_tbl_footer(ui::Frame &f, bool has_ai);
 	void show_mph_cfg(ui::Frame&);
 	void show_mph_chat(ui::Frame&);
+	void show_chat_line(ui::Frame&);
 
 	void cancel_multiplayer_host();
+
+	void show_multiplayer_game();
 
 	void show_menubar();
 
@@ -123,6 +127,8 @@ private:
 
 	void trigger_async_flags(unsigned f);
 	void trigger_async_flags(EngineAsyncTask t) { trigger_async_flags((unsigned)t); }
+
+	void start_multiplayer_game();
 public:
 	void push_error(const std::string &msg);
 
@@ -139,6 +145,7 @@ public:
 	void trigger_server_started();
 	void trigger_client_connected();
 	void trigger_multiplayer_stop();
+	void trigger_multiplayer_started();
 
 	bool is_hosting();
 

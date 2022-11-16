@@ -62,7 +62,11 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 		case NetPkgType::chat_text:
 			broadcast(pkg);
 			break;
+		case NetPkgType::start_game:
+			broadcast(pkg);
+			break;
 		default:
+			fprintf(stderr, "bad type: %u\n", pkg.type());
 			throw "invalid type";
 	}
 
@@ -102,8 +106,8 @@ Client::~Client() {
 
 void Client::stop() {
 	std::lock_guard<std::mutex> lk(m);
-	s.close();
 	m_connected = false;
+	s.close();
 }
 
 void Client::start(const char *host, uint16_t port) {
@@ -125,6 +129,13 @@ void Client::add_chat_text(const std::string &s) {
 		eng->add_chat_text(s);
 }
 
+void Client::start_game() {
+	std::lock_guard<std::mutex> lk(m_eng);
+	puts("start game");
+	if (eng)
+		eng->trigger_multiplayer_started();
+}
+
 void Client::mainloop() {
 	send_protocol(1);
 
@@ -139,6 +150,9 @@ void Client::mainloop() {
 				case NetPkgType::chat_text:
 					add_chat_text(pkg.chat_text());
 					break;
+				case NetPkgType::start_game:
+					start_game();
+					break;
 				default:
 					printf("%s: type=%X\n", __func__, pkg.type());
 					break;
@@ -146,13 +160,13 @@ void Client::mainloop() {
 		}
 	} catch (std::runtime_error &e) {
 		fprintf(stderr, "%s: client stopped: %s\n", __func__, e.what());
+	}
 
-		std::lock_guard<std::mutex> lk(m_eng);
-		if (eng) {
-			eng->trigger_multiplayer_stop();
-			if (!eng->is_hosting()) {
-				eng->push_error("Game session aborted");
-			}
+	std::lock_guard<std::mutex> lk(m_eng);
+	if (eng) {
+		eng->trigger_multiplayer_stop();
+		if (!eng->is_hosting()) {
+			eng->push_error("Game session aborted");
 		}
 	}
 }
@@ -171,6 +185,12 @@ uint16_t Client::recv_protocol() {
 void Client::send_chat_text(const std::string &s) {
 	NetPkg pkg;
 	pkg.set_chat_text(s);
+	send(pkg);
+}
+
+void Client::send_start_game() {
+	NetPkg pkg;
+	pkg.set_start_game();
 	send(pkg);
 }
 
