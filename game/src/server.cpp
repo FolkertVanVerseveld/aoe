@@ -215,6 +215,7 @@ void Client::send_start_game() {
 }
 
 void Client::send_scn_vars(const ScenarioSettings &scn) {
+	printf("%s: %u,%u\n", __func__, scn.width, scn.height);
 	NetPkg pkg;
 	pkg.set_scn_vars(scn);
 	send(pkg);

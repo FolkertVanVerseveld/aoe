@@ -519,7 +519,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 
 	while (1) {
 		int count;
-		char buf[512];
+		char buf[512]; // TODO make resizable/configurable
 
 		count = ::recv(s, buf, sizeof buf, 0);
 		if (count < 0) {
@@ -533,8 +533,10 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 			return true;
 		}
 
-		if (count == 0)
+		if (count == 0) {
+			fprintf(stderr, "%s: nothing received for %s:%s\n", __func__, p.host.c_str(), p.server.c_str());
 			return false; // peer send shutdown request or has closed socket
+		}
 
 		step = true;
 		lk.lock();
@@ -586,8 +588,9 @@ bool ServerSocket::send_step(SOCKET s) {
 
 	auto &q = it->second;
 	while (!q.empty()) {
+		printf("%s: try send %u bytes to %u\n", __func__, q.size(), s);
 		int count;
-		char buf[1024];
+		char buf[1024]; // TODO make resizable/configurable
 		int out = (int)std::min(sizeof buf, q.size());
 
 		for (int i = 0; i < out; ++i)
@@ -682,6 +685,8 @@ bool ServerSocket::event_step(int idx) {
 
 void ServerSocket::queue_out(const Peer &p, const void *ptr, int len) {
 	SOCKET sock = p.sock;
+
+	printf("%s: %d bytes for %s:%s\n", __func__, len, p.host.c_str(), p.server.c_str());
 
 	auto it = send_pending.find(sock);
 	if (it == send_pending.end())

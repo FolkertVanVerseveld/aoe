@@ -92,28 +92,34 @@ bool Frame::combo(const char *label, int &idx, const std::vector<std::string> &l
 
 static bool scalar(const char *label, int32_t &v, int32_t step) {
 	static_assert(sizeof(v) == sizeof(int32_t));
+	int32_t v_old = v;
+	bool b = false;
 
 	if (label && *label == '#') {
 		ImGui::PushItemWidth(-1);
-		bool b = ImGui::InputScalar(label, ImGuiDataType_S32, &v, step ? (const void *)&step : NULL);
+		b = ImGui::InputScalar(label, ImGuiDataType_S32, &v, step ? (const void *)&step : NULL);
 		ImGui::PopItemWidth();
-		return b;
+	} else {
+		b = ImGui::InputScalar(label, ImGuiDataType_S32, &v, step ? (const void *)&step : NULL);
 	}
 
-	return ImGui::InputScalar(label, ImGuiDataType_S32, &v, step ? (const void *)&step : NULL);
+	return b && v != v_old;
 }
 
 static bool scalar(const char *label, uint32_t &v, uint32_t step) {
 	static_assert(sizeof(v) == sizeof(uint32_t));
+	uint32_t v_old = v;
+	bool b = false;
 
 	if (label && *label == '#') {
 		ImGui::PushItemWidth(-1);
-		bool b = ImGui::InputScalar(label, ImGuiDataType_U32, &v, step ? (const void *)&step : NULL);
+		b = ImGui::InputScalar(label, ImGuiDataType_U32, &v, step ? (const void *)&step : NULL);
 		ImGui::PopItemWidth();
-		return b;
+	} else {
+		b = ImGui::InputScalar(label, ImGuiDataType_U32, &v, step ? (const void *)&step : NULL);
 	}
 
-	return ImGui::InputScalar(label, ImGuiDataType_U32, &v, step ? (const void*)&step : NULL);
+	return b && v != v_old;
 }
 
 bool Frame::scalar(const char *label, int32_t &v, int32_t step) {
@@ -126,7 +132,10 @@ bool Frame::scalar(const char *label, uint32_t &v, uint32_t step) {
 
 bool Frame::scalar(const char *label, uint32_t &v, uint32_t step, uint32_t min, uint32_t max) {
 	v = std::clamp(v, min, max);
-	return ui::scalar(label, v, step);
+	uint32_t v_old = v;
+	bool b = ui::scalar(label, v, step);
+	v = std::clamp(v, min, max);
+	return b && v != v_old;
 }
 
 static bool text(const char *label, std::string &buf, ImGuiInputTextFlags flags) {
