@@ -388,7 +388,7 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
-ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), m_pending(), data_in(), data_out(), running(false), proper_packet(nullptr), process_packet(nullptr), process_arg(nullptr), step(false), poll_us(50u * 1000ull), closing(), send_pending(), id(std::this_thread::get_id()) {}
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), m_pending(), data_in(), data_out(), running(false), step(false), poll_us(50u * 1000ull), closing(), send_pending(), id(std::this_thread::get_id()), ctl(nullptr) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
@@ -419,6 +419,8 @@ void ServerSocket::stop() {
 	lk.unlock();
 
 	running = false;
+	if (ctl)
+		ctl->stopped();
 }
 
 void ServerSocket::close() {
@@ -491,6 +493,8 @@ void ServerSocket::incoming() {
 
 		auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(infd), std::forward_as_tuple(infd, hbuf, sbuf, is_host));
 		assert(ins.second);
+
+		ctl->incoming(*this, ins.first->second);
 	}
 }
 
@@ -546,7 +550,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 		for (int i = 0; i < count; ++i)
 			it->second.emplace_back(buf[i]);
 
-		int processed = proper_packet(it->second);
+		int processed = ctl->proper_packet(*this, it->second);
 
 		// remove bytes if asked to do so
 		for (; processed < 0 && !it->second.empty(); ++processed)
@@ -558,7 +562,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 			continue;
 		}
 
-		assert(proper_packet(it->second) > 0);
+		assert(ctl->proper_packet(*this, it->second) > 0);
 
 		auto outs = data_out.try_emplace(s);
 		auto out = outs.first;
@@ -566,7 +570,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 		bool keep_alive = false;
 
 		try {
-			keep_alive = process_packet(p, it->second, out->second, processed, process_arg);
+			keep_alive = ctl->process_packet(*this, p, it->second, out->second, processed);
 		} catch (const std::runtime_error &e) {
 			fprintf(stderr, "%s: failed to process for (%s,%s): %s\n", __func__, p.host.c_str(), p.server.c_str(), e.what());
 		}
@@ -623,7 +627,7 @@ bool ServerSocket::send_step(SOCKET s) {
 	return true;
 }
 
-void ServerSocket::reset(unsigned maxevents) {
+void ServerSocket::reset(ServerSocketController &ctl, unsigned maxevents) {
 	ZoneScoped;
 	printf("%s: maxevents %u\n", __func__, maxevents);
 	events.resize(maxevents);
@@ -635,6 +639,7 @@ void ServerSocket::reset(unsigned maxevents) {
 
 	closing.clear();
 	id = std::this_thread::get_id();
+	this->ctl = &ctl;
 	running = true;
 }
 
@@ -774,12 +779,9 @@ void ServerSocket::flush_queue() {
 	}
 }
 
-int ServerSocket::mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents) {
+int ServerSocket::mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned maxevents) {
 	ZoneScoped;
-	reset(maxevents);
-	this->proper_packet = proper_packet;
-	this->process_packet = process_packet;
-	this->process_arg = process_arg;
+	reset(ctl, maxevents);
 
 	s.bind(port);
 	s.listen(backlog);

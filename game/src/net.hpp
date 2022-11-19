@@ -130,6 +130,39 @@ public:
 	}
 };
 
+class ServerSocket;
+
+class ServerSocketController {
+public:
+	ServerSocketController() {}
+	virtual ~ServerSocketController() {}
+
+	/* A peer has just connected to this server. */
+	virtual void incoming(ServerSocket &s, const Peer &p) = 0;
+
+	/* A peer has just left or has been kicked from this server. */
+	virtual void dropped(ServerSocket &s, const Peer &p) = 0;
+
+	/* Server has been stopped. */
+	virtual void stopped() = 0;
+
+	/*
+	 * determines whether the packet received so far is complete
+	 *   returns 0 if it needs more data
+	 *   returns a positive number to indicate at least one packet has been received.
+	 *   returns a negative number to drop the first X bytes in the queue. E.g.: -3 indicates 3 bytes have to be removed
+	 */
+	virtual int proper_packet(ServerSocket &s, const std::deque<uint8_t>&) = 0;
+
+	/*
+	 * process received packet that's considered valid according to proper_packet reading from in and sending any response to out
+	 *   the received data is in in, the data to be sent can be put in out.
+	 *   processed is the value that was returned by proper_packet. processed will always be positive.
+	 *   return false if you want to drop the connected client. true to keep it open.
+	 */
+	virtual bool process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) = 0;
+};
+
 // TODO make multi thread-safe: mutex for open, stop, close, parts of mainloop
 class ServerSocket final {
 	TcpSocket s;
@@ -141,14 +174,13 @@ class ServerSocket final {
 	std::mutex peer_ev_lock, data_lock, m_pending;
 	std::map<SOCKET, std::deque<uint8_t>> data_in, data_out;
 	std::atomic<bool> running;
-	int (*proper_packet)(const std::deque<uint8_t>&);
-	bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg);
-	void *process_arg;
 	bool step;
 	std::atomic<unsigned long long> poll_us;
 	std::vector<SOCKET> closing;
 	std::map<SOCKET, std::deque<uint8_t>> send_pending;
 	std::atomic<std::thread::id> id;
+
+	ServerSocketController *ctl;
 public:
 	ServerSocket();
 	~ServerSocket();
@@ -179,7 +211,7 @@ public:
 	 * 
 	 * Keep in mind that proper_packet and process_packet are called directly from this mainloop. This means that any pending incoming network data processing will be halted until the callbacks are completed. For best responsiveness, forward the data to another thread to process it.
 	 */
-	int mainloop(uint16_t port, int backlog, int (*proper_packet)(const std::deque<uint8_t>&), bool (*process_packet)(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void *arg), void *process_arg, unsigned maxevents=256);
+	int mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned maxevents=256);
 
 	/**
 	 * Change poll timeout (0 to disable). Note that this is only used on systems
@@ -191,7 +223,7 @@ public:
 	void send(const Peer &p, const void *ptr, int len);
 	void broadcast(const void *ptr, int len, bool include_host=true);
 private:
-	void reset(unsigned maxevents);
+	void reset(ServerSocketController &ctl, unsigned maxevents);
 
 	int add_fd(SOCKET s);
 	int del_fd(SOCKET s);

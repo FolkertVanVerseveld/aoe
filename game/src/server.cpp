@@ -15,7 +15,10 @@ struct pkg {
 	uint16_t type;
 };
 
-static int pkg_check_proper(const std::deque<uint8_t> &q) {
+void Server::incoming(ServerSocket &s, const Peer &p) {}
+void Server::dropped(ServerSocket &s, const Peer &p) {}
+
+int Server::proper_packet(ServerSocket &s, const std::deque<uint8_t> &q) {
 	if (q.size() < NetPkgHdr::size)
 		return 0;
 
@@ -84,10 +87,9 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 	return true;
 }
 
-static bool pkg_process(const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int, void *arg) {
+bool Server::process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) {
 	NetPkg pkg(in);
-	Server &s = *((Server*)arg);
-	return s.process(p, pkg, out);
+	return process(p, pkg, out);
 }
 
 int Server::mainloop(int, uint16_t port, uint16_t protocol) {
@@ -95,7 +97,7 @@ int Server::mainloop(int, uint16_t port, uint16_t protocol) {
 	this->protocol = protocol;
 
 	m_active = true;
-	int r = s.mainloop(port, 10, pkg_check_proper, pkg_process, this);
+	int r = s.mainloop(port, 10, *this);
 
 	return r;
 }

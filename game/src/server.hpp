@@ -76,7 +76,7 @@ public:
 	std::string username;
 };
 
-class Server final {
+class Server final : public ServerSocketController {
 	ServerSocket s;
 	std::atomic<bool> m_active;
 	std::mutex m;
@@ -94,6 +94,14 @@ public:
 	int mainloop(int id, uint16_t port, uint16_t protocol);
 
 	bool process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out);
+
+	void incoming(ServerSocket &s, const Peer &p) override;
+	void dropped(ServerSocket &s, const Peer &p) override;
+
+	void stopped() override {}
+
+	int proper_packet(ServerSocket &s, const std::deque<uint8_t> &q) override;
+	bool process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) override;
 private:
 	bool chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req);
 
