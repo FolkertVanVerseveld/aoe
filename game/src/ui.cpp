@@ -360,9 +360,9 @@ void Engine::show_multiplayer_game() {
 		}
 
 		if (ImGui::BeginMenu("Menu")) {
-			if (ImGui::MenuItem("Quit")) {
+			if (ImGui::MenuItem("Quit"))
 				cancel_multiplayer_host();
-			}
+
 			ImGui::EndMenu();
 		}
 
@@ -397,6 +397,8 @@ void Engine::show_multiplayer_game() {
 
 		float w = vp->WorkSize.x;
 		float hud_h = 160;
+		float icon_w = 160;
+		float map_w = 180;
 
 		ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x, vp->WorkPos.y + vp->WorkSize.y - hud_h));
 
@@ -407,7 +409,7 @@ void Engine::show_multiplayer_game() {
 
 				//ImGui::SetCursorPosX(off_x);
 
-				if (lf.begin("IconFrame", ImVec2(160, 0))) {
+				if (lf.begin("IconFrame", ImVec2(icon_w, 0))) {
 					ImGui::TextUnformatted("icon here...");
 				}
 			}
@@ -417,7 +419,7 @@ void Engine::show_multiplayer_game() {
 			{
 				Child mf;
 
-				if (mf.begin("ControlFrame", ImVec2(w - 160 - 180, 0))) {
+				if (mf.begin("ControlFrame", ImVec2(w - icon_w - map_w, 0))) {
 					ImGui::TextUnformatted("control buttons here...");
 				}
 			}
@@ -427,7 +429,7 @@ void Engine::show_multiplayer_game() {
 			{
 				Child rf;
 
-				if (rf.begin("MinimapFrame", ImVec2(180, 0))) {
+				if (rf.begin("MinimapFrame", ImVec2(map_w, 0))) {
 					ImGui::TextUnformatted("minimap here...");
 				}
 			}
@@ -608,34 +610,39 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 
 		f.fmt("villagers: %u", scn.villagers);
 	} else {
-		f.scalar("seed", scn.seed);
+		bool changed = false;
+
+		changed |= f.scalar("seed", scn.seed);
 
 		f.str("Size:");
 		f.sl();
-		if (f.chkbox("squared", scn.square) && scn.square)
+		if (changed |= f.chkbox("squared", scn.square) && scn.square)
 			scn.width = scn.height;
-		if (f.scalar("Width", scn.width, 1, 8, 65536) && scn.square)
+		if (changed |= f.scalar("Width", scn.width, 1, 8, 65536) && scn.square)
 			scn.height = scn.width;
-		if (f.scalar("Height", scn.height, 1, 8, 65536) && scn.square)
+		if (changed |= f.scalar("Height", scn.height, 1, 8, 65536) && scn.square)
 			scn.width = scn.height;
 
-		f.chkbox("Fixed position", scn.fixed_start);
-		f.chkbox("Reveal map", scn.explored);
-		f.chkbox("Full Tech Tree", scn.all_technologies);
-		f.chkbox("Enable cheating", scn.cheating);
+		changed |= f.chkbox("Fixed position", scn.fixed_start);
+		changed |= f.chkbox("Reveal map", scn.explored);
+		changed |= f.chkbox("Full Tech Tree", scn.all_technologies);
+		changed |= f.chkbox("Enable cheating", scn.cheating);
 		if (scn.hosting)
-			f.chkbox("Host makes settings", scn.restricted);
+			changed |= f.chkbox("Host makes settings", scn.restricted);
 
-		f.scalar("Age", scn.age, 1, 1, 4);
-		f.scalar("Max pop.", scn.popcap, 5, 5, 1000);
+		changed |= f.scalar("Age", scn.age, 1, 1, 4);
+		changed |= f.scalar("Max pop.", scn.popcap, 5, 5, 1000);
 
 		f.str("Resources:");
-		f.scalar("food", scn.res.food, 10);
-		f.scalar("wood", scn.res.wood, 10);
-		f.scalar("gold", scn.res.gold, 10);
-		f.scalar("stone", scn.res.stone, 10);
+		changed |= f.scalar("food", scn.res.food, 10);
+		changed |= f.scalar("wood", scn.res.wood, 10);
+		changed |= f.scalar("gold", scn.res.gold, 10);
+		changed |= f.scalar("stone", scn.res.stone, 10);
 
-		f.scalar("villagers", scn.villagers, 1, scn.res.food < 50 ? 1 : 0, scn.popcap);
+		changed |= f.scalar("villagers", scn.villagers, 1, scn.res.food < 50 ? 1 : 0, scn.popcap);
+
+		if (changed)
+			client->send_scn_vars(scn);
 	}
 }
 

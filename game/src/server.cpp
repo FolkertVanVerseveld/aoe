@@ -65,6 +65,17 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 		case NetPkgType::start_game:
 			broadcast(pkg);
 			break;
+		case NetPkgType::set_scn_vars:
+			if (p.is_host) {
+				broadcast(pkg, false);
+			} else {
+				// TODO check if restricted is disabled
+
+				// if restricted, client is modded: kick now!
+				fprintf(stderr, "hacked client %s:%s: kick!\n", p.host.c_str(), p.server.c_str());
+				return false;
+			}
+			break;
 		default:
 			fprintf(stderr, "bad type: %u\n", pkg.type());
 			throw "invalid type";
@@ -136,6 +147,12 @@ void Client::start_game() {
 		eng->trigger_multiplayer_started();
 }
 
+void Client::set_scn_vars(const ScenarioSettings &scn) {
+	std::lock_guard<std::mutex> lk(m_eng);
+	if (eng)
+		eng->set_scn_vars(scn);
+}
+
 void Client::mainloop() {
 	send_protocol(1);
 
@@ -152,6 +169,9 @@ void Client::mainloop() {
 					break;
 				case NetPkgType::start_game:
 					start_game();
+					break;
+				case NetPkgType::set_scn_vars:
+					set_scn_vars(pkg.get_scn_vars());
 					break;
 				default:
 					printf("%s: type=%X\n", __func__, pkg.type());
@@ -191,6 +211,12 @@ void Client::send_chat_text(const std::string &s) {
 void Client::send_start_game() {
 	NetPkg pkg;
 	pkg.set_start_game();
+	send(pkg);
+}
+
+void Client::send_scn_vars(const ScenarioSettings &scn) {
+	NetPkg pkg;
+	pkg.set_scn_vars(scn);
 	send(pkg);
 }
 

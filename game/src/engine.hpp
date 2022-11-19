@@ -49,6 +49,7 @@ enum class EngineAsyncTask {
 	client_connected = 1 << 1,
 	multiplayer_stopped = 1 << 2,
 	multiplayer_started = 1 << 3,
+	set_scn_vars = 1 << 4,
 };
 
 class Engine final {
@@ -79,12 +80,15 @@ class Engine final {
 	std::queue<ui::Popup> popups, popups_async;
 	IdPoolRef tsk_start_server;
 	std::queue<std::string> chat_async;
+	ScenarioSettings scn_async;
 
 	unsigned async_tasks;
 	std::atomic<bool> running;
 	std::atomic<float> logic_gamespeed;
 
 	bool scroll_to_bottom;
+
+	std::string username;
 public:
 	Engine();
 	~Engine();
@@ -129,6 +133,8 @@ private:
 	void trigger_async_flags(EngineAsyncTask t) { trigger_async_flags((unsigned)t); }
 
 	void start_multiplayer_game();
+
+	void set_scn_vars_now(const ScenarioSettings &scn);
 public:
 	void push_error(const std::string &msg);
 
@@ -150,6 +156,8 @@ public:
 	bool is_hosting();
 
 	void add_chat_text(const std::string &s);
+
+	void set_scn_vars(const ScenarioSettings &scn);
 };
 
 extern Engine *eng;

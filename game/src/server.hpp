@@ -7,6 +7,8 @@
 #include <vector>
 #include <thread>
 
+#include "game.hpp"
+
 #if _WIN32
 #include "../../wepoll/wepoll.h"
 #endif
@@ -17,6 +19,7 @@ enum class NetPkgType {
 	set_protocol,
 	chat_text,
 	start_game,
+	set_scn_vars,
 };
 
 struct NetPkgHdr final {
@@ -50,6 +53,9 @@ public:
 
 	void set_start_game();
 
+	void set_scn_vars(const ScenarioSettings &scn);
+	ScenarioSettings get_scn_vars();
+
 	NetPkgType type();
 
 	void ntoh();
@@ -66,7 +72,8 @@ private:
 };
 
 class ClientInfo final {
-
+public:
+	std::string username;
 };
 
 class Server final {
@@ -111,6 +118,7 @@ private:
 
 	void add_chat_text(const std::string &s);
 	void start_game();
+	void set_scn_vars(const ScenarioSettings &scn);
 
 public:
 	bool connected() const noexcept { return m_connected; }
@@ -133,6 +141,8 @@ public:
 
 	void send_chat_text(const std::string&);
 	void send_start_game();
+
+	void send_scn_vars(const ScenarioSettings &scn);
 };
 
 }

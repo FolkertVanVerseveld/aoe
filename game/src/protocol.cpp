@@ -35,6 +35,14 @@ void NetPkg::ntoh() {
 			dw[0] = ntohs(dw[0]);
 			break;
 		}
+		case NetPkgType::set_scn_vars: {
+			uint32_t *dd = (uint32_t*)data.data();
+
+			for (unsigned i = 0; i < 10; ++i)
+				dd[i] = ntohl(dd[i]);
+
+			break;
+		}
 		case NetPkgType::start_game:
 			// no payload
 			break;
@@ -54,6 +62,14 @@ void NetPkg::hton() {
 		case NetPkgType::chat_text: {
 			uint16_t *dw = (uint16_t*)data.data();
 			dw[0] = htons(dw[0]);
+			break;
+		}
+		case NetPkgType::set_scn_vars: {
+			uint32_t *dd = (uint32_t*)data.data();
+
+			for (unsigned i = 0; i < 10; ++i)
+				dd[i] = htonl(dd[i]);
+
 			break;
 		}
 		case NetPkgType::start_game:
@@ -161,7 +177,7 @@ void NetPkg::set_protocol(uint16_t version) {
 uint16_t NetPkg::protocol_version() {
 	ntoh();
 
-	if ((NetPkgType)hdr.type != NetPkgType::set_protocol || hdr.payload != 2)
+	if ((NetPkgType)hdr.type != NetPkgType::set_protocol || data.size() != 2)
 		throw std::runtime_error("not a protocol network packet");
 
 	const uint16_t *dw = (const uint16_t *)data.data();
@@ -185,7 +201,7 @@ void NetPkg::set_chat_text(const std::string &s) {
 std::string NetPkg::chat_text() {
 	ntoh();
 
-	if ((NetPkgType)hdr.type != NetPkgType::chat_text || hdr.payload > UINT16_MAX - 2)
+	if ((NetPkgType)hdr.type != NetPkgType::chat_text || data.size() > UINT16_MAX - 2)
 		throw std::runtime_error("not a chat text packet");
 
 	const uint16_t *dw = (const uint16_t *)data.data();
@@ -201,6 +217,77 @@ std::string NetPkg::chat_text() {
 void NetPkg::set_start_game() {
 	data.clear();
 	set_hdr(NetPkgType::start_game);
+}
+
+void NetPkg::set_scn_vars(const ScenarioSettings &scn) {
+	data.clear();
+
+	data.resize(10 * sizeof(uint32_t));
+
+	uint32_t *dd = (uint32_t*)data.data();
+
+	dd[0] = scn.width;
+	dd[1] = scn.height;
+	dd[2] = scn.popcap;
+	dd[3] = scn.age;
+	dd[4] = scn.seed;
+	dd[5] = scn.villagers;
+
+	dd[6] = scn.res.food;
+	dd[7] = scn.res.wood;
+	dd[8] = scn.res.gold;
+	dd[9] = scn.res.stone;
+
+	uint8_t flags = 0;
+
+	if (scn.fixed_start     ) flags |= 1 << 0;
+	if (scn.explored        ) flags |= 1 << 1;
+	if (scn.all_technologies) flags |= 1 << 2;
+	if (scn.cheating        ) flags |= 1 << 3;
+	if (scn.square          ) flags |= 1 << 4;
+	if (scn.restricted      ) flags |= 1 << 5;
+
+	data.emplace_back(flags);
+
+	set_hdr(NetPkgType::set_scn_vars);
+}
+
+ScenarioSettings NetPkg::get_scn_vars() {
+	ntoh();
+
+	size_t size = 10 * sizeof(uint32_t) + 1;
+
+	if ((NetPkgType)hdr.type != NetPkgType::set_scn_vars || data.size() != size)
+		throw std::runtime_error("not a scenario settings variables packet");
+
+	const uint32_t *dd = (const uint32_t*)data.data();
+
+	ScenarioSettings scn;
+
+	scn.width     = dd[0];
+	scn.height    = dd[1];
+	scn.popcap    = dd[2];
+	scn.age       = dd[3];
+	scn.seed      = dd[4];
+	scn.villagers = dd[5];
+
+	scn.res.food  = dd[6];
+	scn.res.wood  = dd[7];
+	scn.res.gold  = dd[8];
+	scn.res.stone = dd[9];
+
+	const uint8_t *db = (const uint8_t*)&dd[10];
+
+	uint8_t flags = db[0];
+
+	scn.fixed_start      = !!(flags & (1 << 0));
+	scn.explored         = !!(flags & (1 << 1));
+	scn.all_technologies = !!(flags & (1 << 2));
+	scn.cheating         = !!(flags & (1 << 3));
+	scn.square           = !!(flags & (1 << 4));
+	scn.restricted       = !!(flags & (1 << 5));
+
+	return scn;
 }
 
 NetPkgType NetPkg::type() {

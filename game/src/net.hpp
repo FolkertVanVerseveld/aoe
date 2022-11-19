@@ -121,8 +121,9 @@ class Peer final {
 public:
 	const SOCKET sock;
 	const std::string host, server;
+	const bool is_host;
 
-	Peer(SOCKET sock, const char *host, const char *server) : sock(sock), host(host), server(server) {}
+	Peer(SOCKET sock, const char *host, const char *server, bool is_host) : sock(sock), host(host), server(server), is_host(is_host) {}
 
 	friend bool operator<(const Peer &lhs, const Peer &rhs) {
 		return std::tie(lhs.host, lhs.server) < std::tie(rhs.host, rhs.server);

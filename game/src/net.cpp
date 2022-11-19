@@ -478,15 +478,19 @@ void ServerSocket::incoming() {
 		set_nonblocking(infd);
 		if (add_fd(infd))
 			throw std::runtime_error("ssock: add_fd failed");
-		auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(infd), std::forward_as_tuple(infd, hbuf, sbuf));
-		assert(ins.second);
+
+		std::string host(hbuf);
+		bool is_host = false;
 
 		// check if peer is host
-		const Peer &p = ins.first->second;
-		if (peer_host == INVALID_SOCKET && p.host == "127.0.0.1") {
+		if (peer_host == INVALID_SOCKET && host == "127.0.0.1") {
 			printf("%s: host joined at service %s\n", __func__, sbuf);
 			peer_host = infd;
+			is_host = true;
 		}
+
+		auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(infd), std::forward_as_tuple(infd, hbuf, sbuf, is_host));
+		assert(ins.second);
 	}
 }
 

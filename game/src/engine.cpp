@@ -98,7 +98,7 @@ Engine::Engine()
 	, cfg("config"), scn()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
-	, tsk_start_server{ invalid_ref }, chat_async(), async_tasks(0), running(false), logic_gamespeed(1.0f), scroll_to_bottom(false)
+	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0), running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username()
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -139,19 +139,23 @@ void Engine::show_menubar() {
 	ImGui::EndMainMenuBar();
 }
 
+using namespace aoe::ui;
+
 void Engine::show_init() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(vp->WorkPos);
 
-	if (!ImGui::Begin("init", NULL, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
-		ImGui::End();
+	Frame f;
+
+	if (!f.begin("init", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse))
 		return;
-	}
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
 	//ImGui::TextUnformatted("welcome to the free software age of empires setup launcher");
+
+	f.text("username", username);
 
 	ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes));
 
@@ -170,18 +174,7 @@ void Engine::show_init() {
 				start_server(connection_port);
 				break;
 			case 1:
-#if 0
-				try {
-					start_client(connection_host, connection_port);
-					scn.hosting = false;
-					next_menu_state = MenuState::multiplayer_host;
-				} catch (std::exception &e) {
-					fprintf(stderr, "%s: cannot join server: %s\n", __func__, e.what());
-					push_error(std::string("cannot join server: ") + e.what());
-				}
-#else
 				start_client(connection_host, connection_port);
-#endif
 				break;
 		}
 	}
@@ -190,8 +183,6 @@ void Engine::show_init() {
 
 	if (ImGui::Button("quit"))
 		throw 0;
-
-	ImGui::End();
 }
 
 void Engine::display() {
@@ -446,6 +437,9 @@ void Engine::idle_async() {
 
 		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_started)
 			start_multiplayer_game();
+
+		if (async_tasks & (unsigned)EngineAsyncTask::set_scn_vars)
+			set_scn_vars_now(scn_async);
 	}
 
 	async_tasks = 0;
@@ -463,6 +457,35 @@ void Engine::start_multiplayer_game() {
 void Engine::add_chat_text(const std::string &s) {
 	std::lock_guard<std::mutex> lk(m_async);
 	chat_async.emplace(s);
+}
+
+void Engine::set_scn_vars(const ScenarioSettings &scn) {
+	std::lock_guard<std::mutex> lk(m_async);
+	scn_async = scn;
+	async_tasks |= (unsigned)EngineAsyncTask::set_scn_vars;
+}
+
+void Engine::set_scn_vars_now(const ScenarioSettings &scn) {
+	this->scn.fixed_start = scn.fixed_start;
+	this->scn.explored = scn.explored;
+	this->scn.all_technologies = scn.all_technologies;
+	this->scn.cheating = scn.cheating;
+	this->scn.square = scn.square;
+
+	if (!is_hosting())
+		this->scn.restricted = scn.restricted;
+
+	this->scn.width = scn.width;
+	this->scn.height = scn.height;
+	this->scn.popcap = scn.popcap;
+	this->scn.age = scn.age;
+	this->scn.seed = scn.seed;
+	this->scn.villagers = scn.villagers;
+
+	this->scn.res.food = scn.res.food;
+	this->scn.res.wood = scn.res.wood;
+	this->scn.res.gold = scn.res.gold;
+	this->scn.res.stone = scn.res.stone;
 }
 
 void Engine::cancel_multiplayer_host() {
