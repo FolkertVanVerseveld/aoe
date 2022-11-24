@@ -79,12 +79,16 @@ public:
 	std::string username;
 };
 
+class Engine;
+
 class Server final : public ServerSocketController {
 	ServerSocket s;
 	std::atomic<bool> m_active;
 	std::mutex m;
 	uint16_t port, protocol;
 	std::map<Peer, ClientInfo> peers;
+
+	friend Engine;
 public:
 	Server();
 	~Server();

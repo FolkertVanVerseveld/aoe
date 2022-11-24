@@ -56,6 +56,35 @@ public:
 	constexpr operator bool() const noexcept { return open; }
 };
 
+class MenuBar final {
+	bool open;
+public:
+	MenuBar();
+	~MenuBar();
+
+	void close();
+
+	constexpr operator bool() const noexcept { return open; }
+};
+
+class Menu final {
+	bool open;
+public:
+	Menu();
+	~Menu();
+
+	Menu(const Menu&) = delete;
+	Menu(Menu&&) noexcept;
+
+	bool begin(const char *str_id);
+	void close();
+
+	bool item(const char*);
+	bool chkbox(const char*, bool&);
+
+	constexpr operator bool() const noexcept { return open; }
+};
+
 class Table final {
 	bool open;
 public:

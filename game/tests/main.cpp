@@ -19,7 +19,7 @@ static void engine_create_twice() {
 	try {
 		Engine eng2;
 		fprintf(stderr, "%s: created twice\n", __func__);
-	} catch (std::runtime_error &e) {}
+	} catch (std::runtime_error&) {}
 }
 
 static void engine_runall() {

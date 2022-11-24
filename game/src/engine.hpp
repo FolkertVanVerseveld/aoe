@@ -55,7 +55,7 @@ enum class EngineAsyncTask {
 class Engine final {
 	Net net;
 
-	bool show_demo;
+	bool show_demo, show_debug;
 	int connection_mode;
 	unsigned short connection_port;
 	char connection_host[256]; // 253 according to https://web.archive.org/web/20190518124533/https://devblogs.microsoft.com/oldnewthing/?p=7873
@@ -105,6 +105,7 @@ private:
 
 	void display();
 	void display_ui_tasks();
+	void display_debug();
 	void show_init();
 
 	void show_multiplayer_host();

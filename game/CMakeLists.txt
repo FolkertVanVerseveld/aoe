@@ -18,7 +18,7 @@ if(UNIX)
 endif()
 find_package(OpenGL REQUIRED)
 
-file(GLOB AOE_SRC "src/*.cpp" "../wepoll/wepoll.c")
+file(GLOB_RECURSE AOE_SRC "src/*.cpp" "../wepoll/wepoll.c")
 file(GLOB AOE_TEST "tests/*.cpp")
 
 file(GLOB IMGUI_CORE_SRC "../imgui/*.cpp")

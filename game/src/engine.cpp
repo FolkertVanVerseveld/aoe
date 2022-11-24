@@ -91,7 +91,7 @@ ScenarioSettings::ScenarioSettings()
 	, res(200, 200, 0, 0) {}
 
 Engine::Engine()
-	: net(), show_demo(false)
+	: net(), show_demo(false), show_debug(false)
 	, connection_mode(0), connection_port(32768), connection_host("")
 	, menu_state(MenuState::init), next_menu_state(MenuState::init)
 	, multiplayer_ready(false), m_show_menubar(true)
@@ -119,27 +119,33 @@ Engine::~Engine() {
 	stop_server_now();
 }
 
+using namespace aoe::ui;
+
 void Engine::show_menubar() {
 	ZoneScoped;
-	if (!m_show_menubar || !ImGui::BeginMainMenuBar())
+	if (!m_show_menubar)
 		return;
 
-	if (ImGui::BeginMenu("File")) {
-		if (ImGui::MenuItem("Quit"))
-			throw 0;
+	MenuBar m;
 
-		ImGui::EndMenu();
+	if (!m)
+		return;
+
+	{
+		Menu mf;
+		if (mf.begin("File"))
+			if (mf.item("Quit"))
+				throw 0;
 	}
 
-	if (ImGui::BeginMenu("View")) {
-		ImGui::Checkbox("Demo window", &show_demo);
-		ImGui::EndMenu();
+	{
+		Menu mv;
+		if (mv.begin("View")) {
+			mv.chkbox("Demo window", show_demo);
+			mv.chkbox("Debug stuff", show_debug);
+		}
 	}
-
-	ImGui::EndMainMenuBar();
 }
-
-using namespace aoe::ui;
 
 void Engine::show_init() {
 	ZoneScoped;
@@ -204,6 +210,9 @@ void Engine::display() {
 	if (show_demo)
 		ImGui::ShowDemoWindow(&show_demo);
 
+	if (show_debug)
+		display_debug();
+
 	display_ui_tasks();
 
 	if (!popups.empty()) {
@@ -212,6 +221,50 @@ void Engine::display() {
 			ImGui::CloseCurrentPopup();
 			popups.pop();
 		}
+	}
+}
+
+void Engine::display_debug() {
+	ZoneScoped;
+
+	Frame f;
+
+	if (!f.begin("Debug control"))
+		return;
+
+	int size = tp.size(), idle = tp.n_idle(), running = size - idle;
+	f.fmt("Thread pool: %d threads, %d running", size, running);
+
+	{
+		std::lock_guard<std::mutex> lk(m);
+
+		bool has_server = server.get() != nullptr;
+		bool has_client = client.get() != nullptr;
+
+
+		f.fmt("Server active: %s", has_server ? "yes" : "no");
+
+		if (has_server) {
+			Server &s = *server.get();
+
+			f.fmt("running: %s", s.active() ? "yes" : "no");
+			f.fmt("port: %u", s.port);
+			f.fmt("protocol: %u", s.protocol);
+
+			f.fmt("connected peers: %llu", (unsigned long long)s.peers.size());
+
+			size_t i = 0;
+
+			for (auto kv : s.peers) {
+				const Peer &p = kv.first;
+
+				f.fmt("%3llu: %s:%s", i, p.host.c_str(), p.server.c_str());
+
+				++i;
+			}
+		}
+
+		f.fmt("Client running: %s", has_client ? "yes" : "no");
 	}
 }
 

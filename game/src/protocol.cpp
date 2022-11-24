@@ -27,7 +27,7 @@ void NetPkgHdr::hton() {
 }
 
 void NetPkg::need_payload(size_t n) {
-	if (data.size() != n)
+	if (data.size() < n)
 		throw std::runtime_error("corrupt data");
 }
 
@@ -154,11 +154,11 @@ NetPkg::NetPkg(std::deque<uint8_t> &q) : hdr(0, 0, false), data() {
 	this->hdr = NetPkgHdr(data.v[0], data.v[1], false);
 	unsigned need = ntohs(this->hdr.payload);
 
-	// read data
-	this->data.resize(need);
-
 	if (q.size() < need + NetPkgHdr::size)
 		throw std::runtime_error("missing pkg data");
+
+	// read data
+	this->data.resize(need);
 
 	for (unsigned i = 0; i < need; ++i)
 		this->data[i] = q[i + NetPkgHdr::size];
