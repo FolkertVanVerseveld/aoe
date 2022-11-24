@@ -123,7 +123,7 @@ void Client::stop() {
 	s.close();
 }
 
-void Client::start(const char *host, uint16_t port) {
+void Client::start(const char *host, uint16_t port, bool run) {
 	std::lock_guard<std::mutex> lk(m);
 	s.open();
 	m_connected = false;
@@ -131,8 +131,10 @@ void Client::start(const char *host, uint16_t port) {
 	s.connect(host, port);
 	m_connected = true;
 
-	std::thread t(&Client::mainloop, std::ref(*this));
-	t.detach();
+	if (run) {
+		std::thread t(&Client::mainloop, std::ref(*this));
+		t.detach();
+	}
 }
 
 void Client::add_chat_text(const std::string &s) {

@@ -71,6 +71,7 @@ public:
 	}
 private:
 	void set_hdr(NetPkgType type);
+	void need_payload(size_t n);
 };
 
 class ClientInfo final {
@@ -120,7 +121,7 @@ public:
 	Client();
 	~Client();
 
-	void start(const char *host, uint16_t port);
+	void start(const char *host, uint16_t port, bool run=true);
 	void stop();
 
 private:

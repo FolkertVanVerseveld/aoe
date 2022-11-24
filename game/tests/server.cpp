@@ -66,7 +66,7 @@ static void connect_test(bool close) {
 	std::thread t1([&] { s.mainloop(1, default_port, 0); if (close) s.close(); });
 
 	Client c;
-	c.start(default_host, default_port);
+	c.start(default_host, default_port, false);
 
 	// verify: client connected, server running
 	if (!c.connected())
@@ -91,7 +91,7 @@ static void connect_too_early() {
 	Client c;
 
 	try {
-		c.start(default_host, default_port);
+		c.start(default_host, default_port, false);
 		FAIL("should not be able to connect to %s:%d\n", default_host, default_port);
 	} catch (std::runtime_error&) {}
 }
@@ -102,7 +102,7 @@ static void connect_too_late() {
 
 	try {
 		Client c;
-		c.start(default_host, default_port);
+		c.start(default_host, default_port, false);
 		FAIL("should not be able to connect to %s:%d\n", default_host, default_port);
 	} catch (std::runtime_error&) {}
 }
@@ -120,7 +120,7 @@ static void echo_test(bool close) {
 	std::thread t1([&] { s.mainloop(1, default_port, 1); if (close) s.close(); });
 
 	Client c;
-	c.start(default_host, default_port);
+	c.start(default_host, default_port, false);
 	c.send_protocol(1);
 	uint16_t prot = c.recv_protocol();
 
@@ -138,7 +138,7 @@ static void protocol_test() {
 	Client c;
 	uint16_t prot;
 
-	c.start(default_host, default_port);
+	c.start(default_host, default_port, false);
 	// request newer version
 	c.send_protocol(2);
 

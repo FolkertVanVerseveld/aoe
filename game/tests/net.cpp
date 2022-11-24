@@ -557,16 +557,6 @@ static void ssock_connect_stop() {
 	t1.join();
 }
 
-static int pkg_eat(const std::deque<uint8_t> &q) {
-	return (int)(-(long long)q.size()); // always drop the data we receive. nom nom nom
-}
-
-static int pkg_echo(const std::deque<uint8_t> &q) {
-	return !q.empty() ? 1 : 0; // always accept the data if the queue isn't empty
-}
-
-static bool process_dummy(const Peer &, std::deque<uint8_t>&, std::deque<uint8_t>&, int, void*) { return true; }
-
 static bool process_echo(const Peer&, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed, void*) {
 	for (; !in.empty(); in.pop_front())
 		out.emplace_back(in.front());
@@ -574,10 +564,42 @@ static bool process_echo(const Peer&, std::deque<uint8_t> &in, std::deque<uint8_
 	return true;
 }
 
+class SsockCtlDummy final : public ServerSocketController {
+public:
+	void incoming(ServerSocket&, const Peer&) override {}
+	void dropped(ServerSocket&, const Peer&) override {}
+	void stopped() override {}
+
+	int proper_packet(ServerSocket&, const std::deque<uint8_t> &q) {
+		return (int)(-(long long)q.size()); // always drop the data we receive. nom nom nom
+	}
+
+	bool process_packet(ServerSocket&, const Peer&, std::deque<uint8_t>&, std::deque<uint8_t> &out, int) { return true; }
+};
+
+class SsockCtlEcho final : public ServerSocketController {
+public:
+	void incoming(ServerSocket &, const Peer &) override {}
+	void dropped(ServerSocket &, const Peer &) override {}
+	void stopped() override {}
+
+	int proper_packet(ServerSocket&, const std::deque<uint8_t> &q) {
+		return !q.empty() ? 1 : 0; // always accept the data if the queue isn't empty
+	}
+
+	bool process_packet(ServerSocket &, const Peer &, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int) {
+		for (; !in.empty(); in.pop_front())
+			out.emplace_back(in.front());
+
+		return true;
+	}
+};
+
 static void ssock_mainloop() {
 	std::thread t1([&] {
+		SsockCtlDummy nomnom;
 		ServerSocket s;
-		int err = s.mainloop(default_port, 1, pkg_eat, process_dummy, nullptr);
+		int err = s.mainloop(default_port, 1, nomnom);
 		if (err)
 			fprintf(stderr, "ssock_mainloop.%s: mainloop failed\n", __func__);
 	});
@@ -589,30 +611,32 @@ static void ssock_mainloop() {
 
 static void ssock_mainloop_send() {
 	std::thread t1([&] {
+		SsockCtlDummy nomnom;
 		ServerSocket s;
-		int err = s.mainloop(default_port, 1, pkg_eat, process_dummy, nullptr);
+		int err = s.mainloop(default_port, 1, nomnom);
 		if (err)
 			fprintf(stderr, "ssock_mainloop_send.%s: mainloop failed\n", __func__);
 	});
 	TcpSocket dummy;
 	char *msg = "Hello, k thx goodbye.";
 	dummy.connect(default_host, default_port);
-	dummy.send_fully(msg, strlen(msg) + 1);
+	dummy.send_fully(msg, (int)strlen(msg) + 1);
 	dummy.close();
 	t1.join();
 }
 
 static void ssock_mainloop_echo() {
 	std::thread t1([&] {
+		SsockCtlEcho echo;
 		ServerSocket s;
-		int err = s.mainloop(default_port, 1, pkg_echo, process_echo, nullptr);
+		int err = s.mainloop(default_port, 1, echo);
 		if (err)
 			fprintf(stderr, "ssock_mainloop_echo.%s: mainloop failed\n", __func__);
 	});
 	TcpSocket dummy;
 	char *msg = "Hello, k thx goodbye.";
 	dummy.connect(default_host, default_port);
-	dummy.send_fully(msg, strlen(msg) + 1);
+	dummy.send_fully(msg, (int)strlen(msg) + 1);
 	std::vector<char> buf(strlen(msg) + 1, '\0');
 	try { 
 		dummy.recv_fully(buf.data(), (int)buf.size());

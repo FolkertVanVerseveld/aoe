@@ -26,6 +26,11 @@ void NetPkgHdr::hton() {
 	native_ordering = false;
 }
 
+void NetPkg::need_payload(size_t n) {
+	if (data.size() != n)
+		throw std::runtime_error("corrupt data");
+}
+
 void NetPkg::ntoh() {
 	if (hdr.native_ordering)
 		return;
@@ -33,11 +38,16 @@ void NetPkg::ntoh() {
 	switch ((NetPkgType)ntohs(hdr.type)) {
 		case NetPkgType::set_protocol:
 		case NetPkgType::chat_text: {
+			need_payload(2);
+
 			uint16_t *dw = (uint16_t*)data.data();
+
 			dw[0] = ntohs(dw[0]);
 			break;
 		}
 		case NetPkgType::set_scn_vars: {
+			need_payload(10 * sizeof(uint32_t) + 1);
+
 			uint32_t *dd = (uint32_t*)data.data();
 
 			for (unsigned i = 0; i < 10; ++i)
