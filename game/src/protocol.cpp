@@ -12,6 +12,7 @@ void NetPkgHdr::ntoh() {
 
 	type = ntohs(type);
 	payload = ntohs(payload);
+
 	native_ordering = true;
 }
 
@@ -21,6 +22,7 @@ void NetPkgHdr::hton() {
 
 	type = htons(type);
 	payload = htons(payload);
+
 	native_ordering = false;
 }
 
@@ -160,9 +162,11 @@ NetPkg::NetPkg(std::deque<uint8_t> &q) : hdr(0, 0, false), data() {
 }
 
 void NetPkg::set_hdr(NetPkgType type) {
+	assert(data.size() <= max_payload);
+
 	hdr.native_ordering = true;
 	hdr.type = (unsigned)type;
-	hdr.payload = data.size();
+	hdr.payload = (uint16_t)data.size();
 }
 
 void NetPkg::set_protocol(uint16_t version) {
@@ -185,14 +189,14 @@ uint16_t NetPkg::protocol_version() {
 }
 
 void NetPkg::set_chat_text(const std::string &s) {
-	assert(s.size() <= UINT16_MAX - 2);
+	assert(s.size() <= max_payload - 2);
 
-	uint16_t n = s.size();
-	data.resize(2u + (unsigned)n);
+	size_t n = s.size();
+	data.resize(2u + n);
 
 	uint16_t *dw = (uint16_t *)data.data();
 
-	dw[0] = n;
+	dw[0] = (uint16_t)n;
 	memcpy(&dw[1], s.data(), n);
 
 	set_hdr(NetPkgType::chat_text);
@@ -201,7 +205,7 @@ void NetPkg::set_chat_text(const std::string &s) {
 std::string NetPkg::chat_text() {
 	ntoh();
 
-	if ((NetPkgType)hdr.type != NetPkgType::chat_text || data.size() > UINT16_MAX - 2)
+	if ((NetPkgType)hdr.type != NetPkgType::chat_text || data.size() > max_payload - 2)
 		throw std::runtime_error("not a chat text packet");
 
 	const uint16_t *dw = (const uint16_t *)data.data();
@@ -298,28 +302,32 @@ NetPkgType NetPkg::type() {
 void Client::send(NetPkg &pkg) {
 	pkg.hton();
 
+	// prepare header
 	uint16_t v[2];
 	v[0] = pkg.hdr.type;
 	v[1] = pkg.hdr.payload;
 
 	send(v, 2);
-	send(pkg.data.data(), pkg.data.size());
+	send(pkg.data.data(), (int)pkg.data.size());
 }
 
 NetPkg Client::recv() {
 	NetPkg pkg;
 	unsigned payload;
 
+	// retrieve header
 	uint16_t dw[2];
-
 	recv(dw, 2);
 
+	// parse header
 	pkg.hdr.type = dw[0];
 	pkg.hdr.payload = dw[1];
 
+	// reserve payload
 	payload = ntohs(pkg.hdr.payload);
 	pkg.data.resize(payload);
 
+	// retrieve payload
 	recv(pkg.data.data(), payload);
 
 	pkg.ntoh();

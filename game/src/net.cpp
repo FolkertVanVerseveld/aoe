@@ -121,7 +121,7 @@ TcpSocket::TcpSocket() : s((int)INVALID_SOCKET) {
 	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
 		throw std::runtime_error("socket failed");
 
-	s.store(sock);
+	s.store((int)sock);
 }
 
 TcpSocket::~TcpSocket() {
@@ -131,15 +131,16 @@ TcpSocket::~TcpSocket() {
 
 void TcpSocket::open() {
 	SOCKET sock;
-	close();
+
 	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
 		throw std::runtime_error("socket failed");
 
-	s.store(sock);
+	closesocket(s);
+	s.store((int)sock);
 }
 
 void TcpSocket::close() {
-	if (!closesocket(s))
+	if (!closesocket((int)s))
 		s = INVALID_SOCKET;
 }
 
@@ -365,14 +366,10 @@ int TcpSocket::recv(void *dst, int len, unsigned tries) {
 
 	int err = WSAGetLastError();
 
-	switch (err) {
-		case 0:
-			if (in < 0)
-				throw std::runtime_error(std::string("wsa: recv failed: unknown return code ") + std::to_string(in));
-		default:
-			wsa_generic_error("wsa: recv failed", err);
-			break;
-	}
+	if (!err && in < 0)
+		throw std::runtime_error(std::string("wsa: recv failed: unknown return code ") + std::to_string(in));
+
+	wsa_generic_error("wsa: recv failed", err);
 
 	return in;
 }
@@ -433,7 +430,7 @@ int ServerSocket::add_fd(SOCKET s) {
 	ZoneScoped;
 	epoll_event ev{ 0 };
 	ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET;
-	ev.data.fd = s;
+	ev.data.fd = (int)s;
 
 	return epoll_ctl(h, EPOLL_CTL_ADD, s, &ev);
 }
@@ -441,7 +438,7 @@ int ServerSocket::add_fd(SOCKET s) {
 int ServerSocket::del_fd(SOCKET s) {
 	ZoneScoped;
 	epoll_event ev{ 0 };
-	ev.data.fd = s;
+	ev.data.fd = (int)s;
 
 	return epoll_ctl(h, EPOLL_CTL_DEL, s, &ev);
 }
@@ -592,7 +589,7 @@ bool ServerSocket::send_step(SOCKET s) {
 
 	auto &q = it->second;
 	while (!q.empty()) {
-		printf("%s: try send %u bytes to %u\n", __func__, q.size(), s);
+		printf("%s: try send %llu bytes to %d\n", __func__, (unsigned long long)q.size(), (int)s);
 		int count;
 		char buf[1024]; // TODO make resizable/configurable
 		int out = (int)std::min(sizeof buf, q.size());

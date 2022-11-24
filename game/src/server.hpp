@@ -40,6 +40,8 @@ public:
 	NetPkgHdr hdr;
 	std::vector<uint8_t> data;
 
+	static constexpr unsigned max_payload = UINT16_MAX - NetPkgHdr::size + 1;
+
 	NetPkg() : hdr(0, 0, false), data() {}
 	NetPkg(uint16_t type, uint16_t payload) : hdr(type, payload), data() {}
 	/** munch as much data we need and check if valid. throws if invalid or not enough data. */

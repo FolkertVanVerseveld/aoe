@@ -4,7 +4,7 @@
 
 namespace aoe {
 
-Server::Server() : s(), m_active(false), m(), port(0), protocol(0), peers() {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m(), port(0), protocol(0), peers() {}
 
 Server::~Server() {
 	stop();
@@ -41,7 +41,7 @@ int Server::proper_packet(ServerSocket &s, const std::deque<uint8_t> &q) {
 void Server::broadcast(NetPkg &pkg, bool include_host) {
 	std::vector<uint8_t> v;
 	pkg.write(v);
-	s.broadcast(v.data(), v.size(), include_host);
+	s.broadcast(v.data(), (int)v.size(), include_host);
 }
 
 bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req) {

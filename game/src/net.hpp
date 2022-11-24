@@ -130,8 +130,6 @@ public:
 	}
 };
 
-class ServerSocket;
-
 class ServerSocketController {
 public:
 	ServerSocketController() {}
