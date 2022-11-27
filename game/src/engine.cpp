@@ -704,8 +704,10 @@ int Engine::mainloop() {
 	ZoneScoped;
 
 	running = true;
+#if 0
 	reserve_threads(1);
 	tp.push([this](int id) { printf("%d\n", !!running.load()); eventloop(id); });
+#endif
 
 	SDL sdl;
 

@@ -40,7 +40,7 @@ public:
 	NetPkgHdr hdr;
 	std::vector<uint8_t> data;
 
-	static constexpr unsigned max_payload = UINT16_MAX - NetPkgHdr::size + 1;
+	static constexpr unsigned max_payload = tcp4_max_size - NetPkgHdr::size;
 
 	NetPkg() : hdr(0, 0, false), data() {}
 	NetPkg(uint16_t type, uint16_t payload) : hdr(type, payload), data() {}
@@ -77,6 +77,9 @@ private:
 class ClientInfo final {
 public:
 	std::string username;
+
+	ClientInfo() : username() {}
+	ClientInfo(const std::string &username) : username(username) {}
 };
 
 class Engine;
@@ -84,7 +87,7 @@ class Engine;
 class Server final : public ServerSocketController {
 	ServerSocket s;
 	std::atomic<bool> m_active;
-	std::mutex m;
+	std::mutex m_peers;
 	uint16_t port, protocol;
 	std::map<Peer, ClientInfo> peers;
 
@@ -105,7 +108,7 @@ public:
 	void incoming(ServerSocket &s, const Peer &p) override;
 	void dropped(ServerSocket &s, const Peer &p) override;
 
-	void stopped() override {}
+	void stopped() override;
 
 	int proper_packet(ServerSocket &s, const std::deque<uint8_t> &q) override;
 	bool process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) override;

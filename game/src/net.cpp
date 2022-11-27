@@ -385,7 +385,7 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
-ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), m_pending(), data_in(), data_out(), running(false), step(false), poll_us(50u * 1000ull), closing(), send_pending(), id(std::this_thread::get_id()), ctl(nullptr) {}
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), m_pending(), data_in(), data_out(), running(false), step(false), poll_us(50u * 1000ull), closing(), send_pending(), id(std::this_thread::get_id()), m_ctl(), ctl(nullptr) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
@@ -416,8 +416,12 @@ void ServerSocket::stop() {
 	lk.unlock();
 
 	running = false;
+
+	std::lock_guard<std::mutex> lk2(m_ctl);
 	if (ctl)
 		ctl->stopped();
+
+	ctl = nullptr;
 }
 
 void ServerSocket::close() {
@@ -491,7 +495,11 @@ void ServerSocket::incoming() {
 		auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(infd), std::forward_as_tuple(infd, hbuf, sbuf, is_host));
 		assert(ins.second);
 
-		ctl->incoming(*this, ins.first->second);
+		{
+			std::lock_guard<std::mutex> lk(m_ctl);
+			if (ctl)
+				ctl->incoming(*this, ins.first->second);
+		}
 	}
 }
 
@@ -517,6 +525,7 @@ bool ServerSocket::io_step(int idx) {
 bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 	ZoneScoped;
 	std::unique_lock<std::mutex> lk(data_lock, std::defer_lock);
+	std::unique_lock<std::mutex> lkctl(m_ctl, std::defer_lock);
 
 	while (1) {
 		int count;
@@ -547,6 +556,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 		for (int i = 0; i < count; ++i)
 			it->second.emplace_back(buf[i]);
 
+		lkctl.lock();
 		int processed = ctl->proper_packet(*this, it->second);
 
 		// remove bytes if asked to do so
@@ -572,6 +582,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 			fprintf(stderr, "%s: failed to process for (%s,%s): %s\n", __func__, p.host.c_str(), p.server.c_str(), e.what());
 		}
 
+		lkctl.unlock();
 		lk.unlock();
 
 		if (!keep_alive)
@@ -636,7 +647,10 @@ void ServerSocket::reset(ServerSocketController &ctl, unsigned maxevents) {
 
 	closing.clear();
 	id = std::this_thread::get_id();
+
+	std::lock_guard<std::mutex> lk(m_ctl);
 	this->ctl = &ctl;
+
 	running = true;
 }
 

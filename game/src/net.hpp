@@ -30,6 +30,8 @@
 
 namespace aoe {
 
+static constexpr unsigned tcp4_max_size = UINT16_MAX - 32 + 1;
+
 class Net final {
 public:
 	Net();
@@ -178,6 +180,7 @@ class ServerSocket final {
 	std::map<SOCKET, std::deque<uint8_t>> send_pending;
 	std::atomic<std::thread::id> id;
 
+	std::mutex m_ctl;
 	ServerSocketController *ctl;
 public:
 	ServerSocket();

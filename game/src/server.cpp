@@ -4,7 +4,7 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m(), port(0), protocol(0), peers() {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m_peers(), port(0), protocol(0), peers() {}
 
 Server::~Server() {
 	stop();
@@ -15,8 +15,20 @@ struct pkg {
 	uint16_t type;
 };
 
-void Server::incoming(ServerSocket &s, const Peer &p) {}
-void Server::dropped(ServerSocket &s, const Peer &p) {}
+void Server::incoming(ServerSocket &s, const Peer &p) {
+	std::lock_guard<std::mutex> lk(m_peers);
+	peers[p] = ClientInfo();
+}
+
+void Server::dropped(ServerSocket &s, const Peer &p) {
+	std::lock_guard<std::mutex> lk(m_peers);
+	peers.erase(p);
+}
+
+void Server::stopped() {
+	std::lock_guard<std::mutex> lk(m_peers);
+	peers.clear();
+}
 
 int Server::proper_packet(ServerSocket &s, const std::deque<uint8_t> &q) {
 	if (q.size() < NetPkgHdr::size)
