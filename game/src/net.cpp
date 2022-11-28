@@ -385,7 +385,7 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
-ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), m_pending(), data_in(), data_out(), running(false), step(false), poll_us(50u * 1000ull), closing(), send_pending(), id(std::this_thread::get_id()), m_ctl(), ctl(nullptr) {}
+ServerSocket::ServerSocket() : s(), h(INVALID_HANDLE_VALUE), port(0), events(), peers(), peer_host(INVALID_SOCKET), peer_ev_lock(), data_lock(), m_pending(), data_in(), data_out(), recvbuf(), sendbuf(), running(false), step(false), poll_us(50u * 1000ull), closing(), send_pending(), id(std::this_thread::get_id()), m_ctl(), ctl(nullptr) {}
 
 ServerSocket::~ServerSocket() { stop(); }
 
@@ -401,13 +401,13 @@ void ServerSocket::stop() {
 	std::unique_lock<std::mutex> lk(peer_ev_lock);
 
 	for (const epoll_event &ev : events) {
-		SOCKET s = ev.data.sock; // sometimes race here
+		SOCKET s = ev.data.sock;
 		del_fd(s);
 		::closesocket(s);
 	}
 
 	events.clear();
-	peers.clear(); // sometimes race here
+	peers.clear();
 
 	if (h != INVALID_HANDLE_VALUE)
 		if (!epoll_close(h))
@@ -528,10 +528,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 	std::unique_lock<std::mutex> lkctl(m_ctl, std::defer_lock);
 
 	while (1) {
-		int count;
-		char buf[512]; // TODO make resizable/configurable
-
-		count = ::recv(s, buf, sizeof buf, 0);
+		int count = ::recv(s, recvbuf.data(), recvbuf.size(), 0);
 		if (count < 0) {
 			int r = WSAGetLastError();
 
@@ -554,7 +551,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 		auto ins = data_in.try_emplace(s);
 		auto it = ins.first;
 		for (int i = 0; i < count; ++i)
-			it->second.emplace_back(buf[i]);
+			it->second.emplace_back(recvbuf[i]);
 
 		lkctl.lock();
 		int processed = ctl->proper_packet(*this, it->second);
@@ -602,16 +599,15 @@ bool ServerSocket::send_step(SOCKET s) {
 	while (!q.empty()) {
 		printf("%s: try send %llu bytes to %d\n", __func__, (unsigned long long)q.size(), (int)s);
 		int count;
-		char buf[1024]; // TODO make resizable/configurable
-		int out = (int)std::min(sizeof buf, q.size());
+		int out = (int)std::min(sendbuf.size(), q.size());
 
 		for (int i = 0; i < out; ++i)
-			buf[i] = q[i];
+			sendbuf[i] = q[i];
 
 		// s may be closed after this unlock, but this way, we give a brief moment for other threads to kick in
 		lk.unlock();
 
-		count = ::send(s, buf, out, 0);
+		count = ::send(s, sendbuf.data(), out, 0);
 		if (count < 0) {
 			int r = WSAGetLastError();
 
@@ -635,8 +631,19 @@ bool ServerSocket::send_step(SOCKET s) {
 	return true;
 }
 
-void ServerSocket::reset(ServerSocketController &ctl, unsigned maxevents) {
+void ServerSocket::reset(ServerSocketController &ctl, unsigned maxevents, unsigned recvbuf, unsigned sendbuf) {
 	ZoneScoped;
+
+	if (recvbuf < 1)
+		throw std::runtime_error("recvbuf must be positive");
+
+	if (sendbuf < 1)
+		throw std::runtime_error("sendbuf must be positive");
+
+	std::unique_lock<std::mutex> lk(peer_ev_lock, std::defer_lock), lk2(data_lock, std::defer_lock);
+	std::lock(lk, lk2);
+
+	assert(!running);
 	printf("%s: maxevents %u\n", __func__, maxevents);
 	events.resize(maxevents);
 	peers.clear();
@@ -645,10 +652,16 @@ void ServerSocket::reset(ServerSocketController &ctl, unsigned maxevents) {
 	data_in.clear();
 	data_out.clear();
 
+	this->recvbuf.resize(recvbuf);
+	this->sendbuf.resize(sendbuf);
+
 	closing.clear();
 	id = std::this_thread::get_id();
 
-	std::lock_guard<std::mutex> lk(m_ctl);
+	std::lock_guard<std::mutex> lks(m_pending);
+	send_pending.clear();
+
+	std::lock_guard<std::mutex> lkctl(m_ctl);
 	this->ctl = &ctl;
 
 	running = true;
@@ -790,9 +803,9 @@ void ServerSocket::flush_queue() {
 	}
 }
 
-int ServerSocket::mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned maxevents) {
+int ServerSocket::mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned maxevents, unsigned recvbuf, unsigned sendbuf) {
 	ZoneScoped;
-	reset(ctl, maxevents);
+	reset(ctl, maxevents, recvbuf, sendbuf);
 
 	s.bind(port);
 	s.listen(backlog);

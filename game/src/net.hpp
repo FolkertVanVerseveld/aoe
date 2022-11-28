@@ -173,6 +173,7 @@ class ServerSocket final {
 	SOCKET peer_host;
 	std::mutex peer_ev_lock, data_lock, m_pending;
 	std::map<SOCKET, std::deque<uint8_t>> data_in, data_out;
+	std::vector<char> recvbuf, sendbuf;
 	std::atomic<bool> running;
 	bool step;
 	std::atomic<unsigned long long> poll_us;
@@ -212,7 +213,7 @@ public:
 	 * 
 	 * Keep in mind that proper_packet and process_packet are called directly from this mainloop. This means that any pending incoming network data processing will be halted until the callbacks are completed. For best responsiveness, forward the data to another thread to process it.
 	 */
-	int mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned maxevents=256);
+	int mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned maxevents=256, unsigned recvbuf=512, unsigned sendbuf=1024);
 
 	/**
 	 * Change poll timeout (0 to disable). Note that this is only used on systems
@@ -224,7 +225,7 @@ public:
 	void send(const Peer &p, const void *ptr, int len);
 	void broadcast(const void *ptr, int len, bool include_host=true);
 private:
-	void reset(ServerSocketController &ctl, unsigned maxevents);
+	void reset(ServerSocketController &ctl, unsigned maxevents, unsigned recvbuf, unsigned sendbuf);
 
 	int add_fd(SOCKET s);
 	int del_fd(SOCKET s);
