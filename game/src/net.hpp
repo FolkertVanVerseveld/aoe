@@ -73,9 +73,9 @@ public:
 	// NOTE the template send/recv version also throw if an incomplete object is sent/received. if you don't want this, use the generic send/recv functions.
 
 	int try_send(const void *ptr, int len, unsigned tries) noexcept;
-	int send(const void *ptr, int len, unsigned tries = 1);
+	int send(const void *ptr, int len, unsigned tries=1);
 
-	template<typename T> int send(const T *ptr, int len, unsigned tries = 5) {
+	template<typename T> int send(const T *ptr, int len, unsigned tries=5) {
 		int out = send((const void *)ptr, len * sizeof * ptr, tries);
 		if (out % sizeof * ptr)
 			throw std::runtime_error("wsa: send failed: incomplete object sent");
@@ -89,9 +89,9 @@ public:
 	}
 
 	int try_recv(void *dst, int len, unsigned tries) noexcept;
-	int recv(void *dst, int len, unsigned tries = 1);
+	int recv(void *dst, int len, unsigned tries=1);
 
-	template<typename T> int recv(T *ptr, int len, unsigned tries = 5) {
+	template<typename T> int recv(T *ptr, int len, unsigned tries=5) {
 		int in = recv((void *)ptr, len * sizeof * ptr, tries);
 		if (in % sizeof * ptr)
 			throw std::runtime_error("wsa: recv failed: incomplete object received");
@@ -213,7 +213,7 @@ public:
 	 * 
 	 * Keep in mind that proper_packet and process_packet are called directly from this mainloop. This means that any pending incoming network data processing will be halted until the callbacks are completed. For best responsiveness, forward the data to another thread to process it.
 	 */
-	int mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned maxevents=256, unsigned recvbuf=512, unsigned sendbuf=1024);
+	int mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned recvbuf=512, unsigned sendbuf=1024);
 
 	/**
 	 * Change poll timeout (0 to disable). Note that this is only used on systems
@@ -225,7 +225,7 @@ public:
 	void send(const Peer &p, const void *ptr, int len);
 	void broadcast(const void *ptr, int len, bool include_host=true);
 private:
-	void reset(ServerSocketController &ctl, unsigned maxevents, unsigned recvbuf, unsigned sendbuf);
+	void reset(ServerSocketController &ctl, unsigned recvbuf, unsigned sendbuf);
 
 	int add_fd(SOCKET s);
 	int del_fd(SOCKET s);

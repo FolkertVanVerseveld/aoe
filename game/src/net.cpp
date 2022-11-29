@@ -433,6 +433,9 @@ void ServerSocket::close() {
 int ServerSocket::add_fd(SOCKET s) {
 	ZoneScoped;
 	epoll_event ev{ 0 };
+
+	events.emplace_back(ev);
+
 	ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET;
 	ev.data.fd = (int)s;
 
@@ -631,7 +634,7 @@ bool ServerSocket::send_step(SOCKET s) {
 	return true;
 }
 
-void ServerSocket::reset(ServerSocketController &ctl, unsigned maxevents, unsigned recvbuf, unsigned sendbuf) {
+void ServerSocket::reset(ServerSocketController &ctl, unsigned recvbuf, unsigned sendbuf) {
 	ZoneScoped;
 
 	if (recvbuf < 1)
@@ -644,8 +647,7 @@ void ServerSocket::reset(ServerSocketController &ctl, unsigned maxevents, unsign
 	std::lock(lk, lk2);
 
 	assert(!running);
-	printf("%s: maxevents %u\n", __func__, maxevents);
-	events.resize(maxevents);
+	events.clear();
 	peers.clear();
 	peer_host = INVALID_SOCKET;
 
@@ -803,9 +805,9 @@ void ServerSocket::flush_queue() {
 	}
 }
 
-int ServerSocket::mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned maxevents, unsigned recvbuf, unsigned sendbuf) {
+int ServerSocket::mainloop(uint16_t port, int backlog, ServerSocketController &ctl, unsigned recvbuf, unsigned sendbuf) {
 	ZoneScoped;
-	reset(ctl, maxevents, recvbuf, sendbuf);
+	reset(ctl, recvbuf, sendbuf);
 
 	s.bind(port);
 	s.listen(backlog);
