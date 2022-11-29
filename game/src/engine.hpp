@@ -10,6 +10,8 @@
 
 #include "ctpl_stl.hpp"
 
+#include "debug.hpp"
+
 #include <queue>
 #include <deque>
 #include <mutex>
@@ -89,13 +91,16 @@ class Engine final {
 	bool scroll_to_bottom;
 
 	std::string username;
+
+	Debug debug;
+	friend Debug;
 public:
 	Engine();
 	~Engine();
 
 	int mainloop();
 private:
-	static constexpr float frame_height = 0.85f, player_height = 0.7f, frame_margin = 0.075f;
+	static constexpr float frame_height = 0.9f, player_height = 0.7f, frame_margin = 0.075f;
 
 	void eventloop(int id);
 	void tick();
@@ -105,7 +110,6 @@ private:
 
 	void display();
 	void display_ui_tasks();
-	void display_debug();
 	void show_init();
 
 	void show_multiplayer_host();

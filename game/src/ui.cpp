@@ -467,6 +467,24 @@ void Engine::show_multiplayer_host() {
 				show_mph_tbl(f);
 		}
 		show_mph_chat(f);
+
+		f.chkbox("I'm Ready!", multiplayer_ready);
+
+		f.sl();
+
+		if (scn.players.empty()) {
+			f.xbtn("Start Game");
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGui::Tooltip("Game cannot be started without players. You can add players with `+' and `+10'.");
+		}
+		else if (f.btn("Start Game")) {
+			client->send_start_game();
+		}
+
+		f.sl();
+
+		if (f.btn("Cancel"))
+			cancel_multiplayer_host();
 	}
 
 	f.sl();
@@ -475,23 +493,6 @@ void Engine::show_multiplayer_host() {
 		if (c.begin("SettingsFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, ImGui::GetWindowHeight() * frame_height), false, ImGuiWindowFlags_HorizontalScrollbar))
 			show_mph_cfg(f);
 	}
-
-	f.chkbox("I'm Ready!", multiplayer_ready);
-
-	f.sl();
-
-	if (scn.players.empty()) {
-		f.xbtn("Start Game");
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGui::Tooltip("Game cannot be started without players. You can add players with `+' and `+10'.");
-	} else if (f.btn("Start Game")) {
-		client->send_start_game();
-	}
-
-	f.sl();
-
-	if (f.btn("Cancel"))
-		cancel_multiplayer_host();
 }
 
 void Engine::show_mph_tbl_footer(ui::Frame &f, bool has_ai) {

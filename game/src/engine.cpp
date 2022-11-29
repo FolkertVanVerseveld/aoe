@@ -98,7 +98,7 @@ Engine::Engine()
 	, cfg("config"), scn()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
-	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0), running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username()
+	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0), running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), debug()
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -211,7 +211,7 @@ void Engine::display() {
 		ImGui::ShowDemoWindow(&show_demo);
 
 	if (show_debug)
-		display_debug();
+		debug.show();
 
 	display_ui_tasks();
 
@@ -221,50 +221,6 @@ void Engine::display() {
 			ImGui::CloseCurrentPopup();
 			popups.pop();
 		}
-	}
-}
-
-void Engine::display_debug() {
-	ZoneScoped;
-
-	Frame f;
-
-	if (!f.begin("Debug control"))
-		return;
-
-	int size = tp.size(), idle = tp.n_idle(), running = size - idle;
-	f.fmt("Thread pool: %d threads, %d running", size, running);
-
-	{
-		std::lock_guard<std::mutex> lk(m);
-
-		bool has_server = server.get() != nullptr;
-		bool has_client = client.get() != nullptr;
-
-
-		f.fmt("Server active: %s", has_server ? "yes" : "no");
-
-		if (has_server) {
-			Server &s = *server.get();
-
-			f.fmt("running: %s", s.active() ? "yes" : "no");
-			f.fmt("port: %u", s.port);
-			f.fmt("protocol: %u", s.protocol);
-
-			f.fmt("connected peers: %llu", (unsigned long long)s.peers.size());
-
-			size_t i = 0;
-
-			for (auto kv : s.peers) {
-				const Peer &p = kv.first;
-
-				f.fmt("%3llu: %s:%s", i, p.host.c_str(), p.server.c_str());
-
-				++i;
-			}
-		}
-
-		f.fmt("Client running: %s", has_client ? "yes" : "no");
 	}
 }
 

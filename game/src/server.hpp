@@ -8,6 +8,7 @@
 #include <thread>
 
 #include "game.hpp"
+#include "debug.hpp"
 
 #if _WIN32
 #include "../../wepoll/wepoll.h"
@@ -82,8 +83,6 @@ public:
 	ClientInfo(const std::string &username) : username(username) {}
 };
 
-class Engine;
-
 class Server final : public ServerSocketController {
 	ServerSocket s;
 	std::atomic<bool> m_active;
@@ -91,7 +90,7 @@ class Server final : public ServerSocketController {
 	uint16_t port, protocol;
 	std::map<Peer, ClientInfo> peers;
 
-	friend Engine;
+	friend Debug;
 public:
 	Server();
 	~Server();
