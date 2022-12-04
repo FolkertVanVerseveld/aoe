@@ -579,15 +579,15 @@ public:
 
 class SsockCtlEcho final : public ServerSocketController {
 public:
-	void incoming(ServerSocket &, const Peer &) override {}
-	void dropped(ServerSocket &, const Peer &) override {}
+	void incoming(ServerSocket&, const Peer&) override {}
+	void dropped(ServerSocket&, const Peer&) override {}
 	void stopped() override {}
 
 	int proper_packet(ServerSocket&, const std::deque<uint8_t> &q) {
 		return !q.empty() ? 1 : 0; // always accept the data if the queue isn't empty
 	}
 
-	bool process_packet(ServerSocket &, const Peer &, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int) {
+	bool process_packet(ServerSocket&, const Peer&, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int) {
 		for (; !in.empty(); in.pop_front())
 			out.emplace_back(in.front());
 

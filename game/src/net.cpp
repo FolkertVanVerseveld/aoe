@@ -432,6 +432,7 @@ void ServerSocket::close() {
 
 int ServerSocket::add_fd(SOCKET s) {
 	ZoneScoped;
+	std::lock_guard<std::mutex> lk(peer_ev_lock);
 	epoll_event ev{ 0 };
 
 	events.emplace_back(ev);
@@ -527,8 +528,6 @@ bool ServerSocket::io_step(int idx) {
 
 bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 	ZoneScoped;
-	std::unique_lock<std::mutex> lk(data_lock, std::defer_lock);
-	std::unique_lock<std::mutex> lkctl(m_ctl, std::defer_lock);
 
 	while (1) {
 		int count = ::recv(s, recvbuf.data(), recvbuf.size(), 0);
@@ -549,44 +548,39 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 		}
 
 		step = true;
-		lk.lock();
+		std::unique_lock<std::mutex> lk(data_lock);
 
 		auto ins = data_in.try_emplace(s);
 		auto it = ins.first;
 		for (int i = 0; i < count; ++i)
 			it->second.emplace_back(recvbuf[i]);
 
-		lkctl.lock();
-		int processed = ctl->proper_packet(*this, it->second);
+		std::unique_lock<std::mutex> lkctl(m_ctl);
+		int processed = 0;
+
+		while ((processed = ctl->proper_packet(*this, it->second)) > 0) {
+			bool keep_alive = false;
+
+			try {
+				auto outs = data_out.try_emplace(s);
+				auto out = outs.first;
+
+				keep_alive = ctl->process_packet(*this, p, it->second, out->second, processed);
+			} catch (const std::runtime_error &e) {
+				fprintf(stderr, "%s: failed to process for (%s,%s): %s\n", __func__, p.host.c_str(), p.server.c_str(), e.what());
+			}
+
+			if (!keep_alive)
+				return false;
+		}
+
+		lkctl.unlock();
 
 		// remove bytes if asked to do so
 		for (; processed < 0 && !it->second.empty(); ++processed)
 			it->second.pop_front();
 
-		// skip processing if packet is improper
-		if (processed < 1) {
-			lk.unlock();
-			continue;
-		}
-
-		assert(ctl->proper_packet(*this, it->second) > 0);
-
-		auto outs = data_out.try_emplace(s);
-		auto out = outs.first;
-
-		bool keep_alive = false;
-
-		try {
-			keep_alive = ctl->process_packet(*this, p, it->second, out->second, processed);
-		} catch (const std::runtime_error &e) {
-			fprintf(stderr, "%s: failed to process for (%s,%s): %s\n", __func__, p.host.c_str(), p.server.c_str(), e.what());
-		}
-
-		lkctl.unlock();
 		lk.unlock();
-
-		if (!keep_alive)
-			return false;
 	}
 }
 

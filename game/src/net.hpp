@@ -26,6 +26,7 @@
 #define EPOLLET 0
 #endif
 
+#include "debug.hpp"
 #include "ctpl_stl.hpp"
 
 namespace aoe {
@@ -183,6 +184,7 @@ class ServerSocket final {
 
 	std::mutex m_ctl;
 	ServerSocketController *ctl;
+	friend Debug;
 public:
 	ServerSocket();
 	~ServerSocket();
