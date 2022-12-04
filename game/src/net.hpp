@@ -86,7 +86,7 @@ public:
 	void send_fully(const void *ptr, int len);
 
 	template<typename T> void send_fully(const T *ptr, int len) {
-		send_fully((void *)ptr, len * sizeof * ptr);
+		send_fully((void*)ptr, len * sizeof * ptr);
 	}
 
 	int try_recv(void *dst, int len, unsigned tries) noexcept;

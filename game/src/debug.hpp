@@ -8,7 +8,7 @@ namespace aoe {
 class Debug {
 	MemoryEditor mem_edit;
 public:
-	void show();
+	void show(bool &open);
 };
 
 }

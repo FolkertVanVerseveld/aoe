@@ -340,6 +340,7 @@ void Engine::show_mph_chat(ui::Frame &f) {
 	if (!cf.begin("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar))
 		return;
 
+	f.text("Username", username);
 	f.str("Chat");
 	{
 		Child ch;
@@ -457,7 +458,22 @@ void Engine::show_multiplayer_host() {
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
+#if 0
 	f.fmt("Multiplayer game - %u %s", scn.players.size(), scn.players.size() == 1 ? "player" : "players");
+
+	f.sl();
+	show_mph_tbl_footer(f, true);
+#else
+	f.str("Multiplayer game  -");
+	f.sl();
+
+	uint32_t player_count = scn.players.size();
+
+	f.scalar(scn.players.size() == 1 ? "player" : "players", player_count, 1, 1, 256);
+
+	if (player_count != scn.players.size())
+		scn.players.resize(player_count);
+#endif
 
 	{
 		Child lf;
@@ -524,10 +540,6 @@ void Engine::show_mph_tbl_footer(ui::Frame &f, bool has_ai) {
 	if (f.btn("+10"))
 		for (unsigned i = 0; i < 10; ++i)
 			scn.players.emplace_back();
-
-	f.sl();
-
-	f.chkbox("Reorder", scn.reorder);
 }
 
 void Engine::show_mph_tbl(ui::Frame &f) {
@@ -536,8 +548,8 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 	{
 		Table t;
 
-		if (t.begin("PlayerTable", 5)) {
-			t.row(-1, {"Type", "Name", "Civ", "Player", "Team"});
+		if (t.begin("PlayerTable", 4)) {
+			t.row(-1, {"Type", "Name", "Civ", "Team"});
 
 			unsigned del = scn.players.size();
 			unsigned from = 0, to = 0;
@@ -549,19 +561,6 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 				if (f.btn("X"))
 					del = i;
 
-				if (scn.reorder) {
-					f.sl();
-					if (f.btn("^")) {
-						from = (i + scn.players.size() - 1) % scn.players.size();
-						to = i;
-					}
-					f.sl();
-					if (f.btn("V")) {
-						from = i;
-						to = (i + 1) % scn.players.size();
-					}
-				}
-
 				f.sl();
 				r.chkbox("AI", p.ai);
 
@@ -572,11 +571,8 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 				f.combo("##1", p.civ, civs);
 				r.next();
 
-				p.index = std::max(1u, p.index);
-				r.scalar("##2", p.index, 1);
-
 				p.team = std::max(1u, p.team);
-				r.scalar("##3", p.team, 1);
+				r.scalar("##2", p.team, 1);
 			}
 
 			if (del >= 0 && del < scn.players.size())
@@ -589,8 +585,6 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 			}
 		}
 	}
-
-	show_mph_tbl_footer(f, has_ai);
 
 	while (scn.players.size() > 255)
 		scn.players.pop_back();
@@ -637,8 +631,8 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 		changed |= f.chkbox("Reveal map", scn.explored);
 		changed |= f.chkbox("Full Tech Tree", scn.all_technologies);
 		changed |= f.chkbox("Enable cheating", scn.cheating);
-		if (scn.hosting)
-			changed |= f.chkbox("Host makes settings", scn.restricted);
+		//if (scn.hosting)
+		//	changed |= f.chkbox("Host makes settings", scn.restricted);
 
 		changed |= f.scalar("Age", scn.age, 1, 1, 4);
 		changed |= f.scalar("Max pop.", scn.popcap, 5, 5, 1000);
@@ -649,7 +643,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 		changed |= f.scalar("gold", scn.res.gold, 10);
 		changed |= f.scalar("stone", scn.res.stone, 10);
 
-		changed |= f.scalar("villagers", scn.villagers, 1, scn.res.food < 50 ? 1 : 0, scn.popcap);
+		changed |= f.scalar("villagers", scn.villagers, 1, 1, scn.popcap);
 
 		if (changed)
 			client->send_scn_vars(scn);

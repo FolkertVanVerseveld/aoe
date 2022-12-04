@@ -21,6 +21,7 @@ enum class NetPkgType {
 	chat_text,
 	start_game,
 	set_scn_vars,
+	set_username,
 };
 
 struct NetPkgHdr final {
@@ -53,6 +54,9 @@ public:
 
 	void set_chat_text(const std::string&);
 	std::string chat_text();
+
+	void set_username(const std::string&);
+	std::string username();
 
 	void set_start_game();
 
@@ -115,6 +119,7 @@ private:
 	bool chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req);
 
 	void broadcast(NetPkg &pkg, bool include_host=true);
+	void send(const Peer &p, NetPkg &pkg);
 };
 
 class Client final {
@@ -123,20 +128,21 @@ class Client final {
 	uint16_t port;
 	std::atomic<bool> m_connected;
 	std::mutex m;
+
+	std::map<Peer, ClientInfo> peers;
 public:
 	Client();
 	~Client();
 
 	void start(const char *host, uint16_t port, bool run=true);
 	void stop();
-
 private:
 	void mainloop();
 
 	void add_chat_text(const std::string &s);
 	void start_game();
 	void set_scn_vars(const ScenarioSettings &scn);
-
+	void set_username(const std::string &s);
 public:
 	bool connected() const noexcept { return m_connected; }
 

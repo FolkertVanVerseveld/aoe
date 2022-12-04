@@ -52,6 +52,7 @@ enum class EngineAsyncTask {
 	multiplayer_stopped = 1 << 2,
 	multiplayer_started = 1 << 3,
 	set_scn_vars = 1 << 4,
+	set_username = 1 << 5,
 };
 
 class Engine final {
@@ -91,6 +92,7 @@ class Engine final {
 	bool scroll_to_bottom;
 
 	std::string username;
+	std::string username_async;
 
 	Debug debug;
 	friend Debug;
@@ -100,7 +102,7 @@ public:
 
 	int mainloop();
 private:
-	static constexpr float frame_height = 0.9f, player_height = 0.7f, frame_margin = 0.075f;
+	static constexpr float frame_height = 0.9f, player_height = 0.6f, frame_margin = 0.075f;
 
 	void eventloop(int id);
 	void tick();
@@ -157,6 +159,7 @@ public:
 	void trigger_client_connected();
 	void trigger_multiplayer_stop();
 	void trigger_multiplayer_started();
+	void trigger_username(const std::string&);
 
 	bool is_hosting();
 

@@ -37,7 +37,8 @@ void NetPkg::ntoh() {
 
 	switch ((NetPkgType)ntohs(hdr.type)) {
 		case NetPkgType::set_protocol:
-		case NetPkgType::chat_text: {
+		case NetPkgType::chat_text:
+		case NetPkgType::set_username: {
 			need_payload(2);
 
 			uint16_t *dw = (uint16_t*)data.data();
@@ -71,7 +72,8 @@ void NetPkg::hton() {
 
 	switch ((NetPkgType)hdr.type) {
 		case NetPkgType::set_protocol:
-		case NetPkgType::chat_text: {
+		case NetPkgType::chat_text:
+		case NetPkgType::set_username: {
 			uint16_t *dw = (uint16_t*)data.data();
 			dw[0] = htons(dw[0]);
 			break;
@@ -218,7 +220,7 @@ std::string NetPkg::chat_text() {
 	if ((NetPkgType)hdr.type != NetPkgType::chat_text || data.size() > max_payload - 2)
 		throw std::runtime_error("not a chat text packet");
 
-	const uint16_t *dw = (const uint16_t *)data.data();
+	const uint16_t *dw = (const uint16_t*)data.data();
 
 	uint16_t n = dw[0];
 
@@ -226,6 +228,36 @@ std::string NetPkg::chat_text() {
 	memcpy(s.data(), &dw[1], n);
 
 	return s;
+}
+
+std::string NetPkg::username() {
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::set_username || data.size() > max_payload - 2)
+		throw std::runtime_error("not a username packet");
+
+	const uint16_t *dw = (const uint16_t*)data.data();
+
+	uint16_t n = dw[0];
+
+	std::string s(n, ' ');
+	memcpy(s.data(), &dw[1], n);
+
+	return s;
+}
+
+void NetPkg::set_username(const std::string &s) {
+	assert(s.size() <= max_payload - 2);
+
+	size_t n = s.size();
+	data.resize(2u + n);
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)n;
+	memcpy(&dw[1], s.data(), n);
+
+	set_hdr(NetPkgType::set_username);
 }
 
 void NetPkg::set_start_game() {

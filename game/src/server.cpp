@@ -17,20 +17,27 @@ struct pkg {
 
 void Server::incoming(ServerSocket &s, const Peer &p) {
 	std::lock_guard<std::mutex> lk(m_peers);
-	peers[p] = ClientInfo();
+	std::string name(p.host + ":" + p.server);
+	peers[p] = ClientInfo(name);
 
 	NetPkg pkg;
-	pkg.set_chat_text("peer joined");
+	pkg.set_chat_text(name + " joined");
 
 	broadcast(pkg);
+
+	NetPkg pkg2;
+	pkg2.set_username(name);
+
+	send(p, pkg2);
 }
 
 void Server::dropped(ServerSocket &s, const Peer &p) {
 	std::lock_guard<std::mutex> lk(m_peers);
+	std::string name(peers.at(p).username);
 	peers.erase(p);
 
 	NetPkg pkg;
-	pkg.set_chat_text("peer left");
+	pkg.set_chat_text(name + " left");
 
 	broadcast(pkg);
 }
@@ -64,6 +71,12 @@ void Server::broadcast(NetPkg &pkg, bool include_host) {
 	std::vector<uint8_t> v;
 	pkg.write(v);
 	s.broadcast(v.data(), (int)v.size(), include_host);
+}
+
+void Server::send(const Peer &p, NetPkg &pkg) {
+	std::vector<uint8_t> v;
+	pkg.write(v);
+	s.send(p, v.data(), v.size());
 }
 
 bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req) {
@@ -131,7 +144,7 @@ void Server::close() {
 	s.close();
 }
 
-Client::Client() : s(), port(0), m_connected(false), m() {}
+Client::Client() : s(), port(0), m_connected(false), m(), peers() {}
 
 Client::~Client() {
 	stop();
@@ -177,6 +190,12 @@ void Client::set_scn_vars(const ScenarioSettings &scn) {
 		eng->set_scn_vars(scn);
 }
 
+void Client::set_username(const std::string &s) {
+	std::lock_guard<std::mutex> lk(m_eng);
+	if (eng)
+		eng->trigger_username(s);
+}
+
 void Client::mainloop() {
 	send_protocol(1);
 
@@ -196,6 +215,9 @@ void Client::mainloop() {
 					break;
 				case NetPkgType::set_scn_vars:
 					set_scn_vars(pkg.get_scn_vars());
+					break;
+				case NetPkgType::set_username:
+					set_username(pkg.username());
 					break;
 				default:
 					printf("%s: type=%X\n", __func__, pkg.type());
@@ -239,7 +261,7 @@ void Client::send_start_game() {
 }
 
 void Client::send_scn_vars(const ScenarioSettings &scn) {
-	printf("%s: %u,%u\n", __func__, scn.width, scn.height);
+	//printf("%s: %u,%u\n", __func__, scn.width, scn.height);
 	NetPkg pkg;
 	pkg.set_scn_vars(scn);
 	send(pkg);

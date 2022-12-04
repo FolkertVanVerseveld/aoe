@@ -14,13 +14,16 @@ static ImU8 read_incoming(const ImU8 *ptr, size_t off) {
 	return data.at(off);
 }
 
-void Debug::show() {
+void Debug::show(bool &open) {
 	ZoneScoped;
+
+	if (!open)
+		return;
 
 	Frame f;
 	Engine &e = *eng;
 
-	if (!f.begin("Debug control"))
+	if (!f.begin("Debug control", open))
 		return;
 
 	int size = e.tp.size(), idle = e.tp.n_idle(), running = size - idle;

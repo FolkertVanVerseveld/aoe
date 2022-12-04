@@ -211,7 +211,7 @@ void Engine::display() {
 		ImGui::ShowDemoWindow(&show_demo);
 
 	if (show_debug)
-		debug.show();
+		debug.show(show_debug);
 
 	display_ui_tasks();
 
@@ -410,6 +410,12 @@ void Engine::trigger_multiplayer_started() {
 	trigger_async_flags(EngineAsyncTask::multiplayer_started);
 }
 
+void Engine::trigger_username(const std::string &s) {
+	std::lock_guard<std::mutex> lock(m_async);
+	username_async = s;
+	async_tasks |= (unsigned)EngineAsyncTask::set_username;
+}
+
 bool Engine::is_hosting() {
 	std::lock_guard<std::mutex> lk(m);
 	return server.get() != nullptr;
@@ -449,6 +455,9 @@ void Engine::idle_async() {
 
 		if (async_tasks & (unsigned)EngineAsyncTask::set_scn_vars)
 			set_scn_vars_now(scn_async);
+
+		if (async_tasks & (unsigned)EngineAsyncTask::set_username)
+			username = username_async;
 	}
 
 	async_tasks = 0;
