@@ -671,17 +671,26 @@ void ServerSocket::reduce_peers() {
 
 	std::unique_lock<std::mutex> plk(peer_ev_lock), dlk(data_lock), slk(m_pending);
 
-	while (!closing.empty()) {
-		SOCKET sock = closing.back();
-
+	for (SOCKET sock : closing) {
 		del_fd(sock);
 		::closesocket(sock);
-		peers.erase(sock);
 		data_out.erase(sock);
 		send_pending.erase(sock);
-
-		closing.pop_back();
 	}
+
+	slk.unlock();
+	dlk.unlock();
+
+	std::unique_lock<std::mutex> mctl(m_ctl);
+
+	for (SOCKET sock : closing) {
+		if (ctl)
+			ctl->dropped(*this, peers.at(sock));
+
+		peers.erase(sock);
+	}
+
+	closing.clear();
 }
 
 bool ServerSocket::event_step(int idx) {

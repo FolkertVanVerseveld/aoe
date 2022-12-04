@@ -18,11 +18,21 @@ struct pkg {
 void Server::incoming(ServerSocket &s, const Peer &p) {
 	std::lock_guard<std::mutex> lk(m_peers);
 	peers[p] = ClientInfo();
+
+	NetPkg pkg;
+	pkg.set_chat_text("peer joined");
+
+	broadcast(pkg);
 }
 
 void Server::dropped(ServerSocket &s, const Peer &p) {
 	std::lock_guard<std::mutex> lk(m_peers);
 	peers.erase(p);
+
+	NetPkg pkg;
+	pkg.set_chat_text("peer left");
+
+	broadcast(pkg);
 }
 
 void Server::stopped() {
@@ -62,8 +72,6 @@ bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req)
 	NetPkg pkg;
 	pkg.set_protocol(protocol);
 	pkg.write(out);
-
-	broadcast(pkg);
 
 	return true;
 }
