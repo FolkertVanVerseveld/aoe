@@ -102,7 +102,7 @@ public:
 
 	int mainloop();
 private:
-	static constexpr float frame_height = 0.9f, player_height = 0.6f, frame_margin = 0.075f;
+	static constexpr float frame_height = 0.9f, player_height = 0.55f, frame_margin = 0.075f;
 
 	void eventloop(int id);
 	void tick();
@@ -116,7 +116,6 @@ private:
 
 	void show_multiplayer_host();
 	void show_mph_tbl(ui::Frame&);
-	void show_mph_tbl_footer(ui::Frame &f, bool has_ai);
 	void show_mph_cfg(ui::Frame&);
 	void show_mph_chat(ui::Frame&);
 	void show_chat_line(ui::Frame&);

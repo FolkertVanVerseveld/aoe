@@ -89,6 +89,59 @@ bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req)
 	return true;
 }
 
+void Server::change_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name) {
+	auto it = peers.find(p);
+	assert(it != peers.end());
+
+	NetPkg pkg;
+	pkg.set_username(it->second.username = name);
+	pkg.write(out);
+
+	// TODO broadcast new name
+}
+
+bool Server::chk_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name) {
+	std::lock_guard<std::mutex> lk(m_peers);
+
+	auto it = peers.find(p);
+	if (it == peers.end())
+		return false;
+
+	std::string old(it->second.username);
+
+	printf("%s: (%s,%s) wants to change username from \"%s\" to \"%s\"\n", __func__, p.host.c_str(), p.server.c_str(), old.c_str(), name.c_str());
+
+	// allow anything when it's unique and doesn't contain `:'. we use : ourselves when generating names
+	size_t pos = name.find(':');
+	if (pos != std::string::npos) {
+		// : found. ignore and send back old name
+		NetPkg pkg;
+		pkg.set_username(old);
+		pkg.write(out);
+
+		return true;
+	}
+
+	// check if name is unique
+	for (auto kv : peers) {
+		const std::string &n = kv.second.username;
+
+		// ignore our old name
+		if (n == old)
+			continue;
+
+		if (n == name) {
+			// duplicate found. add : and port name
+			change_username(p, out, name + ":" + p.server);
+			return true;
+		}
+	}
+
+	// success, send username back to client
+	change_username(p, out, name);
+	return true;
+}
+
 bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 	pkg.ntoh();
 
@@ -112,6 +165,8 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 				return false;
 			}
 			break;
+		case NetPkgType::set_username:
+			return chk_username(p, out, pkg.username());
 		default:
 			fprintf(stderr, "bad type: %u\n", pkg.type());
 			throw "invalid type";
@@ -257,6 +312,12 @@ void Client::send_chat_text(const std::string &s) {
 void Client::send_start_game() {
 	NetPkg pkg;
 	pkg.set_start_game();
+	send(pkg);
+}
+
+void Client::send_username(const std::string &s) {
+	NetPkg pkg;
+	pkg.set_username(s);
 	send(pkg);
 }
 

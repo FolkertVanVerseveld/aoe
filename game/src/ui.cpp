@@ -340,7 +340,9 @@ void Engine::show_mph_chat(ui::Frame &f) {
 	if (!cf.begin("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar))
 		return;
 
-	f.text("Username", username);
+	if (f.text("Username", username, ImGuiInputTextFlags_EnterReturnsTrue))
+		client->send_username(username);
+
 	f.str("Chat");
 	{
 		Child ch;
@@ -509,37 +511,6 @@ void Engine::show_multiplayer_host() {
 		if (c.begin("SettingsFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.3f, ImGui::GetWindowHeight() * frame_height), false, ImGuiWindowFlags_HorizontalScrollbar))
 			show_mph_cfg(f);
 	}
-}
-
-void Engine::show_mph_tbl_footer(ui::Frame &f, bool has_ai) {
-	{
-		HSVcol hsv(0);
-
-		if (has_ai) {
-			if (f.btn("Clear AI")) {
-				std::vector<PlayerSetting> scn2;
-
-				for (PlayerSetting &p : scn.players)
-					if (!p.ai)
-						scn2.emplace_back(p);
-
-				scn.players = scn2;
-			}
-		} else if (f.btn("Clear")) {
-			scn.players.clear();
-		}
-
-		f.sl();
-	}
-
-	if (f.btn("+"))
-		scn.players.emplace_back();
-
-	f.sl();
-
-	if (f.btn("+10"))
-		for (unsigned i = 0; i < 10; ++i)
-			scn.players.emplace_back();
 }
 
 void Engine::show_mph_tbl(ui::Frame &f) {

@@ -117,6 +117,9 @@ public:
 	bool process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) override;
 private:
 	bool chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req);
+	bool chk_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);
+
+	void change_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);
 
 	void broadcast(NetPkg &pkg, bool include_host=true);
 	void send(const Peer &p, NetPkg &pkg);
@@ -166,6 +169,7 @@ public:
 	void send_start_game();
 
 	void send_scn_vars(const ScenarioSettings &scn);
+	void send_username(const std::string&);
 };
 
 }

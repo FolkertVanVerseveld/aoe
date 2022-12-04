@@ -33,6 +33,12 @@ bool InputText(const char *label, std::string &buf, ImGuiInputTextFlags flags)
 	if (!buf.empty() && buf.back() == '\0')
 		buf.pop_back();
 
+	if (v) {
+		size_t pos = buf.find_last_of('\0');
+		if (pos != std::string::npos)
+			buf.erase(pos);
+	}
+
 	return v;
 }
 
@@ -47,6 +53,12 @@ bool InputTextMultiline(const char *label, std::string &buf, const ImVec2 &size,
 	// revert imgui mess
 	if (!buf.empty() && buf.back() == '\0')
 		buf.pop_back();
+
+	if (v) {
+		size_t pos = buf.find_last_of('\0');
+		if (pos != std::string::npos)
+			buf.erase(pos);
+	}
 
 	return false;
 }
