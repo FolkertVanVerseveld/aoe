@@ -15,8 +15,12 @@ struct pkg {
 	uint16_t type;
 };
 
-void Server::incoming(ServerSocket &s, const Peer &p) {
+bool Server::incoming(ServerSocket &s, const Peer &p) {
 	std::lock_guard<std::mutex> lk(m_peers);
+
+	if (peers.size() > 255)
+		return false;
+
 	std::string name(p.host + ":" + p.server);
 	peers[p] = ClientInfo(name);
 
@@ -29,6 +33,8 @@ void Server::incoming(ServerSocket &s, const Peer &p) {
 	pkg2.set_username(name);
 
 	send(p, pkg2);
+
+	return true;
 }
 
 void Server::dropped(ServerSocket &s, const Peer &p) {

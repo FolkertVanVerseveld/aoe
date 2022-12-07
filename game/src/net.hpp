@@ -139,7 +139,7 @@ public:
 	virtual ~ServerSocketController() {}
 
 	/* A peer has just connected to this server. */
-	virtual void incoming(ServerSocket &s, const Peer &p) = 0;
+	virtual bool incoming(ServerSocket &s, const Peer &p) = 0;
 
 	/* A peer has just left or has been kicked from this server. */
 	virtual void dropped(ServerSocket &s, const Peer &p) = 0;

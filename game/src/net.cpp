@@ -499,10 +499,22 @@ void ServerSocket::incoming() {
 		auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(infd), std::forward_as_tuple(infd, hbuf, sbuf, is_host));
 		assert(ins.second);
 
+		// now just let the controller know a new client has joined
+		bool keep = false;
 		{
 			std::lock_guard<std::mutex> lk(m_ctl);
+
 			if (ctl)
-				ctl->incoming(*this, ins.first->second);
+				keep = ctl->incoming(*this, ins.first->second);
+		}
+
+		// roll back if controller decided we need to drop the client
+		if (!keep) {
+			del_fd(infd);
+			peers.erase(infd);
+
+			if (is_host)
+				peer_host = INVALID_SOCKET;
 		}
 	}
 }
@@ -837,10 +849,12 @@ int ServerSocket::mainloop(uint16_t port, int backlog, ServerSocketController &c
 
 		unsigned long long dt = poll_us.load(std::memory_order_relaxed);
 
+#if _WIN32
 		if (!step && dt) {
 			//puts("polling");
 			std::this_thread::sleep_for(std::chrono::microseconds(dt));
 		}
+#endif
 	}
 
 	stop();

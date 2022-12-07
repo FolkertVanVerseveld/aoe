@@ -566,7 +566,7 @@ static bool process_echo(const Peer&, std::deque<uint8_t> &in, std::deque<uint8_
 
 class SsockCtlDummy final : public ServerSocketController {
 public:
-	void incoming(ServerSocket&, const Peer&) override {}
+	bool incoming(ServerSocket&, const Peer&) override { return true; }
 	void dropped(ServerSocket&, const Peer&) override {}
 	void stopped() override {}
 
@@ -579,7 +579,7 @@ public:
 
 class SsockCtlEcho final : public ServerSocketController {
 public:
-	void incoming(ServerSocket&, const Peer&) override {}
+	bool incoming(ServerSocket&, const Peer&) override { return true; }
 	void dropped(ServerSocket&, const Peer&) override {}
 	void stopped() override {}
 

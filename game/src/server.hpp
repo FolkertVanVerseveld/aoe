@@ -108,7 +108,7 @@ public:
 
 	bool process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out);
 
-	void incoming(ServerSocket &s, const Peer &p) override;
+	bool incoming(ServerSocket &s, const Peer &p) override;
 	void dropped(ServerSocket &s, const Peer &p) override;
 
 	void stopped() override;
