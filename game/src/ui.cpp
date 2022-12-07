@@ -460,22 +460,19 @@ void Engine::show_multiplayer_host() {
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
-#if 0
-	f.fmt("Multiplayer game - %u %s", scn.players.size(), scn.players.size() == 1 ? "player" : "players");
-
-	f.sl();
-	show_mph_tbl_footer(f, true);
-#else
-	f.str("Multiplayer game  -");
-	f.sl();
-
 	uint32_t player_count = scn.players.size();
 
-	f.scalar(scn.players.size() == 1 ? "player" : "players", player_count, 1, 1, 256);
+	if (scn.is_enabled()) {
+		f.str("Multiplayer game  -");
+		f.sl();
 
-	if (player_count != scn.players.size())
-		scn.players.resize(player_count);
-#endif
+		f.scalar(player_count == 1 ? "player" : "players", player_count, 1, 1, 256);
+
+		if (player_count != scn.players.size())
+			scn.players.resize(player_count);
+	} else {
+		f.fmt("Multiplayer game - %u %s", player_count, player_count == 1 ? "player" : "players");
+	}
 
 	{
 		Child lf;
@@ -494,8 +491,7 @@ void Engine::show_multiplayer_host() {
 			f.xbtn("Start Game");
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 				ImGui::Tooltip("Game cannot be started without players. You can add players with `+' and `+10'.");
-		}
-		else if (f.btn("Start Game")) {
+		} else if (f.btn("Start Game")) {
 			client->send_start_game();
 		}
 

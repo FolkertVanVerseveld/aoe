@@ -10,6 +10,7 @@
 #include <map>
 #include <mutex>
 #include <thread>
+#include <string>
 
 #include <condition_variable>
 #include <utility>
@@ -37,6 +38,12 @@ class Net final {
 public:
 	Net();
 	~Net();
+};
+
+class SocketClosedError final : public std::runtime_error {
+public:
+	explicit SocketClosedError(const std::string &s) : std::runtime_error(s.c_str()) {}
+	explicit SocketClosedError(const char *msg) : std::runtime_error(msg) {}
 };
 
 class ServerSocket;
@@ -77,7 +84,7 @@ public:
 	int send(const void *ptr, int len, unsigned tries=1);
 
 	template<typename T> int send(const T *ptr, int len, unsigned tries=5) {
-		int out = send((const void *)ptr, len * sizeof * ptr, tries);
+		int out = send((const void*)ptr, len * sizeof * ptr, tries);
 		if (out % sizeof * ptr)
 			throw std::runtime_error("wsa: send failed: incomplete object sent");
 		return out / sizeof * ptr;
@@ -93,7 +100,7 @@ public:
 	int recv(void *dst, int len, unsigned tries=1);
 
 	template<typename T> int recv(T *ptr, int len, unsigned tries=5) {
-		int in = recv((void *)ptr, len * sizeof * ptr, tries);
+		int in = recv((void*)ptr, len * sizeof * ptr, tries);
 		if (in % sizeof * ptr)
 			throw std::runtime_error("wsa: recv failed: incomplete object received");
 		return in / sizeof * ptr;
@@ -102,7 +109,7 @@ public:
 	void recv_fully(void *dst, int len);
 
 	template<typename T> void recv_fully(T *ptr, int len) {
-		recv_fully((void *)ptr, len * sizeof * ptr);
+		recv_fully((void*)ptr, len * sizeof * ptr);
 	}
 
 	/** Change non-blocking mode. If true, recv_fully and send_fully become undefined! */

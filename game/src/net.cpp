@@ -327,12 +327,18 @@ int TcpSocket::send(const void *ptr, int len, unsigned tries) {
 }
 
 void TcpSocket::send_fully(const void *ptr, int len) {
-	int out = send(ptr, len, 0);
-	if (out != len) {
-		if (out < 0)
-			out = 0;
-		throw std::runtime_error(std::string("tcp: send_fully failed: ") + std::to_string(out) + (out == 1 ? " byte written out of " : " bytes written out of ") + std::to_string(len));
-	}
+	int out;
+	
+	if ((out = send(ptr, len, 0)) == len)
+		return;
+
+	if (!out)
+		throw SocketClosedError("tcp: send_fully failed: connection closed");
+
+	if (out < 0)
+		out = 0;
+
+	throw std::runtime_error(std::string("tcp: send_fully failed: ") + std::to_string(out) + (out == 1 ? " byte written out of " : " bytes written out of ") + std::to_string(len));
 }
 
 int TcpSocket::try_recv(void *dst, int len, unsigned tries) noexcept {
@@ -380,8 +386,12 @@ void TcpSocket::recv_fully(void *ptr, int len) {
 	if ((in = recv(ptr, len, 0)) == len)
 		return;
 
+	if (!in)
+		throw SocketClosedError("tcp: recv_fully failed: connection closed");
+
 	if (in < 0)
 		in = 0;
+
 	throw std::runtime_error(std::string("tcp: recv_fully failed: ") + std::to_string(in) + (in == 1 ? " byte read out of " : " bytes read out of ") + std::to_string(len));
 }
 
