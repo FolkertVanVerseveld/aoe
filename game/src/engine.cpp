@@ -49,10 +49,10 @@ static const char *connection_modes[] = {"host game", "join game"};
 
 static void write(std::ofstream &out, SDL_Rect r) {
 	static_assert(sizeof(int) == sizeof(int32_t));
-	out.write((const char *)&r.x, sizeof r.x);
-	out.write((const char *)&r.y, sizeof r.y);
-	out.write((const char *)&r.w, sizeof r.w);
-	out.write((const char *)&r.h, sizeof r.h);
+	out.write((const char*)&r.x, sizeof r.x);
+	out.write((const char*)&r.y, sizeof r.y);
+	out.write((const char*)&r.w, sizeof r.w);
+	out.write((const char*)&r.h, sizeof r.h);
 }
 
 Config::Config() : Config("") {}

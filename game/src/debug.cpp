@@ -26,6 +26,45 @@ void Debug::show(bool &open) {
 	if (!f.begin("Debug control", open))
 		return;
 
+	int displays = SDL_GetNumVideoDisplays();
+	f.fmt("Display count: %d", displays);
+
+	for (int i = 0; i < displays; ++i) {
+		std::string lbl(std::string("Display ") + std::to_string(i));
+
+		if (ImGui::TreeNode(lbl.c_str())) {
+			SDL_Rect bnds{ 0 }, bnds2{ 0 };
+
+			SDL_GetDisplayBounds(i, &bnds);
+			f.fmt("%4dx%4d at %4d,%4d", bnds.w, bnds.h, bnds.x, bnds.y);
+
+			SDL_GetDisplayUsableBounds(i, &bnds2);
+			f.fmt("%4dx%4d at %4d,%4d usable", bnds2.w, bnds2.h, bnds2.x, bnds2.y);
+
+			double aspect = (double)bnds.w / bnds.h;
+
+			// try to determine exact ratio
+			long long llw = (long long)bnds.w, llh = (long long)bnds.h;
+			char *fmt = "unknown format";
+
+			// check both ways as we may have rounding errors.
+			// i didn't verify this formula, so there might be situations were it isn't exact
+			if (llw / 4 * 3 == llh && llh / 3 * 4 == llw)
+				fmt = "4:3";
+			else if (llw / 16 * 9 == llh && llh / 9 * 16 == llw)
+				fmt = "16:9";
+			else if (llw / 21 * 9 == llh && llh / 9 * 21 == llw)
+				fmt = "21:9";
+
+			f.fmt("aspect ratio: %s (%.2f)\n", fmt, aspect);
+
+			int modes = SDL_GetNumDisplayModes(i);
+			f.fmt("modes: %d", modes);
+
+			ImGui::TreePop();
+		}
+	}
+
 	int size = e.tp.size(), idle = e.tp.n_idle(), running = size - idle;
 	f.fmt("Thread pool: %d threads, %d running", size, running);
 

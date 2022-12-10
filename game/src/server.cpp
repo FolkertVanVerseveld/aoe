@@ -334,13 +334,14 @@ void Client::mainloop() {
 			}
 		}
 	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: client stopped: %s\n", __func__, e.what());
+		if (m_connected)
+			fprintf(stderr, "%s: client stopped: %s\n", __func__, e.what());
 	}
 
 	std::lock_guard<std::mutex> lk(m_eng);
 	if (eng) {
 		eng->trigger_multiplayer_stop();
-		if (!eng->is_hosting()) {
+		if (m_connected && !eng->is_hosting()) {
 			eng->push_error("Game session aborted");
 		}
 	}
