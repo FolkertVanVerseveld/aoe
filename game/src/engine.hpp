@@ -53,8 +53,10 @@ enum class EngineAsyncTask {
 	multiplayer_started = 1 << 3,
 	set_scn_vars = 1 << 4,
 	set_username = 1 << 5,
+	player_mod = 1 << 6,
 };
 
+// TODO make engine view that wraps eng and m_eng magic
 class Engine final {
 	Net net;
 
@@ -114,6 +116,7 @@ private:
 	void display_ui_tasks();
 	void show_init();
 
+	// TODO extract as HUD
 	void show_multiplayer_host();
 	void show_mph_tbl(ui::Frame&);
 	void show_mph_cfg(ui::Frame&);

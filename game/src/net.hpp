@@ -40,6 +40,7 @@ public:
 	~Net();
 };
 
+/** Error to indicate the associated socket has been closed. For TCP, this means the other end has send a shutdown and recv/send will not work anymore. */
 class SocketClosedError final : public std::runtime_error {
 public:
 	explicit SocketClosedError(const std::string &s) : std::runtime_error(s.c_str()) {}
@@ -171,7 +172,7 @@ public:
 	virtual bool process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) = 0;
 };
 
-// TODO make multi thread-safe: mutex for open, stop, close, parts of mainloop
+// TODO check if properly multi thread-safe: should work for open, stop, close and parts of mainloop
 class ServerSocket final {
 	TcpSocket s;
 	HANDLE h;

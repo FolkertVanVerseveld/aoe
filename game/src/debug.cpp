@@ -52,11 +52,16 @@ void Debug::show(bool &open) {
 
 			for (auto kv : s.peers) {
 				const Peer &p = kv.first;
+				ClientInfo &ci = kv.second;
 
 				//f.fmt("%3llu: %s:%s", i, p.host.c_str(), p.server.c_str());
 				name = std::to_string(i) + ": " + p.host + ":" + p.server;
 
+				if (!ci.username.empty())
+					name += " " + ci.username;
+
 				if (ImGui::TreeNode(name.c_str())) {
+#if 0
 					std::unique_lock<std::mutex> lkp(s.s.peer_ev_lock, std::defer_lock), lkd(s.s.data_lock, std::defer_lock);
 
 					SOCKET sock = p.sock;
@@ -96,6 +101,19 @@ void Debug::show(bool &open) {
 					}
 
 					lkp.unlock();
+#else
+					unsigned flags = ci.flags;
+					bool ready = !!(flags & (unsigned)ClientInfoFlags::ready);
+
+					f.chkbox("ready", ready);
+
+					if (ready)
+						flags |= (unsigned)ClientInfoFlags::ready;
+					else
+						flags &= ~(unsigned)ClientInfoFlags::ready;
+
+					ci.flags = flags;
+#endif
 
 					ImGui::TreePop();
 				}

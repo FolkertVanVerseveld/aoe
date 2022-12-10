@@ -6,6 +6,7 @@
 #include <deque>
 #include <vector>
 #include <thread>
+#include <variant>
 
 #include "game.hpp"
 #include "debug.hpp"
@@ -22,6 +23,7 @@ enum class NetPkgType {
 	start_game,
 	set_scn_vars,
 	set_username,
+	playermod,
 };
 
 struct NetPkgHdr final {
@@ -35,6 +37,20 @@ struct NetPkgHdr final {
 	// byte swapping
 	void ntoh();
 	void hton();
+};
+
+enum class NetPlayerControlType {
+	resize,
+	erase,
+};
+
+class NetPlayerControl final {
+public:
+	NetPlayerControlType type;
+	uint16_t arg;
+
+	NetPlayerControl() : type(NetPlayerControlType::resize), arg(0) {}
+	NetPlayerControl(NetPlayerControlType type, uint16_t arg) : type(type), arg(arg) {}
 };
 
 class NetPkg final {
@@ -60,8 +76,11 @@ public:
 
 	void set_start_game();
 
-	void set_scn_vars(const ScenarioSettings &scn);
+	void set_scn_vars(const ScenarioSettings&);
 	ScenarioSettings get_scn_vars();
+
+	void set_player_resize(size_t);
+	NetPlayerControl get_player_control();
 
 	NetPkgType type();
 
@@ -79,12 +98,17 @@ private:
 	void need_payload(size_t n);
 };
 
+enum class ClientInfoFlags {
+	ready = 1 << 0,
+};
+
 class ClientInfo final {
 public:
 	std::string username;
+	unsigned flags;
 
-	ClientInfo() : username() {}
-	ClientInfo(const std::string &username) : username(username) {}
+	ClientInfo() : username(), flags(0) {}
+	ClientInfo(const std::string &username) : username(username), flags(0) {}
 };
 
 class Server final : public ServerSocketController {

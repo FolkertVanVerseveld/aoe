@@ -39,11 +39,20 @@ void NetPkg::ntoh() {
 		case NetPkgType::set_protocol:
 		case NetPkgType::chat_text:
 		case NetPkgType::set_username: {
-			need_payload(2);
+			need_payload(1 * sizeof(uint16_t));
 
 			uint16_t *dw = (uint16_t*)data.data();
 
 			dw[0] = ntohs(dw[0]);
+			break;
+		}
+		case NetPkgType::playermod: {
+			need_payload(2 * sizeof(uint16_t));
+
+			uint16_t *dw = (uint16_t*)data.data();
+
+			dw[0] = ntohs(dw[0]);
+			dw[1] = ntohs(dw[1]);
 			break;
 		}
 		case NetPkgType::set_scn_vars: {
@@ -76,6 +85,12 @@ void NetPkg::hton() {
 		case NetPkgType::set_username: {
 			uint16_t *dw = (uint16_t*)data.data();
 			dw[0] = htons(dw[0]);
+			break;
+		}
+		case NetPkgType::playermod: {
+			uint16_t* dw = (uint16_t*)data.data();
+			dw[0] = htons(dw[0]);
+			dw[1] = htons(dw[1]);
 			break;
 		}
 		case NetPkgType::set_scn_vars: {
@@ -334,6 +349,31 @@ ScenarioSettings NetPkg::get_scn_vars() {
 	scn.restricted       = !!(flags & (1 << 5));
 
 	return scn;
+}
+
+void NetPkg::set_player_resize(size_t size) {
+	if (size > UINT16_MAX)
+		throw std::runtime_error("overflow player resize");
+
+	data.resize(2 * sizeof(uint16_t));
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::resize;
+	dw[1] = (uint16_t)size;
+
+	set_hdr(NetPkgType::playermod);
+}
+
+NetPlayerControl NetPkg::get_player_control() {
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::playermod || data.size() != 2 * sizeof(uint16_t))
+		throw std::runtime_error("not a player control packet");
+
+	const uint16_t *dw = (const uint16_t*)data.data();
+
+	return NetPlayerControl((NetPlayerControlType)dw[0], dw[1]);
 }
 
 NetPkgType NetPkg::type() {
