@@ -83,7 +83,7 @@ void Config::save(const std::string &path) {
 }
 
 ScenarioSettings::ScenarioSettings()
-	: players(8)
+	: players()
 	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
 	, square(true), restricted(true), reorder(false), hosting(false), width(48), height(48)
 	, popcap(100)
@@ -416,6 +416,12 @@ void Engine::trigger_username(const std::string &s) {
 	async_tasks |= (unsigned)EngineAsyncTask::set_username;
 }
 
+void Engine::trigger_playermod(const NetPlayerControl &ctl) {
+	std::lock_guard<std::mutex> lock(m_async);
+	playermod_async = ctl;
+	async_tasks |= (unsigned)EngineAsyncTask::player_mod;
+}
+
 bool Engine::is_hosting() {
 	std::lock_guard<std::mutex> lk(m);
 	return server.get() != nullptr;
@@ -458,12 +464,26 @@ void Engine::idle_async() {
 
 		if (async_tasks & (unsigned)EngineAsyncTask::set_username)
 			username = username_async;
+
+		if (async_tasks & (unsigned)EngineAsyncTask::player_mod)
+			playermod(playermod_async);
 	}
 
 	async_tasks = 0;
 
 	for (; !chat_async.empty(); chat_async.pop())
 		chat.emplace_back(chat_async.front());
+}
+
+void Engine::playermod(const NetPlayerControl &ctl) {
+	switch (ctl.type) {
+	case NetPlayerControlType::resize:
+		scn.players.resize(ctl.arg);
+		break;
+	default:
+		fprintf(stderr, "%s: ctl type=%u\n", __func__, ctl.type);
+		break;
+	}
 }
 
 void Engine::start_multiplayer_game() {

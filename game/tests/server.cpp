@@ -115,12 +115,27 @@ static void connect_runall() {
 	connect_test(true);
 }
 
+static void handshake(Client &c) {
+	// ignore messages
+	NetPkg pkg = c.recv();
+	pkg.chat_text();
+
+	pkg = c.recv();
+	pkg.username();
+
+	pkg = c.recv();
+	pkg.get_player_control();
+}
+
 static void echo_test(bool close) {
 	Server s;
 	std::thread t1([&] { s.mainloop(1, default_port, 1); if (close) s.close(); });
 
 	Client c;
 	c.start(default_host, default_port, false);
+
+	handshake(c);
+
 	c.send_protocol(1);
 	uint16_t prot = c.recv_protocol();
 
@@ -139,6 +154,9 @@ static void protocol_test() {
 	uint16_t prot;
 
 	c.start(default_host, default_port, false);
+
+	handshake(c);
+
 	// request newer version
 	c.send_protocol(2);
 

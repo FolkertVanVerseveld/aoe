@@ -117,6 +117,7 @@ class Server final : public ServerSocketController {
 	std::mutex m_peers;
 	uint16_t port, protocol;
 	std::map<Peer, ClientInfo> peers;
+	ScenarioSettings scn;
 
 	friend Debug;
 public:
@@ -144,6 +145,9 @@ private:
 	bool chk_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);
 
 	void change_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);
+	bool set_scn_vars(const Peer &p, ScenarioSettings &scn);
+
+	bool process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out);
 
 	void broadcast(NetPkg &pkg, bool include_host=true);
 	void send(const Peer &p, NetPkg &pkg);
@@ -170,6 +174,7 @@ private:
 	void start_game();
 	void set_scn_vars(const ScenarioSettings &scn);
 	void set_username(const std::string &s);
+	void playermod(const NetPlayerControl&);
 public:
 	bool connected() const noexcept { return m_connected; }
 
@@ -191,6 +196,7 @@ public:
 
 	void send_chat_text(const std::string&);
 	void send_start_game();
+	void send_players_resize(unsigned n);
 
 	void send_scn_vars(const ScenarioSettings &scn);
 	void send_username(const std::string&);

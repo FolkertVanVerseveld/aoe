@@ -4,7 +4,7 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m_peers(), port(0), protocol(0), peers() {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m_peers(), port(0), protocol(0), peers(), scn() {}
 
 Server::~Server() {
 	stop();
@@ -25,14 +25,15 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 	peers[p] = ClientInfo(name);
 
 	NetPkg pkg;
-	pkg.set_chat_text(name + " joined");
 
+	pkg.set_chat_text(name + " joined");
 	broadcast(pkg);
 
-	NetPkg pkg2;
-	pkg2.set_username(name);
+	pkg.set_username(name);
+	send(p, pkg);
 
-	send(p, pkg2);
+	pkg.set_player_resize(scn.players.size());
+	send(p, pkg);
 
 	return true;
 }
@@ -148,9 +149,54 @@ bool Server::chk_username(const Peer &p, std::deque<uint8_t> &out, const std::st
 	return true;
 }
 
+bool Server::set_scn_vars(const Peer &p, ScenarioSettings &scn) {
+	if (!p.is_host) {
+		// if restricted, client is modded: kick now!
+		fprintf(stderr, "hacked client %s:%s: kick!\n", p.host.c_str(), p.server.c_str());
+		return false;
+	}
+
+	// TODO filter bogus settings
+	this->scn.width = scn.width;
+	this->scn.height = scn.height;
+	this->scn.popcap = scn.popcap;
+	this->scn.age = scn.age;
+	this->scn.seed = scn.seed;
+	this->scn.villagers = scn.villagers;
+
+	this->scn.res = scn.res;
+
+	this->scn.fixed_start = scn.fixed_start;
+	this->scn.explored = scn.explored;
+	this->scn.all_technologies = scn.all_technologies;
+	this->scn.cheating = scn.cheating;
+	this->scn.square = scn.square;
+
+	NetPkg pkg;
+	pkg.set_scn_vars(this->scn);
+	broadcast(pkg);
+
+	return true;
+}
+
+bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out) {
+	NetPkg pkg;
+
+	switch (ctl.type) {
+	case NetPlayerControlType::resize:
+		scn.players.resize(ctl.arg);
+		pkg.set_player_resize(ctl.arg);
+		broadcast(pkg);
+		return true;
+	}
+
+	return false;
+}
+
 bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 	pkg.ntoh();
 
+	// TODO for broadcasts, check packet on bogus data if reusing pkg
 	switch (pkg.type()) {
 		case NetPkgType::set_protocol:
 			return chk_protocol(p, out, pkg.protocol_version());
@@ -161,18 +207,11 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 			broadcast(pkg);
 			break;
 		case NetPkgType::set_scn_vars:
-			if (p.is_host) {
-				broadcast(pkg, false);
-			} else {
-				// TODO check if restricted is disabled
-
-				// if restricted, client is modded: kick now!
-				fprintf(stderr, "hacked client %s:%s: kick!\n", p.host.c_str(), p.server.c_str());
-				return false;
-			}
-			break;
+			return set_scn_vars(p, pkg.get_scn_vars());
 		case NetPkgType::set_username:
 			return chk_username(p, out, pkg.username());
+		case NetPkgType::playermod:
+			return process_playermod(p, pkg.get_player_control(), out);
 		default:
 			fprintf(stderr, "bad type: %u\n", pkg.type());
 			throw "invalid type";
@@ -257,6 +296,12 @@ void Client::set_username(const std::string &s) {
 		eng->trigger_username(s);
 }
 
+void Client::playermod(const NetPlayerControl &ctl) {
+	std::lock_guard<std::mutex> lk(m_eng);
+	if (eng)
+		eng->trigger_playermod(ctl);
+}
+
 void Client::mainloop() {
 	send_protocol(1);
 
@@ -279,6 +324,9 @@ void Client::mainloop() {
 					break;
 				case NetPkgType::set_username:
 					set_username(pkg.username());
+					break;
+				case NetPkgType::playermod:
+					playermod(pkg.get_player_control());
 					break;
 				default:
 					printf("%s: type=%X\n", __func__, pkg.type());
@@ -331,6 +379,12 @@ void Client::send_scn_vars(const ScenarioSettings &scn) {
 	//printf("%s: %u,%u\n", __func__, scn.width, scn.height);
 	NetPkg pkg;
 	pkg.set_scn_vars(scn);
+	send(pkg);
+}
+
+void Client::send_players_resize(unsigned n) {
+	NetPkg pkg;
+	pkg.set_player_resize(n);
 	send(pkg);
 }
 

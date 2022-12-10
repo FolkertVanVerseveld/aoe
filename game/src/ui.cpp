@@ -468,8 +468,11 @@ void Engine::show_multiplayer_host() {
 
 		f.scalar(player_count == 1 ? "player" : "players", player_count, 1, 1, 256);
 
-		if (player_count != scn.players.size())
+		if (player_count != scn.players.size()) {
+			client->send_players_resize(player_count);
+			// resize immediately since we only need to send a message once
 			scn.players.resize(player_count);
+		}
 	} else {
 		f.fmt("Multiplayer game - %u %s", player_count, player_count == 1 ? "player" : "players");
 	}

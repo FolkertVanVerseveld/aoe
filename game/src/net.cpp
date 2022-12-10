@@ -750,7 +750,7 @@ void ServerSocket::queue_out(const Peer &p, const void *ptr, int len) {
 
 	std::deque<uint8_t> &out = it->second;
 
-	const uint8_t *src = (const uint8_t *)ptr;
+	const uint8_t *src = (const uint8_t*)ptr;
 
 	for (int i = 0; i < len; ++i)
 		out.emplace_back(src[i]);

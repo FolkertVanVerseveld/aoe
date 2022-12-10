@@ -96,6 +96,8 @@ class Engine final {
 	std::string username;
 	std::string username_async;
 
+	NetPlayerControl playermod_async;
+
 	Debug debug;
 	friend Debug;
 public:
@@ -144,6 +146,7 @@ private:
 	void start_multiplayer_game();
 
 	void set_scn_vars_now(const ScenarioSettings &scn);
+	void playermod(const NetPlayerControl&);
 public:
 	void push_error(const std::string &msg);
 
@@ -162,6 +165,7 @@ public:
 	void trigger_multiplayer_stop();
 	void trigger_multiplayer_started();
 	void trigger_username(const std::string&);
+	void trigger_playermod(const NetPlayerControl&);
 
 	bool is_hosting();
 
