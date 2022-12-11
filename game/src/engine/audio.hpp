@@ -24,6 +24,7 @@ class Audio final {
 	Uint16 format;
 
 	std::unique_ptr<Mix_Music, decltype(&Mix_FreeMusic)> music;
+	bool music_mute;
 public:
 	std::map<MusicId, std::string> jukebox;
 
@@ -34,6 +35,11 @@ public:
 	void play_music(MusicId id);
 
 	void stop_music();
+
+	void mute_music();
+	void unmute_music();
+
+	constexpr bool is_muted_music() const noexcept { return music_mute; }
 };
 
 }

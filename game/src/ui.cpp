@@ -60,7 +60,7 @@ void Frame::fmt(const char *s, ...) {
 	va_end(args);
 }
 
-static bool chkbox(const char *s, bool &b) {
+bool chkbox(const char *s, bool &b) {
 	return ImGui::Checkbox(s, &b);
 }
 

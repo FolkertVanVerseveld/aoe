@@ -46,7 +46,7 @@ static void write(std::ofstream &out, const std::string &s) {
 }
 
 Config::Config(Engine &e) : Config(e, "") {}
-Config::Config(Engine &e, const std::string &s) : e(e), bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s) {}
+Config::Config(Engine &e, const std::string &s) : e(e), bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s), game_dir() {}
 
 Config::~Config() {
 	if (path.empty())
@@ -64,7 +64,7 @@ void Config::load(const std::string &path) {
 	// let c++ take care of any errors
 	in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
-	uint32_t magic = 0x06ce09f6, actual_magic;
+	uint32_t actual_magic;
 
 	in.read((char*)&actual_magic, sizeof(actual_magic));
 
@@ -77,6 +77,15 @@ void Config::load(const std::string &path) {
 
 	Audio &sfx = e.sfx;
 	uint32_t dw;
+
+	in.read((char*)&dw, sizeof(dw));
+
+	if (dw & (1 << 0))
+		sfx.mute_music();
+	else
+		sfx.unmute_music();
+
+	read(in, game_dir, UINT16_MAX);
 
 	in.read((char*)&dw, sizeof(dw));
 
@@ -98,15 +107,22 @@ void Config::save(const std::string &path) {
 	// let c++ take care of any errors
 	out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-	uint32_t magic = 0x06ce09f6;
-
 	out.write((const char*)&magic, sizeof magic);
 	write(out, bnds);
 	write(out, display);
 	write(out, vp);
 
+	uint32_t dw = 0;
 	Audio &sfx = e.sfx;
-	uint32_t dw = sfx.jukebox.size();
+
+	if (sfx.is_muted_music())
+		dw |= 1 << 0;
+
+	out.write((const char*)&dw, sizeof(dw));
+
+	write(out, e.game_dir);
+
+	dw = sfx.jukebox.size();
 
 	out.write((const char*)&dw, sizeof(dw));
 

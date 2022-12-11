@@ -16,6 +16,8 @@ namespace aoe {
 
 namespace ui {
 
+bool chkbox(const char *s, bool &b);
+
 class Frame final {
 	bool open, active;
 public:

@@ -41,7 +41,9 @@ class Config final {
 	Engine &e;
 public:
 	SDL_Rect bnds, display, vp;
-	std::string path;
+	std::string path, game_dir;
+
+	static constexpr uint32_t magic = 0x06ce09f6;
 
 	Config(Engine&);
 	Config(Engine&, const std::string&);
@@ -62,6 +64,8 @@ enum class EngineAsyncTask {
 };
 
 // TODO make engine view that wraps eng and m_eng magic
+// TODO split async?
+// TODO split ui
 class Engine final {
 	Net net;
 
@@ -102,9 +106,12 @@ class Engine final {
 
 	NetPlayerControl playermod_async;
 
-	ImGui::FileBrowser fd;
+	ImGui::FileBrowser fd, fd2;
 	Audio sfx;
 	int music_id;
+	bool music_on;
+
+	std::string game_dir;
 
 	Debug debug;
 	friend Debug;
@@ -140,6 +147,7 @@ private:
 
 	void show_multiplayer_game();
 
+	void show_music_settings();
 	void show_menubar();
 
 	void start_server(uint16_t port);

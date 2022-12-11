@@ -65,7 +65,8 @@ Engine::Engine()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
 	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0)
-	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), sfx(), music_id(0), debug()
+	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
+	, debug()
 	, cfg(*this, "config")
 {
 	ZoneScoped;
@@ -89,6 +90,17 @@ Engine::~Engine() {
 
 using namespace aoe::ui;
 
+void Engine::show_music_settings() {
+	music_on = !sfx.is_muted_music();
+
+	chkbox("Music enabled", music_on);
+
+	if (music_on)
+		sfx.unmute_music();
+	else
+		sfx.mute_music();
+}
+
 void Engine::show_menubar() {
 	ZoneScoped;
 	if (!m_show_menubar)
@@ -101,9 +113,17 @@ void Engine::show_menubar() {
 
 	{
 		Menu mf;
-		if (mf.begin("File"))
+		if (mf.begin("File")) {
+			{
+				Menu ms;
+
+				if (ms.begin("Settings"))
+					show_music_settings();
+			}
+
 			if (mf.item("Quit"))
 				throw 0;
+		}
 	}
 
 	{
@@ -160,6 +180,20 @@ void Engine::show_init() {
 	if (ImGui::Button("quit"))
 		throw 0;
 
+	if (f.btn("Set game directory"))
+		fd2.Open();
+
+	fd2.Display();
+
+	if (fd2.HasSelected()) {
+		std::string path(fd2.GetSelected().string());
+		printf("selected \"%s\"\n", path.c_str());
+
+		// TODO set game directory
+
+		fd2.ClearSelected();
+	}
+
 	f.combo("music id", music_id, music_ids);
 
 	if (f.btn("Open music"))
@@ -187,6 +221,8 @@ void Engine::show_init() {
 
 	if (f.btn("Stop"))
 		sfx.stop_music();
+
+	show_music_settings();
 }
 
 void Engine::display() {
