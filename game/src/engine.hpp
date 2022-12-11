@@ -101,6 +101,7 @@ class Engine final {
 
 	ImGui::FileBrowser fd;
 	Audio sfx;
+	int music_id;
 
 	Debug debug;
 	friend Debug;

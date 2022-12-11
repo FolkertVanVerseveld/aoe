@@ -8,7 +8,7 @@
 
 namespace aoe {
 
-Audio::Audio() : music(nullptr, Mix_FreeMusic) {
+Audio::Audio() : music(nullptr, Mix_FreeMusic), jukebox() {
 	int flags = MIX_INIT_MP3;
 
 	if ((Mix_Init(flags) & flags) != flags)
@@ -34,6 +34,20 @@ void Audio::play_music(const char *file, int loops) {
 	}
 
 	Mix_PlayMusic(music.get(), loops);
+}
+
+void Audio::play_music(MusicId id) {
+	auto it = jukebox.find(id);
+	if (it == jukebox.end()) {
+		fprintf(stderr, "%s: cannot play music id %d: not found\n", __func__, id);
+		return;
+	}
+
+	play_music(it->second.c_str());
+}
+
+void Audio::stop_music() {
+	Mix_HaltMusic();
 }
 
 }

@@ -48,41 +48,6 @@ std::mutex m_eng;
 
 static const char *connection_modes[] = {"host game", "join game"};
 
-static void write(std::ofstream &out, SDL_Rect r) {
-	static_assert(sizeof(int) == sizeof(int32_t));
-	out.write((const char*)&r.x, sizeof r.x);
-	out.write((const char*)&r.y, sizeof r.y);
-	out.write((const char*)&r.w, sizeof r.w);
-	out.write((const char*)&r.h, sizeof r.h);
-}
-
-Config::Config() : Config("") {}
-Config::Config(const std::string &s) : bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s) {}
-
-Config::~Config() {
-	if (path.empty())
-		return;
-
-	try {
-		save(path);
-	} catch (std::exception&) {}
-}
-
-void Config::save(const std::string &path) {
-	ZoneScoped;
-	std::ofstream out(path, std::ios_base::binary | std::ios_base::trunc);
-
-	// let c++ take care of any errors
-	out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-
-	uint32_t magic = 0x06ce09f6;
-
-	out.write((const char*)&magic, sizeof magic);
-	write(out, bnds);
-	write(out, display);
-	write(out, vp);
-}
-
 ScenarioSettings::ScenarioSettings()
 	: players()
 	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
@@ -100,7 +65,7 @@ Engine::Engine()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
 	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0)
-	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), sfx(), debug()
+	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), sfx(), music_id(0), debug()
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -149,6 +114,8 @@ void Engine::show_menubar() {
 	}
 }
 
+static const std::vector<std::string> music_ids{ "menu", "success", "fail", "game" };
+
 void Engine::show_init() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -192,7 +159,9 @@ void Engine::show_init() {
 	if (ImGui::Button("quit"))
 		throw 0;
 
-	if (ImGui::Button("Open music"))
+	f.combo("music id", music_id, music_ids);
+
+	if (f.btn("Open music"))
 		fd.Open();
 
 	fd.Display();
@@ -200,9 +169,23 @@ void Engine::show_init() {
 	if (fd.HasSelected()) {
 		std::string path(fd.GetSelected().string());
 		printf("selected \"%s\"\n", path.c_str());
-		sfx.play_music(path.c_str());
+
+		MusicId id = (MusicId)music_id;
+		sfx.jukebox[id] = path;
+		sfx.play_music(id);
+
 		fd.ClearSelected();
 	}
+
+	f.sl();
+
+	if (f.btn("Play"))
+		sfx.play_music((MusicId)music_id);
+
+	f.sl();
+
+	if (f.btn("Stop"))
+		sfx.stop_music();
 }
 
 void Engine::display() {

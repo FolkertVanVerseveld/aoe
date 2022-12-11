@@ -7,8 +7,17 @@
 #endif
 
 #include <memory>
+#include <map>
+#include <string>
 
 namespace aoe {
+
+enum class MusicId {
+	menu,
+	success,
+	fail,
+	game,
+};
 
 class Audio final {
 	int freq, channels;
@@ -16,10 +25,15 @@ class Audio final {
 
 	std::unique_ptr<Mix_Music, decltype(&Mix_FreeMusic)> music;
 public:
+	std::map<MusicId, std::string> jukebox;
+
 	Audio();
 	~Audio();
 
 	void play_music(const char *file, int loops=0);
+	void play_music(MusicId id);
+
+	void stop_music();
 };
 
 }
