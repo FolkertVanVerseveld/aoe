@@ -35,15 +35,19 @@ enum class MenuState {
 	multiplayer_game,
 };
 
+class Engine;
+
 class Config final {
+	Engine &e;
 public:
 	SDL_Rect bnds, display, vp;
 	std::string path;
 
-	Config();
-	Config(const std::string&);
+	Config(Engine&);
+	Config(Engine&, const std::string&);
 	~Config();
 
+	void load(const std::string&);
 	void save(const std::string&);
 };
 
@@ -71,7 +75,6 @@ class Engine final {
 	bool multiplayer_ready;
 	bool m_show_menubar;
 
-	Config cfg;
 	ScenarioSettings scn;
 	std::string chat_line;
 	std::deque<std::string> chat;
@@ -105,6 +108,9 @@ class Engine final {
 
 	Debug debug;
 	friend Debug;
+	friend Config;
+
+	Config cfg;
 public:
 	Engine();
 	~Engine();

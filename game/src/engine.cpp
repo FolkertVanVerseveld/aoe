@@ -61,11 +61,12 @@ Engine::Engine()
 	, connection_mode(0), connection_port(32768), connection_host("")
 	, menu_state(MenuState::init), next_menu_state(MenuState::init)
 	, multiplayer_ready(false), m_show_menubar(true)
-	, cfg("config"), scn()
+	, scn()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
 	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0)
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), sfx(), music_id(0), debug()
+	, cfg(*this, "config")
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -427,7 +428,19 @@ bool Engine::is_hosting() {
 void Engine::idle() {
 	ZoneScoped;
 	idle_async();
-	menu_state = next_menu_state;
+
+	if (menu_state != next_menu_state) {
+		menu_state = next_menu_state;
+
+		switch (menu_state) {
+		case MenuState::init:
+			sfx.play_music(MusicId::menu);
+			break;
+		case MenuState::multiplayer_game:
+			sfx.play_music(MusicId::game);
+			break;
+		}
+	}
 }
 
 void Engine::idle_async() {
@@ -763,6 +776,14 @@ int Engine::mainloop() {
 
 	// Our state
 	ImVec4 clear_color(0.45f, 0.55f, 0.60f, 1.00f);
+
+	try {
+		cfg.load(cfg.path);
+	} catch (const std::runtime_error &e) {
+		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
+	}
+
+	sfx.play_music(MusicId::menu);
 
 	// Main loop
 	bool done = false;
