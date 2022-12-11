@@ -1,6 +1,7 @@
 #include "engine.hpp"
 
 #include "legacy.hpp"
+#include "engine/audio.hpp"
 #include "sdl.hpp"
 #include "string.hpp"
 
@@ -98,7 +99,8 @@ Engine::Engine()
 	, cfg("config"), scn()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
-	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0), running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), debug()
+	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0)
+	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), sfx(), debug()
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -189,6 +191,18 @@ void Engine::show_init() {
 
 	if (ImGui::Button("quit"))
 		throw 0;
+
+	if (ImGui::Button("Open music"))
+		fd.Open();
+
+	fd.Display();
+
+	if (fd.HasSelected()) {
+		std::string path(fd.GetSelected().string());
+		printf("selected \"%s\"\n", path.c_str());
+		sfx.play_music(path.c_str());
+		fd.ClearSelected();
+	}
 }
 
 void Engine::display() {

@@ -3,6 +3,7 @@
 #include "net.hpp"
 
 #include "async.hpp"
+#include "engine/audio.hpp"
 #include "sdl.hpp"
 #include "game.hpp"
 #include "server.hpp"
@@ -97,6 +98,9 @@ class Engine final {
 	std::string username_async;
 
 	NetPlayerControl playermod_async;
+
+	ImGui::FileBrowser fd;
+	Audio sfx;
 
 	Debug debug;
 	friend Debug;

@@ -2,6 +2,8 @@
 
 #include "imgui_user.hpp"
 
+#include "imfilebrowser.h"
+
 #include <cstdint>
 
 #include <initializer_list>
