@@ -117,6 +117,7 @@ class Engine final {
 	Config cfg;
 
 	SDL *sdl;
+	bool is_fullscreen;
 
 	friend Debug;
 	friend Config;

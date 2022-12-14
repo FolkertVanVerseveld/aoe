@@ -56,21 +56,69 @@ SDLguard::~SDLguard() {
 }
 
 SDL::SDL(Uint32 flags) : guard(flags)
-#pragma warning(disable: 26812)
-, window_flags((SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI))
-#pragma warning(default: 26812)
-, window(nullptr), gl_context(nullptr)
+	, window("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN)
+	, gl_context(window)
 {
-	window = SDL_CreateWindow("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN, window_flags);
 	SDL_SetWindowMinimumSize(window, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
-	gl_context = SDL_GL_CreateContext(window);
-	SDL_GL_MakeCurrent(window, gl_context);
-	SDL_GL_SetSwapInterval(1); // Enable vsync
+	gl_context.enable(window);
+	gl_context.set_vsync(1);
 }
 
 SDL::~SDL() {
 	if (gl_context) SDL_GL_DeleteContext(gl_context);
-	if (window) SDL_DestroyWindow(window);
+}
+
+Window::Window(const char *title, int x, int y, int w, int h)
+#pragma warning(disable: 26812)
+	: flags((SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI))
+#pragma warning(default: 26812)
+	, win(SDL_CreateWindow(title, x, y, w, h, flags), SDL_DestroyWindow)
+	, mode_def{ 0 }, mode_full{ 0 }, pos_def{ 0 }, disp_full(-1) {}
+
+GLctx::GLctx(SDL_Window *win) : gl_context(SDL_GL_CreateContext(win)) {}
+
+GLctx::~GLctx() {
+	SDL_GL_DeleteContext(gl_context);
+}
+
+void GLctx::enable(SDL_Window *win) {
+	SDL_GL_MakeCurrent(win, gl_context);
+}
+
+void GLctx::set_vsync(int mode) {
+	SDL_GL_SetSwapInterval(mode);
+}
+
+bool Window::is_fullscreen() {
+	return (SDL_GetWindowFlags(win.get()) & SDL_WINDOW_FULLSCREEN) != 0;
+}
+
+void Window::set_fullscreen(bool v) {
+	if (v == is_fullscreen())
+		return;
+
+	SDL_Window *w = win.get();
+
+	if (v) {
+		disp_full = SDL_GetWindowDisplayIndex(w);
+
+		SDL_GetWindowDisplayMode(w, &mode_def);
+		SDL_GetCurrentDisplayMode(disp_full, &mode_full);
+
+		SDL_GetWindowPosition(w, &pos_def.x, &pos_def.y);
+		SDL_GetWindowSize(w, &pos_def.w, &pos_def.h);
+		SDL_GetDisplayBounds(disp_full, &pos_full);
+
+		SDL_SetWindowPosition(w, pos_full.x, pos_full.y);
+		SDL_SetWindowSize(w, pos_full.w, pos_full.h);
+
+		SDL_SetWindowDisplayMode(w, &mode_full);
+		SDL_SetWindowFullscreen(w, SDL_WINDOW_FULLSCREEN);
+	} else {
+		SDL_SetWindowFullscreen(w, 0);
+		SDL_SetWindowSize(w, pos_def.w, pos_def.h);
+		SDL_SetWindowPosition(w, pos_def.x, pos_def.y);
+	}
 }
 
 }

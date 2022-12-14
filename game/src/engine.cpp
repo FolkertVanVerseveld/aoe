@@ -67,7 +67,7 @@ Engine::Engine()
 	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0)
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
 	, debug()
-	, cfg(*this, "config"), sdl(nullptr)
+	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false)
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -132,33 +132,12 @@ void Engine::show_menubar() {
 			mv.chkbox("Demo window", show_demo);
 			mv.chkbox("Debug stuff", show_debug);
 
-			if (mv.btn("fullscreen")) {
-				SDL_Window *win = sdl->window;
+			bool v = is_fullscreen = sdl->window.is_fullscreen();
 
-				int disp = SDL_GetWindowDisplayIndex(win);
+			mv.chkbox("Fullscreen", is_fullscreen);
 
-				SDL_DisplayMode mode;
-				//SDL_GetWindowDisplayMode(win, &mode);
-				SDL_GetCurrentDisplayMode(disp, &mode);
-
-				SDL_Rect dpos;
-
-				SDL_GetDisplayBounds(disp, &dpos);
-
-				SDL_SetWindowPosition(win, dpos.x, dpos.y);
-				SDL_SetWindowSize(win, dpos.w, dpos.h);
-
-				SDL_SetWindowDisplayMode(win, &mode);
-
-				SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN);
-			}
-
-			if (mv.btn("window")) {
-				SDL_Window *win = sdl->window;
-				SDL_SetWindowFullscreen(win, 0);
-
-				SDL_SetWindowSize(win, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
-			}
+			if (v != is_fullscreen)
+				sdl->window.set_fullscreen(is_fullscreen);
 		}
 	}
 }
@@ -218,6 +197,7 @@ void Engine::show_init() {
 		printf("selected \"%s\"\n", path.c_str());
 
 		// TODO set game directory
+		cfg.game_dir = path;
 
 		fd2.ClearSelected();
 	}
