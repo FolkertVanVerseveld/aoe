@@ -197,7 +197,7 @@ void Engine::show_init() {
 		printf("selected \"%s\"\n", path.c_str());
 
 		// TODO set game directory
-		cfg.game_dir = path;
+		game_dir = path;
 
 		fd2.ClearSelected();
 	}

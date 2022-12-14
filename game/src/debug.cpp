@@ -151,6 +151,10 @@ void Debug::show(bool &open) {
 
 					lkp.unlock();
 #else
+					IdPoolRef ref = ci.ref;
+
+					f.fmt("ref (%u,%u)", ref.first, ref.second);
+
 					unsigned flags = ci.flags;
 					bool ready = !!(flags & (unsigned)ClientInfoFlags::ready);
 
@@ -172,6 +176,30 @@ void Debug::show(bool &open) {
 		}
 
 		f.fmt("Client running: %s", has_client ? "yes" : "no");
+
+		if (has_client) {
+			Client &c = *e.client.get();
+
+			f.fmt("connected: %s", c.m_connected ? "yes" : "no");
+			f.fmt("host: %s", c.host.c_str());
+			f.fmt("connected peers: %llu", (unsigned long long)c.peers.size());
+
+			size_t i = 0;
+
+			for (auto kv : c.peers) {
+				ClientInfo &ci = kv.second;
+
+				if (ImGui::TreeNode(ci.username.c_str())) {
+					IdPoolRef ref = ci.ref;
+
+					f.fmt("ref (%u,%u)", ref.first, ref.second);
+
+					ImGui::TreePop();
+				}
+
+				++i;
+			}
+		}
 	}
 }
 

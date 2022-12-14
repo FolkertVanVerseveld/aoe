@@ -10,6 +10,7 @@
 
 #include "game.hpp"
 #include "debug.hpp"
+#include "idpool.hpp"
 
 #if _WIN32
 #include "../../wepoll/wepoll.h"
@@ -24,6 +25,7 @@ enum class NetPkgType {
 	set_scn_vars,
 	set_username,
 	playermod,
+	peermod,
 };
 
 struct NetPkgHdr final {
@@ -42,6 +44,11 @@ struct NetPkgHdr final {
 enum class NetPlayerControlType {
 	resize,
 	erase,
+};
+
+enum class NetPeerControlType {
+	incoming,
+	dropped,
 };
 
 class NetPlayerControl final {
@@ -106,9 +113,18 @@ class ClientInfo final {
 public:
 	std::string username;
 	unsigned flags;
+	IdPoolRef ref;
 
-	ClientInfo() : username(), flags(0) {}
-	ClientInfo(const std::string &username) : username(username), flags(0) {}
+	ClientInfo() : username(), flags(0), ref(invalid_ref) {}
+	ClientInfo(const std::string &username, IdPoolRef ref) : username(username), flags(0), ref(ref) {}
+};
+
+class SocketRef final {
+public:
+	IdPoolRef ref;
+	SOCKET sock;
+
+	SocketRef(IdPoolRef ref, SOCKET sock) : ref(ref), sock(sock) {}
 };
 
 class Server final : public ServerSocketController {
@@ -117,6 +133,7 @@ class Server final : public ServerSocketController {
 	std::mutex m_peers;
 	uint16_t port, protocol;
 	std::map<Peer, ClientInfo> peers;
+	IdPool<SocketRef> refs;
 	ScenarioSettings scn;
 
 	friend Debug;
@@ -160,7 +177,9 @@ class Client final {
 	std::atomic<bool> m_connected;
 	std::mutex m;
 
-	std::map<Peer, ClientInfo> peers;
+	IdPool<ClientInfo> peers;
+	IdPoolRef me;
+	friend Debug;
 public:
 	Client();
 	~Client();

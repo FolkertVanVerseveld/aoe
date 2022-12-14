@@ -4,7 +4,7 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m_peers(), port(0), protocol(0), peers(), scn() {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m_peers(), port(0), protocol(0), peers(), refs(), scn() {}
 
 Server::~Server() {
 	stop();
@@ -22,7 +22,8 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 		return false;
 
 	std::string name(p.host + ":" + p.server);
-	peers[p] = ClientInfo(name);
+	auto ins = refs.emplace(p.sock);
+	peers[p] = ClientInfo(name, ins.first->first);
 
 	NetPkg pkg;
 
@@ -40,7 +41,11 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 
 void Server::dropped(ServerSocket &s, const Peer &p) {
 	std::lock_guard<std::mutex> lk(m_peers);
-	std::string name(peers.at(p).username);
+
+	ClientInfo ci(peers.at(p));
+	std::string name(ci.username);
+
+	refs.erase(ci.ref);
 	peers.erase(p);
 
 	NetPkg pkg;
@@ -244,7 +249,7 @@ void Server::close() {
 	s.close();
 }
 
-Client::Client() : s(), port(0), m_connected(false), m(), peers() {}
+Client::Client() : s(), port(0), m_connected(false), m(), peers(), me(invalid_ref) {}
 
 Client::~Client() {
 	stop();

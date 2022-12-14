@@ -137,7 +137,7 @@ public:
 	Peer(SOCKET sock, const char *host, const char *server, bool is_host) : sock(sock), host(host), server(server), is_host(is_host) {}
 
 	friend bool operator<(const Peer &lhs, const Peer &rhs) {
-		return std::tie(lhs.host, lhs.server) < std::tie(rhs.host, rhs.server);
+		return lhs.sock < rhs.sock;
 	}
 };
 
