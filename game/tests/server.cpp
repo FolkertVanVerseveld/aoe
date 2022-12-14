@@ -118,6 +118,9 @@ static void connect_runall() {
 static void handshake(Client &c) {
 	// ignore messages
 	NetPkg pkg = c.recv();
+	pkg.get_peer_control();
+
+	pkg = c.recv();
 	pkg.chat_text();
 
 	pkg = c.recv();

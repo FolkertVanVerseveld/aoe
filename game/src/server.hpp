@@ -60,6 +60,14 @@ public:
 	NetPlayerControl(NetPlayerControlType type, uint16_t arg) : type(type), arg(arg) {}
 };
 
+class NetPeerControl final {
+public:
+	IdPoolRef ref;
+	NetPeerControlType type;
+
+	NetPeerControl(IdPoolRef ref, NetPeerControlType type) : ref(ref), type(type) {}
+};
+
 class NetPkg final {
 public:
 	NetPkgHdr hdr;
@@ -89,6 +97,10 @@ public:
 	void set_player_resize(size_t);
 	NetPlayerControl get_player_control();
 
+	void set_incoming(IdPoolRef);
+	void set_dropped(IdPoolRef);
+	NetPeerControl get_peer_control();
+
 	NetPkgType type();
 
 	void ntoh();
@@ -116,7 +128,7 @@ public:
 	IdPoolRef ref;
 
 	ClientInfo() : username(), flags(0), ref(invalid_ref) {}
-	ClientInfo(const std::string &username, IdPoolRef ref) : username(username), flags(0), ref(ref) {}
+	ClientInfo(IdPoolRef ref, const std::string &username) : username(username), flags(0), ref(ref) {}
 };
 
 class SocketRef final {
@@ -177,7 +189,7 @@ class Client final {
 	std::atomic<bool> m_connected;
 	std::mutex m;
 
-	IdPool<ClientInfo> peers;
+	std::map<IdPoolRef, ClientInfo> peers;
 	IdPoolRef me;
 	friend Debug;
 public:
@@ -194,6 +206,7 @@ private:
 	void set_scn_vars(const ScenarioSettings &scn);
 	void set_username(const std::string &s);
 	void playermod(const NetPlayerControl&);
+	void peermod(const NetPeerControl&);
 public:
 	bool connected() const noexcept { return m_connected; }
 

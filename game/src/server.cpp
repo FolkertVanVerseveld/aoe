@@ -23,9 +23,13 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 
 	std::string name(p.host + ":" + p.server);
 	auto ins = refs.emplace(p.sock);
-	peers[p] = ClientInfo(name, ins.first->first);
+	IdPoolRef ref(ins.first->first);
+	peers[p] = ClientInfo(ref, name);
 
 	NetPkg pkg;
+
+	pkg.set_incoming(ref);
+	broadcast(pkg);
 
 	pkg.set_chat_text(name + " joined");
 	broadcast(pkg);
@@ -49,8 +53,11 @@ void Server::dropped(ServerSocket &s, const Peer &p) {
 	peers.erase(p);
 
 	NetPkg pkg;
-	pkg.set_chat_text(name + " left");
 
+	pkg.set_dropped(ci.ref);
+	broadcast(pkg);
+
+	pkg.set_chat_text(name + " left");
 	broadcast(pkg);
 }
 
@@ -307,6 +314,30 @@ void Client::playermod(const NetPlayerControl &ctl) {
 		eng->trigger_playermod(ctl);
 }
 
+void Client::peermod(const NetPeerControl &ctl) {
+	switch (ctl.type) {
+		case NetPeerControlType::incoming: {
+			IdPoolRef ref(ctl.ref);
+
+			std::string name(std::string("(") + std::to_string(ref.first) + "::" + std::to_string(ref.second) + ")");
+			peers.emplace(std::piecewise_construct, std::forward_as_tuple(ref), std::forward_as_tuple(ref, name));
+
+			if (me == invalid_ref)
+				me = ref;
+			break;
+		}
+		case NetPeerControlType::dropped: {
+			IdPoolRef ref(ctl.ref);
+
+			peers.erase(ref);
+
+			if (me == ref)
+				fprintf(stderr, "%s: dropping myself. ref (%u,%u)\n", __func__, ref.first, ref.second);
+			break;
+		}
+	}
+}
+
 void Client::mainloop() {
 	send_protocol(1);
 
@@ -332,6 +363,9 @@ void Client::mainloop() {
 					break;
 				case NetPkgType::playermod:
 					playermod(pkg.get_player_control());
+					break;
+				case NetPkgType::peermod:
+					peermod(pkg.get_peer_control());
 					break;
 				default:
 					printf("%s: type=%X\n", __func__, pkg.type());

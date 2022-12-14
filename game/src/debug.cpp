@@ -182,6 +182,9 @@ void Debug::show(bool &open) {
 
 			f.fmt("connected: %s", c.m_connected ? "yes" : "no");
 			f.fmt("host: %s", c.host.c_str());
+
+			f.fmt("ref: (%u,%u)", c.me.first, c.me.second);
+
 			f.fmt("connected peers: %llu", (unsigned long long)c.peers.size());
 
 			size_t i = 0;

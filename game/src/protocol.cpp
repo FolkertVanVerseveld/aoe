@@ -55,6 +55,19 @@ void NetPkg::ntoh() {
 			dw[1] = ntohs(dw[1]);
 			break;
 		}
+		case NetPkgType::peermod: {
+			need_payload(2 * sizeof(uint32_t) + sizeof(uint16_t));
+
+			uint32_t *dd = (uint32_t*)data.data();
+
+			dd[0] = ntohl(dd[0]);
+			dd[1] = ntohl(dd[1]);
+
+			uint16_t *dw = (uint16_t*)&dd[2];
+
+			dw[0] = ntohs(dw[0]);
+			break;
+		}
 		case NetPkgType::set_scn_vars: {
 			need_payload(10 * sizeof(uint32_t) + 1);
 
@@ -88,9 +101,20 @@ void NetPkg::hton() {
 			break;
 		}
 		case NetPkgType::playermod: {
-			uint16_t* dw = (uint16_t*)data.data();
+			uint16_t *dw = (uint16_t*)data.data();
 			dw[0] = htons(dw[0]);
 			dw[1] = htons(dw[1]);
+			break;
+		}
+		case NetPkgType::peermod: {
+			uint32_t *dd = (uint32_t*)data.data();
+
+			dd[0] = htonl(dd[0]);
+			dd[1] = htonl(dd[1]);
+
+			uint16_t *dw = (uint16_t*)&dd[2];
+
+			dw[0] = htons(dw[0]);
 			break;
 		}
 		case NetPkgType::set_scn_vars: {
@@ -374,6 +398,54 @@ NetPlayerControl NetPkg::get_player_control() {
 	const uint16_t *dw = (const uint16_t*)data.data();
 
 	return NetPlayerControl((NetPlayerControlType)dw[0], dw[1]);
+}
+
+void NetPkg::set_incoming(IdPoolRef ref) {
+	if (ref == invalid_ref)
+		throw std::runtime_error("invalid ref");
+
+	data.resize(2 * sizeof(uint32_t) + sizeof(uint16_t));
+
+	uint32_t *dd = (uint32_t*)data.data();
+
+	dd[0] = ref.first;
+	dd[1] = ref.second;
+
+	uint16_t *dw = (uint16_t*)&dd[2];
+
+	dw[0] = (uint16_t)(unsigned)NetPeerControlType::incoming;
+
+	set_hdr(NetPkgType::peermod);
+}
+
+void NetPkg::set_dropped(IdPoolRef ref) {
+	if (ref == invalid_ref)
+		throw std::runtime_error("invalid ref");
+
+	data.resize(2 * sizeof(uint32_t) + sizeof(uint16_t));
+
+	uint32_t *dd = (uint32_t*)data.data();
+
+	dd[0] = ref.first;
+	dd[1] = ref.second;
+
+	uint16_t *dw = (uint16_t*)&dd[2];
+
+	dw[0] = (uint16_t)(unsigned)NetPeerControlType::dropped;
+
+	set_hdr(NetPkgType::peermod);
+}
+
+NetPeerControl NetPkg::get_peer_control() {
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::peermod || data.size() != 2 * sizeof(uint32_t) + sizeof(uint16_t))
+		throw std::runtime_error("not a peer control packet");
+
+	const uint32_t *dd = (const uint32_t*)data.data();
+	const uint16_t *dw = (const uint16_t*)&dd[2];
+
+	return NetPeerControl(IdPoolRef{ dd[0], dd[1] }, (NetPeerControlType)dw[0]);
 }
 
 NetPkgType NetPkg::type() {
