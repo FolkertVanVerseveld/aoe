@@ -40,6 +40,10 @@ bool Menu::chkbox(const char *s, bool &b) {
 	return ImGui::Checkbox(s, &b);
 }
 
+bool Menu::btn(const char *s, const ImVec2 &sz) {
+	return ImGui::Button(s, sz);
+}
+
 }
 
 }

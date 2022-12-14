@@ -85,6 +85,7 @@ public:
 
 	bool item(const char*);
 	bool chkbox(const char*, bool&);
+	bool btn(const char*, const ImVec2 &sz=ImVec2(0, 0));
 
 	constexpr operator bool() const noexcept { return open; }
 };

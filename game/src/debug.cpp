@@ -41,6 +41,10 @@ void Debug::show(bool &open) {
 			SDL_GetDisplayUsableBounds(i, &bnds2);
 			f.fmt("%4dx%4d at %4d,%4d usable", bnds2.w, bnds2.h, bnds2.x, bnds2.y);
 
+			SDL_DisplayMode mode;
+			SDL_GetCurrentDisplayMode(i, &mode);
+			f.fmt("%4dx%4d @%dHz format %s (%08X)", mode.w, mode.h, mode.refresh_rate, SDL_GetPixelFormatName(mode.format), mode.format);
+
 			double aspect = (double)bnds.w / bnds.h;
 
 			// try to determine exact ratio
@@ -68,7 +72,8 @@ void Debug::show(bool &open) {
 	SDL_DisplayMode mode;
 	SDL_GetWindowDisplayMode(e.sdl->window, &mode);
 
-	f.fmt("%4dx%4d @%dHz format %08X", mode.w, mode.h, mode.refresh_rate, mode.format);
+	f.fmt("using display %d", SDL_GetWindowDisplayIndex(e.sdl->window));
+	f.fmt("%4dx%4d @%dHz format %s (%08X)", mode.w, mode.h, mode.refresh_rate, SDL_GetPixelFormatName(mode.format), mode.format);
 
 	int size = e.tp.size(), idle = e.tp.n_idle(), running = size - idle;
 	f.fmt("Thread pool: %d threads, %d running", size, running);

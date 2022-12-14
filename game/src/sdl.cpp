@@ -9,7 +9,7 @@
 
 namespace aoe {
 
-SDL::SDL(Uint32 flags) : flags(flags)
+SDLguard::SDLguard(Uint32 flags) : flags(flags)
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 	, glsl_version("#version 100")
 #elif defined(__APPLE__)
@@ -17,10 +17,6 @@ SDL::SDL(Uint32 flags) : flags(flags)
 #else
 	, glsl_version("#version 130")
 #endif
-#pragma warning(disable: 26812)
-	, window_flags((SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI))
-#pragma warning(default: 26812)
-	, window(nullptr), gl_context(nullptr)
 {
 	ZoneScoped;
 	if (SDL_Init(flags))
@@ -51,6 +47,20 @@ SDL::SDL(Uint32 flags) : flags(flags)
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+}
+
+SDLguard::~SDLguard() {
+	ZoneScoped;
+
+	SDL_Quit();
+}
+
+SDL::SDL(Uint32 flags) : guard(flags)
+#pragma warning(disable: 26812)
+, window_flags((SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI))
+#pragma warning(default: 26812)
+, window(nullptr), gl_context(nullptr)
+{
 	window = SDL_CreateWindow("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN, window_flags);
 	SDL_SetWindowMinimumSize(window, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 	gl_context = SDL_GL_CreateContext(window);
@@ -59,12 +69,8 @@ SDL::SDL(Uint32 flags) : flags(flags)
 }
 
 SDL::~SDL() {
-	ZoneScoped;
-
 	if (gl_context) SDL_GL_DeleteContext(gl_context);
 	if (window) SDL_DestroyWindow(window);
-
-	SDL_Quit();
 }
 
 }

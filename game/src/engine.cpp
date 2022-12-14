@@ -131,6 +131,34 @@ void Engine::show_menubar() {
 		if (mv.begin("View")) {
 			mv.chkbox("Demo window", show_demo);
 			mv.chkbox("Debug stuff", show_debug);
+
+			if (mv.btn("fullscreen")) {
+				SDL_Window *win = sdl->window;
+
+				int disp = SDL_GetWindowDisplayIndex(win);
+
+				SDL_DisplayMode mode;
+				//SDL_GetWindowDisplayMode(win, &mode);
+				SDL_GetCurrentDisplayMode(disp, &mode);
+
+				SDL_Rect dpos;
+
+				SDL_GetDisplayBounds(disp, &dpos);
+
+				SDL_SetWindowPosition(win, dpos.x, dpos.y);
+				SDL_SetWindowSize(win, dpos.w, dpos.h);
+
+				SDL_SetWindowDisplayMode(win, &mode);
+
+				SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN);
+			}
+
+			if (mv.btn("window")) {
+				SDL_Window *win = sdl->window;
+				SDL_SetWindowFullscreen(win, 0);
+
+				SDL_SetWindowSize(win, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
+			}
 		}
 	}
 }
@@ -757,7 +785,7 @@ int Engine::mainloop() {
 
 	// Setup Platform/Renderer backends
 	ImGui_ImplSDL2_InitForOpenGL(sdl.window, sdl.gl_context);
-	ImGui_ImplOpenGL3_Init(sdl.glsl_version);
+	ImGui_ImplOpenGL3_Init(sdl.guard.glsl_version);
 
 	// Load Fonts
 	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.

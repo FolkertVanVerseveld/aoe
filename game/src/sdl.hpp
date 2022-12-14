@@ -15,10 +15,18 @@
 
 namespace aoe {
 
-class SDL final {
+class SDLguard final {
 public:
 	Uint32 flags;
 	const char *glsl_version;
+
+	SDLguard(Uint32 flags);
+	~SDLguard();
+};
+
+class SDL final {
+public:
+	SDLguard guard;
 	SDL_WindowFlags window_flags;
 	SDL_Window *window;
 	SDL_GLContext gl_context;
