@@ -65,6 +65,11 @@ void Debug::show(bool &open) {
 		}
 	}
 
+	SDL_DisplayMode mode;
+	SDL_GetWindowDisplayMode(e.sdl->window, &mode);
+
+	f.fmt("%4dx%4d @%dHz format %08X", mode.w, mode.h, mode.refresh_rate, mode.format);
+
 	int size = e.tp.size(), idle = e.tp.n_idle(), running = size - idle;
 	f.fmt("Thread pool: %d threads, %d running", size, running);
 

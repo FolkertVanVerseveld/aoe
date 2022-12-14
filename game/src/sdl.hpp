@@ -18,6 +18,10 @@ namespace aoe {
 class SDL final {
 public:
 	Uint32 flags;
+	const char *glsl_version;
+	SDL_WindowFlags window_flags;
+	SDL_Window *window;
+	SDL_GLContext gl_context;
 
 	SDL(Uint32 flags=SDL_INIT_VIDEO | SDL_INIT_TIMER);
 	~SDL();

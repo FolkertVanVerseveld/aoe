@@ -114,10 +114,12 @@ class Engine final {
 	std::string game_dir;
 
 	Debug debug;
+	Config cfg;
+
+	SDL *sdl;
+
 	friend Debug;
 	friend Config;
-
-	Config cfg;
 public:
 	Engine();
 	~Engine();
