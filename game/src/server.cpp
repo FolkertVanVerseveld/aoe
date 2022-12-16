@@ -31,7 +31,7 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 	pkg.set_incoming(ref);
 	broadcast(pkg);
 
-	pkg.set_chat_text(name + " joined");
+	pkg.set_chat_text(invalid_ref, name + " joined");
 	broadcast(pkg);
 
 	pkg.set_username(name);
@@ -39,6 +39,17 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 
 	pkg.set_player_resize(scn.players.size());
 	send(p, pkg);
+
+	// now send all other player refs we have to the joined peer
+	for (auto kv : peers) {
+		IdPoolRef r = kv.second.ref;
+
+		if (ref == r)
+			continue;
+
+		pkg.set_incoming(r);
+		send(p, pkg);
+	}
 
 	return true;
 }
@@ -57,7 +68,7 @@ void Server::dropped(ServerSocket &s, const Peer &p) {
 	pkg.set_dropped(ci.ref);
 	broadcast(pkg);
 
-	pkg.set_chat_text(name + " left");
+	pkg.set_chat_text(invalid_ref, name + " left");
 	broadcast(pkg);
 }
 
@@ -150,7 +161,7 @@ bool Server::chk_username(const Peer &p, std::deque<uint8_t> &out, const std::st
 			continue;
 
 		if (n == name) {
-			// duplicate found. add : and port name
+			// duplicate found. add `:' and port name, which is guaranteed to be unique
 			change_username(p, out, name + ":" + p.server);
 			return true;
 		}
@@ -282,11 +293,11 @@ void Client::start(const char *host, uint16_t port, bool run) {
 	}
 }
 
-void Client::add_chat_text(const std::string &s) {
+void Client::add_chat_text(IdPoolRef ref, const std::string &s) {
 	std::lock_guard<std::mutex> lk(m_eng);
-	printf("server says: \"%s\"\n", s.c_str());
+	printf("(%u::%u) says: \"%s\"\n", ref.first, ref.second, s.c_str());
 	if (eng)
-		eng->add_chat_text(s);
+		eng->add_chat_text(ref, s);
 }
 
 void Client::start_game() {
@@ -319,6 +330,7 @@ void Client::peermod(const NetPeerControl &ctl) {
 		case NetPeerControlType::incoming: {
 			IdPoolRef ref(ctl.ref);
 
+			// name = (%u::%u)
 			std::string name(std::string("(") + std::to_string(ref.first) + "::" + std::to_string(ref.second) + ")");
 			peers.emplace(std::piecewise_construct, std::forward_as_tuple(ref), std::forward_as_tuple(ref, name));
 
@@ -349,9 +361,11 @@ void Client::mainloop() {
 				case NetPkgType::set_protocol:
 					printf("prot=%u\n", pkg.protocol_version());
 					break;
-				case NetPkgType::chat_text:
-					add_chat_text(pkg.chat_text());
+				case NetPkgType::chat_text: {
+					auto p = pkg.chat_text();
+					add_chat_text(p.first, p.second);
 					break;
+				}
 				case NetPkgType::start_game:
 					start_game();
 					break;
@@ -399,7 +413,7 @@ uint16_t Client::recv_protocol() {
 
 void Client::send_chat_text(const std::string &s) {
 	NetPkg pkg;
-	pkg.set_chat_text(s);
+	pkg.set_chat_text(me, s);
 	send(pkg);
 }
 

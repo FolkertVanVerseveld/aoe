@@ -323,9 +323,9 @@ using namespace ui;
 
 void Engine::show_chat_line(ui::Frame &f) {
 	if (f.text("##", chat_line, ImGuiInputTextFlags_EnterReturnsTrue)) {
-		if (chat_line == "/clear" || chat_line == "/cls")
+		if (chat_line == "/clear" || chat_line == "/cls") {
 			chat.clear();
-		else {
+		} else {
 			client->send_chat_text(chat_line);
 			scroll_to_bottom = true;
 		}
@@ -513,28 +513,23 @@ void Engine::show_multiplayer_host() {
 }
 
 void Engine::show_mph_tbl(ui::Frame &f) {
-	bool has_ai = false;
-
 	{
 		Table t;
 
-		if (t.begin("PlayerTable", 4)) {
-			t.row(-1, {"Type", "Name", "Civ", "Team"});
+		if (t.begin("PlayerTable", 3)) {
+			t.row(-1, {"Name", "Civ", "Team"});
 
 			unsigned del = scn.players.size();
 			unsigned from = 0, to = 0;
 
 			for (unsigned i = 0; i < scn.players.size(); ++i) {
-				Row r(5, i);
+				Row r(3, i);
 				PlayerSetting &p = scn.players[i];
 
 				if (f.btn("X"))
 					del = i;
 
 				f.sl();
-				r.chkbox("AI", p.ai);
-
-				if (p.ai) has_ai = true;
 
 				r.text("##0", p.name);
 
@@ -542,17 +537,12 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 				r.next();
 
 				p.team = std::max(1u, p.team);
-				r.scalar("##2", p.team, 1);
+				f.scalar("##2", p.team, 1);
+				r.next();
 			}
 
 			if (del >= 0 && del < scn.players.size())
 				scn.players.erase(scn.players.begin() + del);
-
-			if (from != to && !scn.players.empty()) {
-				PlayerSetting tmp = scn.players[from];
-				scn.players[from] = scn.players[to];
-				scn.players[to] = tmp;
-			}
 		}
 	}
 

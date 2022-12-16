@@ -33,6 +33,7 @@ void Audio::play_music(const char *file, int loops) {
 		fprintf(stderr, "%s: could not load music: %s\n", __func__, Mix_GetError());
 		return;
 	}
+	music_file = file;
 
 	if (!music_mute)
 		Mix_PlayMusic(music.get(), loops);
@@ -45,7 +46,9 @@ void Audio::play_music(MusicId id) {
 		return;
 	}
 
-	play_music(it->second.c_str());
+	// ignore if already playing
+	if (it->second != music_file || !Mix_PlayingMusic())
+		play_music(it->second.c_str());
 }
 
 void Audio::stop_music() {
@@ -64,6 +67,7 @@ void Audio::unmute_music() {
 		return;
 
 	music_mute = false;
+	// restart if music is loaded
 	if (music.get())
 		Mix_PlayMusic(music.get(), 0);
 }

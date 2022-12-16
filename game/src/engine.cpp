@@ -546,8 +546,9 @@ void Engine::start_multiplayer_game() {
 	next_menu_state = MenuState::multiplayer_game;
 }
 
-void Engine::add_chat_text(const std::string &s) {
+void Engine::add_chat_text(IdPoolRef ref, const std::string &s) {
 	std::lock_guard<std::mutex> lk(m_async);
+	// TODO use ref
 	chat_async.emplace(s);
 }
 
@@ -587,6 +588,7 @@ void Engine::cancel_multiplayer_host() {
 		else
 			client->stop();
 
+		chat.clear();
 		next_menu_state = MenuState::init;
 	} catch (std::exception &e) {
 		fprintf(stderr, "%s: cannot stop multiplayer: %s\n", __func__, e.what());

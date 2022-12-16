@@ -25,6 +25,7 @@ class Audio final {
 
 	std::unique_ptr<Mix_Music, decltype(&Mix_FreeMusic)> music;
 	bool music_mute;
+	std::string music_file;
 public:
 	std::map<MusicId, std::string> jukebox;
 

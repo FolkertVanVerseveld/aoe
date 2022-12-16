@@ -83,8 +83,8 @@ public:
 	void set_protocol(uint16_t version);
 	uint16_t protocol_version();
 
-	void set_chat_text(const std::string&);
-	std::string chat_text();
+	void set_chat_text(IdPoolRef, const std::string&);
+	std::pair<IdPoolRef, std::string> chat_text();
 
 	void set_username(const std::string&);
 	std::string username();
@@ -201,7 +201,7 @@ public:
 private:
 	void mainloop();
 
-	void add_chat_text(const std::string &s);
+	void add_chat_text(IdPoolRef, const std::string &s);
 	void start_game();
 	void set_scn_vars(const ScenarioSettings &scn);
 	void set_username(const std::string &s);
