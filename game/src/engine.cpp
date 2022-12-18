@@ -460,6 +460,7 @@ void Engine::trigger_username(const std::string &s) {
 
 void Engine::trigger_playermod(const NetPlayerControl &ctl) {
 	std::lock_guard<std::mutex> lock(m_async);
+	// TODO put in queue
 	playermod_async = ctl;
 	async_tasks |= (unsigned)EngineAsyncTask::player_mod;
 }
@@ -546,9 +547,8 @@ void Engine::start_multiplayer_game() {
 	next_menu_state = MenuState::multiplayer_game;
 }
 
-void Engine::add_chat_text(IdPoolRef ref, const std::string &s) {
+void Engine::add_chat_text(const std::string &s) {
 	std::lock_guard<std::mutex> lk(m_async);
-	// TODO use ref
 	chat_async.emplace(s);
 }
 

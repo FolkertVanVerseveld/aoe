@@ -56,7 +56,7 @@ void NetPkg::ntoh() {
 			uint16_t *dw = (uint16_t*)&dd[2];
 
 			dw[0] = ntohs(dw[0]);
-
+			need_payload(2 * sizeof(uint32_t) + 1 * sizeof(uint16_t) + dw[0]);
 			break;
 		}
 		case NetPkgType::playermod: {
@@ -69,7 +69,8 @@ void NetPkg::ntoh() {
 			break;
 		}
 		case NetPkgType::peermod: {
-			need_payload(2 * sizeof(uint32_t) + sizeof(uint16_t));
+			size_t minsize = 2 * sizeof(uint32_t) + sizeof(uint16_t);
+			need_payload(minsize);
 
 			uint32_t *dd = (uint32_t*)data.data();
 
@@ -79,6 +80,17 @@ void NetPkg::ntoh() {
 			uint16_t *dw = (uint16_t*)&dd[2];
 
 			dw[0] = ntohs(dw[0]);
+			NetPeerControlType type = (NetPeerControlType)dw[0];
+
+			switch (type) {
+			case NetPeerControlType::set_username:
+				need_payload(minsize + sizeof(uint16_t));
+				dw[1] = ntohs(dw[1]);
+				need_payload(minsize + sizeof(uint16_t) + dw[1]);
+				break;
+			default:
+				break;
+			}
 			break;
 		}
 		case NetPkgType::set_scn_vars: {
@@ -139,7 +151,16 @@ void NetPkg::hton() {
 
 			uint16_t *dw = (uint16_t*)&dd[2];
 
+			NetPeerControlType type = (NetPeerControlType)dw[0];
 			dw[0] = htons(dw[0]);
+
+			switch (type) {
+			case NetPeerControlType::set_username:
+				dw[1] = htons(dw[1]);
+				break;
+			default:
+				break;
+			}
 			break;
 		}
 		case NetPkgType::set_scn_vars: {
@@ -471,16 +492,57 @@ void NetPkg::set_dropped(IdPoolRef ref) {
 	set_hdr(NetPkgType::peermod);
 }
 
+void NetPkg::set_ref_username(IdPoolRef ref, const std::string &s) {
+	if (ref == invalid_ref)
+		throw std::runtime_error("invalid ref");
+
+	size_t minsize = 2 * sizeof(uint32_t) + 2 * sizeof(uint16_t);
+
+	if (minsize + s.size() > max_payload)
+		throw std::runtime_error("username overflow");
+
+	data.resize(minsize + s.size());
+
+	uint32_t *dd = (uint32_t*)data.data();
+
+	dd[0] = ref.first;
+	dd[1] = ref.second;
+
+	uint16_t *dw = (uint16_t*)&dd[2];
+
+	dw[0] = (uint16_t)(unsigned)NetPeerControlType::set_username;
+	dw[1] = (uint16_t)s.size();
+
+	memcpy(&dw[2], s.data(), s.size());
+
+	set_hdr(NetPkgType::peermod);
+}
+
 NetPeerControl NetPkg::get_peer_control() {
 	ntoh();
 
-	if ((NetPkgType)hdr.type != NetPkgType::peermod || data.size() != 2 * sizeof(uint32_t) + sizeof(uint16_t))
+	// TODO remove data.size() check
+	if ((NetPkgType)hdr.type != NetPkgType::peermod || data.size() < 2 * sizeof(uint32_t) + sizeof(uint16_t))
 		throw std::runtime_error("not a peer control packet");
 
 	const uint32_t *dd = (const uint32_t*)data.data();
 	const uint16_t *dw = (const uint16_t*)&dd[2];
 
-	return NetPeerControl(IdPoolRef{ dd[0], dd[1] }, (NetPeerControlType)dw[0]);
+	NetPeerControlType type = (NetPeerControlType)dw[0];
+	IdPoolRef ref{ dd[0], dd[1] };
+
+	switch (type) {
+		case NetPeerControlType::set_username: {
+			uint16_t n = dw[1];
+
+			std::string s(n, ' ');
+			memcpy(s.data(), &dw[2], n);
+
+			return NetPeerControl(ref, s);
+		}
+		default:
+			return NetPeerControl(ref, (NetPeerControlType)dw[0]);
+	}
 }
 
 NetPkgType NetPkg::type() {

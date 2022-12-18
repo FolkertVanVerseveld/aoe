@@ -191,7 +191,7 @@ public:
 
 	bool is_hosting();
 
-	void add_chat_text(IdPoolRef ref, const std::string &s);
+	void add_chat_text(const std::string &s);
 
 	void set_scn_vars(const ScenarioSettings &scn);
 };

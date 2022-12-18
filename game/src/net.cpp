@@ -616,7 +616,7 @@ bool ServerSocket::send_step(SOCKET s) {
 
 	auto &q = it->second;
 	while (!q.empty()) {
-		printf("%s: try send %llu bytes to %d\n", __func__, (unsigned long long)q.size(), (int)s);
+		//printf("%s: try send %llu bytes to %d\n", __func__, (unsigned long long)q.size(), (int)s);
 		int count;
 		int out = (int)std::min(sendbuf.size(), q.size());
 
@@ -742,7 +742,7 @@ bool ServerSocket::event_step(int idx) {
 void ServerSocket::queue_out(const Peer &p, const void *ptr, int len) {
 	SOCKET sock = p.sock;
 
-	printf("%s: %d bytes for %s:%s\n", __func__, len, p.host.c_str(), p.server.c_str());
+	//printf("%s: %d bytes for %s:%s\n", __func__, len, p.host.c_str(), p.server.c_str());
 
 	auto it = send_pending.find(sock);
 	if (it == send_pending.end())

@@ -1,5 +1,9 @@
 #pragma once
 
+/*
+ * Define network protocol application layer and low level server/client infrastructure.
+ */
+
 #include "net.hpp"
 
 #include <mutex>
@@ -7,6 +11,7 @@
 #include <vector>
 #include <thread>
 #include <variant>
+#include <optional>
 
 #include "game.hpp"
 #include "debug.hpp"
@@ -49,6 +54,7 @@ enum class NetPlayerControlType {
 enum class NetPeerControlType {
 	incoming,
 	dropped,
+	set_username,
 };
 
 class NetPlayerControl final {
@@ -64,8 +70,10 @@ class NetPeerControl final {
 public:
 	IdPoolRef ref;
 	NetPeerControlType type;
+	std::variant<std::nullopt_t, std::string> data;
 
-	NetPeerControl(IdPoolRef ref, NetPeerControlType type) : ref(ref), type(type) {}
+	NetPeerControl(IdPoolRef ref, NetPeerControlType type) : ref(ref), type(type), data(std::nullopt) {}
+	NetPeerControl(IdPoolRef ref, const std::string &name) : ref(ref), type(NetPeerControlType::set_username), data(name) {}
 };
 
 class NetPkg final {
@@ -99,6 +107,7 @@ public:
 
 	void set_incoming(IdPoolRef);
 	void set_dropped(IdPoolRef);
+	void set_ref_username(IdPoolRef, const std::string&);
 	NetPeerControl get_peer_control();
 
 	NetPkgType type();
@@ -131,6 +140,10 @@ public:
 	ClientInfo(IdPoolRef ref, const std::string &username) : username(username), flags(0), ref(ref) {}
 };
 
+/*
+ * Simple wrapper to make peers uniquely identifiable without leaking the ip
+ * address and using a fixed width identifier to reduce network bandwidth.
+ */
 class SocketRef final {
 public:
 	IdPoolRef ref;
@@ -179,6 +192,7 @@ private:
 	bool process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out);
 
 	void broadcast(NetPkg &pkg, bool include_host=true);
+	void broadcast(NetPkg &pkg, const Peer &exclude);
 	void send(const Peer &p, NetPkg &pkg);
 };
 

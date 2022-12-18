@@ -47,7 +47,9 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 		if (ref == r)
 			continue;
 
-		pkg.set_incoming(r);
+		// TODO check if username has been set
+
+		pkg.set_ref_username(r, kv.second.username);
 		send(p, pkg);
 	}
 
@@ -103,6 +105,25 @@ void Server::broadcast(NetPkg &pkg, bool include_host) {
 	s.broadcast(v.data(), (int)v.size(), include_host);
 }
 
+/**
+ * Send packet to all peers except \a exclude.
+ */
+void Server::broadcast(NetPkg &pkg, const Peer &exclude)
+{
+	std::vector<uint8_t> v;
+	pkg.write(v);
+
+	for (auto kv : peers) {
+		const Peer &p = kv.first;
+
+		if (p.sock == exclude.sock)
+			continue;
+
+
+		s.send(p, v.data(), v.size());
+	}
+}
+
 void Server::send(const Peer &p, NetPkg &pkg) {
 	std::vector<uint8_t> v;
 	pkg.write(v);
@@ -124,10 +145,12 @@ void Server::change_username(const Peer &p, std::deque<uint8_t> &out, const std:
 	assert(it != peers.end());
 
 	NetPkg pkg;
-	pkg.set_username(it->second.username = name);
+	ClientInfo &ci = it->second;
+	pkg.set_username(ci.username = name);
 	pkg.write(out);
 
-	// TODO broadcast new name
+	pkg.set_ref_username(ci.ref, name);
+	broadcast(pkg, p);
 }
 
 bool Server::chk_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name) {
@@ -295,9 +318,24 @@ void Client::start(const char *host, uint16_t port, bool run) {
 
 void Client::add_chat_text(IdPoolRef ref, const std::string &s) {
 	std::lock_guard<std::mutex> lk(m_eng);
+
+	const ClientInfo *ci = nullptr;
+	std::string txt(s);
+
+	if (ref != invalid_ref) {
+		txt = std::string("(") + std::to_string(ref.first) + "::" + std::to_string(ref.second) + "): " + s;
+
+		auto it = peers.find(ref);
+		if (it != peers.end())
+			ci = &it->second;
+
+		if (ci && !ci->username.empty())
+			txt = ci->username + ": " + s;
+	}
+
 	printf("(%u::%u) says: \"%s\"\n", ref.first, ref.second, s.c_str());
 	if (eng)
-		eng->add_chat_text(ref, s);
+		eng->add_chat_text(txt);
 }
 
 void Client::start_game() {
@@ -315,6 +353,15 @@ void Client::set_scn_vars(const ScenarioSettings &scn) {
 
 void Client::set_username(const std::string &s) {
 	std::lock_guard<std::mutex> lk(m_eng);
+
+	if (me == invalid_ref) {
+		fprintf(stderr, "%s: got username before ref\n", __func__);
+	} else {
+		auto it = peers.find(me);
+		assert(it != peers.end());
+		it->second.username = s;
+	}
+
 	if (eng)
 		eng->trigger_username(s);
 }
@@ -326,10 +373,10 @@ void Client::playermod(const NetPlayerControl &ctl) {
 }
 
 void Client::peermod(const NetPeerControl &ctl) {
+	IdPoolRef ref(ctl.ref);
+
 	switch (ctl.type) {
 		case NetPeerControlType::incoming: {
-			IdPoolRef ref(ctl.ref);
-
 			// name = (%u::%u)
 			std::string name(std::string("(") + std::to_string(ref.first) + "::" + std::to_string(ref.second) + ")");
 			peers.emplace(std::piecewise_construct, std::forward_as_tuple(ref), std::forward_as_tuple(ref, name));
@@ -339,12 +386,22 @@ void Client::peermod(const NetPeerControl &ctl) {
 			break;
 		}
 		case NetPeerControlType::dropped: {
-			IdPoolRef ref(ctl.ref);
-
 			peers.erase(ref);
 
 			if (me == ref)
 				fprintf(stderr, "%s: dropping myself. ref (%u,%u)\n", __func__, ref.first, ref.second);
+			break;
+		}
+		case NetPeerControlType::set_username: {
+			auto it = peers.find(ref);
+			std::string name(std::get<std::string>(ctl.data));
+
+			// insert if not found
+			if (it == peers.end())
+				auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(ref), std::forward_as_tuple(ref, name));
+			else
+				it->second.username = name;
+
 			break;
 		}
 	}
