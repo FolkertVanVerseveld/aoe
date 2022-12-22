@@ -40,9 +40,7 @@
 #include <chrono>
 #include <thread>
 
-#include "nominmax.hpp"
-
-#include <tracy/Tracy.hpp>
+#include "debug.hpp"
 
 namespace aoe {
 

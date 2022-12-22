@@ -3,6 +3,10 @@
 #include <imgui.h>
 #include "imgui_memory_editor.h"
 
+#include "nominmax.hpp"
+
+#include <tracy/Tracy.hpp>
+
 namespace aoe {
 
 class Debug {

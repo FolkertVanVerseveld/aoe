@@ -1,7 +1,5 @@
 #include "debug.hpp"
 
-#include <tracy/Tracy.hpp>
-
 #include "engine.hpp"
 #include "ui.hpp"
 

@@ -5,7 +5,7 @@
 #include <fstream>
 #include <string>
 
-#include <tracy/Tracy.hpp>
+#include "../debug.hpp"
 
 namespace aoe {
 
