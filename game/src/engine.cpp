@@ -288,8 +288,6 @@ void Engine::display_ui() {
 
 void Engine::display() {
 	gfx::glchk();
-	display_us();
-	gfx::glchk();
 	display_ui();
 	gfx::glchk();
 }
@@ -773,6 +771,7 @@ int Engine::mainloop() {
 	ZoneScoped;
 
 	running = true;
+	// TODO remove/repurpose
 #if 0
 	reserve_threads(1);
 	tp.push([this](int id) { printf("%d\n", !!running.load()); eventloop(id); });
@@ -820,7 +819,7 @@ int Engine::mainloop() {
 	} catch (const std::runtime_error &e) {
 		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
 	}
-
+#if 0
 	gfx::GL gl;
 	gfx::GLprogram program;
 	{
@@ -846,6 +845,109 @@ int Engine::mainloop() {
 	}
 
 	glUseProgram(program.id);
+#else
+	int ret = 0;
+
+	if ((ret = gl3wInit()) != GL3W_OK) {
+		fprintf(stderr, "%s: gl3wInit failed: code=%X\n", __func__, ret);
+		return -1;
+	}
+
+	GLuint vs;
+
+	gfx::glchk();
+	vs = glCreateShader(GL_VERTEX_SHADER);
+
+	const GLchar *src;
+	GLint length;
+
+	src =
+		#include "shaders/shader.vs"
+		;
+
+	length = strlen(src);
+
+	glShaderSource(vs, 1, &src, &length);
+	glCompileShader(vs);
+
+	GLint status, log_length;
+
+	glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
+
+	if (status != GL_TRUE) {
+		glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &log_length);
+		std::string buf(log_length + 1, ' ');
+		glGetShaderInfoLog(vs, log_length, NULL, buf.data());
+		fprintf(stderr, "%s: vertex shader compile error: %s\n", __func__, buf.c_str());
+		return -1;
+	}
+
+	GLuint fs;
+
+	fs = glCreateShader(GL_FRAGMENT_SHADER);
+
+	src =
+		#include "shaders/shader.fs"
+		;
+
+	length = strlen(src);
+
+	glShaderSource(fs, 1, &src, &length);
+	glCompileShader(fs);
+
+	glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
+
+	if (status != GL_TRUE) {
+		glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &log_length);
+		std::string buf(log_length + 1, ' ');
+		glGetShaderInfoLog(fs, log_length, NULL, buf.data());
+		fprintf(stderr, "%s: fragment shader compile error: %s\n", __func__, buf.c_str());
+		return -1;
+	}
+
+	GLuint prog = glCreateProgram();
+
+	glAttachShader(prog, vs);
+	glAttachShader(prog, fs);
+
+	glLinkProgram(prog);
+
+	glGetProgramiv(prog, GL_LINK_STATUS, &status);
+
+	if (status != GL_TRUE) {
+		glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &log_length);
+		std::string buf(log_length + 1, ' ');
+		glGetProgramInfoLog(prog, log_length, NULL, buf.data());
+		fprintf(stderr, "%s: program link error: %s\n", __func__, buf.c_str());
+		return -1;
+	}
+
+	glDeleteShader(fs);
+	glDeleteShader(vs);
+
+	const float vertices[] = {
+		-0.5f, -0.5f, 0.0f, // left
+		 0.5f, -0.5f, 0.0f, // right
+		 0.0f,  0.5f, 0.0f  // top
+	};
+
+	GLuint vao, vbo;
+
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(1, &vbo);
+
+	glBindVertexArray(vao);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	gfx::glchk();
+#endif
 
 	sfx.play_music(MusicId::menu);
 
@@ -895,6 +997,19 @@ int Engine::mainloop() {
 
 		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		idle();
+
+		gfx::glchk();
+
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glUseProgram(prog);
+		glBindVertexArray(vao);
+
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+
+		gfx::glchk();
+
 		display();
 
 		// Rendering

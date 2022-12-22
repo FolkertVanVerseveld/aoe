@@ -12,13 +12,16 @@ void glchk() {
 	case GL_NO_ERROR:
 		break;
 	default:
-		fprintf(stderr, "%s: unknown error %X\n", __func__, err);
+		fprintf(stderr, "%s: unknown error 0x%X\n", __func__, err);
 		break;
 	}
 }
 
 GL::GL() {
-	gl3wInit();
+	int ret;
+
+	if ((ret = gl3wInit()) != GL3W_OK)
+		throw std::runtime_error(std::string("could not initialize gl3w: code ") + std::to_string(ret));
 }
 
 GLbuffer::GLbuffer() : id(0) {
