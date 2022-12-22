@@ -946,33 +946,7 @@ int Engine::mainloop() {
 
 	gfx::glchk();
 
-	GLuint m_fiTexture[4];
-	GLuint m_fiFramebuffer[4];
-	GLuint m_fiPbo[4];
-	GLsync m_fiFence[4]{ 0 };
-	int m_fiIdx = 0;
-	std::vector<int> m_fiQueue;
-
-	GLsizei w = WINDOW_WIDTH_MIN, h = WINDOW_HEIGHT_MIN;
-
-	glGenTextures(4, m_fiTexture);
-	glGenFramebuffers(4, m_fiFramebuffer);
-	glGenBuffers(4, m_fiPbo);
-
-	for (int i = 0; i < 4; ++i) {
-		glBindTexture(GL_TEXTURE_2D, m_fiTexture[i]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-		glBindFramebuffer(GL_FRAMEBUFFER, m_fiFramebuffer[i]);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fiTexture[i], 0);
-
-		glBindBuffer(GL_PIXEL_PACK_BUFFER, m_fiPbo[i]);
-		glBufferData(GL_PIXEL_PACK_BUFFER, w * h * 4, nullptr, GL_STREAM_READ);
-	}
-
-	gfx::glchk();
+	ImageCapture ic(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 #endif
 
 	sfx.play_music(MusicId::menu);
@@ -1043,31 +1017,7 @@ int Engine::mainloop() {
 		glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		while (!m_fiQueue.empty()) {
-			const auto fiIdx = m_fiQueue.front();
-
-			if (glClientWaitSync(m_fiFence[fiIdx], 0, 0) == GL_TIMEOUT_EXPIRED)
-				break;
-
-			glDeleteSync(m_fiFence[fiIdx]);
-			glBindBuffer(GL_PIXEL_PACK_BUFFER, m_fiPbo[fiIdx]);
-			auto ptr = glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w * h * 4, GL_MAP_READ_BIT);
-			FrameImage(ptr, w, h, m_fiQueue.size(), true);
-			glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-			m_fiQueue.erase(m_fiQueue.begin());
-		}
-
-		assert(m_fiQueue.empty() || m_fiQueue.front() != m_fiIdx); // check for buffer overflow
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fiFramebuffer[m_fiIdx]);
-		glBlitFramebuffer(0, 0, io.DisplaySize.x, io.DisplaySize.y, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fiFramebuffer[m_fiIdx]);
-		glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-		m_fiFence[m_fiIdx] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-		m_fiQueue.emplace_back(m_fiIdx);
-		m_fiIdx = (m_fiIdx + 1) % 4;
-
+		ic.step(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 		SDL_GL_SwapWindow(sdl.window);
 		FrameMark;
 	}

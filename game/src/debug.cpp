@@ -3,6 +3,8 @@
 #include "engine.hpp"
 #include "ui.hpp"
 
+#include "engine/gfx.hpp"
+
 namespace aoe {
 
 using namespace ui;
@@ -203,5 +205,55 @@ void Debug::show(bool &open) {
 		}
 	}
 }
+
+#if TRACY_ENABLE
+ImageCapture::ImageCapture(GLsizei w, GLsizei h) : m_fiFence{0}, m_fiIdx(0), m_fiQueue(), w(w), h(h) {
+	glGenTextures(4, m_fiTexture);
+	glGenFramebuffers(4, m_fiFramebuffer);
+	glGenBuffers(4, m_fiPbo);
+
+	for (int i = 0; i < 4; ++i) {
+		glBindTexture(GL_TEXTURE_2D, m_fiTexture[i]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, m_fiFramebuffer[i]);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fiTexture[i], 0);
+
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, m_fiPbo[i]);
+		glBufferData(GL_PIXEL_PACK_BUFFER, w * h * 4, nullptr, GL_STREAM_READ);
+	}
+
+	gfx::glchk();
+}
+
+void ImageCapture::step(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1) {
+	while (!m_fiQueue.empty()) {
+		const auto fiIdx = m_fiQueue.front();
+
+		if (glClientWaitSync(m_fiFence[fiIdx], 0, 0) == GL_TIMEOUT_EXPIRED)
+			break;
+
+		glDeleteSync(m_fiFence[fiIdx]);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, m_fiPbo[fiIdx]);
+		auto ptr = glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w * h * 4, GL_MAP_READ_BIT);
+		FrameImage(ptr, w, h, m_fiQueue.size(), true);
+		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+		m_fiQueue.erase(m_fiQueue.begin());
+	}
+
+	assert(m_fiQueue.empty() || m_fiQueue.front() != m_fiIdx); // check for buffer overflow
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fiFramebuffer[m_fiIdx]);
+	glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fiFramebuffer[m_fiIdx]);
+	glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	m_fiFence[m_fiIdx] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	m_fiQueue.emplace_back(m_fiIdx);
+	m_fiIdx = (m_fiIdx + 1) % 4;
+}
+#endif
 
 }
