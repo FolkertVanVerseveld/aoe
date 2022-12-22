@@ -136,6 +136,8 @@ private:
 	void idle_async();
 
 	void display();
+	void display_us();
+	void display_ui();
 	void display_ui_tasks();
 	void show_init();
 

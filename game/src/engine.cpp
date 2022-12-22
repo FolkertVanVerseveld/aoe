@@ -1,5 +1,8 @@
+// NOTE this header must be included before any OpenGL headers
+#include "engine/gfx.hpp"
 #include "engine.hpp"
 
+// TODO reorder includes
 #include "legacy.hpp"
 #include "engine/audio.hpp"
 #include "sdl.hpp"
@@ -156,9 +159,7 @@ void Engine::show_init() {
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
-	//ImGui::TextUnformatted("welcome to the free software age of empires setup launcher");
-
-	f.text("username", username);
+	//f.text("username", username);
 
 	ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes));
 
@@ -233,7 +234,26 @@ void Engine::show_init() {
 	show_music_settings();
 }
 
-void Engine::display() {
+void Engine::display_us() {
+	ZoneScoped;
+
+	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	const float vertices[] = {
+		-0.5f, -0.5f, 0.0f,
+		0.5f, -0.5f, 0.0f,
+		0.0f,  0.5f, 0.0f
+	};
+
+	gfx::GLbuffer b; // TODO move to eliminate create/delete every frame
+	gfx::GLbufferview v(b);
+
+	v.draw(vertices, sizeof(vertices));
+	// TODO
+}
+
+void Engine::display_ui() {
 	ZoneScoped;
 	show_menubar();
 
@@ -264,6 +284,14 @@ void Engine::display() {
 			popups.pop();
 		}
 	}
+}
+
+void Engine::display() {
+	gfx::glchk();
+	display_us();
+	gfx::glchk();
+	display_ui();
+	gfx::glchk();
 }
 
 void Engine::display_ui_tasks() {
@@ -793,6 +821,32 @@ int Engine::mainloop() {
 		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
 	}
 
+	gfx::GL gl;
+	gfx::GLprogram program;
+	{
+		gfx::GLshader vs(GL_VERTEX_SHADER);
+
+		vs +=
+#include "shaders/shader.vs"
+			;
+
+		gfx::GLshader fs(GL_FRAGMENT_SHADER);
+
+		fs +=
+#include "shaders/shader.fs"
+			;
+
+		vs.build();
+		fs.build();
+
+		program += vs;
+		program += fs;
+
+		program.build();
+	}
+
+	glUseProgram(program.id);
+
 	sfx.play_music(MusicId::menu);
 
 	// Main loop
@@ -846,8 +900,6 @@ int Engine::mainloop() {
 		// Rendering
 		ImGui::Render();
 		glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-		glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-		glClear(GL_COLOR_BUFFER_BIT);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(sdl.window);
 		FrameMark;
