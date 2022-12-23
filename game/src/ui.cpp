@@ -360,18 +360,77 @@ void Engine::show_mph_chat(ui::Frame &f) {
 	show_chat_line(f);
 }
 
+void Engine::show_multiplayer_achievements() {
+	Frame f;
+
+	if (!f.begin("Achievements", show_achievements))
+		return;
+
+	if (show_timeline) {
+		f.str("World Population");
+
+		// TODO make timeline
+		f.str("Work in progress...");
+
+		f.str("Time");
+
+		if (f.btn("Back")) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
+			show_timeline = false;
+		}
+	} else {
+		// TODO populate table
+
+		f.str("Work in progress...");
+		{
+			Table t;
+
+			if (t.begin("SummaryTable", 8)) {
+				t.row(-1, {" ", "Military", "Economy", "Religion", "Technology", "Survival", "Wonder", "Total Score"});
+
+				Row r(8, 0);
+
+				r.str("test");
+				r.str("0");
+				r.str("0");
+				r.str("0");
+				r.str("0");
+				r.str("Yes");
+				r.str("No");
+				r.str("100");
+			}
+		}
+
+		if (f.btn("Timeline")) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
+			show_timeline = true;
+		}
+
+		f.sl();
+
+		if (f.btn("Close")) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
+			show_achievements = false;
+		}
+	}
+}
+
 void Engine::show_multiplayer_game() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 
 	if (ImGui::BeginMainMenuBar()) {
-		ImGui::Text("F: %u W: %u G: %u S: %u %s", 1, 2, 3, 4, "antiquity age");
+		ImGui::Text("F: %u W: %u G: %u S: %u %s", 1, 2, 3, 4, "Stone Age");
 
 
 		if (ImGui::Button("Diplomacy")) {
 
 		}
 
+		// TODO refactor beginmenu/menuitem to our wrappers
 		if (ImGui::BeginMenu("Menu")) {
+			if (ImGui::MenuItem("Achievements"))
+				show_achievements = true;
+
 			if (ImGui::MenuItem("Quit"))
 				cancel_multiplayer_host();
 
@@ -447,6 +506,9 @@ void Engine::show_multiplayer_game() {
 			}
 		}
 	}
+
+	if (show_achievements)
+		show_multiplayer_achievements();
 }
 
 void Engine::show_multiplayer_host() {
@@ -495,13 +557,16 @@ void Engine::show_multiplayer_host() {
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 				ImGui::Tooltip("Game cannot be started without players. You can add players with `+' and `+10'.");
 		} else if (f.btn("Start Game")) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
 			client->send_start_game();
 		}
 
 		f.sl();
 
-		if (f.btn("Cancel"))
+		if (f.btn("Cancel")) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
 			cancel_multiplayer_host();
+		}
 	}
 
 	f.sl();

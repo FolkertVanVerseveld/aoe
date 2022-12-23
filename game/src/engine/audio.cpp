@@ -15,7 +15,7 @@
 namespace aoe {
 
 Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic), music_mute(false), music_file()
-	, m_mix(), taunts(), jukebox()
+	, m_mix(), taunts(), sfx(), jukebox()
 {
 	int flags = MIX_INIT_MP3;
 
@@ -91,6 +91,17 @@ void Audio::load_taunt(TauntId id, const char *file) {
 	taunts.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(sfx.release(), Mix_FreeChunk));
 }
 
+void Audio::load_taunt(TauntId id, const std::vector<uint8_t> &data) {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m_mix);
+
+	std::unique_ptr<Mix_Chunk, decltype(&Mix_FreeChunk)> sfx(Mix_LoadWAV_RW(SDL_RWFromConstMem(data.data(), data.size()), 1), Mix_FreeChunk);
+	if (!sfx.get())
+		throw std::runtime_error(std::string("cannot load taunt ID ") + std::to_string((unsigned)id) + ": " + Mix_GetError());
+
+	taunts.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(sfx.release(), Mix_FreeChunk));
+}
+
 void Audio::play_taunt(TauntId id) {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_mix);
@@ -147,7 +158,9 @@ static const std::unordered_map<std::string, TauntId> str_taunts{
 	{"let go", TauntId::let_go},
 	{"yeah", TauntId::yeah},
 	{"oh yeah", TauntId::yeah},
-	// TODO add wololo
+	{"wololo", TauntId::max},
+	{"wololol", TauntId::max},
+	{"wol", TauntId::max},
 };
 
 std::optional<TauntId> Audio::is_taunt(const std::string &s) {
@@ -179,6 +192,30 @@ std::optional<TauntId> Audio::is_taunt(const std::string &s) {
 
 	// seems bogus, fail
 	return std::nullopt;
+}
+
+void Audio::load_sfx(SfxId id, const std::vector<uint8_t> &data) {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m_mix);
+
+	std::unique_ptr<Mix_Chunk, decltype(&Mix_FreeChunk)> sfx(Mix_LoadWAV_RW(SDL_RWFromConstMem(data.data(), data.size()), 1), Mix_FreeChunk);
+	if (!sfx.get())
+		throw std::runtime_error(std::string("cannot load audio ID ") + std::to_string((unsigned)id) + ": " + Mix_GetError());
+
+	this->sfx.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(sfx.release(), Mix_FreeChunk));
+}
+
+void Audio::play_sfx(SfxId id, int loops) {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m_mix);
+
+	auto it = sfx.find(id);
+	if (it == sfx.end()) {
+		fprintf(stderr, "%s: cannot play sfx id %d: not found\n", __func__, id);
+		return;
+	}
+
+	Mix_PlayChannel(-1, it->second.get(), loops);
 }
 
 }

@@ -66,6 +66,8 @@ enum class EngineAsyncTask {
 	player_mod = 1 << 6,
 };
 
+class EngineView;
+
 // TODO make engine view that wraps eng and m_eng magic
 // TODO split async?
 // TODO split ui
@@ -125,9 +127,12 @@ private:
 	bool is_fullscreen;
 
 	std::unique_ptr<Assets> assets;
+	bool show_achievements;
+	bool show_timeline;
 
 	friend Debug;
 	friend Config;
+	friend EngineView;
 public:
 	Engine();
 	~Engine();
@@ -162,6 +167,7 @@ private:
 	void cancel_multiplayer_host();
 
 	void show_multiplayer_game();
+	void show_multiplayer_achievements();
 
 	void show_music_settings();
 	void show_menubar();
@@ -211,5 +217,14 @@ public:
 
 extern Engine *eng;
 extern std::mutex m_eng;
+
+// TODO use this
+class EngineView final {
+	std::lock_guard<std::mutex> lk;
+public:
+	EngineView();
+
+	void play_sfx(SfxId id, int loops=0);
+};
 
 }

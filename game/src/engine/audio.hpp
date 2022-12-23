@@ -6,11 +6,14 @@
 #include <SDL2/SDL_mixer.h>
 #endif
 
+#include <cstddef>
+
 #include <memory>
 #include <map>
 #include <string>
 #include <mutex>
 #include <optional>
+#include <vector>
 
 namespace aoe {
 
@@ -50,6 +53,10 @@ enum class TauntId {
 	max,
 };
 
+enum class SfxId {
+	sfx_ui_click,
+};
+
 class Audio final {
 	int freq, channels;
 	Uint16 format;
@@ -60,6 +67,7 @@ class Audio final {
 
 	std::mutex m_mix;
 	std::map<TauntId, std::unique_ptr<Mix_Chunk, decltype(&Mix_FreeChunk)>> taunts;
+	std::map<SfxId, std::unique_ptr<Mix_Chunk, decltype(&Mix_FreeChunk)>> sfx;
 public:
 	std::map<MusicId, std::string> jukebox;
 
@@ -77,10 +85,14 @@ public:
 	constexpr bool is_muted_music() const noexcept { return music_mute; }
 
 	void load_taunt(TauntId id, const char *file);
+	void load_taunt(TauntId id, const std::vector<uint8_t> &data);
 	void play_taunt(TauntId id);
 
 	/** Check if text should trigger taunt sound effect. */
 	std::optional<TauntId> is_taunt(const std::string&);
+
+	void load_sfx(SfxId id, const std::vector<uint8_t> &data);
+	void play_sfx(SfxId id, int loops=0);
 };
 
 }

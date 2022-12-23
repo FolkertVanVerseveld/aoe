@@ -69,6 +69,7 @@ Engine::Engine()
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
 	, debug()
 	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), assets()
+	, show_achievements(false), show_timeline(false)
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -155,7 +156,7 @@ void Engine::verify_game_data(const std::string &path) {
 		using namespace io;
 
 		try {
-			UI_TaskInfo info(ui_async("Verifying game data", "Locating interface data", id, 3));
+			UI_TaskInfo info(ui_async("Verifying game data", "Locating interface data", id, 4));
 
 			DRS drs_ui(path + "/data/Interfac.drs");
 
@@ -173,6 +174,13 @@ void Engine::verify_game_data(const std::string &path) {
 				std::string fname(path + "/sound/Taunt" + buf);
 				sfx.load_taunt((TauntId)i, fname.c_str());
 			}
+
+			DRS drs_sounds(path + "/data/sounds.drs");
+
+			info.next("Load game audio");
+
+			sfx.load_sfx(SfxId::sfx_ui_click, drs_sounds.open_wav(DrsId::sfx_ui_click));
+			sfx.load_taunt(TauntId::max, drs_sounds.open_wav(DrsId::sfx_priest_convert2));
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: game data verification failed: %s\n", __func__, e.what());
 			push_error(std::string("Game data verification failed: ") + e.what());
@@ -197,11 +205,15 @@ void Engine::show_start() {
 	f.str("Age of Empires");
 	f.str("Free and open source remake");
 
-	if (f.btn("Multiplayer"))
+	if (f.btn("Multiplayer")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
 		next_menu_state = MenuState::multiplayer_menu;
+	}
 
-	if (f.btn("Quit"))
+	if (f.btn("Quit")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
 		throw 0;
+	}
 
 	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
 }
@@ -286,7 +298,8 @@ void Engine::show_multiplayer_menu() {
 
 	//f.text("username", username);
 
-	ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes));
+	if (ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes)))
+		sfx.play_sfx(SfxId::sfx_ui_click);
 
 	if (connection_mode == 1) {
 		ImGui::InputText("host", connection_host, sizeof(connection_host));
@@ -297,7 +310,8 @@ void Engine::show_multiplayer_menu() {
 
 	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
 
-	if (ImGui::Button("start")) {
+	if (f.btn("start")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
 		switch (connection_mode) {
 			case 0:
 				start_server(connection_port);
@@ -310,10 +324,13 @@ void Engine::show_multiplayer_menu() {
 
 	ImGui::SameLine();
 
-	if (ImGui::Button("cancel"))
+	if (f.btn("cancel")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
 		next_menu_state = MenuState::start;
+	}
 }
 
+// TODO repurpose or remove
 void Engine::display_us() {
 	ZoneScoped;
 
@@ -657,6 +674,8 @@ void Engine::start_multiplayer_game() {
 	ZoneScoped;
 
 	next_menu_state = MenuState::multiplayer_game;
+	show_achievements = false;
+	show_timeline = false;
 }
 
 void Engine::add_chat_text(const std::string &s) {
@@ -701,7 +720,7 @@ void Engine::cancel_multiplayer_host() {
 			client->stop();
 
 		chat.clear();
-		next_menu_state = MenuState::multiplayer_menu;
+		next_menu_state = MenuState::start;
 	} catch (std::exception &e) {
 		fprintf(stderr, "%s: cannot stop multiplayer: %s\n", __func__, e.what());
 		push_error(std::string("cannot stop multiplayer: ") + e.what());

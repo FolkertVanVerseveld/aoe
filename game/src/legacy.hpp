@@ -4,6 +4,7 @@
 #include <string>
 #include <set>
 #include <fstream>
+#include <vector>
 
 #include "nominmax.hpp"
 
@@ -18,6 +19,9 @@ enum DrsId final {
 	bkg_main_menu = 50051,
 	bkg_achievements = 50061,
 	bkg_defeat = 50058,
+
+	sfx_ui_click = 5035,
+	sfx_priest_convert2 = 5051,
 };
 
 struct DrsBkg final {
@@ -55,6 +59,7 @@ public:
 	DRS(DRS&&) = delete;
 
 	DrsBkg open_bkg(DrsId id);
+	std::vector<uint8_t> open_wav(DrsId id);
 };
 
 }
