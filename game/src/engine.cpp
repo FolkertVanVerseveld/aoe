@@ -925,33 +925,7 @@ int Engine::mainloop() {
 	} catch (const std::runtime_error &e) {
 		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
 	}
-#if 0
-	gfx::GL gl;
-	gfx::GLprogram program;
-	{
-		gfx::GLshader vs(GL_VERTEX_SHADER);
 
-		vs +=
-#include "shaders/shader.vs"
-			;
-
-		gfx::GLshader fs(GL_FRAGMENT_SHADER);
-
-		fs +=
-#include "shaders/shader.fs"
-			;
-
-		vs.build();
-		fs.build();
-
-		program += vs;
-		program += fs;
-
-		program.build();
-	}
-
-	glUseProgram(program.id);
-#else
 	int ret = 0;
 
 	if ((ret = gl3wInit()) != GL3W_OK) {
@@ -962,6 +936,7 @@ int Engine::mainloop() {
 	GLuint vs;
 
 	gfx::glchk();
+	// https://learnopengl.com/Getting-started/Shaders
 	vs = glCreateShader(GL_VERTEX_SHADER);
 
 	const GLchar *src;
@@ -1032,9 +1007,10 @@ int Engine::mainloop() {
 	glDeleteShader(vs);
 
 	const float vertices[] = {
-		-0.5f, -0.5f, 0.0f, // left
-		 0.5f, -0.5f, 0.0f, // right
-		 0.0f,  0.5f, 0.0f  // top
+		// positions         // colors
+		 0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // bottom right
+		-0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // bottom left
+		 0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // top 
 	};
 
 	GLuint vao, vbo;
@@ -1046,8 +1022,12 @@ int Engine::mainloop() {
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	// position attribute
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
+	// color attribute
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float)));
+	glEnableVertexAttribArray(1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -1055,7 +1035,6 @@ int Engine::mainloop() {
 	gfx::glchk();
 
 	ImageCapture ic(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
-#endif
 
 	// autoload game data if available
 	if (!cfg.game_dir.empty())
