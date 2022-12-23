@@ -31,6 +31,7 @@ class Frame;
 
 enum class MenuState {
 	init,
+	start,
 	multiplayer_menu,
 	multiplayer_host,
 	multiplayer_settings,
@@ -141,11 +142,14 @@ private:
 	void idle();
 	void idle_async();
 
+	void verify_game_data(const std::string &path);
+
 	void display();
 	void display_us();
 	void display_ui();
 	void display_ui_tasks();
 	void show_init();
+	void show_start();
 
 	void show_multiplayer_menu();
 	// TODO extract as HUD

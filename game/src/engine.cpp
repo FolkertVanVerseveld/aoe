@@ -145,6 +145,67 @@ void Engine::show_menubar() {
 
 static const std::vector<std::string> music_ids{ "menu", "success", "fail", "game" };
 
+/** Load and validate game assets. */
+void Engine::verify_game_data(const std::string &path) {
+	// TODO move this in worker thread
+	game_dir = path;
+
+	tp.push([this](int id, std::string path) {
+		ZoneScoped;
+		using namespace io;
+
+		try {
+			UI_TaskInfo info(ui_async("Verifying game data", "Locating interface data", id, 3));
+
+			DRS drs_ui(path + "/data/Interfac.drs");
+
+			info.next("Loading interface data");
+			drs_ui.open_bkg(DrsId::bkg_main_menu);
+			drs_ui.open_bkg(DrsId::bkg_achievements);
+			drs_ui.open_bkg(DrsId::bkg_defeat);
+
+			info.next("Load chat audio");
+
+			for (unsigned i = 0; i < (unsigned)TauntId::max; ++i) {
+				char buf[8];
+				snprintf(buf, sizeof buf, "%03d.wav", i + 1);
+
+				std::string fname(path + "/sound/Taunt" + buf);
+				sfx.load_taunt((TauntId)i, fname.c_str());
+			}
+		} catch (std::exception &e) {
+			fprintf(stderr, "%s: game data verification failed: %s\n", __func__, e.what());
+			push_error(std::string("Game data verification failed: ") + e.what());
+		}
+
+		// TODO set game dir here
+	}, path);
+}
+
+void Engine::show_start() {
+	ZoneScoped;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos);
+
+	Frame f;
+
+	if (!f.begin("start", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse))
+		return;
+
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	f.str("Age of Empires");
+	f.str("Free and open source remake");
+
+	if (f.btn("Multiplayer"))
+		next_menu_state = MenuState::multiplayer_menu;
+
+	if (f.btn("Quit"))
+		throw 0;
+
+	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
+}
+
 void Engine::show_init() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -157,10 +218,14 @@ void Engine::show_init() {
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
-	if (f.btn("Multiplayer"))
-		next_menu_state = MenuState::multiplayer_menu;
+	f.str("Age of Empires game setup");
+	ImGui::TextWrapped("%s", "In this menu, you can change general settings how the game behaves and where the game assets will be loaded from.");
+	ImGui::TextWrapped("%s", "This game is free software. If you have paid for this free software remake, you have been scammed! If you like Age of Empires, please support Microsoft by buying the original game on Steam");
 
-	if (ImGui::Button("quit"))
+	if (f.btn("Start"))
+		next_menu_state = MenuState::start;
+
+	if (f.btn("Quit"))
 		throw 0;
 
 	if (f.btn("Set game directory"))
@@ -170,39 +235,7 @@ void Engine::show_init() {
 
 	if (fd2.HasSelected()) {
 		std::string path(fd2.GetSelected().string());
-		printf("selected \"%s\"\n", path.c_str());
-
-		// TODO set game directory
-		game_dir = path;
-		tp.push([this](int id, std::string path) {
-			ZoneScoped;
-			using namespace io;
-
-			try {
-				UI_TaskInfo info(ui_async("Verifying game data", "Locating interface data", id, 3));
-
-				DRS drs_ui(path + "/data/Interfac.drs");
-
-				info.next("Loading interface data");
-				drs_ui.open_bkg(DrsId::bkg_main_menu);
-				drs_ui.open_bkg(DrsId::bkg_achievements);
-				drs_ui.open_bkg(DrsId::bkg_defeat);
-
-				info.next("Load chat audio");
-
-				for (unsigned i = 0; i < (unsigned)TauntId::max; ++i) {
-					char buf[8];
-					snprintf(buf, sizeof buf, "%03d.wav", i + 1);
-
-					std::string fname(path + "/sound/Taunt" + buf);
-					sfx.load_taunt((TauntId)i, fname.c_str());
-				}
-			} catch (std::exception &e) {
-				fprintf(stderr, "%s: game data verification failed: %s\n", __func__, e.what());
-				push_error(std::string("Game data verification failed: ") + e.what());
-			}
-		}, path);
-
+		verify_game_data(path);
 		fd2.ClearSelected();
 	}
 
@@ -235,6 +268,8 @@ void Engine::show_init() {
 		sfx.stop_music();
 
 	show_music_settings();
+
+	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
 }
 
 void Engine::show_multiplayer_menu() {
@@ -276,7 +311,7 @@ void Engine::show_multiplayer_menu() {
 	ImGui::SameLine();
 
 	if (ImGui::Button("cancel"))
-		next_menu_state = MenuState::init;
+		next_menu_state = MenuState::start;
 }
 
 void Engine::display_us() {
@@ -311,6 +346,9 @@ void Engine::display_ui() {
 			break;
 		case MenuState::multiplayer_menu:
 			show_multiplayer_menu();
+			break;
+		case MenuState::start:
+			show_start();
 			break;
 		default:
 			show_init();
@@ -552,7 +590,7 @@ void Engine::idle() {
 		menu_state = next_menu_state;
 
 		switch (menu_state) {
-		case MenuState::init:
+		case MenuState::start:
 			sfx.play_music(MusicId::menu);
 			break;
 		case MenuState::multiplayer_game:
@@ -999,7 +1037,9 @@ int Engine::mainloop() {
 	ImageCapture ic(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 #endif
 
-	sfx.play_music(MusicId::menu);
+	// autoload game data if available
+	if (!cfg.game_dir.empty())
+		verify_game_data(cfg.game_dir);
 
 	// Main loop
 	bool done = false;
