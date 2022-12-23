@@ -68,7 +68,7 @@ Engine::Engine()
 	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0)
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
 	, debug()
-	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false)
+	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), assets()
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -157,31 +157,8 @@ void Engine::show_init() {
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
-	//f.text("username", username);
-
-	ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes));
-
-	if (connection_mode == 1) {
-		ImGui::InputText("host", connection_host, sizeof(connection_host));
-		ImGui::SameLine();
-		if (ImGui::Button("localhost"))
-			strncpy0(connection_host, "127.0.0.1", sizeof(connection_host));
-	}
-
-	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
-
-	if (ImGui::Button("start")) {
-		switch (connection_mode) {
-			case 0:
-				start_server(connection_port);
-				break;
-			case 1:
-				start_client(connection_host, connection_port);
-				break;
-		}
-	}
-
-	ImGui::SameLine();
+	if (f.btn("Multiplayer"))
+		next_menu_state = MenuState::multiplayer_menu;
 
 	if (ImGui::Button("quit"))
 		throw 0;
@@ -197,6 +174,34 @@ void Engine::show_init() {
 
 		// TODO set game directory
 		game_dir = path;
+		tp.push([this](int id, std::string path) {
+			ZoneScoped;
+			using namespace io;
+
+			try {
+				UI_TaskInfo info(ui_async("Verifying game data", "Locating interface data", id, 3));
+
+				DRS drs_ui(path + "/data/Interfac.drs");
+
+				info.next("Loading interface data");
+				drs_ui.open_bkg(DrsId::bkg_main_menu);
+				drs_ui.open_bkg(DrsId::bkg_achievements);
+				drs_ui.open_bkg(DrsId::bkg_defeat);
+
+				info.next("Load chat audio");
+
+				for (unsigned i = 0; i < (unsigned)TauntId::max; ++i) {
+					char buf[8];
+					snprintf(buf, sizeof buf, "%03d.wav", i + 1);
+
+					std::string fname(path + "/sound/Taunt" + buf);
+					sfx.load_taunt((TauntId)i, fname.c_str());
+				}
+			} catch (std::exception &e) {
+				fprintf(stderr, "%s: game data verification failed: %s\n", __func__, e.what());
+				push_error(std::string("Game data verification failed: ") + e.what());
+			}
+		}, path);
 
 		fd2.ClearSelected();
 	}
@@ -232,6 +237,48 @@ void Engine::show_init() {
 	show_music_settings();
 }
 
+void Engine::show_multiplayer_menu() {
+	ZoneScoped;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos);
+
+	Frame f;
+
+	if (!f.begin("multiplayer menu", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse))
+		return;
+
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	//f.text("username", username);
+
+	ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes));
+
+	if (connection_mode == 1) {
+		ImGui::InputText("host", connection_host, sizeof(connection_host));
+		ImGui::SameLine();
+		if (ImGui::Button("localhost"))
+			strncpy0(connection_host, "127.0.0.1", sizeof(connection_host));
+	}
+
+	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
+
+	if (ImGui::Button("start")) {
+		switch (connection_mode) {
+			case 0:
+				start_server(connection_port);
+				break;
+			case 1:
+				start_client(connection_host, connection_port);
+				break;
+		}
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("cancel"))
+		next_menu_state = MenuState::init;
+}
+
 void Engine::display_us() {
 	ZoneScoped;
 
@@ -261,6 +308,9 @@ void Engine::display_ui() {
 			break;
 		case MenuState::multiplayer_game:
 			show_multiplayer_game();
+			break;
+		case MenuState::multiplayer_menu:
+			show_multiplayer_menu();
 			break;
 		default:
 			show_init();
@@ -613,7 +663,7 @@ void Engine::cancel_multiplayer_host() {
 			client->stop();
 
 		chat.clear();
-		next_menu_state = MenuState::init;
+		next_menu_state = MenuState::multiplayer_menu;
 	} catch (std::exception &e) {
 		fprintf(stderr, "%s: cannot stop multiplayer: %s\n", __func__, e.what());
 		push_error(std::string("cannot stop multiplayer: ") + e.what());

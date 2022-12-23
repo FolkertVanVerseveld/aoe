@@ -12,6 +12,7 @@
 #include "ctpl_stl.hpp"
 
 #include "debug.hpp"
+#include "engine/assets.hpp"
 
 #include <queue>
 #include <deque>
@@ -30,6 +31,7 @@ class Frame;
 
 enum class MenuState {
 	init,
+	multiplayer_menu,
 	multiplayer_host,
 	multiplayer_settings,
 	multiplayer_game,
@@ -107,7 +109,9 @@ class Engine final {
 	NetPlayerControl playermod_async;
 
 	ImGui::FileBrowser fd, fd2;
+public:
 	Audio sfx;
+private:
 	int music_id;
 	bool music_on;
 
@@ -118,6 +122,8 @@ class Engine final {
 
 	SDL *sdl;
 	bool is_fullscreen;
+
+	std::unique_ptr<Assets> assets;
 
 	friend Debug;
 	friend Config;
@@ -141,6 +147,7 @@ private:
 	void display_ui_tasks();
 	void show_init();
 
+	void show_multiplayer_menu();
 	// TODO extract as HUD
 	void show_multiplayer_host();
 	void show_mph_tbl(ui::Frame&);

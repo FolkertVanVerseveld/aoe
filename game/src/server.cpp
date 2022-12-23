@@ -1,6 +1,7 @@
 #include "server.hpp"
 
 #include "engine.hpp"
+#include "engine/audio.hpp"
 
 namespace aoe {
 
@@ -334,8 +335,13 @@ void Client::add_chat_text(IdPoolRef ref, const std::string &s) {
 	}
 
 	printf("(%u::%u) says: \"%s\"\n", ref.first, ref.second, s.c_str());
-	if (eng)
+	if (eng) {
 		eng->add_chat_text(txt);
+
+		auto maybe_taunt = eng->sfx.is_taunt(s);
+		if (maybe_taunt)
+			eng->sfx.play_taunt(maybe_taunt.value());
+	}
 }
 
 void Client::start_game() {

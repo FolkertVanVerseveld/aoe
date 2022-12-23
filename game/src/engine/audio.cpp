@@ -1,14 +1,22 @@
 #include "audio.hpp"
 
+#include <cctype>
+#include <cmath>
+
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
+
+#include "../debug.hpp"
 
 #define SAMPLING_FREQ 48000
 #define NUM_CHANNELS 2
 
 namespace aoe {
 
-Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic), jukebox(), music_mute(false) {
+Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic), music_mute(false), music_file()
+	, m_mix(), taunts(), jukebox()
+{
 	int flags = MIX_INIT_MP3;
 
 	if ((Mix_Init(flags) & flags) != flags)
@@ -70,6 +78,107 @@ void Audio::unmute_music() {
 	// restart if music is loaded
 	if (music.get())
 		Mix_PlayMusic(music.get(), 0);
+}
+
+void Audio::load_taunt(TauntId id, const char *file) {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m_mix);
+
+	std::unique_ptr<Mix_Chunk, decltype(&Mix_FreeChunk)> sfx(Mix_LoadWAV(file), Mix_FreeChunk);
+	if (!sfx.get())
+		throw std::runtime_error(std::string("cannot load ") + file + ": " + Mix_GetError());
+
+	taunts.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(sfx.release(), Mix_FreeChunk));
+}
+
+void Audio::play_taunt(TauntId id) {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m_mix);
+
+	auto it = taunts.find(id);
+	if (it == taunts.end()) {
+		fprintf(stderr, "%s: cannot play taunt id %d: not found\n", __func__, id);
+		return;
+	}
+
+	Mix_PlayChannel(-1, it->second.get(), 0);
+}
+
+static const std::unordered_map<std::string, TauntId> str_taunts{
+	{"yes", TauntId::yes},
+	{"no", TauntId::no},
+	{"food", TauntId::food},
+	{"wood", TauntId::wood},
+	{"gold", TauntId::gold},
+	{"stone", TauntId::stone},
+	{"ehh", TauntId::ehh},
+	{"nice try", TauntId::nice_try},
+	{"fail", TauntId::nice_try},
+	{"yay", TauntId::yay},
+	{"in town", TauntId::in_town},
+	{"owaah", TauntId::owaah},
+	{"join", TauntId::join},
+	{"join me", TauntId::join},
+	{"come join", TauntId::join},
+	{"disagree", TauntId::disagree},
+	{"dont think so", TauntId::disagree},
+	{"i dont think so", TauntId::disagree},
+	{"start", TauntId::start},
+	{"start pls", TauntId::start},
+	{"pls start", TauntId::start},
+	{"alpha", TauntId::alpha},
+	{"whos the man", TauntId::alpha},
+	{"attack", TauntId::attack},
+	{"attack now", TauntId::attack},
+	{"haha", TauntId::haha},
+	{"mercy", TauntId::mercy},
+	{"have mercy", TauntId::mercy},
+	{"pls have mercy", TauntId::mercy},
+	{"im weak", TauntId::mercy},
+	{"hahaha", TauntId::hahaha},
+	{"hahahaha", TauntId::hahaha},
+	{"satisfaction", TauntId::satisfaction},
+	{"satisfied", TauntId::satisfaction},
+	{"nice", TauntId::nice},
+	{"nice town", TauntId::nice},
+	{"wtf", TauntId::wtf},
+	{"get out", TauntId::get_out},
+	{"go away", TauntId::get_out},
+	{"let go", TauntId::let_go},
+	{"yeah", TauntId::yeah},
+	{"oh yeah", TauntId::yeah},
+	// TODO add wololo
+};
+
+std::optional<TauntId> Audio::is_taunt(const std::string &s) {
+	// filter s
+	std::string filtered;
+
+	// TODO make UTF8 friendly
+	for (char v : s) {
+		unsigned char ch = (unsigned char)(int)v;
+
+		if (isalpha(ch) || isspace(ch))
+			filtered += tolower(ch);
+	}
+
+	auto it = str_taunts.find(filtered);
+	if (it != str_taunts.end())
+		return it->second;
+
+	// no exact match, see if it's a number
+	int v;
+	if (sscanf(s.data(), "%d", &v) == 1) {
+		unsigned idx = (unsigned)std::abs(v);
+
+		if (idx > 0 && idx - 1 < (unsigned)TauntId::max)
+			return (TauntId)(idx - 1);
+	}
+
+	// TODO use levenshtein distance for typos
+
+	// seems bogus, fail
+	return std::nullopt;
 }
 
 }
