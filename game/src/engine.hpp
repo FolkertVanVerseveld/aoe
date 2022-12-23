@@ -127,8 +127,10 @@ private:
 	bool is_fullscreen;
 
 	std::unique_ptr<Assets> assets;
+	// TODO move this to a game class or smth
 	bool show_achievements;
 	bool show_timeline;
+	bool show_diplomacy;
 
 	friend Debug;
 	friend Config;
@@ -168,6 +170,7 @@ private:
 
 	void show_multiplayer_game();
 	void show_multiplayer_achievements();
+	void show_multiplayer_diplomacy();
 
 	void show_music_settings();
 	void show_menubar();

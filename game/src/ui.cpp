@@ -360,6 +360,54 @@ void Engine::show_mph_chat(ui::Frame &f) {
 	show_chat_line(f);
 }
 
+void Engine::show_multiplayer_diplomacy() {
+	Frame f;
+
+	if (!f.begin("Diplomacy", show_diplomacy))
+		return;
+
+	{
+		Table t;
+
+		f.str("Work in progress...");
+
+		if (t.begin("DiplomacyTable", 9)) {
+			t.row(-1, { "Name", "Civilization", "Ally", "Neutral", "Enemy", "Food", "Wood", "Gold", "Stone" });
+
+			Row r(9, 0);
+
+			r.str("You");
+			r.str("oerkneuzen");
+			r.chkbox("##0", show_diplomacy);
+			r.chkbox("##1", show_diplomacy);
+			r.chkbox("##2", show_diplomacy);
+			r.next();
+			r.next();
+			r.next();
+			r.next();
+		}
+	}
+
+	if (f.btn("OK")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		show_diplomacy = false;
+	}
+
+	f.sl();
+
+	if (f.btn("Clear Tributes")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		// TODO clear fields
+	}
+
+	f.sl();
+
+	if (f.btn("Cancel")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		show_diplomacy = false;
+	}
+}
+
 void Engine::show_multiplayer_achievements() {
 	Frame f;
 
@@ -423,7 +471,8 @@ void Engine::show_multiplayer_game() {
 
 
 		if (ImGui::Button("Diplomacy")) {
-
+			sfx.play_sfx(SfxId::sfx_ui_click);
+			show_diplomacy = true;
 		}
 
 		// TODO refactor beginmenu/menuitem to our wrappers
@@ -509,6 +558,9 @@ void Engine::show_multiplayer_game() {
 
 	if (show_achievements)
 		show_multiplayer_achievements();
+
+	if (show_diplomacy)
+		show_multiplayer_diplomacy();
 }
 
 void Engine::show_multiplayer_host() {

@@ -69,7 +69,7 @@ Engine::Engine()
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
 	, debug()
 	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), assets()
-	, show_achievements(false), show_timeline(false)
+	, show_achievements(false), show_timeline(false), show_diplomacy(false)
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -676,6 +676,7 @@ void Engine::start_multiplayer_game() {
 	next_menu_state = MenuState::multiplayer_game;
 	show_achievements = false;
 	show_timeline = false;
+	show_diplomacy = false;
 }
 
 void Engine::add_chat_text(const std::string &s) {
