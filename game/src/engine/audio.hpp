@@ -71,11 +71,13 @@ class Audio final {
 public:
 	std::map<MusicId, std::string> jukebox;
 
+	bool play_taunts;
+
 	Audio();
 	~Audio();
 
 	void play_music(const char *file, int loops=0);
-	void play_music(MusicId id);
+	void play_music(MusicId id, int loops=0);
 
 	void stop_music();
 

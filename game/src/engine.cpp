@@ -96,6 +96,7 @@ void Engine::show_music_settings() {
 	music_on = !sfx.is_muted_music();
 
 	chkbox("Music enabled", music_on);
+	chkbox("Play chat taunts", sfx.play_taunts);
 
 	if (music_on)
 		sfx.unmute_music();
@@ -611,7 +612,7 @@ void Engine::idle() {
 			sfx.play_music(MusicId::menu);
 			break;
 		case MenuState::multiplayer_game:
-			sfx.play_music(MusicId::game);
+			sfx.play_music(MusicId::game, -1);
 			break;
 		}
 	}

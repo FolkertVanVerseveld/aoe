@@ -15,7 +15,7 @@
 namespace aoe {
 
 Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic), music_mute(false), music_file()
-	, m_mix(), taunts(), sfx(), jukebox()
+	, m_mix(), taunts(), sfx(), jukebox(), play_taunts(true)
 {
 	int flags = MIX_INIT_MP3;
 
@@ -47,7 +47,7 @@ void Audio::play_music(const char *file, int loops) {
 		Mix_PlayMusic(music.get(), loops);
 }
 
-void Audio::play_music(MusicId id) {
+void Audio::play_music(MusicId id, int loops) {
 	auto it = jukebox.find(id);
 	if (it == jukebox.end()) {
 		fprintf(stderr, "%s: cannot play music id %d: not found\n", __func__, id);
@@ -56,7 +56,7 @@ void Audio::play_music(MusicId id) {
 
 	// ignore if already playing
 	if (it->second != music_file || !Mix_PlayingMusic())
-		play_music(it->second.c_str());
+		play_music(it->second.c_str(), loops);
 }
 
 void Audio::stop_music() {
@@ -104,6 +104,10 @@ void Audio::load_taunt(TauntId id, const std::vector<uint8_t> &data) {
 
 void Audio::play_taunt(TauntId id) {
 	ZoneScoped;
+
+	if (!play_taunts)
+		return;
+
 	std::lock_guard<std::mutex> lk(m_mix);
 
 	auto it = taunts.find(id);
