@@ -1,17 +1,14 @@
 #pragma once
 
-#include "../legacy.hpp"
-
-#include <map>
+#include <string>
 
 namespace aoe {
 
-class Assets final {
-	std::map<io::DrsId, std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)>> pals;
-public:
-	Assets();
+class Engine;
 
-	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> open_pal(io::DrsId id);
+class Assets final {
+public:
+	Assets(int id, Engine &e, const std::string &path);
 };
 
 }

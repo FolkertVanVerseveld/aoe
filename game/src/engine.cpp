@@ -160,34 +160,7 @@ void Engine::verify_game_data(const std::string &path) {
 		using namespace io;
 
 		try {
-			UI_TaskInfo info(ui_async("Verifying game data", "Locating interface data", id, 4));
-
-			DRS drs_ui(path + "/data/Interfac.drs");
-
-			info.next("Loading interface data");
-			DrsBkg bkg(drs_ui.open_bkg(DrsId::bkg_main_menu));
-			drs_ui.open_pal((DrsId)bkg.pal_id);
-			drs_ui.open_bkg(DrsId::bkg_achievements);
-			drs_ui.open_bkg(DrsId::bkg_defeat);
-
-			info.next("Load chat audio");
-
-			sfx.reset();
-
-			for (unsigned i = 0; i < (unsigned)TauntId::max; ++i) {
-				char buf[8];
-				snprintf(buf, sizeof buf, "%03d.wav", i + 1);
-
-				std::string fname(path + "/sound/Taunt" + buf);
-				sfx.load_taunt((TauntId)i, fname.c_str());
-			}
-
-			DRS drs_sounds(path + "/data/sounds.drs");
-
-			info.next("Load game audio");
-
-			sfx.load_sfx(SfxId::sfx_ui_click, drs_sounds.open_wav(DrsId::sfx_ui_click));
-			sfx.load_taunt(TauntId::max, drs_sounds.open_wav(DrsId::sfx_priest_convert2));
+			assets.reset(new Assets(id, *this, path));
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: game data verification failed: %s\n", __func__, e.what());
 			push_error(std::string("Game data verification failed: ") + e.what());
@@ -830,6 +803,7 @@ void UI_TaskInfo::next(const std::string &s) {
 	std::lock_guard<std::mutex> lock(m_eng);
 	if (eng)
 		eng->ui_async_next(*this, s);
+	std::this_thread::yield();
 }
 
 void Engine::tick() {
@@ -1076,31 +1050,11 @@ int Engine::mainloop() {
 
 	stbi_image_free(data);
 
-	GLuint texture2;
+	gfx::glchk();
 
-	glGenTextures(1, &texture2);
-	glBindTexture(GL_TEXTURE_2D, texture2);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glUniform1i(glGetUniformLocation(prog, "texture1"), texture1); // TODO GL_INVALID_OPERATION
 
-	data = stbi_load("C:/Users/NZXTO/Downloads/awesomeface.png", &width, &height, &nrChannels, 0);
-
-	if (!data)
-		throw std::runtime_error("cannot load image");
-
-	printf("img %dx%d %d channels\n", width, height, nrChannels);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	stbi_image_free(data);
-
-	glUniform1i(glGetUniformLocation(prog, "texture1"), 0);
-	glUniform1i(glGetUniformLocation(prog, "texture2"), 1);
+	gfx::glchk();
 
 	ImageCapture ic(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 
@@ -1163,10 +1117,9 @@ int Engine::mainloop() {
 		// bind textures on corresponding texture units
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture1);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texture2);
 
 		glUseProgram(prog);
+
 		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
