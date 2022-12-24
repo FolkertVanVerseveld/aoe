@@ -165,11 +165,14 @@ void Engine::verify_game_data(const std::string &path) {
 			DRS drs_ui(path + "/data/Interfac.drs");
 
 			info.next("Loading interface data");
-			drs_ui.open_bkg(DrsId::bkg_main_menu);
+			DrsBkg bkg(drs_ui.open_bkg(DrsId::bkg_main_menu));
+			drs_ui.open_pal((DrsId)bkg.pal_id);
 			drs_ui.open_bkg(DrsId::bkg_achievements);
 			drs_ui.open_bkg(DrsId::bkg_defeat);
 
 			info.next("Load chat audio");
+
+			sfx.reset();
 
 			for (unsigned i = 0; i < (unsigned)TauntId::max; ++i) {
 				char buf[8];

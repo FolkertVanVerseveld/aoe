@@ -34,6 +34,19 @@ Audio::~Audio() {
 	Mix_Quit();
 }
 
+void Audio::panic() {
+	std::lock_guard<std::mutex> lk(m_mix);
+	Mix_HaltMusic();
+	Mix_HaltChannel(-1);
+}
+
+void Audio::reset() {
+	panic();
+
+	taunts.clear();
+	sfx.clear();
+}
+
 void Audio::play_music(const char *file, int loops) {
 	// always load music even if muted. so when we unmute, it should just work
 	music.reset(Mix_LoadMUS(file));

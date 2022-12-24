@@ -76,6 +76,11 @@ public:
 	Audio();
 	~Audio();
 
+	/** Force stop all audio playing. */
+	void panic();
+	/** Force stop all audio playing and clear audio caches. */
+	void reset();
+
 	void play_music(const char *file, int loops=0);
 	void play_music(MusicId id, int loops=0);
 

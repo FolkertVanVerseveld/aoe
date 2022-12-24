@@ -5,8 +5,11 @@
 #include <set>
 #include <fstream>
 #include <vector>
+#include <memory>
 
 #include "nominmax.hpp"
+
+#include <SDL2/SDL_pixels.h>
 
 namespace aoe {
 
@@ -49,6 +52,19 @@ struct DrsItem final {
 	friend bool operator<(const DrsItem &lhs, const DrsItem &rhs) { return lhs.id < rhs.id; }
 };
 
+struct Slp final {
+	char version[4];
+	int32_t frame_count;
+	char comment[24];
+
+	uint32_t cmd_table_offset;
+	uint32_t outline_table_offset;
+	uint32_t palette_offset;
+	uint32_t properties;
+	int32_t width, height;
+	int32_t hotspot_x, hotspot_y;
+};
+
 /** Data resource set */
 class DRS final {
 	std::ifstream in;
@@ -59,7 +75,9 @@ public:
 	DRS(DRS&&) = delete;
 
 	DrsBkg open_bkg(DrsId id);
+	Slp open_slp(DrsId id);
 	std::vector<uint8_t> open_wav(DrsId id);
+	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> open_pal(DrsId id);
 };
 
 }
