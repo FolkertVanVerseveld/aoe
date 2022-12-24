@@ -569,7 +569,7 @@ void Engine::show_multiplayer_host() {
 
 	Frame f;
 
-	if (!f.begin("multiplayer host", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse))
+	if (!f.begin("multiplayer host", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
 		return;
 
 	ImGui::SetWindowSize(vp->WorkSize);
