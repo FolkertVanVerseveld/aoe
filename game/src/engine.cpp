@@ -908,12 +908,6 @@ int Engine::mainloop() {
 
 	stbi_image_free(data);
 
-#if 1
-	GLCHK;
-
-	glUniform1i(glGetUniformLocation(prog, "texture1"), texture1); // TODO GL_INVALID_OPERATION
-#endif
-
 	GLCHK;
 
 	ImageCapture ic(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
