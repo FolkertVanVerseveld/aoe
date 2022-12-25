@@ -7,6 +7,9 @@
 
 #include "endian.h"
 
+#include "gfx.hpp"
+#include "../string.hpp"
+
 namespace aoe {
 
 namespace io {
@@ -26,10 +29,9 @@ struct DrsHdr final {
 };
 
 DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
-	DrsHdr hdr{ 0 };
-	// TODO keep open, move to class vars
 	in.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
+	DrsHdr hdr{ 0 };
 	in.read((char*)&hdr, sizeof(hdr));
 
 	hdr.nlist = le16toh(hdr.nlist);
@@ -94,12 +96,31 @@ Slp DRS::open_slp(DrsId k) {
 	if (it == items.end())
 		throw std::runtime_error(std::string("invalid Slp ID: ") + std::to_string(id));
 
-	Slp slp{ 0 };
+	Slp slp;
 	const DrsItem &item = *it;
+
+	// define the memlayout
+	struct SlpHdr {
+		char version[4];
+		int32_t frame_count;
+		char comment[24];
+	} hdr;
 
 	// fetch data
 	in.seekg(item.offset);
-	in.read((char*)&slp, sizeof(slp));
+	in.read((char*)&hdr, sizeof(hdr));
+
+	// parse header
+	cstrncpy(slp.version, hdr.version, 4);
+	cstrncpy(slp.comment, hdr.comment, 24);
+
+	int32_t frames = hdr.frame_count;
+
+	// parse frames (if available)
+	if (frames > 0) {
+		slp.frames.resize(frames);
+		in.read((char*)slp.frames.data(), frames * sizeof(SlpFrameInfo));
+	}
 
 	return slp;
 }
@@ -235,6 +256,44 @@ DrsBkg DRS::open_bkg(DrsId k) {
 #endif
 
 	return bkg;
+}
+
+}
+
+int ::rand(void);
+
+namespace gfx {
+
+using namespace aoe::io;
+
+bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigned player) {
+	const SlpFrameInfo &info = slp.frames.at(index);
+
+	hotspot_x = info.hotspot_x;
+	hotspot_y = info.hotspot_y;
+
+	surface.reset(SDL_CreateRGBSurface(0, info.width, info.height, 8, 0, 0, 0, 0));
+	if (!surface.get())
+		throw std::runtime_error(std::string("Could not create Slp surface: ") + SDL_GetError());
+
+	// TODO load pixel data
+	unsigned char *pixels = (unsigned char*)surface->pixels;
+
+	if (SDL_SetSurfacePalette(surface.get(), (SDL_Palette*)pal))
+		throw std::runtime_error(std::string("Could not set Slp palette: ") + SDL_GetError());
+
+	if (surface->format->format != SDL_PIXELFORMAT_INDEX8)
+		throw std::runtime_error(std::string("Unexpected image format: ") + SDL_GetPixelFormatName(surface->format->format));
+
+	// just fill with random data for now
+	for (int y = 0, h = info.height, p = surface->pitch; y < h; ++y)
+		for (int x = 0, w = info.width; x < w; ++x)
+			pixels[y * p + x] = rand();
+
+	if (SDL_SetColorKey(surface.get(), SDL_TRUE, 0))
+		fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());
+
+	return false;
 }
 
 }

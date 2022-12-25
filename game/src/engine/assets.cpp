@@ -8,15 +8,22 @@ namespace aoe {
 
 using namespace io;
 
-Assets::Assets(int id, Engine &eng, const std::string &path) {
+Background::Background() : drs(), pal(nullptr, SDL_FreePalette), img() {}
+
+Assets::Assets(int id, Engine &eng, const std::string &path) : path(path), bkg_main()
+{
 	// TODO use engine view to prevent crash when closed while ctor is still running
 	UI_TaskInfo info(eng.ui_async("Verifying game data", "Locating interface data", id, 4));
 
 	DRS drs_ui(path + "/data/Interfac.drs");
 
 	info.next("Loading interface data");
-	DrsBkg bkg(drs_ui.open_bkg(DrsId::bkg_main_menu));
-	drs_ui.open_pal((DrsId)bkg.pal_id);
+
+	bkg_main.drs = DrsBkg(drs_ui.open_bkg(DrsId::bkg_main_menu));
+	bkg_main.pal = drs_ui.open_pal((DrsId)bkg_main.drs.pal_id);
+	auto slp = drs_ui.open_slp((DrsId)bkg_main.drs.bkg_id[0]);
+	bkg_main.img.load(bkg_main.pal.get(), slp, 0, 0);
+
 	drs_ui.open_bkg(DrsId::bkg_achievements);
 	drs_ui.open_bkg(DrsId::bkg_defeat);
 

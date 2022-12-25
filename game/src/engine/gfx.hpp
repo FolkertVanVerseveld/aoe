@@ -4,13 +4,29 @@
 #include <string>
 #include <vector>
 
+#include "../legacy.hpp"
+
 #define GLCHK aoe::gfx::glchk(__FILE__, __func__, __LINE__)
 
 namespace aoe {
+
 namespace gfx {
 
-
 void glchk(const char *file, const char *func, int lno);
+
+class Image final {
+public:
+	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> surface;
+	int hotspot_x, hotspot_y;
+
+	Image() : surface(nullptr, SDL_FreeSurface), hotspot_x(0), hotspot_y(0) {}
+	Image(const Image&) = delete;
+	Image(Image&&) = default;
+
+	bool load(const SDL_Palette *pal, const io::Slp &slp, unsigned index, unsigned player=0);
+};
+
+// TODO repurpose or remove everything below this line
 
 class GL final {
 public:

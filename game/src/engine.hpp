@@ -64,6 +64,7 @@ enum class EngineAsyncTask {
 	set_scn_vars = 1 << 4,
 	set_username = 1 << 5,
 	player_mod = 1 << 6,
+	new_game_data = 1 << 7,
 };
 
 class EngineView;
@@ -150,6 +151,7 @@ private:
 	void idle_async();
 
 	void verify_game_data(const std::string &path);
+	void set_game_data();
 
 	void display();
 	void display_us();

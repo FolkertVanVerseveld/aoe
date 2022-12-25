@@ -10,6 +10,7 @@
 #include "nominmax.hpp"
 
 #include <SDL2/SDL_pixels.h>
+#include <SDL2/SDL_surface.h>
 
 namespace aoe {
 
@@ -52,17 +53,19 @@ struct DrsItem final {
 	friend bool operator<(const DrsItem &lhs, const DrsItem &rhs) { return lhs.id < rhs.id; }
 };
 
-struct Slp final {
-	char version[4];
-	int32_t frame_count;
-	char comment[24];
-
+struct SlpFrameInfo final {
 	uint32_t cmd_table_offset;
 	uint32_t outline_table_offset;
 	uint32_t palette_offset;
 	uint32_t properties;
 	int32_t width, height;
 	int32_t hotspot_x, hotspot_y;
+};
+
+class Slp final {
+public:
+	std::string version, comment;
+	std::vector<SlpFrameInfo> frames;
 };
 
 /** Data resource set */

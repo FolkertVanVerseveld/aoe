@@ -147,21 +147,17 @@ void Engine::show_menubar() {
 
 /** Load and validate game assets. */
 void Engine::verify_game_data(const std::string &path) {
-	// TODO move this in worker thread
-	game_dir = path;
-
 	tp.push([this](int id, std::string path) {
 		ZoneScoped;
 		using namespace io;
 
 		try {
 			assets.reset(new Assets(id, *this, path));
+			trigger_async_flags(EngineAsyncTask::new_game_data);
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: game data verification failed: %s\n", __func__, e.what());
 			push_error(std::string("Game data verification failed: ") + e.what());
 		}
-
-		// TODO set game dir here
 	}, path);
 }
 
@@ -434,6 +430,54 @@ bool Engine::is_hosting() {
 	return server.get() != nullptr;
 }
 
+static void surf2gl(const SDL_Surface *surf, GLuint tex)
+{
+	ZoneScoped;
+	glBindTexture(GL_TEXTURE_2D, tex); // set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	GLCHK;
+
+	// TODO cleanup this mess
+	printf("surf format: %s\n", SDL_GetPixelFormatName(surf->format->format));
+
+	GLenum mode = GL_RGBA;
+	SDL_PixelFormat *target = SDL_AllocFormat(SDL_PIXELFORMAT_RGBA32);
+	SDL_Surface *tmp = SDL_ConvertSurface((SDL_Surface*)surf, target, 0);
+	SDL_FreeFormat(target);
+
+	std::vector<uint32_t> data;
+	data.reserve(tmp->w * tmp->h);
+	uint32_t *pixels = (uint32_t*)tmp->pixels;
+
+	for (int y = 0, h = tmp->h, p = tmp->pitch; y < h; ++y)
+		for (int x = 0, w = tmp->w; x < w; ++x)
+			data.emplace_back(pixels[y * p + x]);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tmp->w, tmp->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+	SDL_FreeSurface(tmp);
+
+	GLCHK;
+}
+
+void Engine::set_game_data() {
+	ZoneScoped;
+
+	assert(assets.get());
+	Assets &a = *assets.get();
+	game_dir = a.path;
+
+	auto *surf = a.bkg_main.img.surface.get();
+
+	printf("bkg_main: %dx%d\n", surf->w, surf->h);
+
+	surf2gl(surf, 1); // TODO /1/texture1/
+}
+
 void Engine::idle() {
 	ZoneScoped;
 	idle_async();
@@ -486,6 +530,9 @@ void Engine::idle_async() {
 
 		if (async_tasks & (unsigned)EngineAsyncTask::player_mod)
 			playermod(playermod_async);
+
+		if (async_tasks & (unsigned)EngineAsyncTask::new_game_data)
+			set_game_data();
 	}
 
 	async_tasks = 0;
@@ -971,7 +1018,10 @@ int Engine::mainloop() {
 		// bind textures on corresponding texture units
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture1);
+		//GLint tex;
+		//glGetUniformiv(prog, glGetUniformLocation(prog, "texture1"), &tex);
 		glUseProgram(prog);
+		glUniform1i(glGetUniformLocation(prog, "texture1"), 0);
 
 		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
