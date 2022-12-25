@@ -18,7 +18,7 @@ static constexpr unsigned DEFAULT_TICKS_PER_SECOND = 30;
 
 namespace io {
 
-enum DrsId final {
+enum class DrsId {
 	bkg_main_menu = 50051,
 	bkg_achievements = 50061,
 	bkg_defeat = 50058,

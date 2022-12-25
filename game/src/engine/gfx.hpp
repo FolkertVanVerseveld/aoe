@@ -4,10 +4,13 @@
 #include <string>
 #include <vector>
 
+#define GLCHK aoe::gfx::glchk(__FILE__, __func__, __LINE__)
+
 namespace aoe {
 namespace gfx {
 
-void glchk();
+
+void glchk(const char *file, const char *func, int lno);
 
 class GL final {
 public:

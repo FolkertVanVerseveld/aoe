@@ -6,7 +6,6 @@
 #include "legacy.hpp"
 #include "engine/audio.hpp"
 #include "sdl.hpp"
-#include "string.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_sdl.h>
@@ -49,8 +48,6 @@ namespace aoe {
 
 Engine *eng;
 std::mutex m_eng;
-
-static const char *connection_modes[] = {"host game", "join game"};
 
 ScenarioSettings::ScenarioSettings()
 	: players()
@@ -148,8 +145,6 @@ void Engine::show_menubar() {
 	}
 }
 
-static const std::vector<std::string> music_ids{ "menu", "success", "fail", "game" };
-
 /** Load and validate game assets. */
 void Engine::verify_game_data(const std::string &path) {
 	// TODO move this in worker thread
@@ -168,146 +163,6 @@ void Engine::verify_game_data(const std::string &path) {
 
 		// TODO set game dir here
 	}, path);
-}
-
-void Engine::show_start() {
-	ZoneScoped;
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(vp->WorkPos);
-
-	Frame f;
-
-	if (!f.begin("start", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
-		return;
-
-	ImGui::SetWindowSize(vp->WorkSize);
-
-	f.str("Age of Empires");
-	f.str("Free and open source remake");
-
-	if (f.btn("Multiplayer")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		next_menu_state = MenuState::multiplayer_menu;
-	}
-
-	if (f.btn("Quit")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		throw 0;
-	}
-
-	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
-}
-
-void Engine::show_init() {
-	ZoneScoped;
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(vp->WorkPos);
-
-	Frame f;
-
-	if (!f.begin("init", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse))
-		return;
-
-	ImGui::SetWindowSize(vp->WorkSize);
-
-	f.str("Age of Empires game setup");
-	ImGui::TextWrapped("%s", "In this menu, you can change general settings how the game behaves and where the game assets will be loaded from.");
-	ImGui::TextWrapped("%s", "This game is free software. If you have paid for this free software remake, you have been scammed! If you like Age of Empires, please support Microsoft by buying the original game on Steam");
-
-	if (f.btn("Start"))
-		next_menu_state = MenuState::start;
-
-	if (f.btn("Quit"))
-		throw 0;
-
-	if (f.btn("Set game directory"))
-		fd2.Open();
-
-	fd2.Display();
-
-	if (fd2.HasSelected()) {
-		std::string path(fd2.GetSelected().string());
-		verify_game_data(path);
-		fd2.ClearSelected();
-	}
-
-	f.combo("music id", music_id, music_ids);
-
-	if (f.btn("Open music"))
-		fd.Open();
-
-	fd.Display();
-
-	if (fd.HasSelected()) {
-		std::string path(fd.GetSelected().string());
-		printf("selected \"%s\"\n", path.c_str());
-
-		MusicId id = (MusicId)music_id;
-		sfx.jukebox[id] = path;
-		sfx.play_music(id);
-
-		fd.ClearSelected();
-	}
-
-	f.sl();
-
-	if (f.btn("Play"))
-		sfx.play_music((MusicId)music_id);
-
-	f.sl();
-
-	if (f.btn("Stop"))
-		sfx.stop_music();
-
-	show_music_settings();
-
-	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
-}
-
-void Engine::show_multiplayer_menu() {
-	ZoneScoped;
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(vp->WorkPos);
-
-	Frame f;
-
-	if (!f.begin("multiplayer menu", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
-		return;
-
-	ImGui::SetWindowSize(vp->WorkSize);
-
-	//f.text("username", username);
-
-	if (ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes)))
-		sfx.play_sfx(SfxId::sfx_ui_click);
-
-	if (connection_mode == 1) {
-		ImGui::InputText("host", connection_host, sizeof(connection_host));
-		ImGui::SameLine();
-		if (ImGui::Button("localhost"))
-			strncpy0(connection_host, "127.0.0.1", sizeof(connection_host));
-	}
-
-	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
-
-	if (f.btn("start")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		switch (connection_mode) {
-			case 0:
-				start_server(connection_port);
-				break;
-			case 1:
-				start_client(connection_host, connection_port);
-				break;
-		}
-	}
-
-	ImGui::SameLine();
-
-	if (f.btn("cancel")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		next_menu_state = MenuState::start;
-	}
 }
 
 // TODO repurpose or remove
@@ -370,9 +225,9 @@ void Engine::display_ui() {
 }
 
 void Engine::display() {
-	gfx::glchk();
+	GLCHK;
 	display_ui();
-	gfx::glchk();
+	GLCHK;
 }
 
 void Engine::display_ui_tasks() {
@@ -916,7 +771,7 @@ int Engine::mainloop() {
 
 	GLuint vs;
 
-	gfx::glchk();
+	GLCHK;
 	// https://learnopengl.com/Getting-started/Shaders
 	vs = glCreateShader(GL_VERTEX_SHADER);
 
@@ -1014,14 +869,17 @@ int Engine::mainloop() {
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
 	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
+	GLint aPos = glGetAttribLocation(prog, "aPos");
+	glVertexAttribPointer(aPos, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(aPos);
 	// color attribute
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
+	GLint aColor = glGetAttribLocation(prog, "aColor");
+	glVertexAttribPointer(aColor, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(aColor);
 	// texture coord attribute
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	glEnableVertexAttribArray(2);
+	GLint aTexCoord = glGetAttribLocation(prog, "aTexCoord");
+	glVertexAttribPointer(aTexCoord, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	glEnableVertexAttribArray(aTexCoord);
 
 	GLuint texture1;
 
@@ -1034,7 +892,7 @@ int Engine::mainloop() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	gfx::glchk();
+	GLCHK;
 
 	int width, height, nrChannels;
 	stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
@@ -1050,11 +908,13 @@ int Engine::mainloop() {
 
 	stbi_image_free(data);
 
-	gfx::glchk();
+#if 1
+	GLCHK;
 
 	glUniform1i(glGetUniformLocation(prog, "texture1"), texture1); // TODO GL_INVALID_OPERATION
+#endif
 
-	gfx::glchk();
+	GLCHK;
 
 	ImageCapture ic(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 
@@ -1109,7 +969,7 @@ int Engine::mainloop() {
 		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		idle();
 
-		gfx::glchk();
+		GLCHK;
 
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -1117,13 +977,12 @@ int Engine::mainloop() {
 		// bind textures on corresponding texture units
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture1);
-
 		glUseProgram(prog);
 
 		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		gfx::glchk();
+		GLCHK;
 
 		display();
 

@@ -11,6 +11,7 @@
 
 #include "nominmax.hpp"
 #include "ui.hpp"
+#include "string.hpp"
 
 #include <algorithm>
 
@@ -724,6 +725,150 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 
 		if (changed)
 			client->send_scn_vars(scn);
+	}
+}
+
+void Engine::show_start() {
+	ZoneScoped;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos);
+
+	Frame f;
+
+	if (!f.begin("start", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
+		return;
+
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	f.str("Age of Empires");
+	f.str("Free and open source remake");
+
+	if (f.btn("Multiplayer")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		next_menu_state = MenuState::multiplayer_menu;
+	}
+
+	if (f.btn("Quit")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		throw 0;
+	}
+
+	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
+}
+
+static const std::vector<std::string> music_ids{ "menu", "success", "fail", "game" };
+
+void Engine::show_init() {
+	ZoneScoped;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos);
+
+	Frame f;
+
+	if (!f.begin("init", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse))
+		return;
+
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	f.str("Age of Empires game setup");
+	ImGui::TextWrapped("%s", "In this menu, you can change general settings how the game behaves and where the game assets will be loaded from.");
+	ImGui::TextWrapped("%s", "This game is free software. If you have paid for this free software remake, you have been scammed! If you like Age of Empires, please support Microsoft by buying the original game on Steam");
+
+	if (f.btn("Start"))
+		next_menu_state = MenuState::start;
+
+	if (f.btn("Quit"))
+		throw 0;
+
+	if (f.btn("Set game directory"))
+		fd2.Open();
+
+	fd2.Display();
+
+	if (fd2.HasSelected()) {
+		std::string path(fd2.GetSelected().string());
+		verify_game_data(path);
+		fd2.ClearSelected();
+	}
+
+	f.combo("music id", music_id, music_ids);
+
+	if (f.btn("Open music"))
+		fd.Open();
+
+	fd.Display();
+
+	if (fd.HasSelected()) {
+		std::string path(fd.GetSelected().string());
+		printf("selected \"%s\"\n", path.c_str());
+
+		MusicId id = (MusicId)music_id;
+		sfx.jukebox[id] = path;
+		sfx.play_music(id);
+
+		fd.ClearSelected();
+	}
+
+	f.sl();
+
+	if (f.btn("Play"))
+		sfx.play_music((MusicId)music_id);
+
+	f.sl();
+
+	if (f.btn("Stop"))
+		sfx.stop_music();
+
+	show_music_settings();
+
+	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
+}
+
+static const char *connection_modes[] = { "host game", "join game" };
+
+void Engine::show_multiplayer_menu() {
+	ZoneScoped;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos);
+
+	Frame f;
+
+	if (!f.begin("multiplayer menu", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
+		return;
+
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	//f.text("username", username);
+
+	if (ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes)))
+		sfx.play_sfx(SfxId::sfx_ui_click);
+
+	if (connection_mode == 1) {
+		ImGui::InputText("host", connection_host, sizeof(connection_host));
+		ImGui::SameLine();
+		if (ImGui::Button("localhost"))
+			strncpy0(connection_host, "127.0.0.1", sizeof(connection_host));
+	}
+
+	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
+
+	if (f.btn("start")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		switch (connection_mode) {
+			case 0:
+				start_server(connection_port);
+				break;
+			case 1:
+				start_client(connection_host, connection_port);
+				break;
+		}
+	}
+
+	ImGui::SameLine();
+
+	if (f.btn("cancel")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		next_menu_state = MenuState::start;
 	}
 }
 

@@ -5,16 +5,24 @@
 namespace aoe {
 namespace gfx {
 
-void glchk() {
+void glchk(const char *file, const char *func, int lno) {
 	GLenum err;
+
+	const char *msg = "???";
 
 	switch ((err = glGetError())) {
 	case GL_NO_ERROR:
-		break;
+		return;
+	case GL_INVALID_ENUM: msg = "invalid enum"; break;
+	case GL_INVALID_VALUE: msg = "invalid value"; break;
+	case GL_INVALID_OPERATION: msg = "invalid operation"; break;
+	case GL_OUT_OF_MEMORY: msg = "out of memory"; break;
 	default:
-		fprintf(stderr, "%s: unknown error 0x%X\n", __func__, err);
-		break;
+		fprintf(stderr, "%s:%d: %s: unknown OpenGL error 0x%0X\n", file, lno, func, err);
+		return;
 	}
+
+	fprintf(stderr, "%s:%d: %s: %s\n", file, lno, func, msg);
 }
 
 GL::GL() {
@@ -26,7 +34,7 @@ GL::GL() {
 
 GLbuffer::GLbuffer() : id(0) {
 	glGenBuffers(1, &id);
-	glchk();
+	GLCHK;
 }
 
 GLbuffer::~GLbuffer() {
@@ -35,7 +43,7 @@ GLbuffer::~GLbuffer() {
 
 GLbufferview::GLbufferview(GLbuffer &b) : b(b) {
 	glBindBuffer(GL_ARRAY_BUFFER, b.id);
-	glchk();
+	GLCHK;
 }
 
 GLbufferview::~GLbufferview() {
