@@ -385,7 +385,7 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 
 		int line_size = frame.w - e.left_space - e.right_space;
 
-		// fill row with garbage so any funny bytes will visible immediately
+		// fill row with garbage so any funny bytes will be visible immediately
 		for (int x = e.left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
 			pixels[y * p + x] = rand();
 

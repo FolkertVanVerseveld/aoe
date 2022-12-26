@@ -10,7 +10,16 @@ using namespace io;
 
 Background::Background() : drs(), pal(nullptr, SDL_FreePalette), img() {}
 
-Assets::Assets(int id, Engine &eng, const std::string &path) : path(path), bkg_main()
+void Background::load(DRS &drs, DrsId id) {
+	this->drs = DrsBkg(drs.open_bkg(id));
+	pal = drs.open_pal((DrsId)this->drs.pal_id);
+	auto slp = drs.open_slp((DrsId)this->drs.bkg_id[2]);
+	img.load(pal.get(), slp, 0, 0);
+}
+
+Assets::Assets(int id, Engine &eng, const std::string &path)
+	: path(path)
+	, bkg_main(), bkg_multiplayer()
 {
 	// TODO use engine view to prevent crash when closed while ctor is still running
 	UI_TaskInfo info(eng.ui_async("Verifying game data", "Locating interface data", id, 4));
@@ -19,10 +28,8 @@ Assets::Assets(int id, Engine &eng, const std::string &path) : path(path), bkg_m
 
 	info.next("Loading interface data");
 
-	bkg_main.drs = DrsBkg(drs_ui.open_bkg(DrsId::bkg_main_menu));
-	bkg_main.pal = drs_ui.open_pal((DrsId)bkg_main.drs.pal_id);
-	auto slp = drs_ui.open_slp((DrsId)bkg_main.drs.bkg_id[2]);
-	bkg_main.img.load(bkg_main.pal.get(), slp, 0, 0);
+	bkg_main.load(drs_ui, DrsId::bkg_main_menu);
+	bkg_multiplayer.load(drs_ui, DrsId::bkg_multiplayer);
 
 	drs_ui.open_bkg(DrsId::bkg_achievements);
 	drs_ui.open_bkg(DrsId::bkg_defeat);

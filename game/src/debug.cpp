@@ -228,7 +228,7 @@ ImageCapture::ImageCapture(GLsizei w, GLsizei h) : m_fiFence{0}, m_fiIdx(0), m_f
 		glBufferData(GL_PIXEL_PACK_BUFFER, w * h * 4, nullptr, GL_STREAM_READ);
 	}
 
-	gfx::glchk();
+	GLCHK;
 }
 
 void ImageCapture::step(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1) {

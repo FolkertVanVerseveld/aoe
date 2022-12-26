@@ -724,14 +724,14 @@ ID        type description
 50013   object ?? background ??
 50051   object background main menu
 50052   object background single player
-50053   object ?? background ??
-50054   object ?? background ??
+50053   object background multiplayer
+50054   object background editor
 50055   object ?? background ??
 50056   object ?? background ??
-50057   object ?? background ??
+50057   object background victory
 50058   object background defeat
 50059   object background credits screen
-50060   object ?? background ??
+50060   object background mission briefing
 50061   object background achievements
 50401   object ??
 50402   object ??

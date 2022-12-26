@@ -41,9 +41,6 @@
 
 #include "debug.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 namespace aoe {
 
 Engine *eng;
@@ -944,6 +941,7 @@ int Engine::mainloop() {
 
 	GLCHK;
 
+#if 0
 	int width, height, nrChannels;
 	stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
 	unsigned char *data = stbi_load("C:/Users/NZXTO/Downloads/container.jpg", &width, &height, &nrChannels, 0);
@@ -959,6 +957,7 @@ int Engine::mainloop() {
 	stbi_image_free(data);
 
 	GLCHK;
+#endif
 
 	ImageCapture ic(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 

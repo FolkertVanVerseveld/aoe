@@ -20,9 +20,14 @@ static constexpr unsigned DEFAULT_TICKS_PER_SECOND = 30;
 namespace io {
 
 enum class DrsId {
-	bkg_main_menu = 50051,
-	bkg_achievements = 50061,
+	bkg_main_menu = 50051, // 50051
+	bkg_singleplayer = 50052,
+	bkg_multiplayer = 50053,
+	bkg_editor = 50054,
+	bkg_victory = 50057,
 	bkg_defeat = 50058,
+	bkg_mission = 50060,
+	bkg_achievements = 50061,
 
 	sfx_ui_click = 5035,
 	sfx_priest_convert2 = 5051,
