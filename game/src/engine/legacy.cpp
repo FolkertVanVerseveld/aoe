@@ -10,6 +10,8 @@
 #include "gfx.hpp"
 #include "../string.hpp"
 
+#include "../nominmax.hpp"
+
 namespace aoe {
 
 namespace io {
@@ -26,6 +28,15 @@ struct DrsHdr final {
 	char version[16];
 	uint32_t nlist;
 	uint32_t listend;
+};
+
+struct SlpFrameInfo final {
+	uint32_t cmd_table_offset;
+	uint32_t outline_table_offset;
+	uint32_t palette_offset;
+	uint32_t properties;
+	int32_t width, height;
+	int32_t hotspot_x, hotspot_y;
 };
 
 DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
@@ -108,6 +119,8 @@ Slp DRS::open_slp(DrsId k) {
 
 	// fetch data
 	in.seekg(item.offset);
+	std::streampos start = in.tellg();
+
 	in.read((char*)&hdr, sizeof(hdr));
 
 	// parse header
@@ -116,10 +129,65 @@ Slp DRS::open_slp(DrsId k) {
 
 	int32_t frames = hdr.frame_count;
 
+	std::vector<SlpFrameInfo> fi;
+
 	// parse frames (if available)
 	if (frames > 0) {
-		slp.frames.resize(frames);
-		in.read((char*)slp.frames.data(), frames * sizeof(SlpFrameInfo));
+		fi.resize(frames);
+		in.read((char*)fi.data(), frames * sizeof(SlpFrameInfo));
+	}
+
+	// these containers help with estimating how big a frame really is
+	std::vector<uint32_t> edge_offset, cmd_offset;
+
+	for (auto &f : fi) {
+		edge_offset.emplace_back(f.outline_table_offset);
+		cmd_offset.emplace_back(f.cmd_table_offset);
+	}
+
+	edge_offset.emplace_back(item.size);
+	cmd_offset.emplace_back(item.size);
+
+	std::sort(edge_offset.begin(), edge_offset.end());
+	std::sort(cmd_offset.begin(), cmd_offset.end());
+
+	for (SlpFrameInfo &f : fi) {
+		SlpFrame &sf = slp.frames.emplace_back();
+		sf.w = f.width;
+		sf.h = f.height;
+		sf.hotspot_x = f.hotspot_x;
+		sf.hotspot_y = f.hotspot_y;
+
+		// read frame data
+		// read frame row edge
+		in.seekg(start);
+		in.seekg(f.outline_table_offset, std::ios_base::cur);
+
+		sf.frameEdges.resize(f.height);
+		in.read((char*)sf.frameEdges.data(), f.height * sizeof(SlpFrameRowEdge));
+
+		// read cmd
+		// since the size is not specified, we will have to guess
+		// assume that the next outline_table_offset or cmd_table_offset ends it
+		// as it's not possible to have overlapping frame info
+		uint32_t end = item.size;
+
+		auto it_edge_next = std::lower_bound(edge_offset.begin(), edge_offset.end(), f.outline_table_offset + 1);
+		if (it_edge_next != edge_offset.end())
+			end = std::min(end, *it_edge_next);
+
+		auto it_cmd_next = std::lower_bound(cmd_offset.begin(), cmd_offset.end(), f.cmd_table_offset + 1);
+		if (it_cmd_next != cmd_offset.end())
+			end = std::min(end, *it_cmd_next);
+
+		uint32_t size = end + 1;
+
+		in.seekg(start);
+		in.seekg(f.cmd_table_offset, std::ios_base::cur);
+		in.seekg(4 * f.height, std::ios_base::cur);
+
+		sf.cmd.resize(size);
+		in.read((char*)sf.cmd.data(), size);
 	}
 
 	return slp;
@@ -266,17 +334,35 @@ namespace gfx {
 
 using namespace aoe::io;
 
+#if 0
+static unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
+{
+	const unsigned char *ptr = *cmd;
+	unsigned v = *ptr >> n;
+	if (!v)
+		v = *(++ptr);
+	*cmd = ptr;
+	return v;
+}
+#else
+static unsigned cmd_or_next(const std::vector<uint8_t> &data, uint32_t &cmdpos, unsigned n)
+{
+	unsigned v = data.at(cmdpos) >> n;
+	return v ? v : data.at(++cmdpos);
+}
+#endif
+
 bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigned player) {
-	const SlpFrameInfo &info = slp.frames.at(index);
+	const SlpFrame &frame = slp.frames.at(index);
 
-	hotspot_x = info.hotspot_x;
-	hotspot_y = info.hotspot_y;
+	hotspot_x = frame.hotspot_x;
+	hotspot_y = frame.hotspot_y;
 
-	surface.reset(SDL_CreateRGBSurface(0, info.width, info.height, 8, 0, 0, 0, 0));
+	surface.reset(SDL_CreateRGBSurface(0, frame.w, frame.h, 8, 0, 0, 0, 0));
 	if (!surface.get())
 		throw std::runtime_error(std::string("Could not create Slp surface: ") + SDL_GetError());
 
-	// TODO load pixel data
+	// load pixel data
 	unsigned char *pixels = (unsigned char*)surface->pixels;
 
 	if (SDL_SetSurfacePalette(surface.get(), (SDL_Palette*)pal))
@@ -285,10 +371,59 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 	if (surface->format->format != SDL_PIXELFORMAT_INDEX8)
 		throw std::runtime_error(std::string("Unexpected image format: ") + SDL_GetPixelFormatName(surface->format->format));
 
-	// just fill with random data for now
-	for (int y = 0, h = info.height, p = surface->pitch; y < h; ++y)
-		for (int x = 0, w = info.width; x < w; ++x)
+	uint32_t cmdpos = 0;
+	const std::vector<uint8_t> &cmd = frame.cmd;
+	unsigned maxerr = 5;
+	bool bail_out = false;
+
+	for (int y = 0, h = frame.h; y < h; ++y) {
+		const SlpFrameRowEdge &e = frame.frameEdges.at(y);
+
+		// check if row is non-zero
+		if (e.left_space == invalid_edge || e.right_space == invalid_edge)
+			continue;
+
+		int line_size = frame.w - e.left_space - e.right_space;
+
+		// fill row with garbage so any funny bytes will visible immediately
+		for (int x = e.left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
 			pixels[y * p + x] = rand();
+
+		for (int i = e.left_space, x = i, w = x + line_size, p = surface->pitch; i <= w; ++i, ++cmdpos) {
+			unsigned command, count;
+
+			command = cmd.at(cmdpos) & 0x0f;
+
+			switch (command) {
+			case 0x0f:
+				i = w;
+				break;
+			case 0x07:
+				count = cmd_or_next(cmd, cmdpos, 4);
+
+				for (++cmdpos; count; --count)
+					pixels[y * p + x++] = cmd.at(cmdpos);
+
+				break;
+			default:
+				if (maxerr) {
+					fprintf(stderr, "%s: unknown cmd at %X: %X\n", __func__, cmdpos, command);
+					--maxerr;
+				} else if (!bail_out) {
+					bail_out = true;
+					fprintf(stderr, "%s: too many errors\n", __func__);
+				}
+
+#if 1
+				while (cmd.at(cmdpos) != 0x0f)
+					++cmdpos;
+
+				i = w;
+#endif
+				break;
+			}
+		}
+	}
 
 	if (SDL_SetColorKey(surface.get(), SDL_TRUE, 0))
 		fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());

@@ -21,7 +21,7 @@ Assets::Assets(int id, Engine &eng, const std::string &path) : path(path), bkg_m
 
 	bkg_main.drs = DrsBkg(drs_ui.open_bkg(DrsId::bkg_main_menu));
 	bkg_main.pal = drs_ui.open_pal((DrsId)bkg_main.drs.pal_id);
-	auto slp = drs_ui.open_slp((DrsId)bkg_main.drs.bkg_id[0]);
+	auto slp = drs_ui.open_slp((DrsId)bkg_main.drs.bkg_id[2]);
 	bkg_main.img.load(bkg_main.pal.get(), slp, 0, 0);
 
 	drs_ui.open_bkg(DrsId::bkg_achievements);

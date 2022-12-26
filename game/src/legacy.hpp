@@ -53,19 +53,25 @@ struct DrsItem final {
 	friend bool operator<(const DrsItem &lhs, const DrsItem &rhs) { return lhs.id < rhs.id; }
 };
 
-struct SlpFrameInfo final {
-	uint32_t cmd_table_offset;
-	uint32_t outline_table_offset;
-	uint32_t palette_offset;
-	uint32_t properties;
-	int32_t width, height;
-	int32_t hotspot_x, hotspot_y;
+constexpr int16_t invalid_edge = INT16_MIN;
+
+/** Game specific image file format subimage boundaries. */
+struct SlpFrameRowEdge final {
+	int16_t left_space;
+	int16_t right_space;
+};
+
+struct SlpFrame final {
+	int w, h;
+	int hotspot_x, hotspot_y;
+	std::vector<SlpFrameRowEdge> frameEdges;
+	std::vector<uint8_t> cmd;
 };
 
 class Slp final {
 public:
 	std::string version, comment;
-	std::vector<SlpFrameInfo> frames;
+	std::vector<SlpFrame> frames;
 };
 
 /** Data resource set */

@@ -774,8 +774,14 @@ void Engine::show_init() {
 	ImGui::TextWrapped("%s", "In this menu, you can change general settings how the game behaves and where the game assets will be loaded from.");
 	ImGui::TextWrapped("%s", "This game is free software. If you have paid for this free software remake, you have been scammed! If you like Age of Empires, please support Microsoft by buying the original game on Steam");
 
-	if (f.btn("Start"))
-		next_menu_state = MenuState::start;
+	if (assets_good) {
+		if (f.btn("Start"))
+			next_menu_state = MenuState::start;
+	} else {
+		f.xbtn("Start");
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::Tooltip("Game directory must be set before the game can be run.");
+	}
 
 	if (f.btn("Quit"))
 		throw 0;

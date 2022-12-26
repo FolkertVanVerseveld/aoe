@@ -68,7 +68,7 @@ Engine::Engine()
 	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0)
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
 	, debug()
-	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), assets()
+	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), assets(), assets_good(false)
 	, show_achievements(false), show_timeline(false), show_diplomacy(false)
 {
 	ZoneScoped;
@@ -147,6 +147,8 @@ void Engine::show_menubar() {
 
 /** Load and validate game assets. */
 void Engine::verify_game_data(const std::string &path) {
+	assets_good = false;
+
 	tp.push([this](int id, std::string path) {
 		ZoneScoped;
 		using namespace io;
@@ -454,7 +456,7 @@ static void surf2gl(const SDL_Surface *surf, GLuint tex)
 	data.reserve(tmp->w * tmp->h);
 	uint32_t *pixels = (uint32_t*)tmp->pixels;
 
-	for (int y = 0, h = tmp->h, p = tmp->pitch; y < h; ++y)
+	for (int y = 0, h = tmp->h, p = surf->pitch; y < h; ++y)
 		for (int x = 0, w = tmp->w; x < w; ++x)
 			data.emplace_back(pixels[y * p + x]);
 
@@ -476,6 +478,7 @@ void Engine::set_game_data() {
 	printf("bkg_main: %dx%d\n", surf->w, surf->h);
 
 	surf2gl(surf, 1); // TODO /1/texture1/
+	assets_good = true;
 }
 
 void Engine::idle() {
@@ -778,8 +781,8 @@ int Engine::mainloop() {
 
 	// Setup Dear ImGui style
 	//ImGui::StyleColorsDark();
-	//ImGui::StyleColorsClassic();
-	ImGui::StyleColorsLight();
+	ImGui::StyleColorsClassic();
+	//ImGui::StyleColorsLight();
 
 	// Setup Platform/Renderer backends
 	ImGui_ImplSDL2_InitForOpenGL(sdl.window, sdl.gl_context);
@@ -891,10 +894,10 @@ int Engine::mainloop() {
 
 	const float vertices[] = {
 		// positions          // colors           // texture coords
-		 1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
-		 1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
-		-1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
-		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left
+		 1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f, // top right
+		 1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f, // bottom right
+		-1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, // bottom left
+		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
 	};
 	unsigned int indices[] = {
 		0, 1, 3, // first triangle

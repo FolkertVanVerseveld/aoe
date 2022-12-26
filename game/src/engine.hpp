@@ -128,6 +128,7 @@ private:
 	bool is_fullscreen;
 
 	std::unique_ptr<Assets> assets;
+	bool assets_good;
 	// TODO move this to a game class or smth
 	bool show_achievements;
 	bool show_timeline;
