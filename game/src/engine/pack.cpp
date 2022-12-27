@@ -3,23 +3,33 @@
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb_rect_pack.h"
 
+#include <tracy/Tracy.hpp>
+
 namespace aoe {
 namespace gfx {
 
-TextureBuilder::TextureBuilder() : textures() {}
+ImageRef::ImageRef(IdPoolRef ref, int x, int y, SDL_Surface *surf) : ref(ref), x(x), y(y), surf(surf) {}
 
-IdPoolRef TextureBuilder::add_img(unsigned w, unsigned h) {
+ImagePacker::ImagePacker() : images() {}
+
+IdPoolRef ImagePacker::add_img(SDL_Surface *surf) {
+	ZoneScoped;
+
+	assert(surf->w >= 0 && surf->h >= 0);
+	unsigned w = surf->w, h = surf->h;
+
 	if (w > UINT16_MAX || h > UINT16_MAX)
 		throw std::runtime_error("image too big");
 
-	auto ins = textures.emplace(SDL_Rect{ 0, 0, (int)w, (int)h });
+	auto ins = images.emplace(0, 0, surf);
 	if (!ins.second)
 		throw std::runtime_error("cannot add image");
 
 	return ins.first->first;
 }
 
-std::vector<TextureRef> TextureBuilder::collect(unsigned &w, unsigned &h) {
+std::vector<ImageRef> ImagePacker::collect(unsigned &w, unsigned &h) {
+	ZoneScoped;
 	unsigned max_size = std::min(STBRP__MAXVAL, INT_MAX);
 
 	if (w > max_size || h > max_size)
@@ -32,9 +42,9 @@ std::vector<TextureRef> TextureBuilder::collect(unsigned &w, unsigned &h) {
 	
 	rects.reserve(w);
 
-	for (auto kv : textures) {
-		TextureRef &ref = kv.second;
-		stbrp_rect rect{ id_to_ref.size(), ref.bnds.w, ref.bnds.h, 0, 0, 0 };
+	for (auto kv : images) {
+		ImageRef &ref = kv.second;
+		stbrp_rect rect{ id_to_ref.size(), ref.surf->w, ref.surf->h, 0, 0, 0 };
 		rects.push_back(rect);
 		id_to_ref.emplace_back(kv.first);
 	}
@@ -48,19 +58,21 @@ std::vector<TextureRef> TextureBuilder::collect(unsigned &w, unsigned &h) {
 	if (!stbrp_pack_rects(&ctx, rects.data(), rects.size()))
 		throw std::runtime_error("cannot fit images in texture");
 
-	std::vector<TextureRef> texs;
+	std::vector<ImageRef> imgs;
 
 	w = h = 0;
 
 	// traverse result to restore refs
 	for (size_t i = 0; i < rects.size(); ++i) {
 		stbrp_rect &r = rects[i];
-		texs.emplace_back(id_to_ref[i], SDL_Rect{ r.x, r.y, r.w, r.h });
-		w = std::max<unsigned>(w, r.w);
-		h = std::max<unsigned>(h, r.h);
+		imgs.emplace_back(id_to_ref[i], r.x, r.y);
+
+		// adjust w and h to ensure all images are inclosed in a minimal rectangle
+		w = std::max<unsigned>(w, r.x + r.w);
+		h = std::max<unsigned>(h, r.y + r.h);
 	}
 
-	return texs;
+	return imgs;
 }
 
 }

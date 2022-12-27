@@ -25,7 +25,7 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 	, bkg_tex(nullptr, SDL_FreeSurface)
 {
 	// TODO use engine view to prevent crash when closed while ctor is still running
-	UI_TaskInfo info(eng.ui_async("Verifying game data", "Locating interface data", id, 4));
+	UI_TaskInfo info(eng.ui_async("Verifying game data", "Locating interface data", id, 5));
 
 	DRS drs_ui(path + "/data/Interfac.drs");
 
@@ -36,6 +36,34 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 
 	drs_ui.open_bkg(DrsId::bkg_achievements);
 	drs_ui.open_bkg(DrsId::bkg_defeat);
+
+#if 1
+	info.next("Pack interface graphics");
+
+	gfx::ImagePacker p;
+	std::map<DrsId, IdPoolRef> drs_ids;
+
+	// register images for packer
+	drs_ids[DrsId::bkg_main_menu] = p.add_img(bkg_main.img.surface.get());
+	drs_ids[DrsId::bkg_multiplayer] = p.add_img(bkg_multiplayer.img.surface.get());
+
+	// pack images
+	GLint size = eng.gl().max_texture_size;
+	unsigned w = size, h = size;
+	std::vector<gfx::ImageRef> refs = p.collect(w, h);
+
+	// create big texture
+	bkg_tex.reset(SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32));
+	if (!bkg_tex)
+		throw std::runtime_error("Could not create background texture");
+
+	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> tmp(nullptr, SDL_FreeSurface);
+
+	tmp.reset(SDL_ConvertSurfaceFormat((SDL_Surface*)bkg_main.img.surface.get(), SDL_PIXELFORMAT_RGBA32, 0));
+
+	for (auto r : refs) {
+	}
+#endif
 
 	info.next("Load chat audio");
 

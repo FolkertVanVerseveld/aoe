@@ -27,23 +27,28 @@ public:
 	bool load(const SDL_Palette *pal, const io::Slp &slp, unsigned index, unsigned player=0);
 };
 
-class TextureRef final {
+class ImageRef final {
 public:
 	IdPoolRef ref;
-	SDL_Rect bnds;
+	int x, y;
+	SDL_Surface *surf;
 
-	TextureRef(IdPoolRef ref, const SDL_Rect &bnds) : ref(ref), bnds(bnds) {}
+	ImageRef(IdPoolRef ref, int x, int y, SDL_Surface *surf=NULL);
+
+	friend bool operator<(const ImageRef &lhs, const ImageRef &rhs) noexcept {
+		return lhs.ref < rhs.ref;
+	}
 };
 
 /** Helper to pack images onto a single big texture image. */
-class TextureBuilder final {
-	IdPool<TextureRef> textures;
+class ImagePacker final {
+	IdPool<ImageRef> images;
 public:
-	TextureBuilder();
+	ImagePacker();
 
-	IdPoolRef add_img(unsigned w, unsigned h);
+	IdPoolRef add_img(SDL_Surface *surf);
 
-	std::vector<TextureRef> collect(unsigned &w, unsigned &h);
+	std::vector<ImageRef> collect(unsigned &w, unsigned &h);
 };
 
 class GL final {
