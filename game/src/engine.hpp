@@ -126,6 +126,7 @@ private:
 
 	SDL *sdl;
 	bool is_fullscreen;
+	std::unique_ptr<gfx::GL> m_gl;
 
 	std::unique_ptr<Assets> assets;
 	bool assets_good;
@@ -142,6 +143,8 @@ public:
 	~Engine();
 
 	int mainloop();
+
+	gfx::GL &gl();
 private:
 	static constexpr float frame_height = 0.9f, player_height = 0.55f, frame_margin = 0.075f;
 

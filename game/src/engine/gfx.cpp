@@ -25,11 +25,19 @@ void glchk(const char *file, const char *func, int lno) {
 	fprintf(stderr, "%s:%d: %s: %s\n", file, lno, func, msg);
 }
 
-GL::GL() {
+GL::GL() : max_texture_size(0) {
 	int ret;
 
 	if ((ret = gl3wInit()) != GL3W_OK)
 		throw std::runtime_error(std::string("could not initialize gl3w: code ") + std::to_string(ret));
+
+	max_texture_size = getInt(GL_MAX_TEXTURE_SIZE);
+}
+
+GLint GL::getInt(GLenum param) {
+	GLint v;
+	glGetIntegerv(param, &v);
+	return v;
 }
 
 GLbuffer::GLbuffer() : id(0) {

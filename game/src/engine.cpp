@@ -65,7 +65,7 @@ Engine::Engine()
 	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0)
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
 	, debug()
-	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), assets(), assets_good(false)
+	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), m_gl(nullptr), assets(), assets_good(false)
 	, show_achievements(false), show_timeline(false), show_diplomacy(false)
 {
 	ZoneScoped;
@@ -85,6 +85,11 @@ Engine::~Engine() {
 
 	running = false;
 	stop_server_now();
+}
+
+gfx::GL &Engine::gl() {
+	assert(m_gl.get());
+	return *m_gl.get();
 }
 
 using namespace aoe::ui;
@@ -445,9 +450,8 @@ static void surf2gl(const SDL_Surface *surf, GLuint tex)
 	printf("surf format: %s\n", SDL_GetPixelFormatName(surf->format->format));
 
 	GLenum mode = GL_RGBA;
-	SDL_PixelFormat *target = SDL_AllocFormat(SDL_PIXELFORMAT_RGBA32);
-	SDL_Surface *tmp = SDL_ConvertSurface((SDL_Surface*)surf, target, 0);
-	SDL_FreeFormat(target);
+
+	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> tmp(SDL_ConvertSurfaceFormat((SDL_Surface*)surf, SDL_PIXELFORMAT_RGBA32, 0), SDL_FreeSurface);
 
 	std::vector<uint32_t> data;
 	data.reserve(tmp->w * tmp->h);
@@ -458,7 +462,6 @@ static void surf2gl(const SDL_Surface *surf, GLuint tex)
 			data.emplace_back(pixels[y * p + x]);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tmp->w, tmp->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
-	SDL_FreeSurface(tmp);
 
 	GLCHK;
 }
@@ -623,14 +626,6 @@ bool Engine::ui_async_stop(IdPoolRef ref) {
 	return ui_tasks.try_invalidate(ref);
 }
 
-UI_TaskInfo::~UI_TaskInfo() {
-	ZoneScoped;
-	// just tell engine task has completed, we don't care if it succeeds
-	std::lock_guard<std::mutex> lock(m_eng);
-	if (eng)
-		(void)eng->ui_async_stop(*this);
-}
-
 /* Throw if task is interruptable. */
 static void tsk_check_throw(const UI_TaskInfo &info) {
 	if ((unsigned)info.get_flags() & (unsigned)TaskFlags::cancellable)
@@ -677,35 +672,6 @@ void Engine::ui_async_next(UI_TaskInfo &info, const std::string &s) {
 	} else {
 		tsk_check_throw(info);
 	}
-}
-
-void UI_TaskInfo::set_total(unsigned total) {
-	ZoneScoped;
-	std::lock_guard<std::mutex> lock(m_eng);
-	if (eng)
-		eng->ui_async_set_total(*this, total);
-}
-
-void UI_TaskInfo::set_desc(const std::string &s) {
-	ZoneScoped;
-	std::lock_guard<std::mutex> lock(m_eng);
-	if (eng)
-		eng->ui_async_set_desc(*this, s);
-}
-
-void UI_TaskInfo::next() {
-	ZoneScoped;
-	std::lock_guard<std::mutex> lock(m_eng);
-	if (eng)
-		eng->ui_async_next(*this);
-}
-
-void UI_TaskInfo::next(const std::string &s) {
-	ZoneScoped;
-	std::lock_guard<std::mutex> lock(m_eng);
-	if (eng)
-		eng->ui_async_next(*this, s);
-	std::this_thread::yield();
 }
 
 void Engine::tick() {
@@ -809,12 +775,9 @@ int Engine::mainloop() {
 		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
 	}
 
-	int ret = 0;
+	m_gl.reset(new gfx::GL());
 
-	if ((ret = gl3wInit()) != GL3W_OK) {
-		fprintf(stderr, "%s: gl3wInit failed: code=%X\n", __func__, ret);
-		return -1;
-	}
+	printf("max texture size: %dx%d\n", m_gl->max_texture_size, m_gl->max_texture_size);
 
 	GLuint vs;
 
@@ -941,24 +904,6 @@ int Engine::mainloop() {
 
 	GLCHK;
 
-#if 0
-	int width, height, nrChannels;
-	stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-	unsigned char *data = stbi_load("C:/Users/NZXTO/Downloads/container.jpg", &width, &height, &nrChannels, 0);
-
-	if (!data)
-		throw std::runtime_error("cannot load image");
-
-	printf("img %dx%d %d channels\n", width, height, nrChannels);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	stbi_image_free(data);
-
-	GLCHK;
-#endif
-
 	ImageCapture ic(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 
 	// autoload game data if available
@@ -1009,7 +954,6 @@ int Engine::mainloop() {
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
 
-		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		idle();
 
 		GLCHK;

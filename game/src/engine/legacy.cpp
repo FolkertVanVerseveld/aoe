@@ -153,6 +153,10 @@ Slp DRS::open_slp(DrsId k) {
 
 	for (SlpFrameInfo &f : fi) {
 		SlpFrame &sf = slp.frames.emplace_back();
+
+		if (f.width < 0 || f.height < 0)
+			throw std::runtime_error("negative image dimensions");
+
 		sf.w = f.width;
 		sf.h = f.height;
 		sf.hotspot_x = f.hotspot_x;
@@ -170,7 +174,7 @@ Slp DRS::open_slp(DrsId k) {
 		// since the size is not specified, we will have to guess
 		// assume that the next outline_table_offset or cmd_table_offset ends it
 		// as it's not possible to have overlapping frame info
-		uint32_t end = item.size;
+		uint32_t end = std::min(2u * f.width * f.height, item.size);
 
 		auto it_edge_next = std::lower_bound(edge_offset.begin(), edge_offset.end(), f.outline_table_offset + 1);
 		if (it_edge_next != edge_offset.end())

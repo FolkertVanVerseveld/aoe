@@ -4,6 +4,8 @@
 #include "../legacy.hpp"
 #include "../engine.hpp"
 
+#include <algorithm>
+
 namespace aoe {
 
 using namespace io;
@@ -20,6 +22,7 @@ void Background::load(DRS &drs, DrsId id) {
 Assets::Assets(int id, Engine &eng, const std::string &path)
 	: path(path)
 	, bkg_main(), bkg_multiplayer()
+	, bkg_tex(nullptr, SDL_FreeSurface)
 {
 	// TODO use engine view to prevent crash when closed while ctor is still running
 	UI_TaskInfo info(eng.ui_async("Verifying game data", "Locating interface data", id, 4));
@@ -46,9 +49,9 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 		eng.sfx.load_taunt((TauntId)i, fname.c_str());
 	}
 
-	DRS drs_sounds(path + "/data/sounds.drs");
-
 	info.next("Load game audio");
+
+	DRS drs_sounds(path + "/data/sounds.drs");
 
 	eng.sfx.load_sfx(SfxId::sfx_ui_click, drs_sounds.open_wav(DrsId::sfx_ui_click));
 	eng.sfx.load_taunt(TauntId::max, drs_sounds.open_wav(DrsId::sfx_priest_convert2));

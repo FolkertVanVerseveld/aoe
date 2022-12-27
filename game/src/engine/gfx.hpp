@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "../idpool.hpp"
 #include "../legacy.hpp"
 
 #define GLCHK aoe::gfx::glchk(__FILE__, __func__, __LINE__)
@@ -26,12 +27,35 @@ public:
 	bool load(const SDL_Palette *pal, const io::Slp &slp, unsigned index, unsigned player=0);
 };
 
-// TODO repurpose or remove everything below this line
+class TextureRef final {
+public:
+	IdPoolRef ref;
+	SDL_Rect bnds;
+
+	TextureRef(IdPoolRef ref, const SDL_Rect &bnds) : ref(ref), bnds(bnds) {}
+};
+
+/** Helper to pack images onto a single big texture image. */
+class TextureBuilder final {
+	IdPool<TextureRef> textures;
+public:
+	TextureBuilder();
+
+	IdPoolRef add_img(unsigned w, unsigned h);
+
+	std::vector<TextureRef> collect(unsigned &w, unsigned &h);
+};
 
 class GL final {
 public:
+	GLint max_texture_size;
+
 	GL();
+
+	static GLint getInt(GLenum);
 };
+
+// TODO repurpose or remove everything below this line
 
 class GLprogram;
 
