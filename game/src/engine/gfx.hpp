@@ -13,11 +13,13 @@ namespace aoe {
 
 namespace gfx {
 
+typedef std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> Surface;
+
 void glchk(const char *file, const char *func, int lno);
 
 class Image final {
 public:
-	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> surface;
+	Surface surface;
 	int hotspot_x, hotspot_y;
 
 	Image() : surface(nullptr, SDL_FreeSurface), hotspot_x(0), hotspot_y(0) {}
@@ -30,14 +32,28 @@ public:
 class ImageRef final {
 public:
 	IdPoolRef ref;
-	int x, y;
-	SDL_Surface *surf;
+	SDL_Rect bnds;
+	GLfloat s0, t0, s1, t1;
+	SDL_Surface *surf; // NOTE is always NULL if retrieved from Tileset
 
-	ImageRef(IdPoolRef ref, int x, int y, SDL_Surface *surf=NULL);
+	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf=NULL);
+	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1);
 
 	friend bool operator<(const ImageRef &lhs, const ImageRef &rhs) noexcept {
 		return lhs.ref < rhs.ref;
 	}
+};
+
+/** Big texture that contains all references images. */
+class Tileset final {
+public:
+	std::set<ImageRef> imgs;
+	/** Raw surface where images are blitted to. Note that after write(GLuint), this will become undefined! */
+	Surface surf;
+
+	Tileset();
+
+	void write(GLuint tex);
 };
 
 /** Helper to pack images onto a single big texture image. */
@@ -48,7 +64,7 @@ public:
 
 	IdPoolRef add_img(SDL_Surface *surf);
 
-	std::vector<ImageRef> collect(unsigned &w, unsigned &h);
+	Tileset collect(int w, int h);
 };
 
 class GL final {

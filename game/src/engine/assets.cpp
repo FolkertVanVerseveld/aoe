@@ -1,6 +1,5 @@
 #include "assets.hpp"
 
-#include "../async.hpp"
 #include "../legacy.hpp"
 #include "../engine.hpp"
 
@@ -8,7 +7,21 @@
 
 namespace aoe {
 
+using namespace gfx;
 using namespace io;
+
+class Background final {
+public:
+	io::DrsBkg drs;
+	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal;
+	gfx::Image img;
+
+	Background();
+
+	void load(io::DRS&, io::DrsId);
+
+	operator SDL_Surface*() { return img.surface.get(); }
+};
 
 Background::Background() : drs(), pal(nullptr, SDL_FreePalette), img() {}
 
@@ -20,9 +33,7 @@ void Background::load(DRS &drs, DrsId id) {
 }
 
 Assets::Assets(int id, Engine &eng, const std::string &path)
-	: path(path)
-	, bkg_main(), bkg_multiplayer()
-	, bkg_tex(nullptr, SDL_FreeSurface)
+	: path(path), drs_ids(), ts_ui()
 {
 	// TODO use engine view to prevent crash when closed while ctor is still running
 	UI_TaskInfo info(eng.ui_async("Verifying game data", "Locating interface data", id, 5));
@@ -31,40 +42,34 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 
 	info.next("Loading interface data");
 
+	Background bkg_main, bkg_multiplayer, bkg_achievements, bkg_defeat;
+
 	bkg_main.load(drs_ui, DrsId::bkg_main_menu);
 	bkg_multiplayer.load(drs_ui, DrsId::bkg_multiplayer);
+	bkg_achievements.load(drs_ui, DrsId::bkg_achievements);
+	bkg_defeat.load(drs_ui, DrsId::bkg_defeat);
 
-	drs_ui.open_bkg(DrsId::bkg_achievements);
-	drs_ui.open_bkg(DrsId::bkg_defeat);
+	//drs_ui.open_bkg(DrsId::bkg_achievements);
+	//drs_ui.open_bkg(DrsId::bkg_defeat);
 
-#if 1
 	info.next("Pack interface graphics");
 
 	gfx::ImagePacker p;
-	std::map<DrsId, IdPoolRef> drs_ids;
 
 	// register images for packer
-	drs_ids[DrsId::bkg_main_menu] = p.add_img(bkg_main.img.surface.get());
-	drs_ids[DrsId::bkg_multiplayer] = p.add_img(bkg_multiplayer.img.surface.get());
+	drs_ids[DrsId::bkg_main_menu] = p.add_img(bkg_main);
+	drs_ids[DrsId::bkg_multiplayer] = p.add_img(bkg_multiplayer);
+	drs_ids[DrsId::bkg_achievements] = p.add_img(bkg_achievements);
+	drs_ids[DrsId::bkg_defeat] = p.add_img(bkg_defeat);
 
 	// pack images
 	GLint size = eng.gl().max_texture_size;
-	unsigned w = size, h = size;
-	std::vector<gfx::ImageRef> refs = p.collect(w, h);
+	ts_ui = p.collect(size, size);
 
-	// create big texture
-	bkg_tex.reset(SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32));
-	if (!bkg_tex)
-		throw std::runtime_error("Could not create background texture");
+	load_audio(eng, info);
+}
 
-	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> tmp(nullptr, SDL_FreeSurface);
-
-	tmp.reset(SDL_ConvertSurfaceFormat((SDL_Surface*)bkg_main.img.surface.get(), SDL_PIXELFORMAT_RGBA32, 0));
-
-	for (auto r : refs) {
-	}
-#endif
-
+void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	info.next("Load chat audio");
 
 	eng.sfx.reset();
@@ -83,6 +88,17 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 
 	eng.sfx.load_sfx(SfxId::sfx_ui_click, drs_sounds.open_wav(DrsId::sfx_ui_click));
 	eng.sfx.load_taunt(TauntId::max, drs_sounds.open_wav(DrsId::sfx_priest_convert2));
+}
+
+const ImageRef &Assets::at(DrsId id) const {
+	ImageRef r(drs_ids.at(id), SDL_Rect{ 0, 0, 0, 0 });
+
+	auto it = ts_ui.imgs.find(r);
+
+	if (it == ts_ui.imgs.end())
+		throw std::runtime_error("bad id");
+
+	return *it;
 }
 
 }

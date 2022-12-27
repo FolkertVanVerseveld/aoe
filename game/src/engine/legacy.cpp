@@ -338,23 +338,11 @@ namespace gfx {
 
 using namespace aoe::io;
 
-#if 0
-static unsigned cmd_or_next(const unsigned char **cmd, unsigned n)
-{
-	const unsigned char *ptr = *cmd;
-	unsigned v = *ptr >> n;
-	if (!v)
-		v = *(++ptr);
-	*cmd = ptr;
-	return v;
-}
-#else
 static unsigned cmd_or_next(const std::vector<uint8_t> &data, uint32_t &cmdpos, unsigned n)
 {
 	unsigned v = data.at(cmdpos) >> n;
 	return v ? v : data.at(++cmdpos);
 }
-#endif
 
 bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigned player) {
 	const SlpFrame &frame = slp.frames.at(index);

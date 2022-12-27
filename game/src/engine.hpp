@@ -135,6 +135,9 @@ private:
 	bool show_timeline;
 	bool show_diplomacy;
 
+	std::vector<GLfloat> bkg_vertices;
+	GLuint vbo;
+
 	friend Debug;
 	friend Config;
 	friend EngineView;
@@ -197,6 +200,9 @@ private:
 
 	void set_scn_vars_now(const ScenarioSettings &scn);
 	void playermod(const NetPlayerControl&);
+
+	void set_background(MenuState);
+	void set_background(io::DrsId);
 public:
 	void push_error(const std::string &msg);
 

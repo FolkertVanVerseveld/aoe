@@ -67,6 +67,13 @@ Engine::Engine()
 	, debug()
 	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), m_gl(nullptr), assets(), assets_good(false)
 	, show_achievements(false), show_timeline(false), show_diplomacy(false)
+	, bkg_vertices{
+		// positions          // colors           // texture coords
+		 1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f, // top right
+		 1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f, // bottom right
+		-1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, // bottom left
+		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
+	}, vbo(0)
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -434,36 +441,42 @@ bool Engine::is_hosting() {
 	return server.get() != nullptr;
 }
 
-static void surf2gl(const SDL_Surface *surf, GLuint tex)
-{
-	ZoneScoped;
-	glBindTexture(GL_TEXTURE_2D, tex); // set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+void Engine::set_background(io::DrsId id) {
+	assert(assets.get());
+	Assets &a = *assets.get();
+
+	const gfx::ImageRef &r = a.at(id);
+	printf("(%.2f,%.2f), (%.2f,%.2f)\n", r.s0, r.t0, r.s1, r.t1);
+
+	bkg_vertices[0 * 8 + 6] = r.s1;
+	bkg_vertices[1 * 8 + 6] = r.s1;
+
+	bkg_vertices[2 * 8 + 6] = r.s0;
+	bkg_vertices[3 * 8 + 6] = r.s0;
+
+	bkg_vertices[0 * 8 + 7] = r.t0;
+	bkg_vertices[3 * 8 + 7] = r.t0;
+
+	bkg_vertices[1 * 8 + 7] = r.t1;
+	bkg_vertices[2 * 8 + 7] = r.t1;
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, bkg_vertices.size() * sizeof(GLfloat), bkg_vertices.data(), GL_STATIC_DRAW);
 
 	GLCHK;
+}
 
-	// TODO cleanup this mess
-	printf("surf format: %s\n", SDL_GetPixelFormatName(surf->format->format));
+void Engine::set_background(MenuState s) {
+	io::DrsId id = io::DrsId::bkg_main_menu;
 
-	GLenum mode = GL_RGBA;
+	switch (s) {
+	case MenuState::multiplayer_host:
+	case MenuState::multiplayer_menu:
+		id = io::DrsId::bkg_multiplayer;
+		break;
+	}
 
-	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> tmp(SDL_ConvertSurfaceFormat((SDL_Surface*)surf, SDL_PIXELFORMAT_RGBA32, 0), SDL_FreeSurface);
-
-	std::vector<uint32_t> data;
-	data.reserve(tmp->w * tmp->h);
-	uint32_t *pixels = (uint32_t*)tmp->pixels;
-
-	for (int y = 0, h = tmp->h, p = surf->pitch; y < h; ++y)
-		for (int x = 0, w = tmp->w; x < w; ++x)
-			data.emplace_back(pixels[y * p + x]);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tmp->w, tmp->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
-
-	GLCHK;
+	set_background(id);
 }
 
 void Engine::set_game_data() {
@@ -473,11 +486,12 @@ void Engine::set_game_data() {
 	Assets &a = *assets.get();
 	game_dir = a.path;
 
-	auto *surf = a.bkg_main.img.surface.get();
+	GLuint tex = 1;
+	a.ts_ui.write(tex);
 
-	printf("bkg_main: %dx%d\n", surf->w, surf->h);
+	GLCHK;
+	set_background(io::DrsId::bkg_main_menu);
 
-	surf2gl(surf, 1); // TODO /1/texture1/
 	assets_good = true;
 }
 
@@ -487,6 +501,7 @@ void Engine::idle() {
 
 	if (menu_state != next_menu_state) {
 		menu_state = next_menu_state;
+		set_background(menu_state);
 
 		switch (menu_state) {
 		case MenuState::start:
@@ -852,19 +867,12 @@ int Engine::mainloop() {
 	glDeleteShader(fs);
 	glDeleteShader(vs);
 
-	const float vertices[] = {
-		// positions          // colors           // texture coords
-		 1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f, // top right
-		 1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f, // bottom right
-		-1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, // bottom left
-		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
-	};
 	unsigned int indices[] = {
 		0, 1, 3, // first triangle
 		1, 2, 3  // second triangle
 	};
 
-	GLuint vao, vbo, ebo;
+	GLuint vao, ebo;
 
 	glGenVertexArrays(1, &vao);
 	glGenBuffers(1, &vbo);
@@ -873,7 +881,7 @@ int Engine::mainloop() {
 	glBindVertexArray(vao);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, bkg_vertices.size() * sizeof(GLfloat), bkg_vertices.data(), GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);

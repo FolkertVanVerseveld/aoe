@@ -1,33 +1,26 @@
 #pragma once
 
 #include <string>
+#include <map>
 
 #include "gfx.hpp"
+#include "../async.hpp"
 
 namespace aoe {
 
 class Engine;
 
-class Background final {
-public:
-	io::DrsBkg drs;
-	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal;
-	gfx::Image img;
-
-	Background();
-
-	void load(io::DRS&, io::DrsId);
-};
-
 class Assets final {
 public:
 	std::string path;
-	Background bkg_main;
-	Background bkg_multiplayer;
-
-	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> bkg_tex;
+	std::map<io::DrsId, IdPoolRef> drs_ids;
+	gfx::Tileset ts_ui;
 
 	Assets(int id, Engine &e, const std::string &path);
+
+	const gfx::ImageRef &at(io::DrsId) const;
+private:
+	void load_audio(Engine&, UI_TaskInfo&);
 };
 
 }
