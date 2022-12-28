@@ -446,7 +446,7 @@ void Engine::set_background(io::DrsId id) {
 	Assets &a = *assets.get();
 
 	const gfx::ImageRef &r = a.at(id);
-	printf("(%.2f,%.2f), (%.2f,%.2f)\n", r.s0, r.t0, r.s1, r.t1);
+	//printf("(%.2f,%.2f), (%.2f,%.2f)\n", r.s0, r.t0, r.s1, r.t1);
 
 	bkg_vertices[0 * 8 + 6] = r.s1;
 	bkg_vertices[1 * 8 + 6] = r.s1;

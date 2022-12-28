@@ -42,15 +42,16 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 
 	info.next("Loading interface data");
 
-	Background bkg_main, bkg_multiplayer, bkg_achievements, bkg_defeat;
+	Background bkg_main, bkg_singleplayer, bkg_multiplayer, bkg_editor, bkg_victory, bkg_defeat, bkg_mission, bkg_achievements;
 
 	bkg_main.load(drs_ui, DrsId::bkg_main_menu);
+	bkg_singleplayer.load(drs_ui, DrsId::bkg_singleplayer);
 	bkg_multiplayer.load(drs_ui, DrsId::bkg_multiplayer);
-	bkg_achievements.load(drs_ui, DrsId::bkg_achievements);
+	bkg_editor.load(drs_ui, DrsId::bkg_editor);
+	bkg_victory.load(drs_ui, DrsId::bkg_victory);
 	bkg_defeat.load(drs_ui, DrsId::bkg_defeat);
-
-	//drs_ui.open_bkg(DrsId::bkg_achievements);
-	//drs_ui.open_bkg(DrsId::bkg_defeat);
+	bkg_mission.load(drs_ui, DrsId::bkg_mission);
+	bkg_achievements.load(drs_ui, DrsId::bkg_achievements);
 
 	info.next("Pack interface graphics");
 
@@ -58,9 +59,13 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 
 	// register images for packer
 	drs_ids[DrsId::bkg_main_menu] = p.add_img(bkg_main);
+	drs_ids[DrsId::bkg_singleplayer] = p.add_img(bkg_singleplayer);
 	drs_ids[DrsId::bkg_multiplayer] = p.add_img(bkg_multiplayer);
-	drs_ids[DrsId::bkg_achievements] = p.add_img(bkg_achievements);
+	drs_ids[DrsId::bkg_editor] = p.add_img(bkg_editor);
+	drs_ids[DrsId::bkg_victory] = p.add_img(bkg_victory);
 	drs_ids[DrsId::bkg_defeat] = p.add_img(bkg_defeat);
+	drs_ids[DrsId::bkg_mission] = p.add_img(bkg_mission);
+	drs_ids[DrsId::bkg_achievements] = p.add_img(bkg_achievements);
 
 	// pack images
 	GLint size = eng.gl().max_texture_size;

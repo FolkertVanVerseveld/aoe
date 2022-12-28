@@ -59,58 +59,70 @@ Tileset ImagePacker::collect(int w, int h) {
 		id_to_ref.emplace_back(kv.first);
 	}
 
-	std::vector<stbrp_node> nodes(w);
-	stbrp_init_target(&ctx, w, h, nodes.data(), nodes.size());
+	{
+		ZoneScopedN("pack");
+		std::vector<stbrp_node> nodes(w);
+		stbrp_init_target(&ctx, w, h, nodes.data(), nodes.size());
 
-	stbrp_setup_heuristic(&ctx, STBRP_HEURISTIC_Skyline_BF_sortHeight);
-	stbrp_setup_allow_out_of_mem(&ctx, 0);
+		stbrp_setup_heuristic(&ctx, STBRP_HEURISTIC_Skyline_BF_sortHeight);
+		stbrp_setup_allow_out_of_mem(&ctx, 0);
 
-	// do pack magic
-	if (!stbrp_pack_rects(&ctx, rects.data(), rects.size()))
-		throw std::runtime_error("cannot fit images in texture");
+		// do pack magic
+		if (!stbrp_pack_rects(&ctx, rects.data(), rects.size()))
+			throw std::runtime_error("cannot fit images in texture");
+	}
 
 	Tileset ts;
 
-	w = h = 0;
+	{
+		ZoneScopedN("resize");
+		w = h = 0;
 
-	// adjust w and h to ensure all images are inclosed in a minimal rectangle
-	for (stbrp_rect &r : rects) {
-		w = std::max<unsigned>(w, r.x + r.w);
-		h = std::max<unsigned>(h, r.y + r.h);
+		// adjust w and h to ensure all images are inclosed in a minimal rectangle
+		for (stbrp_rect &r : rects) {
+			w = std::max<unsigned>(w, r.x + r.w);
+			h = std::max<unsigned>(h, r.y + r.h);
+		}
 	}
 
-	// traverse result to restore refs
-	for (size_t i = 0; i < rects.size(); ++i) {
-		stbrp_rect &r = rects[i];
+	{
+		ZoneScopedN("restore refs");
+		// traverse result to restore refs
+		for (size_t i = 0; i < rects.size(); ++i) {
+			stbrp_rect& r = rects[i];
 
-		// compute texture coordinates
-		GLfloat s0 = (GLfloat)r.x / w, t0 = (GLfloat)r.y / h;
-		GLfloat s1 = (GLfloat)(r.x + r.w) / w, t1 = (GLfloat)(r.y + r.h) / h;
+			// compute texture coordinates
+			GLfloat s0 = (GLfloat)r.x / w, t0 = (GLfloat)r.y / h;
+			GLfloat s1 = (GLfloat)(r.x + r.w) / w, t1 = (GLfloat)(r.y + r.h) / h;
 
-		ts.imgs.emplace(id_to_ref[i], SDL_Rect{ r.x, r.y, r.w, r.h }, nullptr, s0, t0, s1, t1);
+			ts.imgs.emplace(id_to_ref[i], SDL_Rect{ r.x, r.y, r.w, r.h }, nullptr, s0, t0, s1, t1);
+		}
 	}
 
-	ts.surf.reset(SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32));
+	{
+		ZoneScopedN("copy");
+		ts.surf.reset(SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32));
 
-	std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> tmp(nullptr, SDL_FreeSurface);
+		std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> tmp(nullptr, SDL_FreeSurface);
 
-	// traverse again to copy data to big surface
-	for (const ImageRef &r : ts.imgs) {
-		SDL_Surface *surf = images.at(r.ref).surf;
-		tmp.reset(SDL_ConvertSurfaceFormat(surf, SDL_PIXELFORMAT_RGBA32, 0));
-		if (!tmp)
-			throw std::runtime_error("cannot convert image");
+		// traverse again to copy data to big surface
+		for (const ImageRef &r : ts.imgs) {
+			SDL_Surface *surf = images.at(r.ref).surf;
+			tmp.reset(SDL_ConvertSurfaceFormat(surf, SDL_PIXELFORMAT_RGBA32, 0));
+			if (!tmp)
+				throw std::runtime_error("cannot convert image");
 
-		uint32_t *pixels1 = (uint32_t*)ts.surf->pixels;
-		const uint32_t *pixels0 = (const uint32_t*)tmp->pixels;
+			uint32_t *pixels1 = (uint32_t*)ts.surf->pixels;
+			const uint32_t *pixels0 = (const uint32_t*)tmp->pixels;
 
-		int p1 = ts.surf->pitch >> 2, p0 = tmp->pitch >> 2;
+			int p1 = ts.surf->pitch >> 2, p0 = tmp->pitch >> 2;
 
-		// copy data
-		for (int y0 = 0, y1 = r.bnds.y, h = tmp->h; y0 < h; ++y0, ++y1)
-			// TODO use memcpy?
-			for (int x0 = 0, x1 = r.bnds.x, w = tmp->w; x0 < w; ++x0, ++x1)
-				pixels1[y1 * p1 + x1] = pixels0[y0 * p0 + x0];
+			// copy data
+			for (int y0 = 0, y1 = r.bnds.y, h = tmp->h; y0 < h; ++y0, ++y1)
+				// TODO use memcpy?
+				for (int x0 = 0, x1 = r.bnds.x, w = tmp->w; x0 < w; ++x0, ++x1)
+					pixels1[y1 * p1 + x1] = pixels0[y0 * p0 + x0];
+		}
 	}
 
 	return ts;
