@@ -36,6 +36,7 @@ enum class MenuState {
 	multiplayer_host,
 	multiplayer_settings,
 	multiplayer_game,
+	defeat,
 };
 
 class Engine;
@@ -166,6 +167,7 @@ private:
 	void display_ui_tasks();
 	void show_init();
 	void show_start();
+	void show_defeat();
 
 	void show_multiplayer_menu();
 	// TODO extract as HUD
@@ -175,7 +177,7 @@ private:
 	void show_mph_chat(ui::Frame&);
 	void show_chat_line(ui::Frame&);
 
-	void cancel_multiplayer_host();
+	void cancel_multiplayer_host(MenuState next);
 
 	void show_multiplayer_game();
 	void show_multiplayer_achievements();
@@ -203,6 +205,8 @@ private:
 
 	void set_background(MenuState);
 	void set_background(io::DrsId);
+
+	void draw_background_border();
 public:
 	void push_error(const std::string &msg);
 

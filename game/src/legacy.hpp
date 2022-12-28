@@ -16,6 +16,7 @@ namespace aoe {
 
 static constexpr unsigned WINDOW_WIDTH_MIN = 640, WINDOW_HEIGHT_MIN = 480;
 static constexpr unsigned DEFAULT_TICKS_PER_SECOND = 30;
+static constexpr unsigned MAX_PLAYERS = 9; // 8 + 1 for gaia
 
 namespace io {
 
@@ -28,6 +29,11 @@ enum class DrsId {
 	bkg_defeat = 50058,
 	bkg_mission = 50060,
 	bkg_achievements = 50061,
+
+	trn_desert = 15000,
+	trn_grass = 15001,
+	trn_water = 15002,
+	trn_deepwater = 15003,
 
 	sfx_ui_click = 5035,
 	sfx_priest_convert2 = 5051,

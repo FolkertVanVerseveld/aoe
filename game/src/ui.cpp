@@ -482,7 +482,7 @@ void Engine::show_multiplayer_game() {
 				show_achievements = true;
 
 			if (ImGui::MenuItem("Quit"))
-				cancel_multiplayer_host();
+				cancel_multiplayer_host(MenuState::defeat);
 
 			ImGui::EndMenu();
 		}
@@ -618,7 +618,7 @@ void Engine::show_multiplayer_host() {
 
 		if (f.btn("Cancel")) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
-			cancel_multiplayer_host();
+			cancel_multiplayer_host(MenuState::start);
 		}
 	}
 
@@ -725,6 +725,29 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 
 		if (changed)
 			client->send_scn_vars(scn);
+	}
+}
+
+void Engine::show_defeat() {
+	ZoneScoped;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos);
+
+	Frame f;
+
+	if (!f.begin("start", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
+		return;
+
+	if (f.btn("Timeline")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		// TODO show timeline
+	}
+
+	f.sl();
+
+	if (f.btn("Close")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		next_menu_state = MenuState::start;
 	}
 }
 
@@ -876,6 +899,49 @@ void Engine::show_multiplayer_menu() {
 		sfx.play_sfx(SfxId::sfx_ui_click);
 		next_menu_state = MenuState::start;
 	}
+}
+
+void Engine::draw_background_border() {
+	assert(assets.get());
+	Assets &a = *assets.get();
+
+	BackgroundColors col;
+
+	switch (menu_state) {
+	case MenuState::multiplayer_host:
+	case MenuState::multiplayer_menu:
+		col = a.bkg_cols.at(io::DrsId::bkg_multiplayer);
+		break;
+	case MenuState::defeat:
+		col = a.bkg_cols.at(io::DrsId::bkg_defeat);
+		break;
+	default:
+		col = a.bkg_cols.at(io::DrsId::bkg_main_menu);
+		break;
+	}
+
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+	ImGuiIO &io = ImGui::GetIO(); (void)io;
+
+	GLfloat right = io.DisplaySize.x, bottom = io.DisplaySize.y;
+
+	lst->AddLine(ImVec2(1, 0), ImVec2(right, 0), IM_COL32(col.border[0].r, col.border[0].g, col.border[0].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(right - 1, 0), ImVec2(right - 1, bottom - 1), IM_COL32(col.border[0].r, col.border[0].g, col.border[0].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(2, 1), ImVec2(right - 1, 1), IM_COL32(col.border[1].r, col.border[1].g, col.border[1].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(right - 2, 1), ImVec2(right - 2, bottom - 2), IM_COL32(col.border[1].r, col.border[1].g, col.border[1].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(3, 2), ImVec2(right - 2, 2), IM_COL32(col.border[2].r, col.border[2].g, col.border[2].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(right - 3, 2), ImVec2(right - 3, bottom - 3), IM_COL32(col.border[2].r, col.border[2].g, col.border[2].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(0, 0), ImVec2(0, bottom), IM_COL32(col.border[5].r, col.border[5].g, col.border[5].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(0, bottom - 1), ImVec2(right, bottom - 1), IM_COL32(col.border[5].r, col.border[5].g, col.border[5].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(1, 1), ImVec2(1, bottom - 1), IM_COL32(col.border[4].r, col.border[4].g, col.border[4].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(1, bottom - 2), ImVec2(right - 1, bottom - 2), IM_COL32(col.border[4].r, col.border[4].g, col.border[4].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(2, 2), ImVec2(2, bottom - 2), IM_COL32(col.border[3].r, col.border[3].g, col.border[3].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(2, bottom - 3), ImVec2(right - 2, bottom - 3), IM_COL32(col.border[3].r, col.border[3].g, col.border[3].b, SDL_ALPHA_OPAQUE), 1);
 }
 
 }

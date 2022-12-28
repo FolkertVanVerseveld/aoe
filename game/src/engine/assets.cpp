@@ -15,6 +15,7 @@ public:
 	io::DrsBkg drs;
 	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> pal;
 	gfx::Image img;
+	BackgroundColors cols;
 
 	Background();
 
@@ -23,37 +24,66 @@ public:
 	operator SDL_Surface*() { return img.surface.get(); }
 };
 
-Background::Background() : drs(), pal(nullptr, SDL_FreePalette), img() {}
+class Animation final {
+public:
+	std::unique_ptr<Image[]> images;
+	unsigned image_count;
+	bool dynamic;
+
+	Animation() : images(), image_count(0), dynamic(false) {}
+
+	Image &subimage(unsigned index, unsigned player);
+};
+
+Background::Background() : drs(), pal(nullptr, SDL_FreePalette), img(), cols() {}
 
 void Background::load(DRS &drs, DrsId id) {
 	this->drs = DrsBkg(drs.open_bkg(id));
 	pal = drs.open_pal((DrsId)this->drs.pal_id);
 	auto slp = drs.open_slp((DrsId)this->drs.bkg_id[2]);
 	img.load(pal.get(), slp, 0, 0);
+
+	for (unsigned i = 0; i < 6; ++i)
+		cols.border[i] = pal->colors[this->drs.bevel_col[i]];
+}
+
+Image &Animation::subimage(unsigned index, unsigned player) {
+	return dynamic ? images[(player % MAX_PLAYERS) * image_count + index % image_count] : images[index % image_count];
 }
 
 Assets::Assets(int id, Engine &eng, const std::string &path)
-	: path(path), drs_ids(), ts_ui()
+	: path(path), drs_ids(), bkg_cols(), ts_ui()
 {
 	// TODO use engine view to prevent crash when closed while ctor is still running
-	UI_TaskInfo info(eng.ui_async("Verifying game data", "Locating interface data", id, 5));
+	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", id, 5));
 
 	DRS drs_ui(path + "/data/Interfac.drs");
 
-	info.next("Loading interface data");
-
 	Background bkg_main, bkg_singleplayer, bkg_multiplayer, bkg_editor, bkg_victory, bkg_defeat, bkg_mission, bkg_achievements;
 
-	bkg_main.load(drs_ui, DrsId::bkg_main_menu);
-	bkg_singleplayer.load(drs_ui, DrsId::bkg_singleplayer);
-	bkg_multiplayer.load(drs_ui, DrsId::bkg_multiplayer);
-	bkg_editor.load(drs_ui, DrsId::bkg_editor);
-	bkg_victory.load(drs_ui, DrsId::bkg_victory);
-	bkg_defeat.load(drs_ui, DrsId::bkg_defeat);
-	bkg_mission.load(drs_ui, DrsId::bkg_mission);
-	bkg_achievements.load(drs_ui, DrsId::bkg_achievements);
+	bkg_main.load(drs_ui, DrsId::bkg_main_menu); bkg_cols[DrsId::bkg_main_menu] = bkg_main.cols;
+	bkg_singleplayer.load(drs_ui, DrsId::bkg_singleplayer); bkg_cols[DrsId::bkg_singleplayer] = bkg_singleplayer.cols;
+	bkg_multiplayer.load(drs_ui, DrsId::bkg_multiplayer); bkg_cols[DrsId::bkg_multiplayer] = bkg_multiplayer.cols;
+	bkg_editor.load(drs_ui, DrsId::bkg_editor); bkg_cols[DrsId::bkg_editor] = bkg_editor.cols;
+	bkg_victory.load(drs_ui, DrsId::bkg_victory); bkg_cols[DrsId::bkg_victory] = bkg_victory.cols;
+	bkg_defeat.load(drs_ui, DrsId::bkg_defeat); bkg_cols[DrsId::bkg_defeat] = bkg_defeat.cols;
+	bkg_mission.load(drs_ui, DrsId::bkg_mission); bkg_cols[DrsId::bkg_mission] = bkg_mission.cols;
+	bkg_achievements.load(drs_ui, DrsId::bkg_achievements); bkg_cols[DrsId::bkg_achievements] = bkg_achievements.cols;
 
-	info.next("Pack interface graphics");
+	info.next("Loading terrain data");
+
+	DRS drs_terrain(path + "/data/Terrain.drs");
+
+	auto slp = drs_terrain.open_slp(io::DrsId::trn_desert);
+	printf("desert tiles: %llu\n", (unsigned long long)slp.frames.size());
+	slp = drs_terrain.open_slp(io::DrsId::trn_grass);
+	printf("grass tiles: %llu\n", (unsigned long long)slp.frames.size());
+	slp = drs_terrain.open_slp(io::DrsId::trn_water);
+	printf("water tiles: %llu\n", (unsigned long long)slp.frames.size());
+	slp = drs_terrain.open_slp(io::DrsId::trn_deepwater);
+	printf("deep water tiles: %llu\n", (unsigned long long)slp.frames.size());
+
+	info.next("Packing graphics");
 
 	gfx::ImagePacker p;
 

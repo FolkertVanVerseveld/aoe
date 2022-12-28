@@ -199,15 +199,22 @@ void Engine::display_ui() {
 	switch (menu_state) {
 		case MenuState::multiplayer_host:
 			show_multiplayer_host();
+			draw_background_border();
 			break;
 		case MenuState::multiplayer_game:
 			show_multiplayer_game();
 			break;
 		case MenuState::multiplayer_menu:
 			show_multiplayer_menu();
+			draw_background_border();
 			break;
 		case MenuState::start:
 			show_start();
+			draw_background_border();
+			break;
+		case MenuState::defeat:
+			show_defeat();
+			draw_background_border();
 			break;
 		default:
 			show_init();
@@ -474,6 +481,9 @@ void Engine::set_background(MenuState s) {
 	case MenuState::multiplayer_menu:
 		id = io::DrsId::bkg_multiplayer;
 		break;
+	case MenuState::defeat:
+		id = io::DrsId::bkg_defeat;
+		break;
 	}
 
 	set_background(id);
@@ -510,6 +520,9 @@ void Engine::idle() {
 		case MenuState::multiplayer_game:
 			sfx.play_music(MusicId::game, -1);
 			break;
+		case MenuState::defeat:
+			sfx.play_music(MusicId::fail);
+			break;
 		}
 	}
 }
@@ -535,7 +548,7 @@ void Engine::idle_async() {
 		}
 
 		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_stopped)
-			cancel_multiplayer_host();
+			cancel_multiplayer_host(MenuState::start);
 
 		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_started)
 			start_multiplayer_game();
@@ -613,15 +626,23 @@ void Engine::set_scn_vars_now(const ScenarioSettings &scn) {
 	this->scn.res.stone = scn.res.stone;
 }
 
-void Engine::cancel_multiplayer_host() {
+void Engine::cancel_multiplayer_host(MenuState next) {
 	try {
-		if (server)
+		if (server) {
+			if (!server->active())
+				return;
+
 			stop_server();
-		else
+		} else {
+			if (!client->connected())
+				return;
+
 			client->stop();
+		}
 
 		chat.clear();
-		next_menu_state = MenuState::start;
+		if (menu_state == next_menu_state)
+			next_menu_state = next;
 	} catch (std::exception &e) {
 		fprintf(stderr, "%s: cannot stop multiplayer: %s\n", __func__, e.what());
 		push_error(std::string("cannot stop multiplayer: ") + e.what());

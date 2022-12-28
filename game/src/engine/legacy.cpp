@@ -118,8 +118,11 @@ Slp DRS::open_slp(DrsId k) {
 	} hdr;
 
 	// fetch data
+	in.seekg(0, std::ios_base::end);
+	long long end = in.tellg();
+
 	in.seekg(item.offset);
-	std::streampos start = in.tellg();
+	long long start = in.tellg();
 
 	in.read((char*)&hdr, sizeof(hdr));
 
@@ -135,6 +138,8 @@ Slp DRS::open_slp(DrsId k) {
 	if (frames > 0) {
 		fi.resize(frames);
 		in.read((char*)fi.data(), frames * sizeof(SlpFrameInfo));
+	} else {
+		return slp;
 	}
 
 	// these containers help with estimating how big a frame really is
@@ -144,9 +149,6 @@ Slp DRS::open_slp(DrsId k) {
 		edge_offset.emplace_back(f.outline_table_offset);
 		cmd_offset.emplace_back(f.cmd_table_offset);
 	}
-
-	edge_offset.emplace_back(item.size);
-	cmd_offset.emplace_back(item.size);
 
 	std::sort(edge_offset.begin(), edge_offset.end());
 	std::sort(cmd_offset.begin(), cmd_offset.end());
@@ -164,31 +166,29 @@ Slp DRS::open_slp(DrsId k) {
 
 		// read frame data
 		// read frame row edge
-		in.seekg(start);
-		in.seekg(f.outline_table_offset, std::ios_base::cur);
+		in.seekg(start + f.outline_table_offset);
 
 		sf.frameEdges.resize(f.height);
 		in.read((char*)sf.frameEdges.data(), f.height * sizeof(SlpFrameRowEdge));
+
+		long long from = in.tellg();
 
 		// read cmd
 		// since the size is not specified, we will have to guess
 		// assume that the next outline_table_offset or cmd_table_offset ends it
 		// as it's not possible to have overlapping frame info
-		uint32_t end = std::min(2u * f.width * f.height, item.size);
+		uint32_t size = 2u * f.width * f.height;
 
 		auto it_edge_next = std::lower_bound(edge_offset.begin(), edge_offset.end(), f.outline_table_offset + 1);
 		if (it_edge_next != edge_offset.end())
-			end = std::min(end, *it_edge_next);
+			size = std::min(size, *it_edge_next);
 
 		auto it_cmd_next = std::lower_bound(cmd_offset.begin(), cmd_offset.end(), f.cmd_table_offset + 1);
 		if (it_cmd_next != cmd_offset.end())
-			end = std::min(end, *it_cmd_next);
+			size = std::min(size, *it_cmd_next);
 
-		uint32_t size = end + 1;
-
-		in.seekg(start);
-		in.seekg(f.cmd_table_offset, std::ios_base::cur);
-		in.seekg(4 * f.height, std::ios_base::cur);
+		in.seekg(start + f.cmd_table_offset + 4 * f.height);
+		size = std::min<unsigned>(size, (unsigned)(end - in.tellg()));
 
 		sf.cmd.resize(size);
 		in.read((char*)sf.cmd.data(), size);
