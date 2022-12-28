@@ -17,6 +17,7 @@ namespace aoe {
 namespace ui {
 
 bool chkbox(const char *s, bool &b);
+bool combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height_in_items=-1);
 
 class Frame final {
 	bool open, active;

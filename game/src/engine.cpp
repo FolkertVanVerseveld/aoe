@@ -73,7 +73,7 @@ Engine::Engine()
 		 1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f, // bottom right
 		-1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, // bottom left
 		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
-	}, vbo(0)
+	}, vbo(0), vsync_mode(0), vsync_idx(0)
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -101,8 +101,29 @@ gfx::GL &Engine::gl() {
 
 using namespace aoe::ui;
 
-void Engine::show_music_settings() {
+static const std::vector<std::string> vsync_modes{ "Disabled", "Enabled", "Adaptive" };
+
+void Engine::show_general_settings() {
 	music_on = !sfx.is_muted_music();
+
+	int vsync_mode_old = sdl->gl_context.get_vsync();
+
+	switch (vsync_mode_old) {
+	case -1: vsync_idx = 2; break;
+	case 1: vsync_idx = 1; break;
+	default: vsync_idx = 0; break; // 0 and everything else
+	}
+
+	combo("VSync", vsync_idx, vsync_modes);
+
+	switch (vsync_idx) {
+	case 0: vsync_mode = 0; break;
+	case 2: vsync_mode = -1; break;
+	default: vsync_mode = 1; break;
+	}
+
+	if (vsync_mode != vsync_mode_old)
+		sdl->gl_context.set_vsync(vsync_mode);
 
 	chkbox("Music enabled", music_on);
 	chkbox("Play chat taunts", sfx.play_taunts);
@@ -130,7 +151,7 @@ void Engine::show_menubar() {
 				Menu ms;
 
 				if (ms.begin("Settings"))
-					show_music_settings();
+					show_general_settings();
 			}
 
 			if (mf.item("Quit"))
@@ -503,6 +524,13 @@ void Engine::set_game_data() {
 	set_background(io::DrsId::bkg_main_menu);
 
 	assets_good = true;
+
+	if (sdl->cursors.size() > 1)
+		sdl->cursors.erase(sdl->cursors.begin() + 1);
+
+	for (unsigned i = 0, n = a.gif_cursors.all_count; i < n; ++i) {
+		sdl->cursors.emplace_back(SDL_CreateColorCursor(a.gif_cursors.images[i].surface.get(), a.gif_cursors.images[i].hotspot_x, a.gif_cursors.images[i].hotspot_y), SDL_FreeCursor);
+	}
 }
 
 void Engine::idle() {
@@ -770,6 +798,7 @@ int Engine::mainloop() {
 
 	SDL sdl;
 	this->sdl = &sdl;
+	vsync_mode = sdl.gl_context.get_vsync();
 
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();

@@ -48,7 +48,7 @@ DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
 	hdr.nlist = le16toh(hdr.nlist);
 	hdr.listend = le16toh(hdr.listend);
 
-	printf("%40s %16s\nnlist=%u, listend=%u\n", hdr.copyright, hdr.version, hdr.nlist, hdr.listend);
+	//printf("%40s %16s\nnlist=%u, listend=%u\n", hdr.copyright, hdr.version, hdr.nlist, hdr.listend);
 
 	// populate list of items
 
@@ -135,11 +135,15 @@ Slp DRS::open_slp(DrsId k) {
 	std::vector<SlpFrameInfo> fi;
 
 	// parse frames (if available)
-	if (frames > 0) {
-		fi.resize(frames);
-		in.read((char*)fi.data(), frames * sizeof(SlpFrameInfo));
-	} else {
+	if (frames <= 0)
 		return slp;
+
+	fi.resize(frames);
+	in.read((char*)fi.data(), frames * sizeof(SlpFrameInfo));
+
+	for (auto &f : fi) {
+		f.outline_table_offset = le32toh(f.outline_table_offset);
+		f.cmd_table_offset = le32toh(f.cmd_table_offset);
 	}
 
 	// these containers help with estimating how big a frame really is
@@ -170,6 +174,11 @@ Slp DRS::open_slp(DrsId k) {
 
 		sf.frameEdges.resize(f.height);
 		in.read((char*)sf.frameEdges.data(), f.height * sizeof(SlpFrameRowEdge));
+
+		for (SlpFrameRowEdge &e : sf.frameEdges) {
+			e.left_space = le16toh(e.left_space);
+			e.right_space = le16toh(e.right_space);
+		}
 
 		long long from = in.tellg();
 
@@ -366,7 +375,7 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 	uint32_t cmdpos = 0;
 	const std::vector<uint8_t> &cmd = frame.cmd;
 	unsigned maxerr = 5;
-	bool bail_out = false;
+	bool bail_out = false, dynamic = false;
 
 	for (int y = 0, h = frame.h; y < h; ++y) {
 		const SlpFrameRowEdge &e = frame.frameEdges.at(y);
@@ -382,14 +391,12 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 			pixels[y * p + x] = rand();
 
 		for (int i = e.left_space, x = i, w = x + line_size, p = surface->pitch; i <= w; ++i, ++cmdpos) {
-			unsigned command, count;
+			unsigned char bc = cmd.at(cmdpos), count = 0;
 
-			command = cmd.at(cmdpos) & 0x0f;
-
-			switch (command) {
+			switch (bc & 0xf) {
 			case 0x0f:
 				i = w;
-				break;
+				continue;
 			case 0x07:
 				count = cmd_or_next(cmd, cmdpos, 4);
 
@@ -397,9 +404,187 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 					pixels[y * p + x++] = cmd.at(cmdpos);
 
 				break;
+			case 0x06:
+				count = cmd_or_next(cmd, cmdpos, 4);
+
+				for (; count; --count)
+					pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1);
+
+				dynamic = true;
+				break;
 			default:
+				switch (bc) {
+				case 0xF7: pixels[y * p + x++] = cmd[1];
+				case 0xE7: pixels[y * p + x++] = cmd[1];
+				case 0xD7: pixels[y * p + x++] = cmd[1];
+				case 0xC7: pixels[y * p + x++] = cmd[1];
+				case 0xB7: pixels[y * p + x++] = cmd[1];
+					// dup 10
+				case 0xA7: pixels[y * p + x++] = cmd[1];
+				case 0x97: pixels[y * p + x++] = cmd[1];
+				case 0x87: pixels[y * p + x++] = cmd[1];
+				case 0x77: pixels[y * p + x++] = cmd[1];
+				case 0x67: pixels[y * p + x++] = cmd[1];
+				case 0x57: pixels[y * p + x++] = cmd[1];
+				case 0x47: pixels[y * p + x++] = cmd[1];
+				case 0x37: pixels[y * p + x++] = cmd[1];
+				case 0x27: pixels[y * p + x++] = cmd[1];
+				case 0x17: pixels[y * p + x++] = cmd[1];
+					++cmdpos;
+					continue;
+					// player color fill
+				case 0xF6: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 15
+				case 0xE6: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 14
+				case 0xD6: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 13
+				case 0xC6: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 12
+				case 0xB6: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 11
+				case 0xA6: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 10
+				case 0x96: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 9
+				case 0x86: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 8
+				case 0x76: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 7
+				case 0x66: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 6
+				case 0x56: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 5
+				case 0x46: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 4
+				case 0x36: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 3
+				case 0x26: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 2
+				case 0x16: pixels[y * p + x++] = cmd.at(++cmdpos) + 0x10 * (player + 1); // player fill 1
+					dynamic = true;
+					continue;
+					// XXX pixel count if lower_nibble == 4: 1 + cmd >> 2
+				case 0xfc: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 63
+				case 0xf8: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 62
+				case 0xf4: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 61
+				case 0xf0: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 60
+				case 0xec: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 59
+				case 0xe8: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 58
+				case 0xe4: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 57
+				case 0xe0: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 56
+				case 0xdc: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 55
+				case 0xd8: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 54
+				case 0xd4: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 53
+				case 0xd0: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 52
+				case 0xcc: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 51
+				case 0xc8: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 50
+				case 0xc4: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 49
+				case 0xc0: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 48
+				case 0xbc: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 47
+				case 0xb8: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 46
+				case 0xb4: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 45
+				case 0xb0: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 44
+				case 0xac: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 43
+				case 0xa8: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 42
+				case 0xa4: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 41
+				case 0xa0: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 40
+				case 0x9c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 39
+				case 0x98: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 38
+				case 0x94: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 37
+				case 0x90: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 36
+				case 0x8c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 35
+				case 0x88: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 34
+				case 0x84: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 33
+				case 0x80: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 32
+				case 0x7c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 31
+				case 0x78: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 30
+				case 0x74: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 29
+				case 0x70: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 28
+				case 0x6c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 27
+				case 0x68: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 26
+				case 0x64: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 25
+				case 0x60: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 24
+				case 0x5c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 23
+				case 0x58: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 22
+				case 0x54: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 21
+				case 0x50: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 20
+				case 0x4c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 19
+				case 0x48: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 18
+				case 0x44: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 17
+				case 0x40: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 16
+				case 0x3c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 15
+				case 0x38: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 14
+				case 0x34: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 13
+				case 0x30: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 12
+				case 0x2c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 11
+				case 0x28: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 10
+				case 0x24: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 9
+				case 0x20: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 8
+				case 0x1c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 7
+				case 0x18: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 6
+				case 0x14: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 5
+				case 0x10: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 4
+				case 0x0c: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 3
+				case 0x08: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 2
+				case 0x04: pixels[y * p + x++] = cmd.at(++cmdpos); // fill 1
+					continue;
+				case 0xfd: pixels[y * p + x++] = 0; // skip 63
+				case 0xf9: pixels[y * p + x++] = 0; // skip 62
+				case 0xf5: pixels[y * p + x++] = 0; // skip 61
+				case 0xf1: pixels[y * p + x++] = 0; // skip 60
+				case 0xed: pixels[y * p + x++] = 0; // skip 59
+				case 0xe9: pixels[y * p + x++] = 0; // skip 58
+				case 0xe5: pixels[y * p + x++] = 0; // skip 57
+				case 0xe1: pixels[y * p + x++] = 0; // skip 56
+				case 0xdd: pixels[y * p + x++] = 0; // skip 55
+				case 0xd9: pixels[y * p + x++] = 0; // skip 54
+				case 0xd5: pixels[y * p + x++] = 0; // skip 53
+				case 0xd1: pixels[y * p + x++] = 0; // skip 52
+				case 0xcd: pixels[y * p + x++] = 0; // skip 51
+				case 0xc9: pixels[y * p + x++] = 0; // skip 50
+				case 0xc5: pixels[y * p + x++] = 0; // skip 49
+				case 0xc1: pixels[y * p + x++] = 0; // skip 48
+				case 0xbd: pixels[y * p + x++] = 0; // skip 47
+				case 0xb9: pixels[y * p + x++] = 0; // skip 46
+				case 0xb5: pixels[y * p + x++] = 0; // skip 45
+				case 0xb1: pixels[y * p + x++] = 0; // skip 44
+				case 0xad: pixels[y * p + x++] = 0; // skip 43
+				case 0xa9: pixels[y * p + x++] = 0; // skip 42
+				case 0xa5: pixels[y * p + x++] = 0; // skip 41
+				case 0xa1: pixels[y * p + x++] = 0; // skip 40
+				case 0x9d: pixels[y * p + x++] = 0; // skip 39
+				case 0x99: pixels[y * p + x++] = 0; // skip 38
+				case 0x95: pixels[y * p + x++] = 0; // skip 37
+				case 0x91: pixels[y * p + x++] = 0; // skip 36
+				case 0x8d: pixels[y * p + x++] = 0; // skip 35
+				case 0x89: pixels[y * p + x++] = 0; // skip 34
+				case 0x85: pixels[y * p + x++] = 0; // skip 33
+				case 0x81: pixels[y * p + x++] = 0; // skip 32
+				case 0x7d: pixels[y * p + x++] = 0; // skip 31
+				case 0x79: pixels[y * p + x++] = 0; // skip 30
+				case 0x75: pixels[y * p + x++] = 0; // skip 29
+				case 0x71: pixels[y * p + x++] = 0; // skip 28
+				case 0x6d: pixels[y * p + x++] = 0; // skip 27
+				case 0x69: pixels[y * p + x++] = 0; // skip 26
+				case 0x65: pixels[y * p + x++] = 0; // skip 25
+				case 0x61: pixels[y * p + x++] = 0; // skip 24
+				case 0x5d: pixels[y * p + x++] = 0; // skip 23
+				case 0x59: pixels[y * p + x++] = 0; // skip 22
+				case 0x55: pixels[y * p + x++] = 0; // skip 21
+				case 0x51: pixels[y * p + x++] = 0; // skip 20
+				case 0x4d: pixels[y * p + x++] = 0; // skip 19
+				case 0x49: pixels[y * p + x++] = 0; // skip 18
+				case 0x45: pixels[y * p + x++] = 0; // skip 17
+				case 0x41: pixels[y * p + x++] = 0; // skip 16
+				case 0x3d: pixels[y * p + x++] = 0; // skip 15
+				case 0x39: pixels[y * p + x++] = 0; // skip 14
+				case 0x35: pixels[y * p + x++] = 0; // skip 13
+				case 0x31: pixels[y * p + x++] = 0; // skip 12
+				case 0x2d: pixels[y * p + x++] = 0; // skip 11
+				case 0x29: pixels[y * p + x++] = 0; // skip 10
+				case 0x25: pixels[y * p + x++] = 0; // skip 9
+				case 0x21: pixels[y * p + x++] = 0; // skip 8
+				case 0x1d: pixels[y * p + x++] = 0; // skip 7
+				case 0x19: pixels[y * p + x++] = 0; // skip 6
+				case 0x15: pixels[y * p + x++] = 0; // skip 5
+				case 0x11: pixels[y * p + x++] = 0; // skip 4
+				case 0x0d: pixels[y * p + x++] = 0; // skip 3
+				case 0x09: pixels[y * p + x++] = 0; // skip 2
+				case 0x05: pixels[y * p + x++] = 0; // skip 1
+					continue;
+				default:
+					break;
+				}
+
 				if (maxerr) {
-					fprintf(stderr, "%s: unknown cmd at %X: %X\n", __func__, cmdpos, command);
+					fprintf(stderr, "%s: unknown cmd at %X: %X\n", __func__, cmdpos, bc);
 					--maxerr;
 				} else if (!bail_out) {
 					bail_out = true;
@@ -420,7 +605,7 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 	if (SDL_SetColorKey(surface.get(), SDL_TRUE, 0))
 		fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());
 
-	return false;
+	return dynamic;
 }
 
 }

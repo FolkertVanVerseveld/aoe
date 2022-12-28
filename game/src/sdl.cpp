@@ -57,15 +57,24 @@ SDLguard::~SDLguard() {
 
 SDL::SDL(Uint32 flags) : guard(flags)
 	, window("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN)
-	, gl_context(window)
+	, gl_context(window), cursors()
 {
 	SDL_SetWindowMinimumSize(window, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 	gl_context.enable(window);
 	gl_context.set_vsync(1);
+
+	cursors.emplace_back(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW), SDL_FreeCursor);
+
+	SDL_SetCursor(cursors.front().get());
 }
 
 SDL::~SDL() {
 	if (gl_context) SDL_GL_DeleteContext(gl_context);
+}
+
+void SDL::set_cursor(unsigned idx) {
+	const auto &c = cursors.at(idx);
+	SDL_SetCursor(c.get());
 }
 
 Window::Window(const char *title, int x, int y, int w, int h)
@@ -87,6 +96,10 @@ void GLctx::enable(SDL_Window *win) {
 
 void GLctx::set_vsync(int mode) {
 	SDL_GL_SetSwapInterval(mode);
+}
+
+int GLctx::get_vsync() {
+	return SDL_GL_GetSwapInterval();
 }
 
 bool Window::is_fullscreen() {

@@ -138,6 +138,7 @@ private:
 
 	std::vector<GLfloat> bkg_vertices;
 	GLuint vbo;
+	int vsync_mode, vsync_idx;
 
 	friend Debug;
 	friend Config;
@@ -183,7 +184,7 @@ private:
 	void show_multiplayer_achievements();
 	void show_multiplayer_diplomacy();
 
-	void show_music_settings();
+	void show_general_settings();
 	void show_menubar();
 
 	void start_server(uint16_t port);

@@ -24,17 +24,6 @@ public:
 	operator SDL_Surface*() { return img.surface.get(); }
 };
 
-class Animation final {
-public:
-	std::unique_ptr<Image[]> images;
-	unsigned image_count;
-	bool dynamic;
-
-	Animation() : images(), image_count(0), dynamic(false) {}
-
-	Image &subimage(unsigned index, unsigned player);
-};
-
 Background::Background() : drs(), pal(nullptr, SDL_FreePalette), img(), cols() {}
 
 void Background::load(DRS &drs, DrsId id) {
@@ -47,12 +36,36 @@ void Background::load(DRS &drs, DrsId id) {
 		cols.border[i] = pal->colors[this->drs.bevel_col[i]];
 }
 
+void Animation::load(io::DRS &drs, const SDL_Palette *pal, io::DrsId id) {
+	Slp slp(drs.open_slp((DrsId)id));
+
+	images.reset(new Image[all_count = image_count = slp.frames.size()]);
+	dynamic = false;
+
+	for (unsigned i = 0; i < image_count; ++i) {
+		if (images[i].load(pal, slp, i)) {
+			dynamic = true;
+			break;
+		}
+	}
+
+	if (!dynamic)
+		return;
+
+	// restart parsing as we need one for every player
+	images.reset(new Image[all_count = image_count * MAX_PLAYERS]);
+
+	for (unsigned p = 0; p < MAX_PLAYERS; ++p)
+		for (unsigned i = 0; i < image_count; ++i)
+			images[p * MAX_PLAYERS + i].load(pal, slp, i, p);
+}
+
 Image &Animation::subimage(unsigned index, unsigned player) {
 	return dynamic ? images[(player % MAX_PLAYERS) * image_count + index % image_count] : images[index % image_count];
 }
 
 Assets::Assets(int id, Engine &eng, const std::string &path)
-	: path(path), drs_ids(), bkg_cols(), ts_ui()
+	: drs_gifs(), path(path), drs_ids(), bkg_cols(), ts_ui(), gif_cursors()
 {
 	// TODO use engine view to prevent crash when closed while ctor is still running
 	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", id, 5));
@@ -70,18 +83,10 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 	bkg_mission.load(drs_ui, DrsId::bkg_mission); bkg_cols[DrsId::bkg_mission] = bkg_mission.cols;
 	bkg_achievements.load(drs_ui, DrsId::bkg_achievements); bkg_cols[DrsId::bkg_achievements] = bkg_achievements.cols;
 
-	info.next("Loading terrain data");
+	auto pal = drs_ui.open_pal(DrsId::pal_default);
+	gif_cursors.load(drs_ui, pal.get(), DrsId::gif_cursors);
 
-	DRS drs_terrain(path + "/data/Terrain.drs");
-
-	auto slp = drs_terrain.open_slp(io::DrsId::trn_desert);
-	printf("desert tiles: %llu\n", (unsigned long long)slp.frames.size());
-	slp = drs_terrain.open_slp(io::DrsId::trn_grass);
-	printf("grass tiles: %llu\n", (unsigned long long)slp.frames.size());
-	slp = drs_terrain.open_slp(io::DrsId::trn_water);
-	printf("water tiles: %llu\n", (unsigned long long)slp.frames.size());
-	slp = drs_terrain.open_slp(io::DrsId::trn_deepwater);
-	printf("deep water tiles: %llu\n", (unsigned long long)slp.frames.size());
+	load_terrain(eng, info);
 
 	info.next("Packing graphics");
 
@@ -97,6 +102,15 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 	drs_ids[DrsId::bkg_mission] = p.add_img(bkg_mission);
 	drs_ids[DrsId::bkg_achievements] = p.add_img(bkg_achievements);
 
+	// START extract
+	ImageSet gifs;
+
+	for (unsigned i = 0; i < gif_cursors.all_count; ++i)
+		gifs.imgs.emplace_back(p.add_img(gif_cursors.images[i].surface.get()));
+
+	drs_gifs[DrsId::gif_cursors] = gifs;
+	// STOP extract
+
 	// pack images
 	GLint size = eng.gl().max_texture_size;
 	ts_ui = p.collect(size, size);
@@ -104,7 +118,24 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 	load_audio(eng, info);
 }
 
+void Assets::load_terrain(Engine &eng, UI_TaskInfo &info) {
+	ZoneScoped;
+	info.next("Loading terrain data");
+
+	DRS drs_terrain(path + "/data/Terrain.drs");
+
+	auto slp = drs_terrain.open_slp(io::DrsId::trn_desert);
+	printf("desert tiles: %llu\n", (unsigned long long)slp.frames.size());
+	slp = drs_terrain.open_slp(io::DrsId::trn_grass);
+	printf("grass tiles: %llu\n", (unsigned long long)slp.frames.size());
+	slp = drs_terrain.open_slp(io::DrsId::trn_water);
+	printf("water tiles: %llu\n", (unsigned long long)slp.frames.size());
+	slp = drs_terrain.open_slp(io::DrsId::trn_deepwater);
+	printf("deep water tiles: %llu\n", (unsigned long long)slp.frames.size());
+}
+
 void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
+	ZoneScoped;
 	info.next("Load chat audio");
 
 	eng.sfx.reset();

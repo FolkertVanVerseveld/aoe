@@ -80,7 +80,7 @@ bool Frame::xbtn(const char *s, const ImVec2 &sz) {
 	return b;
 }
 
-bool Frame::combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height) {
+bool combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height) {
 	if (label && *label == '#') {
 		ImGui::PushItemWidth(-1);
 		bool b = ImGui::Combo(label, idx, lst, popup_max_height);
@@ -89,6 +89,10 @@ bool Frame::combo(const char *label, int &idx, const std::vector<std::string> &l
 	}
 
 	return ImGui::Combo(label, idx, lst, popup_max_height);
+}
+
+bool Frame::combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height) {
+	return ui::combo(label, idx, lst, popup_max_height);
 }
 
 static bool scalar(const char *label, int32_t &v, int32_t step) {
@@ -466,6 +470,14 @@ void Engine::show_multiplayer_achievements() {
 
 void Engine::show_multiplayer_game() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGuiIO &io = ImGui::GetIO();
+
+	if (!io.WantCaptureMouse) {
+		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+		sdl->set_cursor(1);
+	} else {
+		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+	}
 
 	if (ImGui::BeginMainMenuBar()) {
 		ImGui::Text("F: %u W: %u G: %u S: %u %s", 1, 2, 3, 4, "Stone Age");
@@ -848,7 +860,7 @@ void Engine::show_init() {
 	if (f.btn("Stop"))
 		sfx.stop_music();
 
-	show_music_settings();
+	show_general_settings();
 
 	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
 }

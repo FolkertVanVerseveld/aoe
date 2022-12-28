@@ -35,6 +35,9 @@ enum class DrsId {
 	trn_water = 15002,
 	trn_deepwater = 15003,
 
+	pal_default = 50500,
+	gif_cursors = 51000,
+
 	sfx_ui_click = 5035,
 	sfx_priest_convert2 = 5051,
 };

@@ -14,6 +14,7 @@
 #pragma warning(pop)
 
 #include <memory>
+#include <vector>
 
 namespace aoe {
 
@@ -35,6 +36,7 @@ public:
 
 	void enable(SDL_Window *win);
 	void set_vsync(int mode);
+	int get_vsync();
 
 	operator SDL_GLContext() noexcept { return gl_context; }
 };
@@ -63,8 +65,12 @@ public:
 	Window window;
 	GLctx gl_context;
 
+	std::vector<std::unique_ptr<SDL_Cursor, decltype(&SDL_FreeCursor)>> cursors;
+
 	SDL(Uint32 flags=SDL_INIT_VIDEO | SDL_INIT_TIMER);
 	~SDL();
+
+	void set_cursor(unsigned idx);
 };
 
 }
