@@ -67,55 +67,69 @@ Image &Animation::subimage(unsigned index, unsigned player) {
 Assets::Assets(int id, Engine &eng, const std::string &path)
 	: drs_gifs(), path(path), drs_ids(), bkg_cols(), ts_ui(), gif_cursors()
 {
+	ZoneScoped;
 	// TODO use engine view to prevent crash when closed while ctor is still running
 	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", id, 5));
+
+	load_gfx(eng, info);
+	load_audio(eng, info);
+}
+
+void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
+	ZoneScoped;
 
 	DRS drs_ui(path + "/data/Interfac.drs");
 
 	Background bkg_main, bkg_singleplayer, bkg_multiplayer, bkg_editor, bkg_victory, bkg_defeat, bkg_mission, bkg_achievements;
 
-	bkg_main.load(drs_ui, DrsId::bkg_main_menu); bkg_cols[DrsId::bkg_main_menu] = bkg_main.cols;
-	bkg_singleplayer.load(drs_ui, DrsId::bkg_singleplayer); bkg_cols[DrsId::bkg_singleplayer] = bkg_singleplayer.cols;
-	bkg_multiplayer.load(drs_ui, DrsId::bkg_multiplayer); bkg_cols[DrsId::bkg_multiplayer] = bkg_multiplayer.cols;
-	bkg_editor.load(drs_ui, DrsId::bkg_editor); bkg_cols[DrsId::bkg_editor] = bkg_editor.cols;
-	bkg_victory.load(drs_ui, DrsId::bkg_victory); bkg_cols[DrsId::bkg_victory] = bkg_victory.cols;
-	bkg_defeat.load(drs_ui, DrsId::bkg_defeat); bkg_cols[DrsId::bkg_defeat] = bkg_defeat.cols;
-	bkg_mission.load(drs_ui, DrsId::bkg_mission); bkg_cols[DrsId::bkg_mission] = bkg_mission.cols;
-	bkg_achievements.load(drs_ui, DrsId::bkg_achievements); bkg_cols[DrsId::bkg_achievements] = bkg_achievements.cols;
+	{
+		ZoneScopedN("load backgrounds");
+		bkg_main.load(drs_ui, DrsId::bkg_main_menu); bkg_cols[DrsId::bkg_main_menu] = bkg_main.cols;
+		bkg_singleplayer.load(drs_ui, DrsId::bkg_singleplayer); bkg_cols[DrsId::bkg_singleplayer] = bkg_singleplayer.cols;
+		bkg_multiplayer.load(drs_ui, DrsId::bkg_multiplayer); bkg_cols[DrsId::bkg_multiplayer] = bkg_multiplayer.cols;
+		bkg_editor.load(drs_ui, DrsId::bkg_editor); bkg_cols[DrsId::bkg_editor] = bkg_editor.cols;
+		bkg_victory.load(drs_ui, DrsId::bkg_victory); bkg_cols[DrsId::bkg_victory] = bkg_victory.cols;
+		bkg_defeat.load(drs_ui, DrsId::bkg_defeat); bkg_cols[DrsId::bkg_defeat] = bkg_defeat.cols;
+		bkg_mission.load(drs_ui, DrsId::bkg_mission); bkg_cols[DrsId::bkg_mission] = bkg_mission.cols;
+		bkg_achievements.load(drs_ui, DrsId::bkg_achievements); bkg_cols[DrsId::bkg_achievements] = bkg_achievements.cols;
+	}
 
-	auto pal = drs_ui.open_pal(DrsId::pal_default);
-	gif_cursors.load(drs_ui, pal.get(), DrsId::gif_cursors);
+	{
+		ZoneScopedN("load game graphics");
+		auto pal = drs_ui.open_pal(DrsId::pal_default);
+		gif_cursors.load(drs_ui, pal.get(), DrsId::gif_cursors);
+	}
 
 	load_terrain(eng, info);
 
 	info.next("Packing graphics");
+	{
+		ZoneScopedN("pack");
+		gfx::ImagePacker p;
 
-	gfx::ImagePacker p;
+		// register images for packer
+		drs_ids[DrsId::bkg_main_menu] = p.add_img(bkg_main);
+		drs_ids[DrsId::bkg_singleplayer] = p.add_img(bkg_singleplayer);
+		drs_ids[DrsId::bkg_multiplayer] = p.add_img(bkg_multiplayer);
+		drs_ids[DrsId::bkg_editor] = p.add_img(bkg_editor);
+		drs_ids[DrsId::bkg_victory] = p.add_img(bkg_victory);
+		drs_ids[DrsId::bkg_defeat] = p.add_img(bkg_defeat);
+		drs_ids[DrsId::bkg_mission] = p.add_img(bkg_mission);
+		drs_ids[DrsId::bkg_achievements] = p.add_img(bkg_achievements);
 
-	// register images for packer
-	drs_ids[DrsId::bkg_main_menu] = p.add_img(bkg_main);
-	drs_ids[DrsId::bkg_singleplayer] = p.add_img(bkg_singleplayer);
-	drs_ids[DrsId::bkg_multiplayer] = p.add_img(bkg_multiplayer);
-	drs_ids[DrsId::bkg_editor] = p.add_img(bkg_editor);
-	drs_ids[DrsId::bkg_victory] = p.add_img(bkg_victory);
-	drs_ids[DrsId::bkg_defeat] = p.add_img(bkg_defeat);
-	drs_ids[DrsId::bkg_mission] = p.add_img(bkg_mission);
-	drs_ids[DrsId::bkg_achievements] = p.add_img(bkg_achievements);
+		// START extract
+		ImageSet gifs;
 
-	// START extract
-	ImageSet gifs;
+		for (unsigned i = 0; i < gif_cursors.all_count; ++i)
+			gifs.imgs.emplace_back(p.add_img(gif_cursors.images[i].surface.get()));
 
-	for (unsigned i = 0; i < gif_cursors.all_count; ++i)
-		gifs.imgs.emplace_back(p.add_img(gif_cursors.images[i].surface.get()));
+		drs_gifs[DrsId::gif_cursors] = gifs;
+		// STOP extract
 
-	drs_gifs[DrsId::gif_cursors] = gifs;
-	// STOP extract
-
-	// pack images
-	GLint size = eng.gl().max_texture_size;
-	ts_ui = p.collect(size, size);
-
-	load_audio(eng, info);
+		// pack images
+		GLint size = eng.gl().max_texture_size;
+		ts_ui = p.collect(size, size);
+	}
 }
 
 void Assets::load_terrain(Engine &eng, UI_TaskInfo &info) {

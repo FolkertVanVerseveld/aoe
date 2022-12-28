@@ -52,6 +52,7 @@ public:
 	const gfx::ImageRef &at(io::DrsId) const;
 	const ImageSet &anim_at(io::DrsId) const;
 private:
+	void load_gfx(Engine&, UI_TaskInfo&);
 	void load_terrain(Engine&, UI_TaskInfo&);
 	void load_audio(Engine&, UI_TaskInfo&);
 };
