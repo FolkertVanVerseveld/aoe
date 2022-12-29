@@ -5,7 +5,7 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m_peers(), port(0), protocol(0), peers(), refs(), scn() {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), scn(), logic_gamespeed(1.0) {}
 
 Server::~Server() {
 	stop();
@@ -218,6 +218,7 @@ bool Server::set_scn_vars(const Peer &p, ScenarioSettings &scn) {
 	this->scn.all_technologies = scn.all_technologies;
 	this->scn.cheating = scn.cheating;
 	this->scn.square = scn.square;
+	this->scn.wrap = scn.wrap;
 
 	NetPkg pkg;
 	pkg.set_scn_vars(this->scn);
@@ -251,7 +252,16 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 			broadcast(pkg);
 			break;
 		case NetPkgType::start_game:
-			broadcast(pkg);
+			if (!m_running) {
+				m_running = true;
+
+				std::thread t([this]() {
+					eventloop();
+				});
+				t.detach();
+
+				broadcast(pkg);
+			}
 			break;
 		case NetPkgType::set_scn_vars:
 			return set_scn_vars(p, pkg.get_scn_vars());
@@ -283,7 +293,7 @@ int Server::mainloop(int, uint16_t port, uint16_t protocol) {
 }
 
 void Server::stop() {
-	m_active = false;
+	m_running = m_active = false;
 }
 
 void Server::close() {

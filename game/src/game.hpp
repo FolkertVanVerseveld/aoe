@@ -35,6 +35,7 @@ public:
 	bool all_technologies;
 	bool cheating;
 	bool square;
+	bool wrap;
 	bool restricted; // allow other players to also change settings
 	bool reorder; // allow to move players up and down in the list
 	bool hosting;

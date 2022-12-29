@@ -50,11 +50,13 @@ public:
 	Assets(int id, Engine &e, const std::string &path);
 
 	const gfx::ImageRef &at(io::DrsId) const;
+	const gfx::ImageRef &at(IdPoolRef) const;
 	const ImageSet &anim_at(io::DrsId) const;
 private:
 	void load_gfx(Engine&, UI_TaskInfo&);
-	void load_terrain(Engine&, UI_TaskInfo&);
 	void load_audio(Engine&, UI_TaskInfo&);
+
+	void add_gifs(gfx::ImagePacker &p, Animation&, io::DrsId);
 };
 
 }

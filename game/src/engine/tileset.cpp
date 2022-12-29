@@ -32,7 +32,7 @@ void Tileset::write(GLuint tex) {
 	}
 	{
 		ZoneScopedN("copy");
-		uint32_t* pixels = (uint32_t*)surf->pixels;
+		uint32_t *pixels = (uint32_t*)surf->pixels;
 		size_t pos = 0;
 
 		for (int y = 0, h = surf->h, p = surf->pitch >> 2; y < h; ++y)

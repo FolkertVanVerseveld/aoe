@@ -8,6 +8,7 @@
 #include "game.hpp"
 #include "server.hpp"
 #include "ui.hpp"
+#include "engine/keyctl.hpp"
 
 #include "ctpl_stl.hpp"
 
@@ -132,6 +133,7 @@ private:
 	std::unique_ptr<Assets> assets;
 	bool assets_good;
 	// TODO move this to a game class or smth
+	bool show_chat;
 	bool show_achievements;
 	bool show_timeline;
 	bool show_diplomacy;
@@ -140,10 +142,18 @@ private:
 	GLuint vbo;
 	int vsync_mode, vsync_idx;
 
+	float cam_x, cam_y;
+	static constexpr float cam_speed = 200.0f;
+
+	KeyboardController keyctl;
+
 	friend Debug;
 	friend Config;
 	friend EngineView;
 public:
+	GLuint texture1;
+	ImTextureID tex1;
+
 	Engine();
 	~Engine();
 
@@ -153,11 +163,9 @@ public:
 private:
 	static constexpr float frame_height = 0.9f, player_height = 0.55f, frame_margin = 0.075f;
 
-	void eventloop(int id);
-	void tick();
-
 	void idle();
 	void idle_async();
+	void idle_game();
 
 	void verify_game_data(const std::string &path);
 	void set_game_data();
@@ -179,6 +187,7 @@ private:
 
 	void cancel_multiplayer_host(MenuState next);
 
+	void show_terrain();
 	void show_multiplayer_game();
 	void show_multiplayer_achievements();
 	void show_multiplayer_diplomacy();

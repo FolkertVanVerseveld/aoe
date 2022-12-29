@@ -8,15 +8,15 @@
 namespace aoe {
 namespace gfx {
 
-ImageRef::ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf) : ImageRef(ref, bnds, surf, 0.0f, 1.0f, 0.0f, 1.0f) {}
+ImageRef::ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, int hotspot_x, int hotspot_y) : ImageRef(ref, bnds, surf, hotspot_x, hotspot_y, 0.0f, 1.0f, 0.0f, 1.0f) {}
 
-ImageRef::ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1)
+ImageRef::ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, int hotspot_x, int hotspot_y, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1)
 	: ref(ref), bnds(bnds)
-	, s0(s0), t0(t0), s1(s1), t1(t1), surf(surf) {}
+	, hotspot_x(hotspot_x), hotspot_y(hotspot_y), s0(s0), t0(t0), s1(s1), t1(t1), surf(surf) {}
 
 ImagePacker::ImagePacker() : images() {}
 
-IdPoolRef ImagePacker::add_img(SDL_Surface *surf) {
+IdPoolRef ImagePacker::add_img(int hotspot_x, int hotspot_y, SDL_Surface *surf) {
 	ZoneScoped;
 
 	assert(surf->w >= 0 && surf->h >= 0);
@@ -25,7 +25,7 @@ IdPoolRef ImagePacker::add_img(SDL_Surface *surf) {
 	if (w > UINT16_MAX || h > UINT16_MAX)
 		throw std::runtime_error("image too big");
 
-	auto ins = images.emplace(SDL_Rect{ 0, 0, 0, 0 }, surf);
+	auto ins = images.emplace(SDL_Rect{ 0, 0, 0, 0 }, surf, hotspot_x, hotspot_y);
 	if (!ins.second)
 		throw std::runtime_error("cannot add image");
 
@@ -89,13 +89,15 @@ Tileset ImagePacker::collect(int w, int h) {
 		ZoneScopedN("restore refs");
 		// traverse result to restore refs
 		for (size_t i = 0; i < rects.size(); ++i) {
-			stbrp_rect& r = rects[i];
+			stbrp_rect &r = rects[i];
 
 			// compute texture coordinates
 			GLfloat s0 = (GLfloat)r.x / w, t0 = (GLfloat)r.y / h;
 			GLfloat s1 = (GLfloat)(r.x + r.w) / w, t1 = (GLfloat)(r.y + r.h) / h;
 
-			ts.imgs.emplace(id_to_ref[i], SDL_Rect{ r.x, r.y, r.w, r.h }, nullptr, s0, t0, s1, t1);
+			const ImageRef &ref = images.at(id_to_ref[i]);
+
+			ts.imgs.emplace(id_to_ref[i], SDL_Rect{ r.x, r.y, r.w, r.h }, nullptr, ref.hotspot_x, ref.hotspot_y, s0, t0, s1, t1);
 		}
 	}
 

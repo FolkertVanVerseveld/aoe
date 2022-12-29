@@ -386,7 +386,8 @@ void NetPkg::set_scn_vars(const ScenarioSettings &scn) {
 	if (scn.all_technologies) flags |= 1 << 2;
 	if (scn.cheating        ) flags |= 1 << 3;
 	if (scn.square          ) flags |= 1 << 4;
-	if (scn.restricted      ) flags |= 1 << 5;
+	if (scn.wrap            ) flags |= 1 << 5;
+	if (scn.restricted      ) flags |= 1 << 6;
 
 	data.emplace_back(flags);
 
@@ -426,7 +427,8 @@ ScenarioSettings NetPkg::get_scn_vars() {
 	scn.all_technologies = !!(flags & (1 << 2));
 	scn.cheating         = !!(flags & (1 << 3));
 	scn.square           = !!(flags & (1 << 4));
-	scn.restricted       = !!(flags & (1 << 5));
+	scn.wrap             = !!(flags & (1 << 5));
+	scn.restricted       = !!(flags & (1 << 6));
 
 	return scn;
 }

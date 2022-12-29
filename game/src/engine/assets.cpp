@@ -69,7 +69,7 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 {
 	ZoneScoped;
 	// TODO use engine view to prevent crash when closed while ctor is still running
-	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", id, 5));
+	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", id, 6));
 
 	load_gfx(eng, info);
 	load_audio(eng, info);
@@ -81,6 +81,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	DRS drs_ui(path + "/data/Interfac.drs");
 
 	Background bkg_main, bkg_singleplayer, bkg_multiplayer, bkg_editor, bkg_victory, bkg_defeat, bkg_mission, bkg_achievements;
+	gfx::ImagePacker p;
 
 	{
 		ZoneScopedN("load backgrounds");
@@ -92,39 +93,68 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		bkg_defeat.load(drs_ui, DrsId::bkg_defeat); bkg_cols[DrsId::bkg_defeat] = bkg_defeat.cols;
 		bkg_mission.load(drs_ui, DrsId::bkg_mission); bkg_cols[DrsId::bkg_mission] = bkg_mission.cols;
 		bkg_achievements.load(drs_ui, DrsId::bkg_achievements); bkg_cols[DrsId::bkg_achievements] = bkg_achievements.cols;
+
+		// register images for packer
+		drs_ids[DrsId::bkg_main_menu] = p.add_img(0, 0, bkg_main);
+		drs_ids[DrsId::bkg_singleplayer] = p.add_img(0, 0, bkg_singleplayer);
+		drs_ids[DrsId::bkg_multiplayer] = p.add_img(0, 0, bkg_multiplayer);
+		drs_ids[DrsId::bkg_editor] = p.add_img(0, 0, bkg_editor);
+		drs_ids[DrsId::bkg_victory] = p.add_img(0, 0, bkg_victory);
+		drs_ids[DrsId::bkg_defeat] = p.add_img(0, 0, bkg_defeat);
+		drs_ids[DrsId::bkg_mission] = p.add_img(0, 0, bkg_mission);
+		drs_ids[DrsId::bkg_achievements] = p.add_img(0, 0, bkg_achievements);
 	}
 
+	Animation gif_menubar0;
+	Image img_dialog0;
+	auto pal = drs_ui.open_pal(DrsId::pal_default);
 	{
-		ZoneScopedN("load game graphics");
-		auto pal = drs_ui.open_pal(DrsId::pal_default);
+		ZoneScopedN("Loading user interface");
+
+		gif_menubar0.load(drs_ui, pal.get(), DrsId::gif_menubar0);
+		auto slp = drs_ui.open_slp(DrsId::img_dialog0);
+		img_dialog0.load(pal.get(), slp, 0, 0);
 		gif_cursors.load(drs_ui, pal.get(), DrsId::gif_cursors);
 	}
 
-	load_terrain(eng, info);
+	Animation trn_desert, trn_grass, trn_water, trn_deepwater;
+	info.next("Loading terrain data");
+	{
+		ZoneScopedN("Loading terrain data");
+
+		DRS drs_terrain(path + "/data/Terrain.drs");
+
+		trn_desert.load(drs_terrain, pal.get(), DrsId::trn_desert);
+		trn_grass.load(drs_terrain, pal.get(), DrsId::trn_grass);
+		trn_water.load(drs_terrain, pal.get(), DrsId::trn_water);
+		trn_deepwater.load(drs_terrain, pal.get(), DrsId::trn_deepwater);
+	}
+
+	Animation bld_town_center;
+	info.next("Loading game entities data");
+	{
+		ZoneScopedN("Loading game entities data");
+
+		DRS drs_graphics(path + "/data/Graphics.drs");
+
+		bld_town_center.load(drs_graphics, pal.get(), DrsId::bld_town_center);
+	}
 
 	info.next("Packing graphics");
 	{
 		ZoneScopedN("pack");
-		gfx::ImagePacker p;
 
-		// register images for packer
-		drs_ids[DrsId::bkg_main_menu] = p.add_img(bkg_main);
-		drs_ids[DrsId::bkg_singleplayer] = p.add_img(bkg_singleplayer);
-		drs_ids[DrsId::bkg_multiplayer] = p.add_img(bkg_multiplayer);
-		drs_ids[DrsId::bkg_editor] = p.add_img(bkg_editor);
-		drs_ids[DrsId::bkg_victory] = p.add_img(bkg_victory);
-		drs_ids[DrsId::bkg_defeat] = p.add_img(bkg_defeat);
-		drs_ids[DrsId::bkg_mission] = p.add_img(bkg_mission);
-		drs_ids[DrsId::bkg_achievements] = p.add_img(bkg_achievements);
+		add_gifs(p, gif_cursors, DrsId::gif_cursors);
+		add_gifs(p, gif_menubar0, DrsId::gif_menubar0);
 
-		// START extract
-		ImageSet gifs;
+		add_gifs(p, trn_desert, DrsId::trn_desert);
+		add_gifs(p, trn_grass, DrsId::trn_grass);
+		add_gifs(p, trn_water, DrsId::trn_water);
+		add_gifs(p, trn_deepwater, DrsId::trn_deepwater);
 
-		for (unsigned i = 0; i < gif_cursors.all_count; ++i)
-			gifs.imgs.emplace_back(p.add_img(gif_cursors.images[i].surface.get()));
+		add_gifs(p, bld_town_center, DrsId::bld_town_center);
 
-		drs_gifs[DrsId::gif_cursors] = gifs;
-		// STOP extract
+		drs_ids[DrsId::img_dialog0] = p.add_img(0, 0, img_dialog0.surface.get());
 
 		// pack images
 		GLint size = eng.gl().max_texture_size;
@@ -132,20 +162,13 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	}
 }
 
-void Assets::load_terrain(Engine &eng, UI_TaskInfo &info) {
-	ZoneScoped;
-	info.next("Loading terrain data");
+void Assets::add_gifs(gfx::ImagePacker &p, Animation &a, DrsId id) {
+	ImageSet gifs;
 
-	DRS drs_terrain(path + "/data/Terrain.drs");
+	for (unsigned i = 0; i < a.all_count; ++i)
+		gifs.imgs.emplace_back(p.add_img(a.images[i].hotspot_x, a.images[i].hotspot_y, a.images[i].surface.get()));
 
-	auto slp = drs_terrain.open_slp(io::DrsId::trn_desert);
-	printf("desert tiles: %llu\n", (unsigned long long)slp.frames.size());
-	slp = drs_terrain.open_slp(io::DrsId::trn_grass);
-	printf("grass tiles: %llu\n", (unsigned long long)slp.frames.size());
-	slp = drs_terrain.open_slp(io::DrsId::trn_water);
-	printf("water tiles: %llu\n", (unsigned long long)slp.frames.size());
-	slp = drs_terrain.open_slp(io::DrsId::trn_deepwater);
-	printf("deep water tiles: %llu\n", (unsigned long long)slp.frames.size());
+	drs_gifs[id] = gifs;
 }
 
 void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
@@ -171,7 +194,7 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 }
 
 const ImageRef &Assets::at(DrsId id) const {
-	ImageRef r(drs_ids.at(id), SDL_Rect{ 0, 0, 0, 0 });
+	ImageRef r(drs_ids.at(id), SDL_Rect{ 0, 0, 0, 0 }, NULL, 0, 0);
 
 	auto it = ts_ui.imgs.find(r);
 
@@ -179,6 +202,26 @@ const ImageRef &Assets::at(DrsId id) const {
 		throw std::runtime_error("bad id");
 
 	return *it;
+}
+
+const ImageRef &Assets::at(IdPoolRef ref) const {
+	ImageRef r(ref, SDL_Rect{ 0, 0, 0, 0 }, NULL, 0, 0);
+
+	auto it = ts_ui.imgs.find(r);
+
+	if (it == ts_ui.imgs.end())
+		throw std::runtime_error("bad ref");
+
+	return *it;
+}
+
+const ImageSet &Assets::anim_at(DrsId id) const {
+	auto it = drs_gifs.find(id);
+
+	if (it == drs_gifs.end())
+		throw std::runtime_error("bad id");
+
+	return it->second;
 }
 
 }

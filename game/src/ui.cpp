@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cstdarg>
+#include <cmath>
 
 #include <imgui.h>
 #include <imgui_impl_sdl.h>
@@ -371,6 +372,26 @@ void Engine::show_multiplayer_diplomacy() {
 	if (!f.begin("Diplomacy", show_diplomacy))
 		return;
 
+	Assets &a = *assets.get();
+	ImDrawList *lst = ImGui::GetWindowDrawList();
+
+	const gfx::ImageRef &rbkg = a.at(io::DrsId::img_dialog0);
+	ImVec2 pos(ImGui::GetWindowPos());
+	ImVec2 tl(ImGui::GetWindowContentRegionMin()), br(ImGui::GetWindowContentRegionMax());
+	tl.x += pos.x; tl.y += pos.y; br.x += pos.x; br.y += pos.y;
+
+	for (float y = tl.y; y < br.y; y += rbkg.bnds.h) {
+		float h = std::min<float>(rbkg.bnds.h, br.y - y);
+		float t1 = rbkg.t0 + (rbkg.t1 - rbkg.t0) * h / rbkg.bnds.h;
+
+		for (float x = tl.x; x < br.x; x += rbkg.bnds.w) {
+			float w = std::min<float>(rbkg.bnds.w, br.x - x);
+			float s1 = rbkg.s0 + (rbkg.s1 - rbkg.s0) * w / rbkg.bnds.w;
+
+			lst->AddImage(tex1, ImVec2(x, y), ImVec2(x + w, y + h), ImVec2(rbkg.s0, rbkg.t0), ImVec2(s1, t1));
+		}
+	}
+
 	{
 		Table t;
 
@@ -414,10 +435,23 @@ void Engine::show_multiplayer_diplomacy() {
 }
 
 void Engine::show_multiplayer_achievements() {
+	ImGui::SetNextWindowSizeConstraints(ImVec2(400, 300), ImVec2(1024, 768));
 	Frame f;
 
 	if (!f.begin("Achievements", show_achievements))
 		return;
+
+	Assets &a = *assets.get();
+	const gfx::ImageRef &ref = a.at(io::DrsId::bkg_achievements);
+
+	ImDrawList *lst = ImGui::GetWindowDrawList();
+	ImVec2 pos(ImGui::GetWindowPos());
+	ImVec2 tl(ImGui::GetWindowContentRegionMin()), br(ImGui::GetWindowContentRegionMax());
+	tl.x += pos.x; tl.y += pos.y; br.x += pos.x; br.y += pos.y;
+	//ImVec2 pos(ImGui::GetWindowPos()), size(ImGui::GetWindowSize());
+	//lst->AddImage(tex1, pos, ImVec2(pos.x + size.x, pos.y + size.y), ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
+	lst->AddImage(tex1, tl, br, ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
+
 
 	if (show_timeline) {
 		f.str("World Population");
@@ -468,9 +502,43 @@ void Engine::show_multiplayer_achievements() {
 	}
 }
 
+void Engine::show_terrain() {
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGuiIO &io = ImGui::GetIO();
+
+	Assets &a = *assets.get();
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+
+	const ImageSet &s_desert = a.anim_at(io::DrsId::trn_desert);
+
+	const gfx::ImageRef &test = a.at(s_desert.imgs[0]);
+
+	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(cam_x) - 0.5f;
+	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(cam_y) - 0.5f;
+
+	for (int y = 0; y < 8; ++y) {
+		for (int x = 0; x < 8; ++x) {
+
+			float x0 = left + test.bnds.w / 2 * y + test.bnds.w / 2 * x - test.hotspot_x;
+			float y0 = top - test.bnds.h / 2 * y + test.bnds.h / 2 * x - test.hotspot_y;
+
+			lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + test.bnds.w, y0 + test.bnds.h), ImVec2(test.s0, test.t0), ImVec2(test.s1, test.t1));
+		}
+	}
+
+	const ImageSet &s_tc = a.anim_at(io::DrsId::bld_town_center);
+	const gfx::ImageRef &tc = a.at(s_tc.imgs[0]);
+
+	float x0 = left + test.bnds.w / 2 * 1 + test.bnds.w / 2 * 2 - tc.hotspot_x, y0 = top - test.bnds.h / 2 * 1 + test.bnds.h / 2 * 2 - tc.hotspot_y;
+	lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + tc.bnds.w, y0 + tc.bnds.h), ImVec2(tc.s0, tc.t0), ImVec2(tc.s1, tc.t1));
+}
+
 void Engine::show_multiplayer_game() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGuiIO &io = ImGui::GetIO();
+
+	Assets &a = *assets.get();
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 
 	if (!io.WantCaptureMouse) {
 		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
@@ -479,9 +547,22 @@ void Engine::show_multiplayer_game() {
 		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
 	}
 
-	if (ImGui::BeginMainMenuBar()) {
-		ImGui::Text("F: %u W: %u G: %u S: %u %s", 1, 2, 3, 4, "Stone Age");
+	float menubar_bottom = vp->WorkPos.y;
 
+	const ImageSet &s = a.anim_at(io::DrsId::gif_menubar0);
+	const gfx::ImageRef &rtop = a.at(s.imgs[0]), &rbottom = a.at(s.imgs[1]);
+
+	float menubar_left = vp->WorkPos.x;
+
+	// align center if menubar smaller than screen dimensions
+	if (vp->WorkSize.x > rtop.bnds.w)
+		menubar_left = vp->WorkPos.x + (vp->WorkSize.x - rtop.bnds.w) / 2;
+
+	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::Button("Chat")) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
+			show_chat = !show_chat;
+		}
 
 		if (ImGui::Button("Diplomacy")) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
@@ -502,12 +583,52 @@ void Engine::show_multiplayer_game() {
 		ImGui::EndMainMenuBar();
 	}
 
+	int food = 200, wood = 200, gold = 0, stone = 150;
+	const char *age = "Stone Age";
+
+	lst->AddImage(tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_left + rtop.bnds.w, vp->WorkPos.y + rtop.bnds.h), ImVec2(rtop.s0, rtop.t0), ImVec2(rtop.s1, rtop.t1));
+
+	char buf[16];
+	snprintf(buf, sizeof buf, "%d", food);
+	buf[(sizeof buf) - 1] = '\0';
+
+	float y = vp->WorkPos.y + 2;
+
+	lst->AddText(ImVec2(menubar_left + 32 - 1, y + 1), IM_COL32(255, 255, 255, 255), buf);
+	lst->AddText(ImVec2(menubar_left + 32, y), IM_COL32(0, 0, 0, 255), buf);
+
+	snprintf(buf, sizeof buf, "%d", wood);
+	buf[(sizeof buf) - 1] = '\0';
+
+	lst->AddText(ImVec2(menubar_left + 99 - 1, y + 1), IM_COL32(255, 255, 255, 255), buf);
+	lst->AddText(ImVec2(menubar_left + 99, y), IM_COL32(0, 0, 0, 255), buf);
+
+	snprintf(buf, sizeof buf, "%d", gold);
+	buf[(sizeof buf) - 1] = '\0';
+
+	lst->AddText(ImVec2(menubar_left + 166 - 1, y + 1), IM_COL32(255, 255, 255, 255), buf);
+	lst->AddText(ImVec2(menubar_left + 166, y), IM_COL32(0, 0, 0, 255), buf);
+
+	snprintf(buf, sizeof buf, "%d", stone);
+	buf[(sizeof buf) - 1] = '\0';
+
+	lst->AddText(ImVec2(menubar_left + 234 - 1, y + 1), IM_COL32(255, 255, 255, 255), buf);
+	lst->AddText(ImVec2(menubar_left + 234, y), IM_COL32(0, 0, 0, 255), buf);
+
+	ImVec2 sz(ImGui::CalcTextSize(age));
+
+	lst->AddText(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y + 1), IM_COL32(255, 255, 255, 255), age);
+	lst->AddText(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y), IM_COL32(0, 0, 0, 255), age);
+
+	menubar_bottom += rtop.bnds.h;
+
+	if (show_chat)
 	{
 		Frame f;
 
-		ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x, vp->WorkPos.y));
+		ImGui::SetNextWindowPos(ImVec2(menubar_left, menubar_bottom));
 
-		if (f.begin("Chat", ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
+		if (f.begin("Chat", show_chat, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
 			ImGui::SetWindowSize(ImVec2(400, 0));
 
 			{
@@ -525,49 +646,7 @@ void Engine::show_multiplayer_game() {
 		}
 	}
 
-	{
-		Frame f;
-
-		float w = vp->WorkSize.x;
-		float hud_h = 160;
-		float icon_w = 160;
-		float map_w = 180;
-
-		ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x, vp->WorkPos.y + vp->WorkSize.y - hud_h));
-
-		if (f.begin("HUD", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
-			ImGui::SetWindowSize(ImVec2(w, hud_h));
-			{
-				Child lf;
-
-				//ImGui::SetCursorPosX(off_x);
-
-				if (lf.begin("IconFrame", ImVec2(icon_w, 0))) {
-					ImGui::TextUnformatted("icon here...");
-				}
-			}
-
-			f.sl();
-
-			{
-				Child mf;
-
-				if (mf.begin("ControlFrame", ImVec2(w - icon_w - map_w, 0))) {
-					ImGui::TextUnformatted("control buttons here...");
-				}
-			}
-
-			f.sl();
-
-			{
-				Child rf;
-
-				if (rf.begin("MinimapFrame", ImVec2(map_w, 0))) {
-					ImGui::TextUnformatted("minimap here...");
-				}
-			}
-		}
-	}
+	lst->AddImage(tex1, ImVec2(menubar_left, vp->WorkPos.y + vp->WorkSize.y - rbottom.bnds.h), ImVec2(menubar_left + rbottom.bnds.w, vp->WorkPos.y + vp->WorkSize.y), ImVec2(rbottom.s0, rbottom.t0), ImVec2(rbottom.s1, rbottom.t1));
 
 	if (show_achievements)
 		show_multiplayer_achievements();
@@ -712,6 +791,10 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 		f.sl();
 		if (changed |= f.chkbox("squared", scn.square) && scn.square)
 			scn.width = scn.height;
+
+		f.sl();
+		changed |= f.chkbox("wrap", scn.wrap);
+
 		if (changed |= f.scalar("Width", scn.width, 1, 8, 65536) && scn.square)
 			scn.height = scn.width;
 		if (changed |= f.scalar("Height", scn.height, 1, 8, 65536) && scn.square)
@@ -960,13 +1043,13 @@ void Engine::draw_background_border() {
 
 	GLfloat right = io.DisplaySize.x, bottom = io.DisplaySize.y;
 
-	lst->AddLine(ImVec2(1, 0), ImVec2(right, 0), IM_COL32(col.border[0].r, col.border[0].g, col.border[0].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(0, 0), ImVec2(right, 0), IM_COL32(col.border[0].r, col.border[0].g, col.border[0].b, SDL_ALPHA_OPAQUE), 1);
 	lst->AddLine(ImVec2(right - 1, 0), ImVec2(right - 1, bottom - 1), IM_COL32(col.border[0].r, col.border[0].g, col.border[0].b, SDL_ALPHA_OPAQUE), 1);
 
-	lst->AddLine(ImVec2(2, 1), ImVec2(right - 1, 1), IM_COL32(col.border[1].r, col.border[1].g, col.border[1].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(1, 1), ImVec2(right - 1, 1), IM_COL32(col.border[1].r, col.border[1].g, col.border[1].b, SDL_ALPHA_OPAQUE), 1);
 	lst->AddLine(ImVec2(right - 2, 1), ImVec2(right - 2, bottom - 2), IM_COL32(col.border[1].r, col.border[1].g, col.border[1].b, SDL_ALPHA_OPAQUE), 1);
 
-	lst->AddLine(ImVec2(3, 2), ImVec2(right - 2, 2), IM_COL32(col.border[2].r, col.border[2].g, col.border[2].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(2, 2), ImVec2(right - 2, 2), IM_COL32(col.border[2].r, col.border[2].g, col.border[2].b, SDL_ALPHA_OPAQUE), 1);
 	lst->AddLine(ImVec2(right - 3, 2), ImVec2(right - 3, bottom - 3), IM_COL32(col.border[2].r, col.border[2].g, col.border[2].b, SDL_ALPHA_OPAQUE), 1);
 
 	lst->AddLine(ImVec2(0, 0), ImVec2(0, bottom), IM_COL32(col.border[5].r, col.border[5].g, col.border[5].b, SDL_ALPHA_OPAQUE), 1);

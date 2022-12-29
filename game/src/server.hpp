@@ -154,12 +154,13 @@ public:
 
 class Server final : public ServerSocketController {
 	ServerSocket s;
-	std::atomic<bool> m_active;
+	std::atomic<bool> m_active, m_running;
 	std::mutex m_peers;
 	uint16_t port, protocol;
 	std::map<Peer, ClientInfo> peers;
 	IdPool<SocketRef> refs;
 	ScenarioSettings scn;
+	std::atomic<double> logic_gamespeed;
 
 	friend Debug;
 public:
@@ -194,6 +195,9 @@ private:
 	void broadcast(NetPkg &pkg, bool include_host=true);
 	void broadcast(NetPkg &pkg, const Peer &exclude);
 	void send(const Peer &p, NetPkg &pkg);
+
+	void eventloop();
+	void tick();
 };
 
 class Client final {

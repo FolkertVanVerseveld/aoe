@@ -36,7 +36,13 @@ enum class DrsId {
 	trn_deepwater = 15003,
 
 	pal_default = 50500,
+
+	img_dialog0 = 50210,
+
+	gif_menubar0 = 50741,
 	gif_cursors = 51000,
+
+	bld_town_center = 280,
 
 	sfx_ui_click = 5035,
 	sfx_priest_convert2 = 5051,
@@ -49,6 +55,7 @@ struct DrsBkg final {
 	unsigned pal_id;
 	char cur_name[16];
 	unsigned cur_id;
+	unsigned shade;
 	char btn_file[16];
 	int btn_id;
 

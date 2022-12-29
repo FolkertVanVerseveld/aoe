@@ -91,7 +91,7 @@ Engine::Engine()
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
 	, debug()
 	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), m_gl(nullptr), assets(), assets_good(false)
-	, show_achievements(false), show_timeline(false), show_diplomacy(false)
+	, show_chat(true), show_achievements(false), show_timeline(false), show_diplomacy(false)
 	, bkg_vertices{
 		// positions          // colors           // texture coords
 		 1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f, // top right
@@ -99,6 +99,8 @@ Engine::Engine()
 		-1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, // bottom left
 		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
 	}, vbo(0), vsync_mode(0), vsync_idx(0)
+	, cam_x(0), cam_y(0), keyctl()
+	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_eng);
@@ -228,6 +230,7 @@ void Engine::display_ui() {
 			draw_background_border();
 			break;
 		case MenuState::multiplayer_game:
+			show_terrain();
 			show_multiplayer_game();
 			break;
 		case MenuState::multiplayer_menu:
@@ -558,6 +561,31 @@ void Engine::idle() {
 			break;
 		}
 	}
+
+
+	if (menu_state == MenuState::multiplayer_game)
+		idle_game();
+}
+
+void Engine::idle_game() {
+	ZoneScoped;
+
+	ImGuiIO &io = ImGui::GetIO();
+
+	float dt = io.DeltaTime;
+	int dx = 0, dy = 0;
+
+	if (keyctl.is_down(GameKey::key_left )) --dx;
+	if (keyctl.is_down(GameKey::key_right)) ++dx;
+	if (keyctl.is_down(GameKey::key_up   )) --dy;
+	if (keyctl.is_down(GameKey::key_down )) ++dy;
+
+	if (dx) cam_x += dx * cam_speed * dt;
+	if (dy) cam_y += dy * cam_speed * dt;
+
+	// clamp cam pos
+	// TODO clamp right, top and bottom side as well
+	cam_x = std::max(0.0f, cam_x);
 }
 
 void Engine::idle_async() {
@@ -623,6 +651,7 @@ void Engine::start_multiplayer_game() {
 	show_achievements = false;
 	show_timeline = false;
 	show_diplomacy = false;
+	keyctl.clear();
 }
 
 void Engine::add_chat_text(const std::string &s) {
@@ -743,52 +772,23 @@ void Engine::ui_async_next(UI_TaskInfo &info, const std::string &s) {
 	}
 }
 
-void Engine::tick() {
-	ZoneScoped;
-}
-
-void Engine::eventloop(int id) {
-	ZoneScoped;
-
-	auto last = std::chrono::steady_clock::now();
-	double dt = 0;
-	bool measured = false;
-
-	while (running.load()) {
-		// recompute as logic_gamespeed may change
-		double interval_inv = (double)logic_gamespeed * DEFAULT_TICKS_PER_SECOND;
-		double interval = 1 / std::max(0.01, interval_inv);
-
-		auto now = std::chrono::steady_clock::now();
-		std::chrono::duration<double> elapsed = now - last;
-		last = now;
-		dt += elapsed.count();
-
-		size_t steps = (size_t)(dt * interval_inv);
-
-		// do steps
-		for (; steps; --steps)
-			tick();
-
-		dt = fmod(dt, interval);
-
-		unsigned us = 0;
-
-		if (!steps)
-			us = (unsigned)(interval * 1000 * 1000);
-		// 100000000
-
-		if (us > 500)
-			std::this_thread::sleep_for(std::chrono::microseconds(us));
-	}
-}
-
 void Engine::reserve_threads(int n) {
 	if (tp.n_idle() >= n)
 		return;
 
 	printf("%s: grow %d\n", __func__, n);
 	tp.resize(tp.size() + n);
+}
+
+static bool try_add_font(ImFontAtlas *a, const char *path, float size) {
+	FILE *f;
+
+	if (!(f = fopen(path, "rb")))
+		return false;
+
+	fclose(f);
+
+	return a->AddFontFromFileTTF(path, size);
 }
 
 void Engine::guess_font_paths() {
@@ -808,12 +808,12 @@ void Engine::guess_font_paths() {
 	//ImFont *font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 	//IM_ASSERT(font != NULL);
 #if _WIN32
-	io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\arial.ttf", 13.0f);
+	try_add_font(io.Fonts, "C:\\Windows\\Fonts\\arial.ttf", 13.0f);
 
-	if (!io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\COPRGTL.TTF", 16.0f)) {
+	if (!try_add_font(io.Fonts, "C:\\Windows\\Fonts\\COPRGTL.TTF", 16.0f)) {
 		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTL.TTF");
 
-		io.Fonts->AddFontFromFileTTF(localpath.c_str(), 16.0f);
+		try_add_font(io.Fonts, localpath.c_str(), 16.0f);
 	}
 #endif
 }
@@ -822,11 +822,6 @@ int Engine::mainloop() {
 	ZoneScoped;
 
 	running = true;
-	// TODO remove/repurpose
-#if 0
-	reserve_threads(1);
-	tp.push([this](int id) { printf("%d\n", !!running.load()); eventloop(id); });
-#endif
 
 	SDL sdl;
 	this->sdl = &sdl;
@@ -958,9 +953,8 @@ int Engine::mainloop() {
 	glVertexAttribPointer(aTexCoord, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 	glEnableVertexAttribArray(aTexCoord);
 
-	GLuint texture1;
-
 	glGenTextures(1, &texture1);
+	tex1 = (ImTextureID)texture1;
 	glBindTexture(GL_TEXTURE_2D, texture1);
 		// set the texture wrapping parameters
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
@@ -1001,16 +995,24 @@ int Engine::mainloop() {
 						done = true;
 					break;
 				case SDL_KEYUP:
-					p = ImGui_ImplSDL2_ProcessEvent(&event);
+					ImGui_ImplSDL2_ProcessEvent(&event);
+					keyctl.up(event.key);
 
 					switch (event.key.keysym.sym) {
 						case SDLK_BACKQUOTE:
-							m_show_menubar = !m_show_menubar;
+							if (!show_chat)
+								m_show_menubar = !m_show_menubar;
 							break;
 						case SDLK_F11:
 							sdl.window.set_fullscreen(!sdl.window.is_fullscreen());
 							break;
 					}
+					break;
+				case SDL_KEYDOWN:
+					p = ImGui_ImplSDL2_ProcessEvent(&event);
+
+					if (!p || (menu_state == MenuState::multiplayer_game && !io.WantCaptureKeyboard))
+						keyctl.down(event.key);
 					break;
 				default:
 					ImGui_ImplSDL2_ProcessEvent(&event);

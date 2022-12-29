@@ -33,11 +33,12 @@ class ImageRef final {
 public:
 	IdPoolRef ref;
 	SDL_Rect bnds;
+	int hotspot_x, hotspot_y;
 	GLfloat s0, t0, s1, t1;
 	SDL_Surface *surf; // NOTE is always NULL if retrieved from Tileset
 
-	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf=NULL);
-	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1);
+	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, int hotspot_x, int hotspot_y);
+	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, int hotspot_x, int hotspot_y, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1);
 
 	friend bool operator<(const ImageRef &lhs, const ImageRef &rhs) noexcept {
 		return lhs.ref < rhs.ref;
@@ -62,7 +63,7 @@ class ImagePacker final {
 public:
 	ImagePacker();
 
-	IdPoolRef add_img(SDL_Surface *surf);
+	IdPoolRef add_img(int hotspot_x, int hotspot_y, SDL_Surface *surf);
 
 	Tileset collect(int w, int h);
 };
