@@ -163,7 +163,6 @@ private:
 	void set_game_data();
 
 	void display();
-	void display_us();
 	void display_ui();
 	void display_ui_tasks();
 	void show_init();
@@ -208,6 +207,7 @@ private:
 	void set_background(io::DrsId);
 
 	void draw_background_border();
+	void guess_font_paths();
 public:
 	void push_error(const std::string &msg);
 

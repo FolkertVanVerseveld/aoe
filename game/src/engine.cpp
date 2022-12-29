@@ -41,6 +41,31 @@
 
 #include "debug.hpp"
 
+#if _WIN32
+#include <WinBase.h>
+
+static std::string get_username() {
+	std::string name(256, ' ');
+	DWORD size = name.size();
+
+	while (!GetUserName(name.data(), &size)) {
+		DWORD err = GetLastError();
+
+		if (err != ERROR_INSUFFICIENT_BUFFER)
+			throw std::runtime_error(std::string("get_username failed: code ") + std::to_string(err));
+
+		name.resize(size = name.size() * 2, ' ');
+	}
+
+	if (size)
+		name.resize(size - 1);
+
+	return name;
+}
+#else
+#error get_username unimplemented
+#endif
+
 namespace aoe {
 
 Engine *eng;
@@ -58,7 +83,7 @@ Engine::Engine()
 	: net(), show_demo(false), show_debug(false)
 	, connection_mode(0), connection_port(32768), connection_host("")
 	, menu_state(MenuState::init), next_menu_state(MenuState::init)
-	, multiplayer_ready(false), m_show_menubar(true)
+	, multiplayer_ready(false), m_show_menubar(false)
 	, scn()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
@@ -191,26 +216,6 @@ void Engine::verify_game_data(const std::string &path) {
 			push_error(std::string("Game data verification failed: ") + e.what());
 		}
 	}, path);
-}
-
-// TODO repurpose or remove
-void Engine::display_us() {
-	ZoneScoped;
-
-	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	const float vertices[] = {
-		-0.5f, -0.5f, 0.0f,
-		0.5f, -0.5f, 0.0f,
-		0.0f,  0.5f, 0.0f
-	};
-
-	gfx::GLbuffer b; // TODO move to eliminate create/delete every frame
-	gfx::GLbufferview v(b);
-
-	v.draw(vertices, sizeof(vertices));
-	// TODO
 }
 
 void Engine::display_ui() {
@@ -786,6 +791,33 @@ void Engine::reserve_threads(int n) {
 	tp.resize(tp.size() + n);
 }
 
+void Engine::guess_font_paths() {
+	ImGuiIO &io = ImGui::GetIO();
+	// Load Fonts
+	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+	// - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
+	// - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
+	// - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
+	// - Read 'docs/FONTS.md' for more instructions and details.
+	// - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
+	//io.Fonts->AddFontDefault();
+	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
+	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
+	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
+	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
+	//ImFont *font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
+	//IM_ASSERT(font != NULL);
+#if _WIN32
+	io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\arial.ttf", 13.0f);
+
+	if (!io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\COPRGTL.TTF", 16.0f)) {
+		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTL.TTF");
+
+		io.Fonts->AddFontFromFileTTF(localpath.c_str(), 16.0f);
+	}
+#endif
+}
+
 int Engine::mainloop() {
 	ZoneScoped;
 
@@ -804,7 +836,7 @@ int Engine::mainloop() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO &io = ImGui::GetIO(); (void)io;
-	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
 	// Setup Dear ImGui style
@@ -816,20 +848,7 @@ int Engine::mainloop() {
 	ImGui_ImplSDL2_InitForOpenGL(sdl.window, sdl.gl_context);
 	ImGui_ImplOpenGL3_Init(sdl.guard.glsl_version);
 
-	// Load Fonts
-	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-	// - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-	// - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-	// - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-	// - Read 'docs/FONTS.md' for more instructions and details.
-	// - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-	//io.Fonts->AddFontDefault();
-	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
-	//ImFont *font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-	//IM_ASSERT(font != NULL);
+	guess_font_paths();
 
 	// Our state
 	ImVec4 clear_color(0.45f, 0.55f, 0.60f, 1.00f);
@@ -897,22 +916,12 @@ int Engine::mainloop() {
 		return -1;
 	}
 
-	GLuint prog = glCreateProgram();
+	gfx::GLprogram prog;
 
-	glAttachShader(prog, vs);
-	glAttachShader(prog, fs);
+	prog += vs;
+	prog += fs;
 
-	glLinkProgram(prog);
-
-	glGetProgramiv(prog, GL_LINK_STATUS, &status);
-
-	if (status != GL_TRUE) {
-		glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &log_length);
-		std::string buf(log_length + 1, ' ');
-		glGetProgramInfoLog(prog, log_length, NULL, buf.data());
-		fprintf(stderr, "%s: program link error: %s\n", __func__, buf.c_str());
-		return -1;
-	}
+	prog.compile();
 
 	glDeleteShader(fs);
 	glDeleteShader(vs);
@@ -993,12 +1002,14 @@ int Engine::mainloop() {
 					break;
 				case SDL_KEYUP:
 					p = ImGui_ImplSDL2_ProcessEvent(&event);
-					if (!(p && io.WantCaptureKeyboard)) {
-						switch (event.key.keysym.sym) {
-							case SDLK_BACKQUOTE:
-								m_show_menubar = !m_show_menubar;
-								break;
-						}
+
+					switch (event.key.keysym.sym) {
+						case SDLK_BACKQUOTE:
+							m_show_menubar = !m_show_menubar;
+							break;
+						case SDLK_F11:
+							sdl.window.set_fullscreen(!sdl.window.is_fullscreen());
+							break;
 					}
 					break;
 				default:
@@ -1024,7 +1035,7 @@ int Engine::mainloop() {
 		glBindTexture(GL_TEXTURE_2D, texture1);
 		//GLint tex;
 		//glGetUniformiv(prog, glGetUniformLocation(prog, "texture1"), &tex);
-		glUseProgram(prog);
+		prog.use();
 		glUniform1i(glGetUniformLocation(prog, "texture1"), 0);
 
 		glBindVertexArray(vao);

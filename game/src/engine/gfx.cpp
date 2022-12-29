@@ -40,85 +40,33 @@ GLint GL::getInt(GLenum param) {
 	return v;
 }
 
-GLbuffer::GLbuffer() : id(0) {
-	glGenBuffers(1, &id);
-	GLCHK;
-}
-
-GLbuffer::~GLbuffer() {
-	glDeleteBuffers(1, &id);
-}
-
-GLbufferview::GLbufferview(GLbuffer &b) : b(b) {
-	glBindBuffer(GL_ARRAY_BUFFER, b.id);
-	GLCHK;
-}
-
-GLbufferview::~GLbufferview() {
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-void GLbufferview::draw(const GLvoid *data, GLsizeiptr size) {
-	glBufferData(GL_ARRAY_BUFFER, size, data, GL_STREAM_DRAW);
-}
-
-GLshader::GLshader(GLenum type) : id(glCreateShader(type)), type(type) {
-	if (!id)
-		throw std::runtime_error("could not create shader");
-}
-
-GLshader::~GLshader() {
-	glDeleteShader(id);
-}
-
-void GLshader::build() {
-	std::vector<const GLchar*> src;
-
-	for (const std::string &s : lines)
-		src.emplace_back(s.c_str());
-
-	glShaderSource(id, src.size(), src.data(), NULL);
-	glCompileShader(id);
-
-	GLint status = 0, log_length = 0;
-	glGetShaderiv(id, GL_COMPILE_STATUS, &status);
-	glGetShaderiv(id, GL_INFO_LOG_LENGTH, &log_length);
-
-	if (status != GL_TRUE) {
-		if (log_length > 1) {
-			std::string buf(log_length + 1, ' ');
-			glGetShaderInfoLog(id, log_length, NULL, buf.data());
-			fprintf(stderr, "%s: %s\n", __func__, buf.c_str());
-		}
-
-		throw std::runtime_error("failed to compile shader");
-	}
-}
-
 GLprogram::GLprogram() : id(glCreateProgram()) {
 	if (!id)
-		throw std::runtime_error("could not create program");
+		throw std::runtime_error("Failed to create program");
 }
 
 GLprogram::~GLprogram() {
 	glDeleteProgram(id);
 }
 
-void GLprogram::build() {
-	GLint status = 0, log_length = 0;
+void GLprogram::use() {
+	glUseProgram(id);
+}
+
+void GLprogram::compile() {
+	GLint status, log_length;
 
 	glLinkProgram(id);
 	glGetProgramiv(id, GL_LINK_STATUS, &status);
-	
-	if (status != GL_TRUE) {
-		if (log_length > 1) {
-			std::string buf(log_length + 1, ' ');
-			glGetShaderInfoLog(id, log_length, NULL, buf.data());
-			fprintf(stderr, "%s: %s\n", __func__, buf.c_str());
-		}
 
-		throw std::runtime_error("failed to compile program");
-	}
+	if (status == GL_TRUE)
+		return;
+
+	glGetProgramiv(id, GL_INFO_LOG_LENGTH, &log_length);
+	std::string buf(log_length + 1, ' ');
+	glGetProgramInfoLog(id, log_length, NULL, buf.data());
+
+	throw std::runtime_error(std::string("Program compile error: " + buf));
 }
 
 }

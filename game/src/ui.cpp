@@ -775,18 +775,41 @@ void Engine::show_start() {
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
-	f.str("Age of Empires");
-	f.str("Free and open source remake");
+	float old_x = ImGui::GetCursorPosX();
+
+	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+	ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
+
+	f.xbtn("Single Player");
+
+	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+	ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
 
 	if (f.btn("Multiplayer")) {
 		sfx.play_sfx(SfxId::sfx_ui_click);
 		next_menu_state = MenuState::multiplayer_menu;
 	}
 
-	if (f.btn("Quit")) {
+	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+	ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
+
+	f.xbtn("Help");
+
+	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+	ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
+
+	f.xbtn("Scenario Builder");
+
+	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+	ImGui::SetCursorPosY(604.0f / 768.0f * vp->WorkSize.y);
+
+	if (f.btn("Exit")) {
 		sfx.play_sfx(SfxId::sfx_ui_click);
 		throw 0;
 	}
+
+	ImGui::SetCursorPosX(old_x);
+	ImGui::SetCursorPosY(710.0f / 768.0f * vp->WorkSize.y);
 
 	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
 }
@@ -933,7 +956,7 @@ void Engine::draw_background_border() {
 	}
 
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
-	ImGuiIO &io = ImGui::GetIO(); (void)io;
+	ImGuiIO &io = ImGui::GetIO();
 
 	GLfloat right = io.DisplaySize.x, bottom = io.DisplaySize.y;
 

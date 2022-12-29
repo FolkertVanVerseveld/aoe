@@ -76,62 +76,22 @@ public:
 	static GLint getInt(GLenum);
 };
 
-// TODO repurpose or remove everything below this line
-
-class GLprogram;
-
-class GLshader final {
-	GLuint id;
-	GLenum type;
-	std::vector<std::string> lines;
-	friend GLprogram;
-public:
-	GLshader(GLenum type);
-	~GLshader();
-
-	GLshader &operator+=(const std::string &s) {
-		lines.emplace_back(s);
-		return *this;
-	}
-
-	void build();
-};
-
-class GLbufferview;
-
-class GLbuffer final {
-	GLuint id;
-	friend GLbufferview;
-public:
-	GLbuffer();
-	~GLbuffer();
-};
-
-class GLbufferview final {
-	GLbuffer &b;
-public:
-	GLbufferview(GLbuffer &b);
-	~GLbufferview();
-
-	GLbufferview(const GLbuffer&) = delete;
-	GLbufferview(GLbuffer&&) = delete;
-
-	void draw(const GLvoid *data, GLsizeiptr size);
-};
-
 class GLprogram final {
-public:
 	GLuint id;
-
+public:
 	GLprogram();
 	~GLprogram();
 
-	GLprogram &operator+=(const GLshader &s) {
-		glAttachShader(id, s.id);
+	operator GLuint() const noexcept { return id; }
+
+	GLprogram &operator+=(GLuint shader) {
+		glAttachShader(id, shader);
 		return *this;
 	}
 
-	void build();
+	void compile();
+
+	void use();
 };
 
 }
