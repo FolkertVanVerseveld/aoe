@@ -18,7 +18,7 @@
 #include "idpool.hpp"
 
 #if _WIN32
-#include "../../wepoll/wepoll.h"
+#include <wepoll.h>
 #endif
 
 namespace aoe {
@@ -51,6 +51,7 @@ struct NetPkgHdr final {
 enum class NetPlayerControlType {
 	resize,
 	erase,
+	set_ref,
 };
 
 enum class NetPeerControlType {
@@ -62,10 +63,16 @@ enum class NetPeerControlType {
 class NetPlayerControl final {
 public:
 	NetPlayerControlType type;
+	// TODO use variant?
 	uint16_t arg;
+	IdPoolRef ref;
+
+	static constexpr unsigned resize_size = 2 * sizeof(uint16_t);
+	static constexpr unsigned set_ref_size = sizeof(uint16_t) + sizeof(uint32_t);
 
 	NetPlayerControl() : type(NetPlayerControlType::resize), arg(0) {}
 	NetPlayerControl(NetPlayerControlType type, uint16_t arg) : type(type), arg(arg) {}
+	NetPlayerControl(IdPoolRef ref) : type(NetPlayerControlType::set_ref), arg(0), ref(ref) {}
 };
 
 class NetPeerControl final {
@@ -119,6 +126,7 @@ public:
 	ScenarioSettings get_scn_vars();
 
 	void set_player_resize(size_t);
+	void claim_player_setting(IdPoolRef, unsigned);
 	NetPlayerControl get_player_control();
 
 	void set_incoming(IdPoolRef);

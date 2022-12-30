@@ -780,7 +780,21 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 
 				f.sl();
 
-				r.text("##0", p.name);
+				//r.text("##0", p.name);
+
+				if (f.btn("Claim"))
+					;
+
+				if (ImGui::IsItemHovered()) {
+					ImGui::Tooltip("bla bla");
+				}
+
+				f.sl();
+
+				if (f.btn("Set AI"))
+					;
+
+				r.next();
 
 				f.combo("##1", p.civ, civs);
 				r.next();
@@ -795,7 +809,7 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 		}
 	}
 
-	while (scn.players.size() > 255)
+	while (scn.players.size() >= MAX_PLAYERS)
 		scn.players.pop_back();
 }
 
@@ -849,7 +863,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 		//	changed |= f.chkbox("Host makes settings", scn.restricted);
 
 		changed |= f.scalar("Age", scn.age, 1, 1, 4);
-		changed |= f.scalar("Max pop.", scn.popcap, 5, 5, 1000);
+		changed |= f.scalar("Max pop.", scn.popcap, 50, 5, 1000);
 
 		f.str("Resources:");
 		changed |= f.scalar("food", scn.res.food, 10);

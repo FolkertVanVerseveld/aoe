@@ -23,10 +23,9 @@ public:
 	std::string name;
 	bool ai;
 	int civ;
-	unsigned index; // may overlap
 	unsigned team;
 
-	PlayerSetting() : name(), ai(false), civ(0), index(1), team(1) {}
+	PlayerSetting() : name(), ai(false), civ(0), team(1) {}
 };
 
 class ScenarioSettings final {

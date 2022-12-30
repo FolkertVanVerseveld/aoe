@@ -1,4 +1,4 @@
-#include "server.hpp"
+#include "../server.hpp"
 
 #include <cassert>
 #include <stdexcept>
@@ -60,12 +60,29 @@ void NetPkg::ntoh() {
 			break;
 		}
 		case NetPkgType::playermod: {
-			need_payload(2 * sizeof(uint16_t));
+			need_payload(NetPlayerControl::resize_size);
 
 			uint16_t *dw = (uint16_t*)data.data();
 
 			dw[0] = ntohs(dw[0]);
-			dw[1] = ntohs(dw[1]);
+
+			NetPlayerControlType type = (NetPlayerControlType)dw[0];
+
+			switch (type) {
+			case NetPlayerControlType::set_ref: {
+				need_payload(NetPlayerControl::set_ref_size);
+				uint32_t *dd = (uint32_t*)&dw[1];
+
+				dd[0] = ntohl(dd[0]);
+				dd[1] = ntohl(dd[1]);
+
+				break;
+			}
+			default:
+				dw[1] = ntohs(dw[1]);
+				break;
+			}
+
 			break;
 		}
 		case NetPkgType::peermod: {
@@ -161,8 +178,23 @@ void NetPkg::hton() {
 		case NetPkgType::playermod: {
 			uint16_t *dw = (uint16_t*)data.data();
 
+			NetPlayerControlType type = dw[0];
+
 			dw[0] = htons(dw[0]);
-			dw[1] = htons(dw[1]);
+
+			switch (type) {
+			case NetPlayerControlType::set_ref: {
+				uint32_t *dd = (uint32_t*)&dw[1];
+
+				dd[0] = htonl(dd[0]);
+				dd[1] = htonl(dd[1]);
+
+				break;
+			}
+			default:
+				dw[1] = htons(dw[1]);
+				break;
+			}
 			break;
 		}
 		case NetPkgType::peermod: {
@@ -475,7 +507,7 @@ void NetPkg::set_player_resize(size_t size) {
 	if (size > UINT16_MAX)
 		throw std::runtime_error("overflow player resize");
 
-	data.resize(2 * sizeof(uint16_t));
+	data.resize(NetPlayerControl::resize_size);
 
 	uint16_t *dw = (uint16_t*)data.data();
 
@@ -485,15 +517,46 @@ void NetPkg::set_player_resize(size_t size) {
 	set_hdr(NetPkgType::playermod);
 }
 
+void NetPkg::claim_player_setting(IdPoolRef ref, unsigned idx) {
+	data.resize(NetPlayerControl::set_ref_size);
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_ref;
+
+	uint32_t *dd = (uint32_t*)&dw[1];
+
+	dd[0] = ref.first;
+	dd[1] = ref.second;
+
+	set_hdr(NetPkgType::playermod);
+}
+
 NetPlayerControl NetPkg::get_player_control() {
 	ntoh();
 
-	if ((NetPkgType)hdr.type != NetPkgType::playermod || data.size() != 2 * sizeof(uint16_t))
+	// TODO check data size
+	if ((NetPkgType)hdr.type != NetPkgType::playermod)
 		throw std::runtime_error("not a player control packet");
 
 	const uint16_t *dw = (const uint16_t*)data.data();
 
-	return NetPlayerControl((NetPlayerControlType)dw[0], dw[1]);
+	NetPlayerControlType type = (NetPlayerControlType)dw[0];
+
+	switch (type) {
+	case NetPlayerControlType::set_ref: {
+		const uint32_t *dd = (const uint32_t*)&dw[1];
+
+		IdPoolRef r;
+
+		r.first = dd[0];
+		r.second = dd[1];
+
+		return NetPlayerControl(r);
+	}
+	default:
+		return NetPlayerControl(type, dw[1]);
+	}
 }
 
 void NetPkg::set_incoming(IdPoolRef ref) {
