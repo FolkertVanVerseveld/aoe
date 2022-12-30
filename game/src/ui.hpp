@@ -29,6 +29,7 @@ public:
 	bool begin(const char *name, bool &p_open, ImGuiWindowFlags flags=0);
 	void close();
 
+	void str(const std::string&);
 	void str(const char*);
 	void fmt(const char*, ...);
 

@@ -229,37 +229,6 @@ bool Server::set_scn_vars(const Peer &p, ScenarioSettings &scn) {
 	return true;
 }
 
-bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out) {
-	NetPkg pkg;
-
-	switch (ctl.type) {
-		case NetPlayerControlType::resize:
-			scn.players.resize(ctl.arg);
-			pkg.set_player_resize(ctl.arg);
-			broadcast(pkg);
-			return true;
-		case NetPlayerControlType::set_ref: {
-			unsigned idx = ctl.arg; // remember, it is 1-based
-
-			// ignore bad index, might be desync
-			if (!idx || idx > scn.players.size())
-				return true;
-
-			// claim slot. NOTE multiple players can claim the same slot
-			IdPoolRef ref = peers.at(p).ref;
-			scn.owners[ref] = idx;
-
-			// sent to players
-			pkg.set_claim_player(ref, idx);
-			broadcast(pkg);
-
-			return true;
-		}
-	}
-
-	return false;
-}
-
 void Server::start_game() {
 	if (m_running)
 		return;
@@ -345,7 +314,7 @@ void Server::close() {
 	s.close();
 }
 
-Client::Client() : s(), port(0), m_connected(false), m(), peers(), me(invalid_ref), scn(), g() {}
+Client::Client() : s(), port(0), m_connected(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1) {}
 
 Client::~Client() {
 	stop();
@@ -406,12 +375,27 @@ void Client::start_game() {
 }
 
 void Client::set_scn_vars(const ScenarioSettings &scn) {
-	std::lock_guard<std::mutex> lk(m_eng);
+	std::lock_guard<std::mutex> lk(m);
+
+	this->scn.fixed_start = scn.fixed_start;
+	this->scn.explored = scn.explored;
+	this->scn.all_technologies = scn.all_technologies;
+	this->scn.cheating = scn.cheating;
+	this->scn.square = scn.square;
+	this->scn.wrap = scn.wrap;
+
+	// scn.restricted is not copied for obvious reasons
+
+	this->scn.width = scn.width;
+	this->scn.height = scn.height;
+	this->scn.popcap = scn.popcap;
+	this->scn.age = scn.age;
+	this->scn.villagers = scn.villagers;
+
+	this->scn.res = scn.res;
+	this->modflags |= (unsigned)ClientModFlags::scn;
 
 	g.resize(scn);
-
-	if (eng)
-		eng->set_scn_vars(scn);
 }
 
 void Client::set_username(const std::string &s) {
@@ -427,12 +411,6 @@ void Client::set_username(const std::string &s) {
 
 	if (eng)
 		eng->trigger_username(s);
-}
-
-void Client::playermod(const NetPlayerControl &ctl) {
-	std::lock_guard<std::mutex> lk(m_eng);
-	if (eng)
-		eng->trigger_playermod(ctl);
 }
 
 void Client::peermod(const NetPeerControl &ctl) {
@@ -467,9 +445,12 @@ void Client::peermod(const NetPeerControl &ctl) {
 
 			break;
 		}
-		case NetPeerControlType::set_player_idx:
+		case NetPeerControlType::set_player_idx: {
+			std::lock_guard<std::mutex> lk(m);
 			scn.owners[ref] = std::get<uint16_t>(ctl.data);
+			modflags |= (unsigned)ClientModFlags::scn;
 			break;
+		}
 		default:
 			fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)ctl.type);
 			break;
@@ -477,6 +458,8 @@ void Client::peermod(const NetPeerControl &ctl) {
 }
 
 void Client::terrainmod(const NetTerrainMod &tm) {
+	std::lock_guard<std::mutex> lk(m);
+	modflags |= (unsigned)ClientModFlags::terrain;
 	g.terrain_set(tm.tiles, tm.hmap, tm.x, tm.y, tm.w, tm.h);
 }
 
@@ -564,7 +547,13 @@ void Client::send_username(const std::string &s) {
 
 void Client::claim_player(unsigned idx) {
 	NetPkg pkg;
-	pkg.claim_player_setting(me, idx);
+	pkg.claim_player_setting(idx);
+	send(pkg);
+}
+
+void Client::claim_cpu(unsigned idx) {
+	NetPkg pkg;
+	pkg.claim_cpu_setting(idx);
 	send(pkg);
 }
 
@@ -572,12 +561,6 @@ void Client::send_scn_vars(const ScenarioSettings &scn) {
 	//printf("%s: %u,%u\n", __func__, scn.width, scn.height);
 	NetPkg pkg;
 	pkg.set_scn_vars(scn);
-	send(pkg);
-}
-
-void Client::send_players_resize(unsigned n) {
-	NetPkg pkg;
-	pkg.set_player_resize(n);
 	send(pkg);
 }
 

@@ -52,6 +52,8 @@ enum class NetPlayerControlType {
 	resize,
 	erase,
 	set_ref,
+	set_cpu_ref,
+	set_player_name,
 };
 
 enum class NetPeerControlType {
@@ -64,15 +66,14 @@ enum class NetPeerControlType {
 class NetPlayerControl final {
 public:
 	NetPlayerControlType type;
-	// TODO use variant?
-	uint16_t arg;
-	IdPoolRef ref;
+	std::variant<std::nullopt_t, IdPoolRef, uint16_t, std::pair<uint16_t, std::string>> data;
 
 	static constexpr unsigned resize_size = 2 * sizeof(uint16_t);
 
-	NetPlayerControl() : type(NetPlayerControlType::resize), arg(0) {}
-	NetPlayerControl(NetPlayerControlType type, uint16_t arg) : type(type), arg(arg) {}
-	NetPlayerControl(IdPoolRef ref) : type(NetPlayerControlType::set_ref), arg(0), ref(ref) {}
+	NetPlayerControl() : type(NetPlayerControlType::resize), data(std::nullopt) {}
+	NetPlayerControl(NetPlayerControlType type, uint16_t arg) : type(type), data(arg) {}
+	NetPlayerControl(NetPlayerControlType type, IdPoolRef ref) : type(type), data(ref) {}
+	NetPlayerControl(NetPlayerControlType type, uint16_t idx, const std::string &name) : type(type), data(std::make_pair(idx, name)) {}
 };
 
 class NetPeerControl final {
@@ -83,7 +84,7 @@ public:
 
 	NetPeerControl(IdPoolRef ref, NetPeerControlType type) : ref(ref), type(type), data(std::nullopt) {}
 	NetPeerControl(IdPoolRef ref, const std::string &name) : ref(ref), type(NetPeerControlType::set_username), data(name) {}
-	NetPeerControl(IdPoolRef ref, uint16_t idx) : ref(ref), type(NetPeerControlType::set_player_idx), data(idx) {}
+	NetPeerControl(IdPoolRef ref, NetPeerControlType type, uint16_t idx) : ref(ref), type(type), data(idx) {}
 };
 
 class NetTerrainMod final {
@@ -127,7 +128,10 @@ public:
 	ScenarioSettings get_scn_vars();
 
 	void set_player_resize(size_t);
-	void claim_player_setting(IdPoolRef, uint16_t); // client to server
+	void claim_player_setting(uint16_t); // client to server
+	void claim_cpu_setting(uint16_t); // client to server
+	void set_cpu_player(uint16_t); // server to client
+	void set_player_name(uint16_t, const std::string&);
 	NetPlayerControl get_player_control();
 
 	void set_incoming(IdPoolRef);
@@ -237,6 +241,11 @@ private:
 
 class ClientView;
 
+enum class ClientModFlags {
+	scn = 1 << 0,
+	terrain = 1 << 1,
+};
+
 class Client final {
 	TcpSocket s;
 	std::string host;
@@ -247,6 +256,7 @@ class Client final {
 	std::map<IdPoolRef, ClientInfo> peers;
 	IdPoolRef me;
 	ScenarioSettings scn;
+	unsigned modflags;
 	friend Debug;
 	friend ClientView;
 public:
@@ -289,11 +299,13 @@ public:
 	void send_chat_text(const std::string&);
 	void send_start_game();
 	void send_players_resize(unsigned n);
+	void send_set_player_name(unsigned idx, const std::string&);
 
 	void send_scn_vars(const ScenarioSettings &scn);
 	void send_username(const std::string&);
 
 	void claim_player(unsigned);
+	void claim_cpu(unsigned);
 };
 
 class ClientView final {

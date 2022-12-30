@@ -65,7 +65,15 @@ void NetPkg::ntoh() {
 			uint16_t *dw = (uint16_t*)data.data();
 
 			dw[0] = ntohs(dw[0]);
+			NetPlayerControlType type = (NetPlayerControlType)dw[0];
+
 			dw[1] = ntohs(dw[1]);
+
+			switch (type) {
+			case NetPlayerControlType::set_player_name:
+				dw[2] = ntohs(dw[2]);
+				break;
+			}
 
 			break;
 		}
@@ -162,8 +170,16 @@ void NetPkg::hton() {
 		case NetPkgType::playermod: {
 			uint16_t *dw = (uint16_t*)data.data();
 
+			NetPlayerControlType type = (NetPlayerControlType)dw[0];
+
 			dw[0] = htons(dw[0]);
 			dw[1] = htons(dw[1]);
+
+			switch (type) {
+			case NetPlayerControlType::set_player_name:
+				dw[2] = htons(dw[2]);
+				break;
+			}
 
 			break;
 		}
@@ -303,6 +319,10 @@ void NetPkg::set_hdr(NetPkgType type) {
 
 	hdr.native_ordering = true;
 	hdr.type = (unsigned)type;
+
+	if (data.size() > NetPkg::max_payload)
+		throw std::runtime_error("payload overflow");
+
 	hdr.payload = (uint16_t)data.size();
 }
 
@@ -348,7 +368,7 @@ void NetPkg::set_chat_text(IdPoolRef ref, const std::string &s) {
 std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
 	ntoh();
 
-	if ((NetPkgType)hdr.type != NetPkgType::chat_text || data.size() > max_payload - 2 * sizeof(uint32_t) - 1 * sizeof(uint16_t))
+	if ((NetPkgType)hdr.type != NetPkgType::chat_text)
 		throw std::runtime_error("not a chat text packet");
 
 	const uint32_t *dd = (const uint32_t*)data.data();
@@ -368,7 +388,7 @@ std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
 std::string NetPkg::username() {
 	ntoh();
 
-	if ((NetPkgType)hdr.type != NetPkgType::set_username || data.size() > max_payload - 2)
+	if ((NetPkgType)hdr.type != NetPkgType::set_username)
 		throw std::runtime_error("not a username packet");
 
 	const uint16_t *dw = (const uint16_t*)data.data();
@@ -382,8 +402,6 @@ std::string NetPkg::username() {
 }
 
 void NetPkg::set_username(const std::string &s) {
-	assert(s.size() <= max_payload - 2);
-
 	size_t n = s.size();
 	data.resize(2u + n);
 
@@ -401,8 +419,6 @@ void NetPkg::set_start_game() {
 }
 
 void NetPkg::set_scn_vars(const ScenarioSettings &scn) {
-	data.clear();
-
 	data.resize(10 * sizeof(uint32_t));
 
 	uint32_t *dd = (uint32_t*)data.data();
@@ -487,12 +503,23 @@ void NetPkg::set_player_resize(size_t size) {
 	set_hdr(NetPkgType::playermod);
 }
 
-void NetPkg::claim_player_setting(IdPoolRef ref, uint16_t idx) {
+void NetPkg::claim_player_setting(uint16_t idx) {
 	data.resize(NetPlayerControl::resize_size);
 
 	uint16_t *dw = (uint16_t*)data.data();
 
 	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_ref;
+	dw[1] = (uint16_t)idx;
+
+	set_hdr(NetPkgType::playermod);
+}
+
+void NetPkg::claim_cpu_setting(uint16_t idx) {
+	data.resize(NetPlayerControl::resize_size);
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_cpu_ref;
 	dw[1] = (uint16_t)idx;
 
 	set_hdr(NetPkgType::playermod);
@@ -507,7 +534,25 @@ NetPlayerControl NetPkg::get_player_control() {
 
 	const uint16_t *dw = (const uint16_t*)data.data();
 
-	return NetPlayerControl((NetPlayerControlType)dw[0], dw[1]);
+	NetPlayerControlType type = (NetPlayerControlType)dw[0];
+
+	switch (type) {
+		case NetPlayerControlType::resize:
+		case NetPlayerControlType::erase:
+		case NetPlayerControlType::set_ref:
+		case NetPlayerControlType::set_cpu_ref:
+			return NetPlayerControl(type, dw[1]);
+		case NetPlayerControlType::set_player_name: {
+			uint16_t idx = dw[1], n = dw[2];
+
+			std::string name(n, ' ');
+			memcpy(name.data(), &dw[3], n);
+
+			return NetPlayerControl(type, idx, name);
+		}
+		default:
+			throw std::runtime_error("bad player control type");
+	}
 }
 
 void NetPkg::set_incoming(IdPoolRef ref) {
@@ -565,14 +610,38 @@ void NetPkg::set_claim_player(IdPoolRef ref, uint16_t idx) {
 	set_hdr(NetPkgType::peermod);
 }
 
+void NetPkg::set_cpu_player(uint16_t idx) {
+	data.resize(NetPlayerControl::resize_size);
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_cpu_ref;
+	dw[1] = (uint16_t)idx;
+
+	set_hdr(NetPkgType::playermod);
+}
+
+void NetPkg::set_player_name(uint16_t idx, const std::string &s) {
+	size_t minsize = NetPlayerControl::resize_size + sizeof(uint16_t);
+
+	data.resize(minsize + s.size());
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)NetPlayerControlType::set_player_name;
+	dw[1] = idx;
+	dw[2] = (uint16_t)s.size();
+
+	memcpy(&dw[3], s.data(), s.size());
+
+	set_hdr(NetPkgType::playermod);
+}
+
 void NetPkg::set_ref_username(IdPoolRef ref, const std::string &s) {
 	if (ref == invalid_ref)
 		throw std::runtime_error("invalid ref");
 
 	size_t minsize = 2 * sizeof(uint32_t) + 2 * sizeof(uint16_t);
-
-	if (minsize + s.size() > max_payload)
-		throw std::runtime_error("username overflow");
 
 	data.resize(minsize + s.size());
 
@@ -615,7 +684,7 @@ NetPeerControl NetPkg::get_peer_control() {
 			return NetPeerControl(ref, s);
 		}
 		case NetPeerControlType::set_player_idx:
-			return NetPeerControl(ref, dw[1]);
+			return NetPeerControl(ref, type, dw[1]);
 		default:
 			return NetPeerControl(ref, (NetPeerControlType)dw[0]);
 	}

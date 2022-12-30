@@ -49,6 +49,10 @@ void Frame::close() {
 	active = open = false;
 }
 
+void Frame::str(const std::string &s) {
+	str(s.c_str());
+}
+
 void Frame::str(const char *s) {
 	ImGui::TextUnformatted(s);
 }
@@ -695,6 +699,10 @@ void Engine::show_multiplayer_game() {
 		show_multiplayer_diplomacy();
 }
 
+bool Engine::locked_settings() const noexcept {
+	return server.get() == nullptr || multiplayer_ready;
+}
+
 void Engine::show_multiplayer_host() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(vp->WorkPos);
@@ -706,22 +714,28 @@ void Engine::show_multiplayer_host() {
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
+	ScenarioSettings &scn = cv.scn;
 	uint32_t player_count = scn.players.size();
 
-	if (scn.is_enabled()) {
+	if (!locked_settings()) {
 		f.str("Multiplayer game  -");
 		f.sl();
 
-		f.scalar(player_count == 1 ? "player" : "players", player_count, 1, 1, 256);
+		f.scalar(player_count == 1 ? "player" : "players", player_count, 1, 1, MAX_PLAYERS);
 
 		if (player_count != scn.players.size()) {
 			client->send_players_resize(player_count);
 			// resize immediately since we only need to send a message once
 			scn.players.resize(player_count);
 		}
+
+		player_tbl_y = ImGui::GetCursorPosY();
 	} else {
 		f.fmt("Multiplayer game - %u %s", player_count, player_count == 1 ? "player" : "players");
 	}
+
+	if (player_tbl_y > 0)
+		ImGui::SetCursorPosY(player_tbl_y);
 
 	{
 		Child lf;
@@ -766,8 +780,10 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 		Table t;
 
 		unsigned idx = 0;
-		auto it = cv.scn.owners.find(cv.me);
-		if (it != cv.scn.owners.end())
+		ScenarioSettings &scn = cv.scn;
+
+		auto it = scn.owners.find(cv.me);
+		if (it != scn.owners.end())
 			idx = it->second;
 
 		if (t.begin("PlayerTable", 3)) {
@@ -780,16 +796,30 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 				Row r(3, i);
 				PlayerSetting &p = scn.players[i];
 
+				if (multiplayer_ready) {
+					f.str(p.name);
+					r.next();
+
+					f.str(civs.at(p.civ));
+					r.next();
+
+					f.str(std::to_string(p.team));
+					r.next();
+					continue;
+				}
+
+				// TODO readd this when erasing is properly supported
+#if 0
 				if (f.btn("X"))
 					del = i;
 
 				f.sl();
+#endif
 
 				if (i + 1 == idx) {
-					r.text("##0", p.name);
+					if (r.text("##0", p.name, ImGuiInputTextFlags_EnterReturnsTrue))
+						client->send_set_player_name(i + 1, p.name);
 				} else {
-					//r.text("##0", p.name);
-
 					if (f.btn("Claim"))
 						client->claim_player(i + 1); // NOTE 1-based
 
@@ -800,7 +830,7 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 					f.sl();
 
 					if (f.btn("Set CPU"))
-						;
+						client->claim_cpu(i + 1); // NOTE 1-based
 
 					r.next();
 				}
@@ -817,14 +847,13 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 				scn.players.erase(scn.players.begin() + del);
 		}
 	}
-
-	while (scn.players.size() >= MAX_PLAYERS)
-		scn.players.pop_back();
 }
 
 void Engine::show_mph_cfg(ui::Frame &f) {
+	ScenarioSettings &scn = cv.scn;
+
 	f.str("Scenario: Random map");
-	if (!scn.is_enabled()) {
+	if (!server.get() || multiplayer_ready) {
 		f.fmt("seed: %u", scn.seed);
 		f.fmt("size: %ux%u", scn.width, scn.height);
 

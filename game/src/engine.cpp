@@ -74,7 +74,7 @@ std::mutex m_eng;
 ScenarioSettings::ScenarioSettings()
 	: players(), owners()
 	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
-	, square(true), restricted(true), reorder(false), hosting(false), width(48), height(48)
+	, square(true), restricted(true), reorder(false), width(48), height(48)
 	, popcap(100)
 	, age(1), seed(1), villagers(3)
 	, res(200, 200, 0, 0) {}
@@ -84,10 +84,9 @@ Engine::Engine()
 	, connection_mode(0), connection_port(32768), connection_host("")
 	, menu_state(MenuState::init), next_menu_state(MenuState::init)
 	, multiplayer_ready(false), m_show_menubar(false)
-	, scn()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
-	, tsk_start_server{ invalid_ref }, chat_async(), scn_async(), async_tasks(0)
+	, tsk_start_server{ invalid_ref }, chat_async(), async_tasks(0)
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
 	, debug()
 	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), m_gl(nullptr), assets(), assets_good(false)
@@ -100,6 +99,7 @@ Engine::Engine()
 		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
 	}, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
+	, player_tbl_y(0)
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
@@ -622,15 +622,11 @@ void Engine::idle_async() {
 		popups.emplace(popups_async.front());
 
 	if (async_tasks) {
-		if (async_tasks & (unsigned)EngineAsyncTask::server_started) {
-			scn.hosting = true;
-			next_menu_state = MenuState::multiplayer_host;
-		}
+		if (async_tasks & (unsigned)EngineAsyncTask::server_started)
+			goto_multiplayer_menu();
 
-		if (async_tasks & (unsigned)EngineAsyncTask::client_connected) {
-			scn.hosting = false;
-			next_menu_state = MenuState::multiplayer_host;
-		}
+		if (async_tasks & (unsigned)EngineAsyncTask::client_connected)
+			goto_multiplayer_menu();
 
 		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_stopped)
 			cancel_multiplayer_host(MenuState::start);
@@ -638,14 +634,8 @@ void Engine::idle_async() {
 		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_started)
 			start_multiplayer_game();
 
-		if (async_tasks & (unsigned)EngineAsyncTask::set_scn_vars)
-			set_scn_vars_now(scn_async);
-
 		if (async_tasks & (unsigned)EngineAsyncTask::set_username)
 			username = username_async;
-
-		if (async_tasks & (unsigned)EngineAsyncTask::player_mod)
-			playermod(playermod_async);
 
 		if (async_tasks & (unsigned)EngineAsyncTask::new_game_data)
 			set_game_data();
@@ -657,15 +647,9 @@ void Engine::idle_async() {
 		chat.emplace_back(chat_async.front());
 }
 
-void Engine::playermod(const NetPlayerControl &ctl) {
-	switch (ctl.type) {
-	case NetPlayerControlType::resize:
-		scn.players.resize(ctl.arg);
-		break;
-	default:
-		fprintf(stderr, "%s: ctl type=%u\n", __func__, ctl.type);
-		break;
-	}
+void Engine::goto_multiplayer_menu() {
+	next_menu_state = MenuState::multiplayer_host;
+	player_tbl_y = 0;
 }
 
 void Engine::start_multiplayer_game() {
@@ -681,35 +665,6 @@ void Engine::start_multiplayer_game() {
 void Engine::add_chat_text(const std::string &s) {
 	std::lock_guard<std::mutex> lk(m_async);
 	chat_async.emplace(s);
-}
-
-void Engine::set_scn_vars(const ScenarioSettings &scn) {
-	std::lock_guard<std::mutex> lk(m_async);
-	scn_async = scn;
-	async_tasks |= (unsigned)EngineAsyncTask::set_scn_vars;
-}
-
-void Engine::set_scn_vars_now(const ScenarioSettings &scn) {
-	this->scn.fixed_start = scn.fixed_start;
-	this->scn.explored = scn.explored;
-	this->scn.all_technologies = scn.all_technologies;
-	this->scn.cheating = scn.cheating;
-	this->scn.square = scn.square;
-
-	if (!is_hosting())
-		this->scn.restricted = scn.restricted;
-
-	this->scn.width = scn.width;
-	this->scn.height = scn.height;
-	this->scn.popcap = scn.popcap;
-	this->scn.age = scn.age;
-	this->scn.seed = scn.seed;
-	this->scn.villagers = scn.villagers;
-
-	this->scn.res.food = scn.res.food;
-	this->scn.res.wood = scn.res.wood;
-	this->scn.res.gold = scn.res.gold;
-	this->scn.res.stone = scn.res.stone;
 }
 
 void Engine::cancel_multiplayer_host(MenuState next) {

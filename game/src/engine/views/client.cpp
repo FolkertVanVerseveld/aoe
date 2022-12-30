@@ -10,9 +10,13 @@ bool ClientView::try_read(Client &c) {
 	if (!lk.try_lock())
 		return false;
 
-	// TODO only copy what has been changed
-	scn = c.scn;
-	me = c.me;
+	// only copy what has been changed
+	if (c.modflags & (unsigned)ClientModFlags::scn)
+		scn = c.scn;
+	if (c.modflags & (unsigned)ClientModFlags::terrain)
+		me = c.me;
+
+	c.modflags = 0;
 
 	return true;
 }

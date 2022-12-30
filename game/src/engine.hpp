@@ -63,7 +63,6 @@ enum class EngineAsyncTask {
 	client_connected = 1 << 1,
 	multiplayer_stopped = 1 << 2,
 	multiplayer_started = 1 << 3,
-	set_scn_vars = 1 << 4,
 	set_username = 1 << 5,
 	player_mod = 1 << 6,
 	new_game_data = 1 << 7,
@@ -87,7 +86,6 @@ class Engine final {
 	bool multiplayer_ready;
 	bool m_show_menubar;
 
-	ScenarioSettings scn; // TODO remove
 	std::string chat_line;
 	std::deque<std::string> chat;
 	std::mutex m, m_async, m_ui;
@@ -101,7 +99,6 @@ class Engine final {
 	std::queue<ui::Popup> popups, popups_async;
 	IdPoolRef tsk_start_server;
 	std::queue<std::string> chat_async;
-	ScenarioSettings scn_async;
 
 	unsigned async_tasks;
 	std::atomic<bool> running;
@@ -149,6 +146,8 @@ private:
 	GameView gv;
 	int tw, th;
 	ClientView cv;
+
+	float player_tbl_y;
 
 	friend Debug;
 	friend Config;
@@ -210,16 +209,16 @@ private:
 	void trigger_async_flags(unsigned f);
 	void trigger_async_flags(EngineAsyncTask t) { trigger_async_flags((unsigned)t); }
 
+	void goto_multiplayer_menu();
 	void start_multiplayer_game();
-
-	void set_scn_vars_now(const ScenarioSettings &scn);
-	void playermod(const NetPlayerControl&);
 
 	void set_background(MenuState);
 	void set_background(io::DrsId);
 
 	void draw_background_border();
 	void guess_font_paths();
+
+	bool locked_settings() const noexcept;
 
 	ImVec2 tilepos(int x, int y, float left=0, float top=0, int h=0);
 public:
@@ -245,8 +244,6 @@ public:
 	bool is_hosting();
 
 	void add_chat_text(const std::string &s);
-
-	void set_scn_vars(const ScenarioSettings &scn);
 };
 
 extern Engine *eng;
