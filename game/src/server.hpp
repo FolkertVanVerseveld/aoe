@@ -58,6 +58,7 @@ enum class NetPeerControlType {
 	incoming,
 	dropped,
 	set_username,
+	set_player_idx,
 };
 
 class NetPlayerControl final {
@@ -68,7 +69,6 @@ public:
 	IdPoolRef ref;
 
 	static constexpr unsigned resize_size = 2 * sizeof(uint16_t);
-	static constexpr unsigned set_ref_size = sizeof(uint16_t) + sizeof(uint32_t);
 
 	NetPlayerControl() : type(NetPlayerControlType::resize), arg(0) {}
 	NetPlayerControl(NetPlayerControlType type, uint16_t arg) : type(type), arg(arg) {}
@@ -79,10 +79,11 @@ class NetPeerControl final {
 public:
 	IdPoolRef ref;
 	NetPeerControlType type;
-	std::variant<std::nullopt_t, std::string> data;
+	std::variant<std::nullopt_t, std::string, uint16_t> data;
 
 	NetPeerControl(IdPoolRef ref, NetPeerControlType type) : ref(ref), type(type), data(std::nullopt) {}
 	NetPeerControl(IdPoolRef ref, const std::string &name) : ref(ref), type(NetPeerControlType::set_username), data(name) {}
+	NetPeerControl(IdPoolRef ref, uint16_t idx) : ref(ref), type(NetPeerControlType::set_player_idx), data(idx) {}
 };
 
 class NetTerrainMod final {
@@ -126,12 +127,13 @@ public:
 	ScenarioSettings get_scn_vars();
 
 	void set_player_resize(size_t);
-	void claim_player_setting(IdPoolRef, unsigned);
+	void claim_player_setting(IdPoolRef, uint16_t); // client to server
 	NetPlayerControl get_player_control();
 
 	void set_incoming(IdPoolRef);
 	void set_dropped(IdPoolRef);
 	void set_ref_username(IdPoolRef, const std::string&);
+	void set_claim_player(IdPoolRef, uint16_t); // server to client
 	NetPeerControl get_peer_control();
 
 	void set_terrain_mod(const NetTerrainMod&);
@@ -233,6 +235,8 @@ private:
 	void tick();
 };
 
+class ClientView;
+
 class Client final {
 	TcpSocket s;
 	std::string host;
@@ -242,7 +246,9 @@ class Client final {
 
 	std::map<IdPoolRef, ClientInfo> peers;
 	IdPoolRef me;
+	ScenarioSettings scn;
 	friend Debug;
+	friend ClientView;
 public:
 	Game g;
 
@@ -286,6 +292,18 @@ public:
 
 	void send_scn_vars(const ScenarioSettings &scn);
 	void send_username(const std::string&);
+
+	void claim_player(unsigned);
+};
+
+class ClientView final {
+public:
+	IdPoolRef me;
+	ScenarioSettings scn;
+
+	ClientView();
+
+	bool try_read(Client&);
 };
 
 }

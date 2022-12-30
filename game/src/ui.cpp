@@ -765,6 +765,11 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 	{
 		Table t;
 
+		unsigned idx = 0;
+		auto it = cv.scn.owners.find(cv.me);
+		if (it != cv.scn.owners.end())
+			idx = it->second;
+
 		if (t.begin("PlayerTable", 3)) {
 			t.row(-1, {"Name", "Civ", "Team"});
 
@@ -780,21 +785,25 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 
 				f.sl();
 
-				//r.text("##0", p.name);
+				if (i + 1 == idx) {
+					r.text("##0", p.name);
+				} else {
+					//r.text("##0", p.name);
 
-				if (f.btn("Claim"))
-					;
+					if (f.btn("Claim"))
+						client->claim_player(i + 1); // NOTE 1-based
 
-				if (ImGui::IsItemHovered()) {
-					ImGui::Tooltip("bla bla");
+					if (ImGui::IsItemHovered()) {
+						ImGui::Tooltip("bla bla");
+					}
+
+					f.sl();
+
+					if (f.btn("Set CPU"))
+						;
+
+					r.next();
 				}
-
-				f.sl();
-
-				if (f.btn("Set AI"))
-					;
-
-				r.next();
 
 				f.combo("##1", p.civ, civs);
 				r.next();

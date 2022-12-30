@@ -65,23 +65,7 @@ void NetPkg::ntoh() {
 			uint16_t *dw = (uint16_t*)data.data();
 
 			dw[0] = ntohs(dw[0]);
-
-			NetPlayerControlType type = (NetPlayerControlType)dw[0];
-
-			switch (type) {
-			case NetPlayerControlType::set_ref: {
-				need_payload(NetPlayerControl::set_ref_size);
-				uint32_t *dd = (uint32_t*)&dw[1];
-
-				dd[0] = ntohl(dd[0]);
-				dd[1] = ntohl(dd[1]);
-
-				break;
-			}
-			default:
-				dw[1] = ntohs(dw[1]);
-				break;
-			}
+			dw[1] = ntohs(dw[1]);
 
 			break;
 		}
@@ -178,23 +162,9 @@ void NetPkg::hton() {
 		case NetPkgType::playermod: {
 			uint16_t *dw = (uint16_t*)data.data();
 
-			NetPlayerControlType type = dw[0];
-
 			dw[0] = htons(dw[0]);
+			dw[1] = htons(dw[1]);
 
-			switch (type) {
-			case NetPlayerControlType::set_ref: {
-				uint32_t *dd = (uint32_t*)&dw[1];
-
-				dd[0] = htonl(dd[0]);
-				dd[1] = htonl(dd[1]);
-
-				break;
-			}
-			default:
-				dw[1] = htons(dw[1]);
-				break;
-			}
 			break;
 		}
 		case NetPkgType::peermod: {
@@ -517,17 +487,13 @@ void NetPkg::set_player_resize(size_t size) {
 	set_hdr(NetPkgType::playermod);
 }
 
-void NetPkg::claim_player_setting(IdPoolRef ref, unsigned idx) {
-	data.resize(NetPlayerControl::set_ref_size);
+void NetPkg::claim_player_setting(IdPoolRef ref, uint16_t idx) {
+	data.resize(NetPlayerControl::resize_size);
 
 	uint16_t *dw = (uint16_t*)data.data();
 
 	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_ref;
-
-	uint32_t *dd = (uint32_t*)&dw[1];
-
-	dd[0] = ref.first;
-	dd[1] = ref.second;
+	dw[1] = (uint16_t)idx;
 
 	set_hdr(NetPkgType::playermod);
 }
@@ -541,22 +507,7 @@ NetPlayerControl NetPkg::get_player_control() {
 
 	const uint16_t *dw = (const uint16_t*)data.data();
 
-	NetPlayerControlType type = (NetPlayerControlType)dw[0];
-
-	switch (type) {
-	case NetPlayerControlType::set_ref: {
-		const uint32_t *dd = (const uint32_t*)&dw[1];
-
-		IdPoolRef r;
-
-		r.first = dd[0];
-		r.second = dd[1];
-
-		return NetPlayerControl(r);
-	}
-	default:
-		return NetPlayerControl(type, dw[1]);
-	}
+	return NetPlayerControl((NetPlayerControlType)dw[0], dw[1]);
 }
 
 void NetPkg::set_incoming(IdPoolRef ref) {
@@ -595,6 +546,25 @@ void NetPkg::set_dropped(IdPoolRef ref) {
 	set_hdr(NetPkgType::peermod);
 }
 
+void NetPkg::set_claim_player(IdPoolRef ref, uint16_t idx) {
+	if (ref == invalid_ref)
+		throw std::runtime_error("invalid ref");
+
+	data.resize(2 * sizeof(uint32_t) + 2 * sizeof(uint16_t));
+
+	uint32_t *dd = (uint32_t*)data.data();
+
+	dd[0] = ref.first;
+	dd[1] = ref.second;
+
+	uint16_t *dw = (uint16_t*)&dd[2];
+
+	dw[0] = (uint16_t)(unsigned)NetPeerControlType::set_player_idx;
+	dw[1] = idx;
+
+	set_hdr(NetPkgType::peermod);
+}
+
 void NetPkg::set_ref_username(IdPoolRef ref, const std::string &s) {
 	if (ref == invalid_ref)
 		throw std::runtime_error("invalid ref");
@@ -626,7 +596,7 @@ NetPeerControl NetPkg::get_peer_control() {
 	ntoh();
 
 	// TODO remove data.size() check
-	if ((NetPkgType)hdr.type != NetPkgType::peermod || data.size() < 2 * sizeof(uint32_t) + sizeof(uint16_t))
+	if ((NetPkgType)hdr.type != NetPkgType::peermod)
 		throw std::runtime_error("not a peer control packet");
 
 	const uint32_t *dd = (const uint32_t*)data.data();
@@ -644,6 +614,8 @@ NetPeerControl NetPkg::get_peer_control() {
 
 			return NetPeerControl(ref, s);
 		}
+		case NetPeerControlType::set_player_idx:
+			return NetPeerControl(ref, dw[1]);
 		default:
 			return NetPeerControl(ref, (NetPeerControlType)dw[0]);
 	}

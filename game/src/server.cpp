@@ -233,11 +233,28 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 	NetPkg pkg;
 
 	switch (ctl.type) {
-	case NetPlayerControlType::resize:
-		scn.players.resize(ctl.arg);
-		pkg.set_player_resize(ctl.arg);
-		broadcast(pkg);
-		return true;
+		case NetPlayerControlType::resize:
+			scn.players.resize(ctl.arg);
+			pkg.set_player_resize(ctl.arg);
+			broadcast(pkg);
+			return true;
+		case NetPlayerControlType::set_ref: {
+			unsigned idx = ctl.arg; // remember, it is 1-based
+
+			// ignore bad index, might be desync
+			if (!idx || idx > scn.players.size())
+				return true;
+
+			// claim slot. NOTE multiple players can claim the same slot
+			IdPoolRef ref = peers.at(p).ref;
+			scn.owners[ref] = idx;
+
+			// sent to players
+			pkg.set_claim_player(ref, idx);
+			broadcast(pkg);
+
+			return true;
+		}
 	}
 
 	return false;
@@ -328,7 +345,7 @@ void Server::close() {
 	s.close();
 }
 
-Client::Client() : s(), port(0), m_connected(false), m(), peers(), me(invalid_ref), g() {}
+Client::Client() : s(), port(0), m_connected(false), m(), peers(), me(invalid_ref), scn(), g() {}
 
 Client::~Client() {
 	stop();
@@ -450,6 +467,12 @@ void Client::peermod(const NetPeerControl &ctl) {
 
 			break;
 		}
+		case NetPeerControlType::set_player_idx:
+			scn.owners[ref] = std::get<uint16_t>(ctl.data);
+			break;
+		default:
+			fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)ctl.type);
+			break;
 	}
 }
 
@@ -536,6 +559,12 @@ void Client::send_start_game() {
 void Client::send_username(const std::string &s) {
 	NetPkg pkg;
 	pkg.set_username(s);
+	send(pkg);
+}
+
+void Client::claim_player(unsigned idx) {
+	NetPkg pkg;
+	pkg.claim_player_setting(me, idx);
 	send(pkg);
 }
 

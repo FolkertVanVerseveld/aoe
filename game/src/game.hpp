@@ -4,8 +4,11 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include <mutex>
+
+#include "idpool.hpp"
 
 namespace aoe {
 
@@ -31,6 +34,7 @@ public:
 class ScenarioSettings final {
 public:
 	std::vector<PlayerSetting> players;
+	std::map<IdPoolRef, unsigned> owners; // refs to player setting
 	bool fixed_start;
 	bool explored;
 	bool all_technologies;

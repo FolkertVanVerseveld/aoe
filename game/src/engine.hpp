@@ -87,7 +87,7 @@ class Engine final {
 	bool multiplayer_ready;
 	bool m_show_menubar;
 
-	ScenarioSettings scn;
+	ScenarioSettings scn; // TODO remove
 	std::string chat_line;
 	std::deque<std::string> chat;
 	std::mutex m, m_async, m_ui;
@@ -148,6 +148,7 @@ private:
 	KeyboardController keyctl;
 	GameView gv;
 	int tw, th;
+	ClientView cv;
 
 	friend Debug;
 	friend Config;

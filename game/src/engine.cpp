@@ -72,7 +72,7 @@ Engine *eng;
 std::mutex m_eng;
 
 ScenarioSettings::ScenarioSettings()
-	: players()
+	: players(), owners()
 	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
 	, square(true), restricted(true), reorder(false), hosting(false), width(48), height(48)
 	, popcap(100)
@@ -99,7 +99,7 @@ Engine::Engine()
 		-1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, // bottom left
 		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
 	}, vbo(0), vsync_mode(0), vsync_idx(0)
-	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0)
+	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
@@ -578,6 +578,10 @@ void Engine::idle() {
 		}
 	}
 
+	Client *c = client.get();
+
+	if (c)
+		cv.try_read(*c);
 
 	if (menu_state == MenuState::multiplayer_game)
 		idle_game();
