@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <mutex>
+
 namespace aoe {
 
 static constexpr unsigned max_players = UINT8_MAX + 1u;
@@ -52,6 +54,63 @@ public:
 	constexpr bool is_enabled() const noexcept {
 		return hosting || !restricted;
 	}
+};
+
+enum class TerrainTile {
+	unknown, // either empty or unexplored
+	desert,
+	grass,
+	water,
+	deepwater,
+	water_desert,
+	grass_desert,
+	desert_overlay,
+	deepwater_overlay,
+};
+
+// TODO introduce terrain block/chunk
+
+class Terrain final {
+	std::vector<uint8_t> tiles;
+	std::vector<int8_t> hmap;
+public:
+	unsigned w, h, seed, players;
+	bool wrap;
+
+	Terrain();
+
+	void resize(unsigned width, unsigned height, unsigned seed, unsigned players, bool wrap);
+
+	void generate();
+
+	uint8_t id_at(unsigned x, unsigned y);
+	int8_t h_at(unsigned x, unsigned y);
+
+	void fetch(std::vector<uint8_t> &tiles, std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned &w, unsigned &h);
+
+	void set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
+};
+
+class GameView;
+
+class Game final {
+	std::mutex m;
+	Terrain t;
+	friend GameView;
+public:
+	Game();
+
+	void resize(const ScenarioSettings &scn);
+	void terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
+};
+
+class GameView final {
+public:
+	Terrain t;
+
+	GameView();
+
+	bool try_read(Game&);
 };
 
 }

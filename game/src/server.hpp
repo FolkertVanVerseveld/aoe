@@ -31,6 +31,8 @@ enum class NetPkgType {
 	set_username,
 	playermod,
 	peermod,
+	terrainmod,
+	resmod,
 };
 
 struct NetPkgHdr final {
@@ -76,12 +78,26 @@ public:
 	NetPeerControl(IdPoolRef ref, const std::string &name) : ref(ref), type(NetPeerControlType::set_username), data(name) {}
 };
 
+class NetTerrainMod final {
+public:
+	uint16_t x, y, w, h;
+	std::vector<uint8_t> tiles;
+	std::vector<int8_t> hmap;
+
+	static constexpr size_t possize = 4 * sizeof(uint16_t);
+
+	NetTerrainMod() : x(0), y(0), w(0), h(0), tiles(), hmap() {}
+};
+
+static_assert(sizeof(int) >= sizeof(int32_t));
+
 class NetPkg final {
 public:
 	NetPkgHdr hdr;
 	std::vector<uint8_t> data;
 
 	static constexpr unsigned max_payload = tcp4_max_size - NetPkgHdr::size;
+	static constexpr unsigned ressize = 4 * sizeof(int32_t);
 
 	NetPkg() : hdr(0, 0, false), data() {}
 	NetPkg(uint16_t type, uint16_t payload) : hdr(type, payload), data() {}
@@ -109,6 +125,12 @@ public:
 	void set_dropped(IdPoolRef);
 	void set_ref_username(IdPoolRef, const std::string&);
 	NetPeerControl get_peer_control();
+
+	void set_terrain_mod(const NetTerrainMod&);
+	NetTerrainMod get_terrain_mod();
+
+	void set_resources(const Resources&);
+	Resources get_resources();
 
 	NetPkgType type();
 
@@ -161,6 +183,7 @@ class Server final : public ServerSocketController {
 	IdPool<SocketRef> refs;
 	ScenarioSettings scn;
 	std::atomic<double> logic_gamespeed;
+	Terrain t;
 
 	friend Debug;
 public:
@@ -192,6 +215,8 @@ private:
 
 	bool process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out);
 
+	void start_game();
+
 	void broadcast(NetPkg &pkg, bool include_host=true);
 	void broadcast(NetPkg &pkg, const Peer &exclude);
 	void send(const Peer &p, NetPkg &pkg);
@@ -211,6 +236,8 @@ class Client final {
 	IdPoolRef me;
 	friend Debug;
 public:
+	Game g;
+
 	Client();
 	~Client();
 
@@ -225,6 +252,7 @@ private:
 	void set_username(const std::string &s);
 	void playermod(const NetPlayerControl&);
 	void peermod(const NetPeerControl&);
+	void terrainmod(const NetTerrainMod&);
 public:
 	bool connected() const noexcept { return m_connected; }
 

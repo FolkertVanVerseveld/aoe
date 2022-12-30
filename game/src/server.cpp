@@ -5,7 +5,7 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), scn(), logic_gamespeed(1.0) {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), scn(), logic_gamespeed(1.0), t() {}
 
 Server::~Server() {
 	stop();
@@ -220,6 +220,8 @@ bool Server::set_scn_vars(const Peer &p, ScenarioSettings &scn) {
 	this->scn.square = scn.square;
 	this->scn.wrap = scn.wrap;
 
+	t.resize(this->scn.width, this->scn.height, this->scn.seed, this->scn.players.size(), this->scn.wrap);
+
 	NetPkg pkg;
 	pkg.set_scn_vars(this->scn);
 	broadcast(pkg);
@@ -241,6 +243,40 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 	return false;
 }
 
+void Server::start_game() {
+	if (m_running)
+		return;
+
+	m_running = true;
+
+	std::thread t([this]() {
+		eventloop();
+		});
+	t.detach();
+
+	NetPkg pkg;
+
+	pkg.set_scn_vars(scn);
+	broadcast(pkg);
+
+	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
+	this->t.generate();
+
+	NetTerrainMod tm;
+
+	unsigned w = std::min(16u, this->t.w), h = std::min(16u, this->t.h);
+	this->t.fetch(tm.tiles, tm.hmap, 0, 0, w, h);
+
+	tm.x = tm.y = 0;
+	tm.w = w; tm.h = h;
+
+	pkg.set_terrain_mod(tm);
+	broadcast(pkg);
+
+	pkg.set_start_game();
+	broadcast(pkg);
+}
+
 bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 	pkg.ntoh();
 
@@ -252,16 +288,7 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 			broadcast(pkg);
 			break;
 		case NetPkgType::start_game:
-			if (!m_running) {
-				m_running = true;
-
-				std::thread t([this]() {
-					eventloop();
-				});
-				t.detach();
-
-				broadcast(pkg);
-			}
+			start_game();
 			break;
 		case NetPkgType::set_scn_vars:
 			return set_scn_vars(p, pkg.get_scn_vars());
@@ -301,7 +328,7 @@ void Server::close() {
 	s.close();
 }
 
-Client::Client() : s(), port(0), m_connected(false), m(), peers(), me(invalid_ref) {}
+Client::Client() : s(), port(0), m_connected(false), m(), peers(), me(invalid_ref), g() {}
 
 Client::~Client() {
 	stop();
@@ -363,6 +390,9 @@ void Client::start_game() {
 
 void Client::set_scn_vars(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m_eng);
+
+	g.resize(scn);
+
 	if (eng)
 		eng->set_scn_vars(scn);
 }
@@ -423,6 +453,10 @@ void Client::peermod(const NetPeerControl &ctl) {
 	}
 }
 
+void Client::terrainmod(const NetTerrainMod &tm) {
+	g.terrain_set(tm.tiles, tm.hmap, tm.x, tm.y, tm.w, tm.h);
+}
+
 void Client::mainloop() {
 	send_protocol(1);
 
@@ -453,6 +487,9 @@ void Client::mainloop() {
 					break;
 				case NetPkgType::peermod:
 					peermod(pkg.get_peer_control());
+					break;
+				case NetPkgType::terrainmod:
+					terrainmod(pkg.get_terrain_mod());
 					break;
 				default:
 					printf("%s: type=%X\n", __func__, pkg.type());

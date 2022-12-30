@@ -48,4 +48,31 @@ void Server::eventloop() {
 	}
 }
 
+Game::Game() : m(), t() {}
+
+void Game::resize(const ScenarioSettings &scn) {
+	std::lock_guard<std::mutex> lk(m);
+
+	t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
+}
+
+void Game::terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h) {
+	std::lock_guard<std::mutex> lk(m);
+	t.set(tiles, hmap, x, y, w, h);
+}
+
+GameView::GameView() : t() {}
+
+bool GameView::try_read(Game &g) {
+	std::unique_lock lk(g.m, std::defer_lock);
+
+	if (!lk.try_lock())
+		return false;
+
+	// TODO only copy what has changed
+	t = g.t;
+
+	return true;
+}
+
 }

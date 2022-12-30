@@ -43,6 +43,7 @@ enum class DrsId {
 	gif_cursors = 51000,
 
 	bld_town_center = 280,
+	bld_town_center_player = 230,
 
 	sfx_ui_click = 5035,
 	sfx_priest_convert2 = 5051,

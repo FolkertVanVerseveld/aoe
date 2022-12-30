@@ -503,6 +503,8 @@ void Engine::show_multiplayer_achievements() {
 }
 
 void Engine::show_terrain() {
+	ZoneScoped;
+
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGuiIO &io = ImGui::GetIO();
 
@@ -510,27 +512,65 @@ void Engine::show_terrain() {
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 
 	const ImageSet &s_desert = a.anim_at(io::DrsId::trn_desert);
+	const ImageSet &s_grass = a.anim_at(io::DrsId::trn_grass);
+	const ImageSet &s_water = a.anim_at(io::DrsId::trn_water);
+	const ImageSet &s_deepwater = a.anim_at(io::DrsId::trn_deepwater);
 
-	const gfx::ImageRef &test = a.at(s_desert.imgs[0]);
+	const gfx::ImageRef &t0 = a.at(s_desert.imgs[0]);
+	const gfx::ImageRef &t1 = a.at(s_grass.imgs[0]);
+	const gfx::ImageRef &t2 = a.at(s_water.imgs[0]);
+	const gfx::ImageRef &t3 = a.at(s_deepwater.imgs[0]);
+
+	const gfx::ImageRef tt[] = { t0, t1, t2, t3 };
 
 	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(cam_x) - 0.5f;
 	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(cam_y) - 0.5f;
 
-	for (int y = 0; y < 8; ++y) {
-		for (int x = 0; x < 8; ++x) {
+	for (int y = 0; y < gv.t.h; ++y) {
+		for (int x = 0; x < gv.t.w; ++x) {
+			ImU32 col = IM_COL32_WHITE;
 
-			float x0 = left + test.bnds.w / 2 * y + test.bnds.w / 2 * x - test.hotspot_x;
-			float y0 = top - test.bnds.h / 2 * y + test.bnds.h / 2 * x - test.hotspot_y;
+			uint8_t id = gv.t.id_at(x, y);
+			uint8_t h = gv.t.h_at(x, y);
+			if (!id) {
+				// draw black tile
+				col = IM_COL32_BLACK;
+			}
 
-			lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + test.bnds.w, y0 + test.bnds.h), ImVec2(test.s0, test.t0), ImVec2(test.s1, test.t1));
+			id %= 4;
+
+			const gfx::ImageRef &img = tt[id];
+
+			ImVec2 tpos(tilepos(x, y, left, top, h));
+
+			float x0 = tpos.x - img.hotspot_x;
+			float y0 = tpos.y - img.hotspot_y;
+
+			lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + img.bnds.w, y0 + img.bnds.h), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1), col);
 		}
 	}
 
 	const ImageSet &s_tc = a.anim_at(io::DrsId::bld_town_center);
 	const gfx::ImageRef &tc = a.at(s_tc.imgs[0]);
 
-	float x0 = left + test.bnds.w / 2 * 1 + test.bnds.w / 2 * 2 - tc.hotspot_x, y0 = top - test.bnds.h / 2 * 1 + test.bnds.h / 2 * 2 - tc.hotspot_y;
+	int x = 2, y = 1;
+	uint8_t h = gv.t.h_at(x, y);
+
+	ImVec2 tpos(tilepos(x, y, left, top, h));
+	float x0, y0;
+
+	x0 = tpos.x - tc.hotspot_x;
+	y0 = tpos.y - tc.hotspot_y;
+
 	lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + tc.bnds.w, y0 + tc.bnds.h), ImVec2(tc.s0, tc.t0), ImVec2(tc.s1, tc.t1));
+
+	const ImageSet &s_tcp = a.anim_at(io::DrsId::bld_town_center_player);
+	const gfx::ImageRef &tcp = a.at(s_tcp.imgs[0]);
+
+	x0 = tpos.x - tcp.hotspot_x;
+	y0 = tpos.y - tcp.hotspot_y;
+
+	lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + tcp.bnds.w, y0 + tcp.bnds.h), ImVec2(tcp.s0, tcp.t0), ImVec2(tcp.s1, tcp.t1));
 }
 
 void Engine::show_multiplayer_game() {
@@ -566,13 +606,13 @@ void Engine::show_multiplayer_game() {
 
 		if (ImGui::Button("Diplomacy")) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
-			show_diplomacy = true;
+			show_diplomacy = !show_diplomacy;
 		}
 
 		// TODO refactor beginmenu/menuitem to our wrappers
 		if (ImGui::BeginMenu("Menu")) {
 			if (ImGui::MenuItem("Achievements"))
-				show_achievements = true;
+				show_achievements = !show_achievements;
 
 			if (ImGui::MenuItem("Quit"))
 				cancel_multiplayer_host(MenuState::defeat);
@@ -766,6 +806,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 		f.fmt("size: %ux%u", scn.width, scn.height);
 
 		ImGui::BeginDisabled();
+		f.chkbox("Wrap", scn.wrap);
 		f.chkbox("Fixed position", scn.fixed_start);
 		f.chkbox("Reveal map", scn.explored);
 		f.chkbox("Full Tech Tree", scn.all_technologies);

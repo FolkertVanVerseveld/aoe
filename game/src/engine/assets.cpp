@@ -57,7 +57,7 @@ void Animation::load(io::DRS &drs, const SDL_Palette *pal, io::DrsId id) {
 
 	for (unsigned p = 0; p < MAX_PLAYERS; ++p)
 		for (unsigned i = 0; i < image_count; ++i)
-			images[p * MAX_PLAYERS + i].load(pal, slp, i, p);
+			images[p * image_count + i].load(pal, slp, i, p);
 }
 
 Image &Animation::subimage(unsigned index, unsigned player) {
@@ -130,7 +130,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		trn_deepwater.load(drs_terrain, pal.get(), DrsId::trn_deepwater);
 	}
 
-	Animation bld_town_center;
+	Animation bld_town_center, bld_town_center_player;
 	info.next("Loading game entities data");
 	{
 		ZoneScopedN("Loading game entities data");
@@ -138,6 +138,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		DRS drs_graphics(path + "/data/Graphics.drs");
 
 		bld_town_center.load(drs_graphics, pal.get(), DrsId::bld_town_center);
+		bld_town_center_player.load(drs_graphics, pal.get(), DrsId::bld_town_center_player);
 	}
 
 	info.next("Packing graphics");
@@ -153,6 +154,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, trn_deepwater, DrsId::trn_deepwater);
 
 		add_gifs(p, bld_town_center, DrsId::bld_town_center);
+		add_gifs(p, bld_town_center_player, DrsId::bld_town_center_player);
 
 		drs_ids[DrsId::img_dialog0] = p.add_img(0, 0, img_dialog0.surface.get());
 

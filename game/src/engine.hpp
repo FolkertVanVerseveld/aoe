@@ -146,6 +146,8 @@ private:
 	static constexpr float cam_speed = 200.0f;
 
 	KeyboardController keyctl;
+	GameView gv;
+	int tw, th;
 
 	friend Debug;
 	friend Config;
@@ -217,6 +219,8 @@ private:
 
 	void draw_background_border();
 	void guess_font_paths();
+
+	ImVec2 tilepos(int x, int y, float left=0, float top=0, int h=0);
 public:
 	void push_error(const std::string &msg);
 

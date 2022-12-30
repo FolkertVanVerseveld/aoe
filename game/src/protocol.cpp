@@ -106,6 +106,28 @@ void NetPkg::ntoh() {
 		case NetPkgType::start_game:
 			// no payload
 			break;
+		case NetPkgType::terrainmod: {
+			need_payload(NetTerrainMod::possize);
+			uint16_t *dw = (uint16_t*)data.data();
+
+			for (unsigned i = 0; i < 4; ++i)
+				dw[i] = ntohs(dw[i]);
+
+			size_t tsize = dw[2] * dw[3];
+			need_payload(NetTerrainMod::possize + tsize * 2);
+
+			break;
+		}
+		case NetPkgType::resmod: {
+			need_payload(NetPkg::ressize);
+
+			int32_t *dd = (int32_t*)data.data();
+
+			for (unsigned i = 0; i < 4; ++i)
+				dd[i] = ntohl(dd[i]);
+
+			break;
+		}
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -174,6 +196,22 @@ void NetPkg::hton() {
 		case NetPkgType::start_game:
 			// no payload
 			break;
+		case NetPkgType::terrainmod: {
+			uint16_t *dw = (uint16_t*)data.data();
+
+			for (unsigned i = 0; i < 4; ++i)
+				dw[i] = htons(dw[i]);
+
+			break;
+		}
+		case NetPkgType::resmod: {
+			int32_t *dd = (int32_t*)data.data();
+
+			for (unsigned i = 0; i < 4; ++i)
+				dd[i] = htonl(dd[i]);
+
+			break;
+		}
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -521,6 +559,7 @@ void NetPkg::set_ref_username(IdPoolRef ref, const std::string &s) {
 }
 
 NetPeerControl NetPkg::get_peer_control() {
+	ZoneScoped;
 	ntoh();
 
 	// TODO remove data.size() check
@@ -545,6 +584,91 @@ NetPeerControl NetPkg::get_peer_control() {
 		default:
 			return NetPeerControl(ref, (NetPeerControlType)dw[0]);
 	}
+}
+
+void NetPkg::set_terrain_mod(const NetTerrainMod &tm) {
+	ZoneScoped;
+	assert(tm.tiles.size() == tm.hmap.size());
+	size_t tsize = tm.w * tm.h * 2;
+
+	if (tsize > max_payload - NetTerrainMod::possize)
+		throw std::runtime_error("terrain mod too big");
+
+	data.resize(NetTerrainMod::possize + tsize);
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = tm.x; dw[1] = tm.y;
+	dw[2] = tm.w; dw[3] = tm.h;
+
+	uint8_t *db = (uint8_t*)&dw[4];
+
+	memcpy(db, tm.tiles.data(), tm.tiles.size());
+	memcpy(db + tm.tiles.size(), tm.hmap.data(), tm.hmap.size());
+
+	set_hdr(NetPkgType::terrainmod);
+}
+
+NetTerrainMod NetPkg::get_terrain_mod() {
+	ZoneScoped;
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::terrainmod || data.size() < NetTerrainMod::possize)
+		throw std::runtime_error("not a terrain control packet");
+
+	const uint16_t *dw = (const uint16_t*)data.data();
+
+	NetTerrainMod tm;
+
+	tm.x = dw[0]; tm.y = dw[1];
+	tm.w = dw[2]; tm.h = dw[3];
+
+	const uint8_t *db = (const uint8_t*)&dw[4];
+
+	// TODO check packet size
+	size_t size = tm.w * tm.h;
+
+	tm.tiles.resize(size);
+	tm.hmap.resize(size);
+
+	memcpy(tm.tiles.data(), db, size);
+	memcpy(tm.hmap.data(), db + size, size);
+
+	return tm;
+}
+
+void NetPkg::set_resources(const Resources &res) {
+	ZoneScoped;
+
+	data.resize(NetPkg::ressize);
+
+	int32_t *dd = (int32_t*)data.data();
+
+	dd[0] = res.food;
+	dd[1] = res.wood;
+	dd[2] = res.gold;
+	dd[3] = res.stone;
+
+	set_hdr(NetPkgType::resmod);
+}
+
+Resources NetPkg::get_resources() {
+	ZoneScoped;
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::resmod || data.size() != NetPkg::ressize)
+		throw std::runtime_error("not a resources control packet");
+
+	const int32_t *dd = (const int32_t*)data.data();
+
+	Resources res;
+
+	res.food = dd[0];
+	res.wood = dd[1];
+	res.gold = dd[2];
+	res.stone = dd[3];
+
+	return res;
 }
 
 NetPkgType NetPkg::type() {

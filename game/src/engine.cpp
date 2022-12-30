@@ -99,7 +99,7 @@ Engine::Engine()
 		-1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, // bottom left
 		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
 	}, vbo(0), vsync_mode(0), vsync_idx(0)
-	, cam_x(0), cam_y(0), keyctl()
+	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0)
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
@@ -518,6 +518,13 @@ void Engine::set_background(MenuState s) {
 	set_background(id);
 }
 
+ImVec2 Engine::tilepos(int x, int y, float left, float top, int h) {
+	float x0 = left + tw / 2 * y + tw / 2 * x;
+	float y0 = top  - th / 2 * y + th / 2 * x - th / 2 * h;
+
+	return ImVec2(x0, y0);
+}
+
 void Engine::set_game_data() {
 	ZoneScoped;
 
@@ -533,12 +540,21 @@ void Engine::set_game_data() {
 
 	assets_good = true;
 
-	if (sdl->cursors.size() > 1)
-		sdl->cursors.erase(sdl->cursors.begin() + 1);
+	{
+		ZoneScopedN("setup cursors");
 
-	for (unsigned i = 0, n = a.gif_cursors.all_count; i < n; ++i) {
-		sdl->cursors.emplace_back(SDL_CreateColorCursor(a.gif_cursors.images[i].surface.get(), a.gif_cursors.images[i].hotspot_x, a.gif_cursors.images[i].hotspot_y), SDL_FreeCursor);
+		if (sdl->cursors.size() > 1)
+			sdl->cursors.erase(sdl->cursors.begin() + 1);
+
+		for (unsigned i = 0, n = a.gif_cursors.all_count; i < n; ++i) {
+			sdl->cursors.emplace_back(SDL_CreateColorCursor(a.gif_cursors.images[i].surface.get(), a.gif_cursors.images[i].hotspot_x, a.gif_cursors.images[i].hotspot_y), SDL_FreeCursor);
+		}
 	}
+
+	// set tw and th
+	const ImageSet &s_desert = a.anim_at(io::DrsId::trn_desert);
+	const gfx::ImageRef &t0 = a.at(s_desert.imgs[0]);
+	tw = t0.bnds.w; th = t0.bnds.h;
 }
 
 void Engine::idle() {
@@ -586,6 +602,10 @@ void Engine::idle_game() {
 	// clamp cam pos
 	// TODO clamp right, top and bottom side as well
 	cam_x = std::max(0.0f, cam_x);
+
+	std::lock_guard<std::mutex> lk(m);
+	if (client)
+		gv.try_read(client->g);
 }
 
 void Engine::idle_async() {
@@ -1000,8 +1020,7 @@ int Engine::mainloop() {
 
 					switch (event.key.keysym.sym) {
 						case SDLK_BACKQUOTE:
-							if (!show_chat)
-								m_show_menubar = !m_show_menubar;
+							m_show_menubar = !m_show_menubar;
 							break;
 						case SDLK_F11:
 							sdl.window.set_fullscreen(!sdl.window.is_fullscreen());
