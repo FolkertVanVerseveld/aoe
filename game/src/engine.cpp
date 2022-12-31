@@ -154,6 +154,7 @@ void Engine::show_general_settings() {
 
 	chkbox("Music enabled", music_on);
 	chkbox("Play chat taunts", sfx.play_taunts);
+	chkbox("Autostart", cfg.autostart);
 
 	if (music_on)
 		sfx.unmute_music();
@@ -637,8 +638,11 @@ void Engine::idle_async() {
 		if (async_tasks & (unsigned)EngineAsyncTask::set_username)
 			username = username_async;
 
-		if (async_tasks & (unsigned)EngineAsyncTask::new_game_data)
+		if (async_tasks & (unsigned)EngineAsyncTask::new_game_data) {
 			set_game_data();
+			if (cfg.autostart)
+				next_menu_state = MenuState::start;
+		}
 	}
 
 	async_tasks = 0;
@@ -659,6 +663,7 @@ void Engine::start_multiplayer_game() {
 	show_achievements = false;
 	show_timeline = false;
 	show_diplomacy = false;
+	multiplayer_ready = false;
 	keyctl.clear();
 }
 

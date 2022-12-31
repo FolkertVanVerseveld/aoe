@@ -46,7 +46,7 @@ static void write(std::ofstream &out, const std::string &s) {
 }
 
 Config::Config(Engine &e) : Config(e, "") {}
-Config::Config(Engine &e, const std::string &s) : e(e), bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s), game_dir() {}
+Config::Config(Engine &e, const std::string &s) : e(e), bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s), game_dir(), autostart(false) {}
 
 Config::~Config() {
 	if (path.empty())
@@ -80,10 +80,15 @@ void Config::load(const std::string &path) {
 
 	in.read((char*)&dw, sizeof(dw));
 
-	if (dw & (1 << 0))
+	bool mute_music = !!(dw & (1 << 0));
+	bool autostart  = !!(dw & (1 << 1));
+
+	if (mute_music)
 		sfx.mute_music();
 	else
 		sfx.unmute_music();
+
+	this->autostart = autostart;
 
 	read(in, game_dir, UINT16_MAX);
 
@@ -115,8 +120,8 @@ void Config::save(const std::string &path) {
 	uint32_t dw = 0;
 	Audio &sfx = e.sfx;
 
-	if (sfx.is_muted_music())
-		dw |= 1 << 0;
+	if (sfx.is_muted_music()) dw |= 1 << 0;
+	if (autostart           ) dw |= 1 << 1;
 
 	out.write((const char*)&dw, sizeof(dw));
 

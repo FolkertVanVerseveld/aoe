@@ -47,6 +47,7 @@ class Config final {
 public:
 	SDL_Rect bnds, display, vp;
 	std::string path, game_dir;
+	bool autostart;
 
 	static constexpr uint32_t magic = 0x06ce09f6;
 

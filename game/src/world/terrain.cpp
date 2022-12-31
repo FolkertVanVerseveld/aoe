@@ -4,6 +4,8 @@
 
 #include <tracy/Tracy.hpp>
 
+#include "../nominmax.hpp"
+
 namespace aoe {
 
 Terrain::Terrain() : tiles(), hmap(), w(0), h(0), seed(0), players(0), wrap(false) {}
