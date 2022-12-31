@@ -473,7 +473,13 @@ void Client::peermod(const NetPeerControl &ctl) {
 		}
 		case NetPeerControlType::set_player_idx: {
 			std::lock_guard<std::mutex> lk(m);
-			scn.owners[ref] = std::get<uint16_t>(ctl.data);
+
+			unsigned pos = std::get<uint16_t>(ctl.data);
+			scn.owners[ref] = pos;
+
+			if (pos - 1 < scn.players.size())
+				scn.players[pos - 1].ai = false;
+
 			modflags |= (unsigned)ClientModFlags::scn;
 			break;
 		}

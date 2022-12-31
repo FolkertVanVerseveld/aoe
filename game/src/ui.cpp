@@ -823,10 +823,14 @@ void Engine::show_multiplayer_host() {
 
 		f.sl();
 
-		if (scn.players.empty()) {
+		if (scn.players.empty() || !multiplayer_ready) {
 			f.xbtn("Start Game");
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGui::Tooltip("Game cannot be started without players. You can add players with `+' and `+10'.");
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+				if (scn.players.empty())
+					ImGui::Tooltip("Game cannot be started without players. The host can add and remove players.");
+				else
+					ImGui::Tooltip("Click \"I'm Ready\" in order to start the game");
+			}
 		} else if (f.btn("Start Game")) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
 			client->send_start_game();
@@ -881,15 +885,12 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 					continue;
 				}
 
-				// TODO readd this when erasing is properly supported
-#if 0
-				if (f.btn("X"))
-					del = i;
-
-				f.sl();
-#endif
-
 				if (i + 1 == idx) {
+					if (f.btn("X"))
+						client->claim_player(0);
+
+					f.sl();
+
 					if (r.text("##0", p.name, ImGuiInputTextFlags_EnterReturnsTrue))
 						client->send_set_player_name(i + 1, p.name);
 				} else {
@@ -902,7 +903,7 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 
 					f.sl();
 
-					if (f.btn("Set CPU"))
+					if (!p.ai && server.get() != nullptr && f.btn("Set CPU"))
 						client->claim_cpu(i + 1); // NOTE 1-based
 
 					r.next();
@@ -915,9 +916,6 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 				f.scalar("##2", p.team, 1);
 				r.next();
 			}
-
-			if (del >= 0 && del < scn.players.size())
-				scn.players.erase(scn.players.begin() + del);
 		}
 	}
 }
