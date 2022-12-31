@@ -69,7 +69,7 @@ Assets::Assets(int id, Engine &eng, const std::string &path)
 {
 	ZoneScoped;
 	// TODO use engine view to prevent crash when closed while ctor is still running
-	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", id, 6));
+	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", id, 7));
 
 	load_gfx(eng, info);
 	load_audio(eng, info);
@@ -162,6 +162,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		GLint size = eng.gl().max_texture_size;
 		ts_ui = p.collect(size, size);
 	}
+
+	load_str(eng, info);
 }
 
 void Assets::add_gifs(gfx::ImagePacker &p, Animation &a, DrsId id) {
@@ -193,6 +195,17 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 
 	eng.sfx.load_sfx(SfxId::sfx_ui_click, drs_sounds.open_wav(DrsId::sfx_ui_click));
 	eng.sfx.load_taunt(TauntId::max, drs_sounds.open_wav(DrsId::sfx_priest_convert2));
+}
+
+void Assets::load_str(Engine &eng, UI_TaskInfo &info) {
+	ZoneScoped;
+	info.next("Load localisation data");
+
+	// TODO change to try read and fall back to default localisation data if not found
+	io::PE pe(path + "/SETUPENU.DLL");
+
+	if ((unsigned)pe.type() < (unsigned)PE_Type::peopt)
+		throw std::runtime_error("Localisation data is not a proper DLL file");
 }
 
 const ImageRef &Assets::at(DrsId id) const {

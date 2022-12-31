@@ -55,6 +55,7 @@ public:
 private:
 	void load_gfx(Engine&, UI_TaskInfo&);
 	void load_audio(Engine&, UI_TaskInfo&);
+	void load_str(Engine&, UI_TaskInfo&);
 
 	void add_gifs(gfx::ImagePacker &p, Animation&, io::DrsId);
 };

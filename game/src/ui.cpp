@@ -377,6 +377,9 @@ void Engine::show_mph_chat(ui::Frame &f) {
 void Engine::show_multiplayer_diplomacy() {
 	Frame f;
 
+	ImGuiIO &io = ImGui::GetIO();
+	ImGui::SetNextWindowSizeConstraints(ImVec2(533, 380), ImVec2(io.DisplaySize.x, io.DisplaySize.y));
+
 	if (!f.begin("Diplomacy", show_diplomacy))
 		return;
 
@@ -448,7 +451,8 @@ void Engine::show_multiplayer_diplomacy() {
 }
 
 void Engine::show_multiplayer_achievements() {
-	ImGui::SetNextWindowSizeConstraints(ImVec2(450, 420), ImVec2(1024 + 8, 768 + 8));
+	ImGuiIO &io = ImGui::GetIO();
+	ImGui::SetNextWindowSizeConstraints(ImVec2(450, 420), ImVec2(std::min(io.DisplaySize.x, 1024 + 8.0f), std::min(io.DisplaySize.y, 768 + 8.0f)));
 	Frame f;
 
 	if (!f.begin("Achievements", show_achievements))
@@ -921,6 +925,7 @@ void Engine::show_mph_tbl(ui::Frame &f) {
 }
 
 void Engine::show_mph_cfg(ui::Frame &f) {
+	ZoneScoped;
 	ScenarioSettings &scn = cv.scn;
 
 	f.str("Scenario: Random map");
@@ -1184,6 +1189,7 @@ void Engine::show_multiplayer_menu() {
 }
 
 void Engine::draw_background_border() {
+	ZoneScoped;
 	assert(assets.get());
 	Assets &a = *assets.get();
 

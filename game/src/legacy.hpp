@@ -12,6 +12,8 @@
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_surface.h>
 
+#include "legacy/strings.hpp"
+
 namespace aoe {
 
 static constexpr unsigned WINDOW_WIDTH_MIN = 640, WINDOW_HEIGHT_MIN = 480;
@@ -109,6 +111,69 @@ public:
 	Slp open_slp(DrsId id);
 	std::vector<uint8_t> open_wav(DrsId id);
 	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> open_pal(DrsId id);
+};
+
+enum class PE_Type {
+	unknown = 0,
+	mz = 1,
+	dos = 2,
+	pe = 3,
+	peopt = 4,
+};
+
+enum class RsrcType {
+	unknown = 0,
+	cursor = 1,
+	bitmap = 2,
+	icon = 3,
+	menu = 4,
+	dialog = 5,
+	string = 6,
+	fontdir = 7,
+	font = 8,
+	accelerator = 9,
+	rcdata = 10,
+	messagetable = 11,
+	group_cursor = 12,
+	group_icon = 14,
+	version = 16,
+	dlginclude = 17,
+	plugplay = 19,
+	vxd = 20,
+	anicursor = 21,
+	aniicon = 22,
+};
+
+struct sechdr final {
+	char s_name[8];
+	uint32_t s_paddr;
+	uint32_t s_vaddr;
+	uint32_t s_size;
+	uint32_t s_scnptr;
+	uint32_t s_relptr;
+	uint32_t s_lnnoptr;
+	uint16_t s_nreloc;
+	uint16_t s_nlnno;
+	uint32_t s_flags;
+};
+
+typedef uint16_t res_id;
+
+class PE final {
+	std::ifstream in;
+	PE_Type m_type;
+	unsigned bits;
+	unsigned nrvasz;
+	std::vector<sechdr> sections;
+public:
+	PE(const std::string &path);
+
+	PE_Type type() const noexcept { return m_type; }
+
+	bool load_res(RsrcType type, res_id, size_t &pos, size_t &size);
+	void load_string(std::string &s, res_id);
+
+	void read(char *dst, size_t pos, size_t size);
 };
 
 }
