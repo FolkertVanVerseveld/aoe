@@ -2,6 +2,11 @@
 
 namespace aoe {
 
+ClientInfo &Server::get_ci(IdPoolRef ref) {
+	Peer p(refs.at(ref).sock, "", "", false);
+	return peers.at(p);
+}
+
 bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out) {
 	NetPkg pkg;
 

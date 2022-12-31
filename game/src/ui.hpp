@@ -117,6 +117,7 @@ public:
 	void next();
 
 	// similar to Frame's functions but these all automagically call next upon return
+	void str(const std::string&);
 	void str(const char*);
 	void strs(std::initializer_list<const char*>);
 

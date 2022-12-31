@@ -231,6 +231,8 @@ private:
 
 	void start_game();
 
+	ClientInfo &get_ci(IdPoolRef);
+
 	void broadcast(NetPkg &pkg, bool include_host=true);
 	void broadcast(NetPkg &pkg, const Peer &exclude);
 	void send(const Peer &p, NetPkg &pkg);

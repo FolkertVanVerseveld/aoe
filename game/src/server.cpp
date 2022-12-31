@@ -19,7 +19,7 @@ struct pkg {
 bool Server::incoming(ServerSocket &s, const Peer &p) {
 	std::lock_guard<std::mutex> lk(m_peers);
 
-	if (peers.size() > 255)
+	if (peers.size() > 255 || m_running)
 		return false;
 
 	std::string name(p.host + ":" + p.server);
@@ -244,6 +244,32 @@ void Server::start_game() {
 
 	pkg.set_scn_vars(scn);
 	broadcast(pkg);
+
+	for (unsigned i = 0; i < scn.players.size(); ++i) {
+		PlayerSetting &p = scn.players[i];
+
+		// if player has no name, try find an owner that has one
+		if (p.name.empty()) {
+			unsigned owners = 0;
+			std::string alias;
+
+			for (auto kv : scn.owners) {
+				if (kv.second == i + 1) {
+					++owners;
+					alias = get_ci(kv.first).username;
+				}
+			}
+
+			if (owners == 1) {
+				p.name = alias;
+			} else {
+				p.name = "Oerkneus de Eerste";
+			}
+		}
+
+		pkg.set_player_name(i + 1, p.name);
+		broadcast(pkg);
+	}
 
 	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
 	this->t.generate();

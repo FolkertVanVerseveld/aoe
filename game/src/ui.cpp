@@ -241,6 +241,10 @@ void Row::next() {
 	}
 }
 
+void Row::str(const std::string &s) {
+	str(s.c_str());
+}
+
 void Row::str(const char *s) {
 	assert(pos < size);
 
@@ -404,17 +408,22 @@ void Engine::show_multiplayer_diplomacy() {
 		if (t.begin("DiplomacyTable", 9)) {
 			t.row(-1, { "Name", "Civilization", "Ally", "Neutral", "Enemy", "Food", "Wood", "Gold", "Stone" });
 
-			Row r(9, 0);
+			for (unsigned i = 0; i < cv.scn.players.size(); ++i) {
+				PlayerSetting &p = cv.scn.players[i];
+				Row r(9, 0);
 
-			r.str("You");
-			r.str("oerkneuzen");
-			r.chkbox("##0", show_diplomacy);
-			r.chkbox("##1", show_diplomacy);
-			r.chkbox("##2", show_diplomacy);
-			r.next();
-			r.next();
-			r.next();
-			r.next();
+				ImGui::TextWrapped("%s", p.name.c_str());
+				r.next();
+				//r.str(p.name);
+				r.str("oerkneuzen");
+				r.chkbox("##0", show_diplomacy);
+				r.chkbox("##1", show_diplomacy);
+				r.chkbox("##2", show_diplomacy);
+				r.next();
+				r.next();
+				r.next();
+				r.next();
+			}
 		}
 	}
 
@@ -439,7 +448,7 @@ void Engine::show_multiplayer_diplomacy() {
 }
 
 void Engine::show_multiplayer_achievements() {
-	ImGui::SetNextWindowSizeConstraints(ImVec2(400, 300), ImVec2(1024, 768));
+	ImGui::SetNextWindowSizeConstraints(ImVec2(450, 420), ImVec2(1024 + 8, 768 + 8));
 	Frame f;
 
 	if (!f.begin("Achievements", show_achievements))
@@ -456,6 +465,8 @@ void Engine::show_multiplayer_achievements() {
 	//lst->AddImage(tex1, pos, ImVec2(pos.x + size.x, pos.y + size.y), ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
 	lst->AddImage(tex1, tl, br, ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
 
+	float w = br.x - tl.x;
+	float sx = w / ref.bnds.w, sy = (br.y - tl.y) / ref.bnds.h;
 
 	if (show_timeline) {
 		f.str("World Population");
@@ -474,22 +485,84 @@ void Engine::show_multiplayer_achievements() {
 
 		f.str("Work in progress...");
 		{
+#if 0
 			Table t;
 
 			if (t.begin("SummaryTable", 8)) {
 				t.row(-1, {" ", "Military", "Economy", "Religion", "Technology", "Survival", "Wonder", "Total Score"});
 
-				Row r(8, 0);
+				for (unsigned i = 0; i < cv.scn.players.size(); ++i) {
+					PlayerSetting &p = cv.scn.players[i];
 
-				r.str("test");
-				r.str("0");
-				r.str("0");
-				r.str("0");
-				r.str("0");
-				r.str("Yes");
-				r.str("No");
-				r.str("100");
+					Row r(8, 0);
+
+					r.str(p.name);
+					r.str("0");
+					r.str("0");
+					r.str("0");
+					r.str("0");
+					r.str("Yes");
+					r.str("No");
+					r.str("100");
+				}
 			}
+#else
+			// military at 160, 244
+			// economy at 250, 212
+			// religion at 346, 180
+			// technology at 578, 148 (center)
+			// survival at 810, 180
+			// wonder at 910, 212
+			// total score at 996, 244
+			lst->AddText(ImVec2(tl.x + 160 * sx, tl.y + 244 * sy), IM_COL32_WHITE, "Military");
+			lst->AddText(ImVec2(tl.x + 250 * sx, tl.y + 212 * sy), IM_COL32_WHITE, "Economy");
+			lst->AddText(ImVec2(tl.x + 346 * sx, tl.y + 180 * sy), IM_COL32_WHITE, "Religion");
+
+			ImVec2 sz;
+
+			sz = ImGui::CalcTextSize("Technology");
+			lst->AddText(ImVec2(tl.x + 578 * sx - sz.x / 2, tl.y + 148 * sy), IM_COL32_WHITE, "Technology");
+
+			sz = ImGui::CalcTextSize("Survival");
+			lst->AddText(ImVec2(tl.x + 810 * sx - sz.x, tl.y + 180 * sy), IM_COL32_WHITE, "Survival");
+
+			sz = ImGui::CalcTextSize("Wonder");
+			lst->AddText(ImVec2(tl.x + 908 * sx - sz.x, tl.y + 212 * sy), IM_COL32_WHITE, "Wonder");
+
+			sz = ImGui::CalcTextSize("Total Score");
+			lst->AddText(ImVec2(tl.x + 996 * sx - sz.x, tl.y + 244 * sy), IM_COL32_WHITE, "Total Score");
+
+			// 40, 290
+			// 40, 338
+			// 40, 386
+
+
+			for (unsigned i = 0; i < cv.scn.players.size(); ++i) {
+				PlayerSetting &p = cv.scn.players[i];
+
+				float rowy = tl.y + 300 * sy + (348 - 300) * i * sy;
+
+				lst->AddText(ImVec2(tl.x + 40 * sx, rowy - sz.y), IM_COL32_WHITE, p.name.c_str());
+
+				sz = ImGui::CalcTextSize("0");
+				lst->AddText(ImVec2(tl.x + 324 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "0");
+
+				sz = ImGui::CalcTextSize("0");
+				lst->AddText(ImVec2(tl.x + 408 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "0");
+
+				sz = ImGui::CalcTextSize("0");
+				lst->AddText(ImVec2(tl.x + 492 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "0");
+
+				sz = ImGui::CalcTextSize("0");
+				lst->AddText(ImVec2(tl.x + 577 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "0");
+
+				sz = ImGui::CalcTextSize("Yes");
+				lst->AddText(ImVec2(tl.x + 662 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "Yes");
+
+				sz = ImGui::CalcTextSize("100");
+				lst->AddText(ImVec2(tl.x + 830 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "100");
+			}
+#endif
 		}
 
 		if (f.btn("Timeline")) {
