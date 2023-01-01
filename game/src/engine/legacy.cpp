@@ -12,6 +12,8 @@
 
 #include "../nominmax.hpp"
 
+#include <tracy/Tracy.hpp>
+
 namespace aoe {
 
 namespace io {
@@ -40,6 +42,7 @@ struct SlpFrameInfo final {
 };
 
 DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
+	ZoneScoped;
 	in.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
 	DrsHdr hdr{ 0 };
@@ -84,6 +87,7 @@ DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
 }
 
 std::vector<uint8_t> DRS::open_wav(DrsId k) {
+	ZoneScoped;
 	uint32_t id = (uint32_t)k;
 	DrsItem key{ id, 0, 0 };
 	auto it = items.find(key);
@@ -101,6 +105,7 @@ std::vector<uint8_t> DRS::open_wav(DrsId k) {
 }
 
 Slp DRS::open_slp(DrsId k) {
+	ZoneScoped;
 	uint32_t id = (uint32_t)k;
 	DrsItem key{ id, 0, 0 };
 	auto it = items.find(key);
@@ -134,16 +139,19 @@ Slp DRS::open_slp(DrsId k) {
 
 	std::vector<SlpFrameInfo> fi;
 
-	// parse frames (if available)
-	if (frames <= 0)
-		return slp;
+	{
+		ZoneScopedN("parse frames");
+		// parse frames (if available)
+		if (frames <= 0)
+			return slp;
 
-	fi.resize(frames);
-	in.read((char*)fi.data(), frames * sizeof(SlpFrameInfo));
+		fi.resize(frames);
+		in.read((char*)fi.data(), frames * sizeof(SlpFrameInfo));
 
-	for (auto &f : fi) {
-		f.outline_table_offset = le32toh(f.outline_table_offset);
-		f.cmd_table_offset = le32toh(f.cmd_table_offset);
+		for (auto &f : fi) {
+			f.outline_table_offset = le32toh(f.outline_table_offset);
+			f.cmd_table_offset = le32toh(f.cmd_table_offset);
+		}
 	}
 
 	// these containers help with estimating how big a frame really is
@@ -158,6 +166,7 @@ Slp DRS::open_slp(DrsId k) {
 	std::sort(cmd_offset.begin(), cmd_offset.end());
 
 	for (SlpFrameInfo &f : fi) {
+		ZoneScopedN("frame info");
 		SlpFrame &sf = slp.frames.emplace_back();
 
 		if (f.width < 0 || f.height < 0)
@@ -213,6 +222,7 @@ static const char JASC_PAL[] = {
 };
 
 std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> DRS::open_pal(DrsId k) {
+	ZoneScoped;
 	std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> p(nullptr, SDL_FreePalette);
 
 	uint32_t id = (uint32_t)k;
@@ -257,6 +267,7 @@ std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> DRS::open_pal(DrsId k) 
 }
 
 DrsBkg DRS::open_bkg(DrsId k) {
+	ZoneScoped;
 	uint32_t id = (uint32_t)k;
 	DrsItem key{ id, 0, 0 };
 	auto it = items.find(key);
@@ -331,6 +342,7 @@ static unsigned cmd_or_next(const std::vector<uint8_t> &data, uint32_t &cmdpos, 
 }
 
 bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigned player) {
+	ZoneScoped;
 	const SlpFrame &frame = slp.frames.at(index);
 
 	hotspot_x = frame.hotspot_x;
