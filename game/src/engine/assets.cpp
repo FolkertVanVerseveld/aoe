@@ -3,6 +3,8 @@
 #include "../legacy.hpp"
 #include "../engine.hpp"
 
+#include "../legacy/strings.hpp"
+
 #include <algorithm>
 
 namespace aoe {
@@ -202,10 +204,15 @@ void Assets::load_str(Engine &eng, UI_TaskInfo &info) {
 	info.next("Load localisation data");
 
 	// TODO change to try read and fall back to default localisation data if not found
-	io::PE pe(path + "/SETUPENU.DLL");
+	io::PE pe(path + "/language.dll");//"/SETUPENU.DLL");
 
 	if ((unsigned)pe.type() < (unsigned)PE_Type::peopt)
 		throw std::runtime_error("Localisation data is not a proper DLL file");
+
+	// TODO load strings
+	// dummy test
+
+	pe.load_string((res_id)StrId::age_bronze);
 }
 
 const ImageRef &Assets::at(DrsId id) const {

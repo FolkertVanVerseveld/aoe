@@ -202,6 +202,8 @@ struct rsrctbl final {
 	uint16_t r_nid;
 };
 
+#define RSRC_DIR 0x80000000
+
 struct rsrcditem final {
 	uint32_t r_id;
 	uint32_t r_rva;
@@ -235,7 +237,7 @@ struct pestr final {
 
 #pragma warning(pop)
 
-PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Type::unknown), bits(0), nrvasz(0), sections() {
+PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Type::unknown), bits(0), nrvasz(0), sections(), path(path) {
 	in.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
 	in.seekg(0, std::ios_base::end);
@@ -292,15 +294,15 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Typ
 	in.read((char*)&pe, sizeof pe);
 
 	// only fix the endian byte order of variables we care about
-	pe.f_magic  = le32toh(pe.f_magic);
+	pe.f_magic = le32toh(pe.f_magic);
 	pe.f_opthdr = le16toh(pe.f_opthdr);
-	pe.f_nsect  = le16toh(pe.f_nsect);
+	pe.f_nsect = le16toh(pe.f_nsect);
 
 	if (pe.f_magic != pe_magic)
-		throw std::runtime_error(std::string("PE: bad pe magic: expected ") + std::to_string(pe_magic) + " got " + std::to_string(pe.f_magic));
+	throw std::runtime_error(std::string("PE: bad pe magic: expected ") + std::to_string(pe_magic) + " got " + std::to_string(pe.f_magic));
 
 	if (!pe.f_opthdr)
-		return;
+	return;
 
 	coffopthdr coff;
 
@@ -341,51 +343,210 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Typ
 
 	sections.resize(pe.f_nsect);
 	in.read((char*)sections.data(), sections.size() * sizeof sechdr);
-
-	for (unsigned i = 0; i < sections.size(); ++i)
-		sections[i].s_scnptr = le32toh(sections[i].s_scnptr);
 }
 
 bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 	unsigned language_id = 0; // TODO support multiple languages
 
 	// locate .rsrc section
-	rsrctbl *rsrc = nullptr;
+	uint32_t rsrc_pos = 0;
+	const sechdr *rsrc_sec = nullptr;
 
-	for (unsigned i = 0; i < sections.size(); ++i) {
-		if (strcmp(sections[i].s_name, ".rsrc"))
-			continue;
-
-		// TODO wip
-		break;
+	for (const sechdr &sec : sections) {
+		if (!strcmp(sec.s_name, ".rsrc")) {
+			rsrc_pos = le32toh(sec.s_scnptr);
+			rsrc_sec = &sec;
+			break;
+		}
 	}
 
-	if (!rsrc) {
+	if (!rsrc_pos) {
 		fprintf(stderr, "%s: rsrc not found\n", __func__);
 		return false;
 	}
+
+	// level one
+	rsrctbl rsrc;
+	read((char*)&rsrc, rsrc_pos, sizeof rsrc);
+
+	time_t time = le32toh(rsrc.r_time);
+
+	std::vector<rsrcditem> l1(le32toh(rsrc.r_nid));
+	long long item_pos = rsrc_pos + sizeof rsrc;
+
+	read((char*)l1.data(), item_pos + le32toh(rsrc.r_nname) * sizeof rsrcditem, l1.size() * sizeof rsrcditem);
+
+	// find type directory
+	uint32_t t_id = l1.size();
+
+	for (uint32_t i = 0; i < l1.size(); ++i) {
+		if (le32toh(l1[i].r_id) == (uint32_t)type) {
+			t_id = i;
+			break;
+		}
+	}
+
+#if 0
+	if (t_id == l1.size()) {
+		fprintf(stderr, "%s: res %u not found\n", __func__, id);
+		return false;
+	}
+#endif
+
+	rsrcditem &item = l1.at(t_id);
+
+	if (!(le32toh(item.r_rva) & RSRC_DIR)) {
+		fprintf(stderr, "%s: unexpected type leaf: %X\n", __func__, le32toh(item.r_rva));
+		return false;
+	}
+
+	uint32_t rva = le32toh(item.r_rva) & ~RSRC_DIR;
+
+	// level two
+	rsrctbl dirtbl;
+	long long dir_pos = rsrc_pos + rva;
+	read((char*)&dirtbl, dir_pos, sizeof dirtbl);
+
+	std::vector<rsrcditem> l2(le32toh(dirtbl.r_nid));
+
+	read((char*)l2.data(), dir_pos + sizeof dirtbl + le32toh(dirtbl.r_nname) * sizeof rsrcditem, l2.size() * sizeof rsrcditem);
+
+	// find name directory
+	// TODO not found??
+	unsigned dirid = le32toh(dirtbl.r_nid);
+
+	for (unsigned i = 0; i < le32toh(dirtbl.r_nid); ++i) {
+		rsrcditem &d = l2[i];
+		if (!(le32toh(d.r_rva) & RSRC_DIR)) {
+			fprintf(stderr, "%s: unexpected identifier leaf: %X\n", __func__, le32toh(d.r_rva));
+			return false;
+		}
+
+		if (le32toh(d.r_id) == id || (type == RsrcType::string && le32toh(d.r_id) - 1 == id / 16)) {
+			dirid = i;
+			break;
+		}
+	}
+
+#if 0
+	if (dirid == dirtbl.r_nid) {
+		fprintf(stderr, "%s: res %u not found\n", __func__, id);
+		return false;
+	}
+#endif
+
+	item = l2.at(dirid);
+	rva = item.r_rva & ~RSRC_DIR;
+	rsrcditem diritem = item;
+
+	// level three
+	long long lang_pos = rsrc_pos + rva;
+	rsrctbl langtbl;
+
+	read((char*)&langtbl, lang_pos, sizeof langtbl);
+
+	std::vector<rsrcditem> l3(le32toh(langtbl.r_nid));
+
+	read((char*)l3.data(), lang_pos + sizeof langtbl + le32toh(langtbl.r_nname) * sizeof rsrcditem, l3.size() * sizeof rsrcditem);
+
+	// find language directory
+	uint32_t langid = le32toh(langtbl.r_nid);
+
+	for (unsigned i = 0; i < le32toh(langtbl.r_nid); ++i) {
+		rsrcditem &d = l3[i];
+
+		if (le32toh(d.r_rva) & RSRC_DIR) {
+			fprintf(stderr, "%s: unexpected language id dir\n", __func__);
+			return false;
+		}
+
+		// TODO when supporting multiple languages, remove `!language_id ||'
+		if (!language_id || d.r_id == language_id) {
+			langid = i;
+			break;
+		}
+	}
+
+	item = l3.at(langid);
+
+	rsrcentry entry;
+
+	read((char*)&entry, rsrc_pos + le32toh(item.r_rva), sizeof entry);
+
+	off_t e_addr = le32toh(rsrc_sec->s_scnptr) + le32toh(entry.e_addr) - le32toh(rsrc_sec->s_vaddr);
+
+	if (type != RsrcType::string) {
+		pos = e_addr;
+		count = le32toh(entry.e_size);
+		return true;
+	}
+
+	uint16_t strid = (le32toh(diritem.r_id) - 1) * 16;
+#if 0
+	std::vector<uint16_t> strings(16);
+
+	in.read((char*)strings.data(), strings.size() * sizeof(uint16_t));
+	long long strpos = rsrc_pos + e_addr;
+
+	for (uint16_t &v : strings) {
+		pestr str;
+		read((char*)&str, strpos, 2);
+
+		// times 2 because ntkernel uses UCS2 which is 2 bytes per code unit.
+		size_t size = 2 * le16toh(str.length);
+
+		if (strid == id) {
+			pos = strpos;
+			count = size;
+			return true;
+		}
+
+		strpos += size;
+	}
+#else
+	long long strpos = e_addr;
+
+	for (unsigned i = 0; i < 16; ++i, ++strid) {
+		pestr str;
+		read((char*)&str, strpos, 2);
+
+		strpos += 2;
+
+		// times 2 because ntkernel uses UCS2 which is 2 bytes per code unit.
+		size_t size = 2 * le16toh(str.length);
+
+		if (strid == id) {
+			pos = strpos;
+			count = size;
+			return true;
+		}
+
+		strpos += size;
+	}
+#endif
 
 	// TODO wip
 	return false;
 }
 
 void PE::read(char *dst, size_t pos, size_t size) {
-	in.seekg(pos);
+	in.seekg(pos, std::ios_base::beg);
 	in.read(dst, size);
 }
 
-void PE::load_string(std::string &s, res_id id) {
+std::string PE::load_string(res_id id) {
 	size_t pos, count;
 
 	if (!load_res(io::RsrcType::string, id, pos, count))
 		throw std::runtime_error(std::string("Could not load text id ") + std::to_string(id));
 
-	s.clear();
+	std::string s;
 
 	if (!count)
-		return;
+		return "";
 
 	std::vector<uint16_t> data(count / 2, 0);
+	read((char*)data.data(), pos, count);
 
 	for (size_t i = 0; i < count / 2; ++i) {
 		unsigned ch = data[i];
@@ -398,8 +559,10 @@ void PE::load_string(std::string &s, res_id id) {
 			}
 		}
 
-		s[i] = ch;
+		s += ch;
 	}
+
+	return s;
 }
 
 }

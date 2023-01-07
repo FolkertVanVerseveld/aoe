@@ -165,13 +165,14 @@ class PE final {
 	unsigned bits;
 	unsigned nrvasz;
 	std::vector<sechdr> sections;
+	std::string path;
 public:
 	PE(const std::string &path);
 
 	PE_Type type() const noexcept { return m_type; }
 
 	bool load_res(RsrcType type, res_id, size_t &pos, size_t &size);
-	void load_string(std::string &s, res_id);
+	std::string load_string(res_id);
 
 	void read(char *dst, size_t pos, size_t size);
 };
