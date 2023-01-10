@@ -264,6 +264,7 @@ void Server::start_game() {
 				p.name = alias;
 			} else {
 				p.name = "Oerkneus de Eerste";
+				// TODO extract name from engine
 			}
 		}
 

@@ -18,9 +18,11 @@
 
 namespace aoe {
 
-const std::vector<std::string> civs{ "oerkneuzen", "sukkols", "medeas", "jasons" };
-
 namespace ui {
+
+void str(const char *s, TextHalign ha, bool wrap) {
+	ImGui::TextUnformatted(s, (int)ha, wrap);
+}
 
 Frame::Frame() : open(false), active(false) {}
 
@@ -49,12 +51,41 @@ void Frame::close() {
 	active = open = false;
 }
 
+void Frame::str2(const std::string &s, TextHalign ha, const ImVec4 &bg, bool wrap) {
+	str2(s.c_str(), ha, bg, wrap);
+}
+
+void Frame::str2(const char *s, TextHalign ha, const ImVec4 &bg, bool wrap) {
+	ImGui::PushStyleColor(ImGuiCol_Text, bg);
+	ImGui::PushStyleColor(ImGuiCol_TextDisabled, bg);
+
+	ImVec2 pos = ImGui::GetCursorPos();
+
+	ImGui::SetCursorPos(ImVec2(pos.x - 1, pos.y + 1));
+	ui::str(s, ha, wrap);
+
+	ImGui::PopStyleColor(2);
+
+	ImGui::SetCursorPos(pos);
+	ui::str(s, ha, wrap);
+}
+
+void Frame::txt2(StrId id, TextHalign ha, const ImVec4 &bg) {
+	std::string s(eng->txt(id));
+	str2(s, ha, bg);
+}
+
 void Frame::str(const std::string &s) {
 	str(s.c_str());
 }
 
 void Frame::str(const char *s) {
 	ImGui::TextUnformatted(s);
+}
+
+void Frame::str(StrId id) {
+	std::string s(eng->txt(id));
+	str(s);
 }
 
 void Frame::fmt(const char *s, ...) {
@@ -74,13 +105,13 @@ bool Frame::chkbox(const char *s, bool &b) {
 	return ui::chkbox(s, b);
 }
 
-bool Frame::btn(const char *s, const ImVec2 &sz) {
-	return ImGui::Button(s, sz);
+bool Frame::btn(const char *s, TextHalign ha, const ImVec2 &sz) {
+	return ImGui::Button(s, (int)ha, sz);
 }
 
-bool Frame::xbtn(const char *s, const ImVec2 &sz) {
+bool Frame::xbtn(const char *s, TextHalign ha, const ImVec2 &sz) {
 	ImGui::BeginDisabled();
-	bool b = ImGui::Button(s, sz);
+	bool b = ImGui::Button(s, (int)ha, sz);
 	ImGui::EndDisabled();
 	return b;
 }
@@ -452,7 +483,12 @@ void Engine::show_multiplayer_diplomacy() {
 
 void Engine::show_multiplayer_achievements() {
 	ImGuiIO &io = ImGui::GetIO();
-	ImGui::SetNextWindowSizeConstraints(ImVec2(450, 420), ImVec2(std::min(io.DisplaySize.x, 1024 + 8.0f), std::min(io.DisplaySize.y, 768 + 8.0f)));
+
+	float scale = io.DisplaySize.y / WINDOW_HEIGHT_MIN;
+
+	ImVec2 max(std::min(io.DisplaySize.x, WINDOW_WIDTH_MAX + 8.0f), std::min(io.DisplaySize.y, WINDOW_HEIGHT_MAX + 8.0f));
+
+	ImGui::SetNextWindowSizeConstraints(ImVec2(std::min(max.x, 450 * scale), std::min(max.y, 420 * scale)), max);
 	Frame f;
 
 	if (!f.begin("Achievements", show_achievements))
@@ -489,28 +525,6 @@ void Engine::show_multiplayer_achievements() {
 
 		f.str("Work in progress...");
 		{
-#if 0
-			Table t;
-
-			if (t.begin("SummaryTable", 8)) {
-				t.row(-1, {" ", "Military", "Economy", "Religion", "Technology", "Survival", "Wonder", "Total Score"});
-
-				for (unsigned i = 0; i < cv.scn.players.size(); ++i) {
-					PlayerSetting &p = cv.scn.players[i];
-
-					Row r(8, 0);
-
-					r.str(p.name);
-					r.str("0");
-					r.str("0");
-					r.str("0");
-					r.str("0");
-					r.str("Yes");
-					r.str("No");
-					r.str("100");
-				}
-			}
-#else
 			// military at 160, 244
 			// economy at 250, 212
 			// religion at 346, 180
@@ -566,7 +580,6 @@ void Engine::show_multiplayer_achievements() {
 				sz = ImGui::CalcTextSize("100");
 				lst->AddText(ImVec2(tl.x + 830 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "100");
 			}
-#endif
 		}
 
 		if (f.btn("Timeline")) {
@@ -705,7 +718,7 @@ void Engine::show_multiplayer_game() {
 	}
 
 	int food = 200, wood = 200, gold = 0, stone = 150;
-	const char *age = "Stone Age";
+	std::string age(txt(StrId::age_stone));
 
 	lst->AddImage(tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_left + rtop.bnds.w, vp->WorkPos.y + rtop.bnds.h), ImVec2(rtop.s0, rtop.t0), ImVec2(rtop.s1, rtop.t1));
 
@@ -736,10 +749,10 @@ void Engine::show_multiplayer_game() {
 	lst->AddText(ImVec2(menubar_left + 234 - 1, y + 1), IM_COL32(255, 255, 255, 255), buf);
 	lst->AddText(ImVec2(menubar_left + 234, y), IM_COL32(0, 0, 0, 255), buf);
 
-	ImVec2 sz(ImGui::CalcTextSize(age));
+	ImVec2 sz(ImGui::CalcTextSize(age.c_str()));
 
-	lst->AddText(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y + 1), IM_COL32(255, 255, 255, 255), age);
-	lst->AddText(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y), IM_COL32(0, 0, 0, 255), age);
+	lst->AddText(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y + 1), IM_COL32(255, 255, 255, 255), age.c_str());
+	lst->AddText(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y), IM_COL32(0, 0, 0, 255), age.c_str());
 
 	menubar_bottom += rtop.bnds.h;
 
@@ -798,7 +811,7 @@ void Engine::show_multiplayer_host() {
 		f.str("Multiplayer game  -");
 		f.sl();
 
-		f.scalar(player_count == 1 ? "player" : "players", player_count, 1, 1, MAX_PLAYERS);
+		f.scalar(player_count == 1 ? "player" : "players", player_count, 1, 1, MAX_PLAYERS - 1);
 
 		if (player_count != scn.players.size()) {
 			client->send_players_resize(player_count);
@@ -819,7 +832,7 @@ void Engine::show_multiplayer_host() {
 		if (lf.begin("LeftFrame", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.7f, ImGui::GetWindowHeight() * frame_height))) {
 			Child pf;
 			if (pf.begin("PlayerFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar))
-				show_mph_tbl(f);
+				ui.show_mph_tbl(f);
 		}
 		show_mph_chat(f);
 
@@ -856,72 +869,117 @@ void Engine::show_multiplayer_host() {
 	}
 }
 
-void Engine::show_mph_tbl(ui::Frame &f) {
-	{
-		Table t;
+void UICache::show_mph_tbl(ui::Frame &f) {
+	Table t;
 
-		unsigned idx = 0;
-		ScenarioSettings &scn = cv.scn;
+	unsigned idx = 0;
+	ScenarioSettings &scn = e->cv.scn;
 
-		auto it = scn.owners.find(cv.me);
-		if (it != scn.owners.end())
-			idx = it->second;
+	auto it = scn.owners.find(e->cv.me);
+	if (it != scn.owners.end())
+		idx = it->second;
 
-		if (t.begin("PlayerTable", 3)) {
-			t.row(-1, {"Name", "Civ", "Team"});
+	if (t.begin("PlayerTable", 3)) {
+		t.row(-1, {"Name", "Civ", "Team"});
 
-			unsigned del = scn.players.size();
-			unsigned from = 0, to = 0;
+		unsigned del = scn.players.size();
+		unsigned from = 0, to = 0;
 
-			for (unsigned i = 0; i < scn.players.size(); ++i) {
-				Row r(3, i);
-				PlayerSetting &p = scn.players[i];
+		for (unsigned i = 0; i < scn.players.size(); ++i) {
+			Row r(3, i);
+			PlayerSetting &p = scn.players[i];
 
-				if (multiplayer_ready) {
-					f.str(p.name);
-					r.next();
-
-					f.str(civs.at(p.civ));
-					r.next();
-
-					f.str(std::to_string(p.team));
-					r.next();
-					continue;
-				}
-
-				if (i + 1 == idx) {
-					if (f.btn("X"))
-						client->claim_player(0);
-
-					f.sl();
-
-					if (r.text("##0", p.name, ImGuiInputTextFlags_EnterReturnsTrue))
-						client->send_set_player_name(i + 1, p.name);
-				} else {
-					if (f.btn("Claim"))
-						client->claim_player(i + 1); // NOTE 1-based
-
-					if (ImGui::IsItemHovered()) {
-						ImGui::Tooltip("bla bla");
-					}
-
-					f.sl();
-
-					if (!p.ai && server.get() != nullptr && f.btn("Set CPU"))
-						client->claim_cpu(i + 1); // NOTE 1-based
-
-					r.next();
-				}
-
-				f.combo("##1", p.civ, civs);
+			if (e->multiplayer_ready) {
+				f.str(p.name);
 				r.next();
 
-				p.team = std::max(1u, p.team);
-				f.scalar("##2", p.team, 1);
+				f.str(civs.at(p.civ));
+				r.next();
+
+				f.str(std::to_string(p.team));
+				r.next();
+				continue;
+			}
+
+			if (i + 1 == idx) {
+				if (f.btn("X"))
+					e->client->claim_player(0);
+
+				f.sl();
+
+				if (r.text("##0", p.name, ImGuiInputTextFlags_EnterReturnsTrue))
+					e->client->send_set_player_name(i + 1, p.name);
+			} else {
+				if (f.btn("Claim"))
+					e->client->claim_player(i + 1); // NOTE 1-based
+
+				if (ImGui::IsItemHovered()) {
+					ImGui::Tooltip("bla bla");
+				}
+
+				f.sl();
+
+				if (!p.ai && e->server.get() != nullptr && f.btn("Set CPU"))
+					e->client->claim_cpu(i + 1); // NOTE 1-based
+
 				r.next();
 			}
+
+			f.combo("##1", p.civ, civs);
+			r.next();
+
+			p.team = std::max(1u, p.team);
+			f.scalar("##2", p.team, 1);
+			r.next();
 		}
 	}
+}
+
+void UICache::show_editor_menu() {
+	ZoneScoped;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(vp->WorkPos);
+
+	Frame f;
+
+	if (!f.begin("editor", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
+		return;
+
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	float old_x = ImGui::GetCursorPosX();
+
+	FontGuard fg(e->fnt.fnt_copper);
+
+	ImGui::SetCursorPosY(272.0f / 768.0f * vp->WorkSize.y);
+
+	f.xbtn("Create Scenario", TextHalign::center);
+
+	ImGui::SetCursorPosY(352.0f / 768.0f * vp->WorkSize.y);
+
+	f.xbtn("Edit Scenario", TextHalign::center);
+
+	ImGui::SetCursorPosY(432.0f / 768.0f * vp->WorkSize.y);
+
+	f.xbtn("Campaign Editor", TextHalign::center);
+
+	ImGui::SetCursorPosY(512.0f / 768.0f * vp->WorkSize.y);
+
+	if (f.btn("Cancel", TextHalign::center)) {
+		e->sfx.play_sfx(SfxId::sfx_ui_click);
+		e->next_menu_state = MenuState::start;
+	}
+
+	ImGui::SetCursorPosX(old_x);
+}
+
+
+void UICache::load(Engine &e) {
+	ZoneScoped;
+
+	this->e = &e;
+	civs.clear();
+	e.assets->old_lang.collect_civs(civs);
 }
 
 void Engine::show_mph_cfg(ui::Frame &f) {
@@ -1029,41 +1087,51 @@ void Engine::show_start() {
 
 	float old_x = ImGui::GetCursorPosX();
 
-	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
-	ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
+	{
+		FontGuard fg(fnt.fnt_copper);
 
-	f.xbtn("Single Player");
+		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+		ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
 
-	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
-	ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
+		f.xbtn("Single Player", TextHalign::center);
 
-	if (f.btn("Multiplayer")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		next_menu_state = MenuState::multiplayer_menu;
-	}
+		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+		ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
 
-	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
-	ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
+		if (f.btn("Multiplayer", TextHalign::center)) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
+			next_menu_state = MenuState::multiplayer_menu;
+		}
 
-	f.xbtn("Help");
+		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+		ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
 
-	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
-	ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
+		f.xbtn("Help", TextHalign::center);
 
-	f.xbtn("Scenario Builder");
+		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
 
-	ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
-	ImGui::SetCursorPosY(604.0f / 768.0f * vp->WorkSize.y);
+		if (f.btn("Scenario Builder", TextHalign::center)) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
+			next_menu_state = MenuState::editor;
+		}
 
-	if (f.btn("Exit")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		throw 0;
+		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
+		ImGui::SetCursorPosY(604.0f / 768.0f * vp->WorkSize.y);
+
+		if (f.btn("Exit", TextHalign::center)) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
+			throw 0;
+		}
 	}
 
 	ImGui::SetCursorPosX(old_x);
-	ImGui::SetCursorPosY(710.0f / 768.0f * vp->WorkSize.y);
+	ImGui::SetCursorPosY((710.0f - 30.0f) / 768.0f * vp->WorkSize.y);
 
-	ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
+	f.txt2(StrId::main_copy1, TextHalign::center);
+	f.txt2(StrId::main_copy2b, TextHalign::center);
+	f.txt2(StrId::main_copy3, TextHalign::center);
+	//ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
 }
 
 static const std::vector<std::string> music_ids{ "menu", "success", "fail", "game" };
@@ -1081,8 +1149,24 @@ void Engine::show_init() {
 	ImGui::SetWindowSize(vp->WorkSize);
 
 	f.str("Age of Empires game setup");
+
 	ImGui::TextWrapped("%s", "In this menu, you can change general settings how the game behaves and where the game assets will be loaded from.");
+
 	ImGui::TextWrapped("%s", "This game is free software. If you have paid for this free software remake, you have been scammed! If you like Age of Empires, please support Microsoft by buying the original game on Steam");
+
+
+	if (!fnt.loaded()) {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+		ImGui::TextWrapped("%s", "Cannot continue setup. Game fonts are not installed. Reinstall the game from CD-ROM and restart the setup. If you don't have a CD-ROM drive, copy the game directory and game fonts from a machine where the original game has been installed. If you don't own the game, you can buy it on Amazon or your favorite online retailer.");
+		ImGui::PopStyleColor();
+
+		ui::HSVcol col(0);
+
+		if (f.btn("Quit"))
+			throw 0;
+
+		return;
+	}
 
 	if (assets_good) {
 		if (f.btn("Start"))
@@ -1202,6 +1286,9 @@ void Engine::draw_background_border() {
 		break;
 	case MenuState::defeat:
 		col = a.bkg_cols.at(io::DrsId::bkg_defeat);
+		break;
+	case MenuState::editor:
+		col = a.bkg_cols.at(io::DrsId::bkg_editor);
 		break;
 	default:
 		col = a.bkg_cols.at(io::DrsId::bkg_main_menu);

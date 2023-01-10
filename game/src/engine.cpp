@@ -41,31 +41,6 @@
 
 #include "debug.hpp"
 
-#if _WIN32
-#include <WinBase.h>
-
-static std::string get_username() {
-	std::string name(256, ' ');
-	DWORD size = name.size();
-
-	while (!GetUserName(name.data(), &size)) {
-		DWORD err = GetLastError();
-
-		if (err != ERROR_INSUFFICIENT_BUFFER)
-			throw std::runtime_error(std::string("get_username failed: code ") + std::to_string(err));
-
-		name.resize(size = name.size() * 2, ' ');
-	}
-
-	if (size)
-		name.resize(size - 1);
-
-	return name;
-}
-#else
-#error get_username unimplemented
-#endif
-
 namespace aoe {
 
 Engine *eng;
@@ -74,13 +49,13 @@ std::mutex m_eng;
 ScenarioSettings::ScenarioSettings()
 	: players(), owners()
 	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
-	, square(true), restricted(true), reorder(false), width(48), height(48)
+	, square(true), wrap(false), restricted(true), reorder(false), width(48), height(48)
 	, popcap(100)
 	, age(1), seed(1), villagers(3)
 	, res(200, 200, 0, 0) {}
 
 Engine::Engine()
-	: net(), show_demo(false), show_debug(false)
+	: net(), show_demo(false), show_debug(false), font_scaling(true)
 	, connection_mode(0), connection_port(32768), connection_host("")
 	, menu_state(MenuState::init), next_menu_state(MenuState::init)
 	, multiplayer_ready(false), m_show_menubar(false)
@@ -99,7 +74,7 @@ Engine::Engine()
 		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
 	}, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
-	, player_tbl_y(0)
+	, player_tbl_y(0), ui(), fnt()
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
@@ -155,6 +130,7 @@ void Engine::show_general_settings() {
 	chkbox("Music enabled", music_on);
 	chkbox("Play chat taunts", sfx.play_taunts);
 	chkbox("Autostart", cfg.autostart);
+	chkbox("Font scaling", font_scaling);
 
 	if (music_on)
 		sfx.unmute_music();
@@ -207,6 +183,9 @@ void Engine::show_menubar() {
 void Engine::verify_game_data(const std::string &path) {
 	assets_good = false;
 
+	if (!fnt.loaded())
+		return;
+
 	tp.push([this](int id, std::string path) {
 		ZoneScoped;
 		using namespace io;
@@ -246,6 +225,10 @@ void Engine::display_ui() {
 			show_defeat();
 			draw_background_border();
 			break;
+		case MenuState::editor:
+			ui.show_editor_menu();
+			draw_background_border();
+			break;
 		default:
 			show_init();
 			break;
@@ -270,7 +253,13 @@ void Engine::display_ui() {
 
 void Engine::display() {
 	GLCHK;
+	ImGuiIO &io = ImGui::GetIO();
+	if (font_scaling)
+		io.FontGlobalScale = std::max(1.0f / SDL::fnt_scale, io.DisplaySize.y / SDL::max_h);
+	else
+		io.FontGlobalScale = 1.0f / SDL::fnt_scale;
 	display_ui();
+	//io.FontGlobalScale = 1.0f;
 	GLCHK;
 }
 
@@ -514,6 +503,9 @@ void Engine::set_background(MenuState s) {
 	case MenuState::defeat:
 		id = io::DrsId::bkg_defeat;
 		break;
+	case MenuState::editor:
+		id = io::DrsId::bkg_editor;
+		break;
 	}
 
 	set_background(id);
@@ -556,6 +548,9 @@ void Engine::set_game_data() {
 	const ImageSet &s_desert = a.anim_at(io::DrsId::trn_desert);
 	const gfx::ImageRef &t0 = a.at(s_desert.imgs[0]);
 	tw = t0.bnds.w; th = t0.bnds.h;
+
+	// load ui cache
+	ui.load(*this);
 }
 
 void Engine::idle() {
@@ -764,42 +759,8 @@ void Engine::reserve_threads(int n) {
 	tp.resize(tp.size() + n);
 }
 
-static bool try_add_font(ImFontAtlas *a, const char *path, float size) {
-	FILE *f;
-
-	if (!(f = fopen(path, "rb")))
-		return false;
-
-	fclose(f);
-
-	return a->AddFontFromFileTTF(path, size);
-}
-
 void Engine::guess_font_paths() {
-	ImGuiIO &io = ImGui::GetIO();
-	// Load Fonts
-	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-	// - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-	// - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-	// - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-	// - Read 'docs/FONTS.md' for more instructions and details.
-	// - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-	//io.Fonts->AddFontDefault();
-	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
-	//ImFont *font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-	//IM_ASSERT(font != NULL);
-#if _WIN32
-	try_add_font(io.Fonts, "C:\\Windows\\Fonts\\arial.ttf", 13.0f);
-
-	if (!try_add_font(io.Fonts, "C:\\Windows\\Fonts\\COPRGTL.TTF", 16.0f)) {
-		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTL.TTF");
-
-		try_add_font(io.Fonts, localpath.c_str(), 16.0f);
-	}
-#endif
+	fnt.try_load();
 }
 
 int Engine::mainloop() {

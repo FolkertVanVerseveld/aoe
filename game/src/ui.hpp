@@ -4,6 +4,8 @@
 
 #include "imfilebrowser.h"
 
+#include "legacy/strings.hpp"
+
 #include <cstdint>
 
 #include <initializer_list>
@@ -14,10 +16,20 @@
 
 namespace aoe {
 
+class Engine;
+
 namespace ui {
 
 bool chkbox(const char *s, bool &b);
 bool combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height_in_items=-1);
+
+enum class TextHalign {
+	left,
+	center,
+	right,
+};
+
+void str(const char*, TextHalign ha, bool wrap);
 
 class Frame final {
 	bool open, active;
@@ -29,13 +41,19 @@ public:
 	bool begin(const char *name, bool &p_open, ImGuiWindowFlags flags=0);
 	void close();
 
+	/** Like str but with a background color. */
+	void str2(const std::string&, TextHalign ha=TextHalign::left, const ImVec4 &bg=ImVec4(0, 0, 0, 1), bool wrap=true);
+	void str2(const char*, TextHalign ha=TextHalign::left, const ImVec4 &bg=ImVec4(0, 0, 0, 1), bool wrap=true);
+	void txt2(StrId, TextHalign ha=TextHalign::left, const ImVec4 &bg = ImVec4(0, 0, 0, 1));
+
 	void str(const std::string&);
 	void str(const char*);
+	void str(StrId);
 	void fmt(const char*, ...);
 
 	bool chkbox(const char*, bool&);
-	bool btn(const char*, const ImVec2 &sz=ImVec2(0, 0));
-	bool xbtn(const char*, const ImVec2 &sz=ImVec2(0, 0)); // like btn, but disabled
+	bool btn(const char*, TextHalign ha=TextHalign::left, const ImVec2 &sz=ImVec2(0, 0));
+	bool xbtn(const char*, TextHalign ha=TextHalign::left, const ImVec2 &sz=ImVec2(0, 0)); // like btn, but disabled
 	bool combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height_in_items=-1);
 
 	// typed input fields
@@ -154,6 +172,16 @@ public:
 	Popup(const std::string &description, PopupType type);
 
 	bool show();
+};
+
+class UICache final {
+	std::vector<std::string> civs;
+	Engine *e;
+public:
+	void load(Engine &e);
+
+	void show_mph_tbl(Frame&);
+	void show_editor_menu();
 };
 
 }

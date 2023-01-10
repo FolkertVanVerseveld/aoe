@@ -386,13 +386,6 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 		}
 	}
 
-#if 0
-	if (t_id == l1.size()) {
-		fprintf(stderr, "%s: res %u not found\n", __func__, id);
-		return false;
-	}
-#endif
-
 	rsrcditem &item = l1.at(t_id);
 
 	if (!(le32toh(item.r_rva) & RSRC_DIR)) {
@@ -412,7 +405,6 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 	read((char*)l2.data(), dir_pos + sizeof dirtbl + le32toh(dirtbl.r_nname) * sizeof rsrcditem, l2.size() * sizeof rsrcditem);
 
 	// find name directory
-	// TODO not found??
 	unsigned dirid = le32toh(dirtbl.r_nid);
 
 	for (unsigned i = 0; i < le32toh(dirtbl.r_nid); ++i) {
@@ -427,13 +419,6 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 			break;
 		}
 	}
-
-#if 0
-	if (dirid == dirtbl.r_nid) {
-		fprintf(stderr, "%s: res %u not found\n", __func__, id);
-		return false;
-	}
-#endif
 
 	item = l2.at(dirid);
 	rva = item.r_rva & ~RSRC_DIR;
@@ -470,7 +455,6 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 	item = l3.at(langid);
 
 	rsrcentry entry;
-
 	read((char*)&entry, rsrc_pos + le32toh(item.r_rva), sizeof entry);
 
 	off_t e_addr = le32toh(rsrc_sec->s_scnptr) + le32toh(entry.e_addr) - le32toh(rsrc_sec->s_vaddr);
@@ -482,28 +466,6 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 	}
 
 	uint16_t strid = (le32toh(diritem.r_id) - 1) * 16;
-#if 0
-	std::vector<uint16_t> strings(16);
-
-	in.read((char*)strings.data(), strings.size() * sizeof(uint16_t));
-	long long strpos = rsrc_pos + e_addr;
-
-	for (uint16_t &v : strings) {
-		pestr str;
-		read((char*)&str, strpos, 2);
-
-		// times 2 because ntkernel uses UCS2 which is 2 bytes per code unit.
-		size_t size = 2 * le16toh(str.length);
-
-		if (strid == id) {
-			pos = strpos;
-			count = size;
-			return true;
-		}
-
-		strpos += size;
-	}
-#else
 	long long strpos = e_addr;
 
 	for (unsigned i = 0; i < 16; ++i, ++strid) {
@@ -523,9 +485,8 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 
 		strpos += size;
 	}
-#endif
 
-	// TODO wip
+	// not found
 	return false;
 }
 
@@ -540,21 +501,23 @@ std::string PE::load_string(res_id id) {
 	if (!load_res(io::RsrcType::string, id, pos, count))
 		throw std::runtime_error(std::string("Could not load text id ") + std::to_string(id));
 
-	std::string s;
-
 	if (!count)
 		return "";
 
 	std::vector<uint16_t> data(count / 2, 0);
 	read((char*)data.data(), pos, count);
 
+	std::string s;
+
 	for (size_t i = 0; i < count / 2; ++i) {
 		unsigned ch = data[i];
 
 		if (ch > UINT8_MAX) {
 			// try to convert character
+			// TODO broken :/
 			switch (ch) {
-			case 0x2122: ch = 0x99; break;
+			case 0xa9: ch = 0xae; break; // copyright
+			case 0x2122: ch = 0xae; break;// ch = 0x99; break; // trademark
 			default: fprintf(stderr, "%s: truncate ch %X\n", __func__, ch); break;
 			}
 		}

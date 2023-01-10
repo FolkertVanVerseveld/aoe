@@ -67,13 +67,16 @@ Image &Animation::subimage(unsigned index, unsigned player) {
 }
 
 Assets::Assets(int id, Engine &eng, const std::string &path)
-	: drs_gifs(), path(path), drs_ids(), bkg_cols(), ts_ui(), gif_cursors()
+	: drs_gifs(), path(path), drs_ids(), bkg_cols(), ts_ui(), gif_cursors(), old_lang()
 {
 	ZoneScoped;
 	// TODO use engine view to prevent crash when closed while ctor is still running
 	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", id, 7));
 
+	eng.sfx.reset();
+
 	load_gfx(eng, info);
+	load_str(eng, info);
 	load_audio(eng, info);
 }
 
@@ -165,7 +168,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		ts_ui = p.collect(size, size);
 	}
 
-	load_str(eng, info);
+	eng.sfx.load_sfx(SfxId::sfx_chat, drs_ui.open_wav(DrsId::sfx_chat));
 }
 
 void Assets::add_gifs(gfx::ImagePacker &p, Animation &a, DrsId id) {
@@ -180,8 +183,6 @@ void Assets::add_gifs(gfx::ImagePacker &p, Animation &a, DrsId id) {
 void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	ZoneScoped;
 	info.next("Load chat audio");
-
-	eng.sfx.reset();
 
 	for (unsigned i = 0; i < (unsigned)TauntId::max; ++i) {
 		char buf[8];
@@ -209,10 +210,8 @@ void Assets::load_str(Engine &eng, UI_TaskInfo &info) {
 	if ((unsigned)pe.type() < (unsigned)PE_Type::peopt)
 		throw std::runtime_error("Localisation data is not a proper DLL file");
 
-	// TODO load strings
-	// dummy test
-
-	pe.load_string((res_id)StrId::age_bronze);
+	// load strings
+	old_lang.load(pe);
 }
 
 const ImageRef &Assets::at(DrsId id) const {

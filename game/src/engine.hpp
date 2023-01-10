@@ -14,6 +14,7 @@
 
 #include "debug.hpp"
 #include "engine/assets.hpp"
+#include "engine/font.hpp"
 
 #include <queue>
 #include <deque>
@@ -24,12 +25,6 @@
 
 namespace aoe {
 
-namespace ui {
-
-class Frame;
-
-}
-
 enum class MenuState {
 	init,
 	start,
@@ -38,6 +33,7 @@ enum class MenuState {
 	multiplayer_settings,
 	multiplayer_game,
 	defeat,
+	editor,
 };
 
 class Engine;
@@ -77,7 +73,7 @@ class EngineView;
 class Engine final {
 	Net net;
 
-	bool show_demo, show_debug;
+	bool show_demo, show_debug, font_scaling;
 	int connection_mode;
 	unsigned short connection_port;
 	char connection_host[256]; // 253 according to https://web.archive.org/web/20190518124533/https://devblogs.microsoft.com/oldnewthing/?p=7873
@@ -149,10 +145,13 @@ private:
 	ClientView cv;
 
 	float player_tbl_y;
+	ui::UICache ui;
+	FontCache fnt;
 
 	friend Debug;
 	friend Config;
 	friend EngineView;
+	friend ui::UICache;
 public:
 	GLuint texture1;
 	ImTextureID tex1;
@@ -183,7 +182,6 @@ private:
 	void show_multiplayer_menu();
 	// TODO extract as HUD
 	void show_multiplayer_host();
-	void show_mph_tbl(ui::Frame&);
 	void show_mph_cfg(ui::Frame&);
 	void show_mph_chat(ui::Frame&);
 	void show_chat_line(ui::Frame&);
@@ -245,6 +243,8 @@ public:
 	bool is_hosting();
 
 	void add_chat_text(const std::string &s);
+
+	std::string txt(StrId id);
 };
 
 extern Engine *eng;

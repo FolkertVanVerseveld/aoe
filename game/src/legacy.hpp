@@ -6,6 +6,7 @@
 #include <fstream>
 #include <vector>
 #include <memory>
+#include <map>
 
 #include "nominmax.hpp"
 
@@ -17,6 +18,7 @@
 namespace aoe {
 
 static constexpr unsigned WINDOW_WIDTH_MIN = 640, WINDOW_HEIGHT_MIN = 480;
+static constexpr unsigned WINDOW_WIDTH_MAX = 1024, WINDOW_HEIGHT_MAX = 768;
 static constexpr unsigned DEFAULT_TICKS_PER_SECOND = 30;
 static constexpr unsigned MAX_PLAYERS = 9; // 8 + 1 for gaia
 
@@ -49,6 +51,7 @@ enum class DrsId {
 
 	sfx_ui_click = 5035,
 	sfx_priest_convert2 = 5051,
+	sfx_chat = 50302,
 };
 
 struct DrsBkg final {
@@ -175,6 +178,22 @@ public:
 	std::string load_string(res_id);
 
 	void read(char *dst, size_t pos, size_t size);
+};
+
+class LanguageData final {
+public:
+	std::map<std::string, std::vector<std::string>> civs;
+	std::map<StrId, std::string> tbl;
+
+	void load(PE &dll);
+
+	void collect_civs(std::vector<std::string>&);
+
+	std::string find(StrId);
+	/** Try to localise text given by \a id or return \a def when not found. */
+	std::string find(StrId id, const std::string &def);
+private:
+	void civ_add(PE &dll, res_id&, StrId);
 };
 
 }

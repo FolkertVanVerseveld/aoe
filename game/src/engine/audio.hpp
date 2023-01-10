@@ -55,6 +55,7 @@ enum class TauntId {
 
 enum class SfxId {
 	sfx_ui_click,
+	sfx_chat,
 };
 
 class Audio final {

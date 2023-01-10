@@ -55,6 +55,9 @@ SDLguard::~SDLguard() {
 	SDL_Quit();
 }
 
+float SDL::fnt_scale = 1.0f;
+int SDL::max_h = 480;
+
 SDL::SDL(Uint32 flags) : guard(flags)
 	, window("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN)
 	, gl_context(window), cursors()
@@ -66,10 +69,21 @@ SDL::SDL(Uint32 flags) : guard(flags)
 	cursors.emplace_back(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW), SDL_FreeCursor);
 
 	SDL_SetCursor(cursors.front().get());
-}
 
-SDL::~SDL() {
-	if (gl_context) SDL_GL_DeleteContext(gl_context);
+	// find tallest display
+	int count = SDL_GetNumVideoDisplays();
+
+	int href = 768, hmax = href;
+
+	for (int i = 0; i < count; ++i) {
+		SDL_Rect bnds;
+		SDL_GetDisplayBounds(i, &bnds);
+
+		hmax = std::max(hmax, bnds.h);
+	}
+
+	fnt_scale = (float)hmax / href;
+	max_h = hmax;
 }
 
 void SDL::set_cursor(unsigned idx) {
@@ -132,6 +146,10 @@ void Window::set_fullscreen(bool v) {
 		SDL_SetWindowSize(w, pos_def.w, pos_def.h);
 		SDL_SetWindowPosition(w, pos_def.x, pos_def.y);
 	}
+}
+
+void Window::size(int &w, int &h) {
+	SDL_GetWindowSize(win.get(), &w, &h);
 }
 
 }

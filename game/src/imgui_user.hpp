@@ -13,4 +13,7 @@ IMGUI_API bool Combo(const char *label, int &idx, const std::vector<std::string>
 
 IMGUI_API void Tooltip(const char *str, float width=35.0f);
 
+IMGUI_API void TextUnformatted(const char *str, int halign, bool wrap);
+IMGUI_API bool Button(const char *label, int halign, const ImVec2 &size = ImVec2(0, 0));
+
 }

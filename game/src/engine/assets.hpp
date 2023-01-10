@@ -46,6 +46,7 @@ public:
 	std::map<io::DrsId, BackgroundColors> bkg_cols;
 	gfx::Tileset ts_ui;
 	Animation gif_cursors;
+	io::LanguageData old_lang;
 
 	Assets(int id, Engine &e, const std::string &path);
 

@@ -102,9 +102,13 @@ enum class StrId {
 	scenario_level_easiest = 11220,
 
 	/* Game */
-	btn_diplomacy = 9851,
-	btn_menu = 10020,
+	//btn_diplomacy = 9851,
+	//btn_menu = 10020,
 	btn_score = 4131,
+
+	btn_chat = 4113,
+	btn_diplomacy = 4114,
+	btn_menu = 4115,
 
 	paused = 9001,
 	win = 9004,

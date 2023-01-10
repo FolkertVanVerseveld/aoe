@@ -57,6 +57,8 @@ public:
 
 	bool is_fullscreen();
 	void set_fullscreen(bool v=true);
+
+	void size(int &w, int &h);
 };
 
 class SDL final {
@@ -67,8 +69,12 @@ public:
 
 	std::vector<std::unique_ptr<SDL_Cursor, decltype(&SDL_FreeCursor)>> cursors;
 
+	static float fnt_scale;
+	static int max_h;
+
 	SDL(Uint32 flags=SDL_INIT_VIDEO | SDL_INIT_TIMER);
-	~SDL();
+	SDL(const SDL&) = delete;
+	SDL(SDL&&) = delete;
 
 	void set_cursor(unsigned idx);
 };
