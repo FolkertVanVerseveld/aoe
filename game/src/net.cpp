@@ -857,9 +857,9 @@ int ServerSocket::mainloop(uint16_t port, int backlog, ServerSocketController &c
 		reduce_peers();
 		flush_queue();
 
+#if _WIN32
 		unsigned long long dt = poll_us.load(std::memory_order_relaxed);
 
-#if _WIN32
 		if (!step && dt) {
 			//puts("polling");
 			std::this_thread::sleep_for(std::chrono::microseconds(dt));

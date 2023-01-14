@@ -85,7 +85,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 	DRS drs_ui(path + "/data/Interfac.drs");
 
-	Background bkg_main, bkg_singleplayer, bkg_multiplayer, bkg_editor, bkg_victory, bkg_defeat, bkg_mission, bkg_achievements;
+	Background bkg_main, bkg_singleplayer, bkg_multiplayer, bkg_editor_menu, bkg_victory, bkg_defeat, bkg_mission, bkg_achievements;
 	gfx::ImagePacker p;
 
 	{
@@ -93,7 +93,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		bkg_main.load(drs_ui, DrsId::bkg_main_menu); bkg_cols[DrsId::bkg_main_menu] = bkg_main.cols;
 		bkg_singleplayer.load(drs_ui, DrsId::bkg_singleplayer); bkg_cols[DrsId::bkg_singleplayer] = bkg_singleplayer.cols;
 		bkg_multiplayer.load(drs_ui, DrsId::bkg_multiplayer); bkg_cols[DrsId::bkg_multiplayer] = bkg_multiplayer.cols;
-		bkg_editor.load(drs_ui, DrsId::bkg_editor); bkg_cols[DrsId::bkg_editor] = bkg_editor.cols;
+		bkg_editor_menu.load(drs_ui, DrsId::bkg_editor_menu); bkg_cols[DrsId::bkg_editor_menu] = bkg_editor_menu.cols;
 		bkg_victory.load(drs_ui, DrsId::bkg_victory); bkg_cols[DrsId::bkg_victory] = bkg_victory.cols;
 		bkg_defeat.load(drs_ui, DrsId::bkg_defeat); bkg_cols[DrsId::bkg_defeat] = bkg_defeat.cols;
 		bkg_mission.load(drs_ui, DrsId::bkg_mission); bkg_cols[DrsId::bkg_mission] = bkg_mission.cols;
@@ -103,7 +103,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		drs_ids[DrsId::bkg_main_menu] = p.add_img(0, 0, bkg_main);
 		drs_ids[DrsId::bkg_singleplayer] = p.add_img(0, 0, bkg_singleplayer);
 		drs_ids[DrsId::bkg_multiplayer] = p.add_img(0, 0, bkg_multiplayer);
-		drs_ids[DrsId::bkg_editor] = p.add_img(0, 0, bkg_editor);
+		drs_ids[DrsId::bkg_editor_menu] = p.add_img(0, 0, bkg_editor_menu);
 		drs_ids[DrsId::bkg_victory] = p.add_img(0, 0, bkg_victory);
 		drs_ids[DrsId::bkg_defeat] = p.add_img(0, 0, bkg_defeat);
 		drs_ids[DrsId::bkg_mission] = p.add_img(0, 0, bkg_mission);
@@ -111,7 +111,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	}
 
 	Animation gif_menubar0;
-	Image img_dialog0;
+	Image img_dialog0, img_dialog_editor;
 	auto pal = drs_ui.open_pal(DrsId::pal_default);
 	{
 		ZoneScopedN("Loading user interface");
@@ -120,6 +120,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		auto slp = drs_ui.open_slp(DrsId::img_dialog0);
 		img_dialog0.load(pal.get(), slp, 0, 0);
 		gif_cursors.load(drs_ui, pal.get(), DrsId::gif_cursors);
+		slp = drs_ui.open_slp(DrsId::img_editor);
+		img_dialog_editor.load(pal.get(), slp, 0, 0);
 	}
 
 	Animation trn_desert, trn_grass, trn_water, trn_deepwater;
@@ -136,6 +138,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	}
 
 	Animation bld_town_center, bld_town_center_player;
+	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
 	info.next("Loading game entities data");
 	{
 		ZoneScopedN("Loading game entities data");
@@ -144,11 +147,20 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		bld_town_center.load(drs_graphics, pal.get(), DrsId::bld_town_center);
 		bld_town_center_player.load(drs_graphics, pal.get(), DrsId::bld_town_center_player);
+
+		gif_villager_stand.load(drs_graphics, pal.get(), DrsId::gif_villager_stand);
+		gif_villager_move.load(drs_graphics, pal.get(), DrsId::gif_villager_move);
+		gif_villager_attack.load(drs_graphics, pal.get(), DrsId::gif_villager_attack);
+		gif_villager_die1.load(drs_graphics, pal.get(), DrsId::gif_villager_die1);
+		gif_villager_die2.load(drs_graphics, pal.get(), DrsId::gif_villager_die2);
+		gif_villager_decay.load(drs_graphics, pal.get(), DrsId::gif_villager_decay);
 	}
 
 	info.next("Packing graphics");
 	{
 		ZoneScopedN("pack");
+
+		drs_ids[DrsId::img_editor] = p.add_img(0, 0, img_dialog_editor.surface.get());
 
 		add_gifs(p, gif_cursors, DrsId::gif_cursors);
 		add_gifs(p, gif_menubar0, DrsId::gif_menubar0);
@@ -160,6 +172,13 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		add_gifs(p, bld_town_center, DrsId::bld_town_center);
 		add_gifs(p, bld_town_center_player, DrsId::bld_town_center_player);
+
+		add_gifs(p, gif_villager_stand, DrsId::gif_villager_stand);
+		add_gifs(p, gif_villager_move, DrsId::gif_villager_move);
+		add_gifs(p, gif_villager_attack, DrsId::gif_villager_attack);
+		add_gifs(p, gif_villager_die1, DrsId::gif_villager_die1);
+		add_gifs(p, gif_villager_die2, DrsId::gif_villager_die2);
+		add_gifs(p, gif_villager_decay, DrsId::gif_villager_decay);
 
 		drs_ids[DrsId::img_dialog0] = p.add_img(0, 0, img_dialog0.surface.get());
 

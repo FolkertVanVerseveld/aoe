@@ -12,7 +12,7 @@ public:
 
 class FontCache final {
 public:
-	ImFont *fnt_arial, *fnt_copper;
+	ImFont *fnt_arial, *fnt_copper, *fnt_copper2;
 
 	FontCache();
 

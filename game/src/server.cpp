@@ -248,6 +248,8 @@ void Server::start_game() {
 	for (unsigned i = 0; i < scn.players.size(); ++i) {
 		PlayerSetting &p = scn.players[i];
 
+		p.res = scn.res;
+
 		// if player has no name, try find an owner that has one
 		if (p.name.empty()) {
 			unsigned owners = 0;

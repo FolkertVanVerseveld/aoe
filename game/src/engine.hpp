@@ -33,7 +33,8 @@ enum class MenuState {
 	multiplayer_settings,
 	multiplayer_game,
 	defeat,
-	editor,
+	editor_menu,
+	editor_scenario,
 };
 
 class Engine;

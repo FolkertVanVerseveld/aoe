@@ -28,11 +28,13 @@ enum class DrsId {
 	bkg_main_menu = 50051, // 50051
 	bkg_singleplayer = 50052,
 	bkg_multiplayer = 50053,
-	bkg_editor = 50054,
+	bkg_editor_menu = 50054,
 	bkg_victory = 50057,
 	bkg_defeat = 50058,
 	bkg_mission = 50060,
 	bkg_achievements = 50061,
+
+	img_editor = 50129,
 
 	trn_desert = 15000,
 	trn_grass = 15001,
@@ -45,6 +47,13 @@ enum class DrsId {
 
 	gif_menubar0 = 50741,
 	gif_cursors = 51000,
+
+	gif_villager_stand = 418,
+	gif_villager_move = 657,
+	gif_villager_attack = 224,
+	gif_villager_die1 = 314,
+	gif_villager_die2 = 315,
+	gif_villager_decay = 373,
 
 	bld_town_center = 280,
 	bld_town_center_player = 230,

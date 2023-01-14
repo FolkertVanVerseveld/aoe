@@ -225,9 +225,12 @@ void Engine::display_ui() {
 			show_defeat();
 			draw_background_border();
 			break;
-		case MenuState::editor:
+		case MenuState::editor_menu:
 			ui.show_editor_menu();
 			draw_background_border();
+			break;
+		case MenuState::editor_scenario:
+			ui.show_editor_scenario();
 			break;
 		default:
 			show_init();
@@ -503,8 +506,8 @@ void Engine::set_background(MenuState s) {
 	case MenuState::defeat:
 		id = io::DrsId::bkg_defeat;
 		break;
-	case MenuState::editor:
-		id = io::DrsId::bkg_editor;
+	case MenuState::editor_menu:
+		id = io::DrsId::bkg_editor_menu;
 		break;
 	}
 
@@ -567,6 +570,9 @@ void Engine::idle() {
 			break;
 		case MenuState::multiplayer_game:
 			sfx.play_music(MusicId::game, -1);
+			break;
+		case MenuState::editor_scenario:
+			sfx.stop_music();
 			break;
 		case MenuState::defeat:
 			sfx.play_music(MusicId::fail);

@@ -667,6 +667,53 @@ void Engine::show_terrain() {
 	lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + tcp.bnds.w, y0 + tcp.bnds.h), ImVec2(tcp.s0, tcp.t0), ImVec2(tcp.s1, tcp.t1));
 }
 
+void UICache::show_editor_scenario() {
+	ZoneScoped;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGuiIO &io = ImGui::GetIO();
+
+	Assets &a = *e->assets.get();
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+
+	if (!io.WantCaptureMouse) {
+		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+		e->sdl->set_cursor(1);
+	} else {
+		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+	}
+
+	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::MenuItem("Quit"))
+			e->next_menu_state = MenuState::start;
+
+		ImGui::EndMainMenuBar();
+	}
+
+	float menubar_bottom = vp->WorkPos.y;
+
+	//50
+	//625/768 -> 625-768=-143
+
+	const gfx::ImageRef &bkg = a.at(io::DrsId::img_editor);
+
+	float menubar_left = vp->WorkPos.x;
+
+	// align center if menubar smaller than screen dimensions
+	if (vp->WorkSize.x > bkg.bnds.w)
+		menubar_left = vp->WorkPos.x + (vp->WorkSize.x - bkg.bnds.w) / 2;
+
+	float t1, h = 50.0f;
+
+	t1 = bkg.t0 + (bkg.t1 - bkg.t0) * h / bkg.bnds.h;
+
+	lst->AddImage(e->tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_left + bkg.bnds.w, vp->WorkPos.y + h), ImVec2(bkg.s0, bkg.t0), ImVec2(bkg.s1, t1));
+
+	h = 143.0f;
+	float t0 = bkg.t0 + (bkg.t1 - bkg.t0) * (bkg.bnds.h - h) / bkg.bnds.h;
+
+	lst->AddImage(e->tex1, ImVec2(menubar_left, vp->WorkPos.y + vp->WorkSize.y - h), ImVec2(menubar_left + bkg.bnds.w, vp->WorkPos.y + vp->WorkSize.y), ImVec2(bkg.s0, t0), ImVec2(bkg.s1, bkg.t1));
+}
+
 void Engine::show_multiplayer_game() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGuiIO &io = ImGui::GetIO();
@@ -913,10 +960,6 @@ void UICache::show_mph_tbl(ui::Frame &f) {
 				if (f.btn("Claim"))
 					e->client->claim_player(i + 1); // NOTE 1-based
 
-				if (ImGui::IsItemHovered()) {
-					ImGui::Tooltip("bla bla");
-				}
-
 				f.sl();
 
 				if (!p.ai && e->server.get() != nullptr && f.btn("Set CPU"))
@@ -949,11 +992,21 @@ void UICache::show_editor_menu() {
 
 	float old_x = ImGui::GetCursorPosX();
 
+	{
+		FontGuard fg(e->fnt.fnt_copper2);
+
+		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
+		f.str2("Scenario Editor", TextHalign::center);
+	}
+
 	FontGuard fg(e->fnt.fnt_copper);
 
 	ImGui::SetCursorPosY(272.0f / 768.0f * vp->WorkSize.y);
 
-	f.xbtn("Create Scenario", TextHalign::center);
+	if (f.btn("Create Scenario", TextHalign::center)) {
+		e->sfx.play_sfx(SfxId::sfx_ui_click);
+		e->next_menu_state = MenuState::editor_scenario;
+	}
 
 	ImGui::SetCursorPosY(352.0f / 768.0f * vp->WorkSize.y);
 
@@ -1094,6 +1147,10 @@ void Engine::show_start() {
 		ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
 
 		f.xbtn("Single Player", TextHalign::center);
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+			FontGuard fg2(fnt.fnt_arial);
+			ImGui::Tooltip("Single player has not been implemented yet. However, you can start a singleplayer game by hosting a multiplayer session. In this multiplayer session, just add computer players.");
+		}
 
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
@@ -1107,13 +1164,17 @@ void Engine::show_start() {
 		ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
 
 		f.xbtn("Help", TextHalign::center);
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+			FontGuard fg2(fnt.fnt_arial);
+			ImGui::Tooltip("The original help is using a subsystem on Windows that has been removed in Windows 8. Consult the Github page or an Age of Empires forum if you need help.");
+		}
 
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
 
 		if (f.btn("Scenario Builder", TextHalign::center)) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
-			next_menu_state = MenuState::editor;
+			next_menu_state = MenuState::editor_menu;
 		}
 
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
@@ -1130,7 +1191,8 @@ void Engine::show_start() {
 
 	f.txt2(StrId::main_copy1, TextHalign::center);
 	f.txt2(StrId::main_copy2b, TextHalign::center);
-	f.txt2(StrId::main_copy3, TextHalign::center);
+	//f.txt2(StrId::main_copy3, TextHalign::center);
+	f.str2("Trademark reserved by Microsoft. Remake by Folkert van Verseveld.", TextHalign::center);
 	//ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
 }
 
@@ -1157,7 +1219,7 @@ void Engine::show_init() {
 
 	if (!fnt.loaded()) {
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-		ImGui::TextWrapped("%s", "Cannot continue setup. Game fonts are not installed. Reinstall the game from CD-ROM and restart the setup. If you don't have a CD-ROM drive, copy the game directory and game fonts from a machine where the original game has been installed. If you don't own the game, you can buy it on Amazon or your favorite online retailer.");
+		ImGui::TextWrapped("%s", "Cannot continue setup. Game fonts are not installed. Reinstall the game from CD-ROM and restart the setup. If you don't have a CD-ROM drive, copy the game directory and game fonts from a machine where the original game has been installed. If you don't own the game, you can buy it on Amazon or your favorite online retailer. The steam edition is not supported!");
 		ImGui::PopStyleColor();
 
 		ui::HSVcol col(0);
@@ -1287,8 +1349,9 @@ void Engine::draw_background_border() {
 	case MenuState::defeat:
 		col = a.bkg_cols.at(io::DrsId::bkg_defeat);
 		break;
-	case MenuState::editor:
-		col = a.bkg_cols.at(io::DrsId::bkg_editor);
+	case MenuState::editor_menu:
+	case MenuState::editor_scenario:
+		col = a.bkg_cols.at(io::DrsId::bkg_editor_menu);
 		break;
 	default:
 		col = a.bkg_cols.at(io::DrsId::bkg_main_menu);

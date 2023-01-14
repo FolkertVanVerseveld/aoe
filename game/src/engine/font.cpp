@@ -43,10 +43,10 @@ FontGuard::~FontGuard() {
 	ImGui::PopFont();
 }
 
-FontCache::FontCache() : fnt_arial(NULL), fnt_copper(NULL) {}
+FontCache::FontCache() : fnt_arial(NULL), fnt_copper(NULL), fnt_copper2(NULL) {}
 
 bool FontCache::loaded() const noexcept {
-	return fnt_arial && fnt_copper;
+	return fnt_arial && fnt_copper && fnt_copper2;
 }
 
 static ImFont *try_add_font(ImFontAtlas *a, const char *path, float size) {
@@ -84,6 +84,12 @@ bool FontCache::try_load() {
 		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTB.TTF");
 
 		fnt_copper = try_add_font(io.Fonts, localpath.c_str(), ceil(18.0f * f));
+	}
+
+	if (!(fnt_copper2 = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\COPRGTL.TTF", ceil(30.0f * f)))) {
+		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTL.TTF");
+
+		fnt_copper2 = try_add_font(io.Fonts, localpath.c_str(), ceil(30.0f * f));
 	}
 #endif
 	return loaded();

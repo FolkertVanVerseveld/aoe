@@ -450,8 +450,18 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 					pixels[y * p + x++] = cmd.at(++cmdpos);
 
 				break;
-				// oops
-			default:
+			case 0x0e:
+				switch (bc & 0xf0) {
+				case 0x40:
+				case 0x60:
+					// TODO figure out what the special color is, for now, just use the next byte as color
+					pixels[y * p + x++] = cmd.at(++cmdpos);
+					continue;
+				default: // oops
+					break;
+				}
+				// FALL THROUGH
+			default: // oops
 				if (maxerr) {
 					fprintf(stderr, "%s: unknown cmd at %X: %X\n", __func__, cmdpos, bc);
 					--maxerr;

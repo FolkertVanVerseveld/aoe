@@ -182,6 +182,7 @@ public:
 
 	void show_mph_tbl(Frame&);
 	void show_editor_menu();
+	void show_editor_scenario();
 };
 
 }

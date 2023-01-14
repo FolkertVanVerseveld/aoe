@@ -27,8 +27,9 @@ public:
 	bool ai;
 	int civ;
 	unsigned team;
+	Resources res;
 
-	PlayerSetting() : name(), ai(false), civ(0), team(1) {}
+	PlayerSetting() : name(), ai(false), civ(0), team(1), res() {}
 };
 
 class ScenarioSettings final {
@@ -64,6 +65,15 @@ enum class TerrainTile {
 	grass_desert,
 	desert_overlay,
 	deepwater_overlay,
+};
+
+enum class TerrainType {
+	islands,
+	continents,
+	normal,
+	flat,
+	bumpy,
+	max,
 };
 
 // TODO introduce terrain block/chunk
