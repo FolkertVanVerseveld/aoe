@@ -19,10 +19,13 @@ public:
 class ImageSet final {
 public:
 	std::vector<IdPoolRef> imgs;
+	bool dynamic;
 
 	friend bool operator<(const ImageSet &lhs, const ImageSet &rhs) {
 		return lhs.imgs.front() < rhs.imgs.front();
 	}
+
+	IdPoolRef at(unsigned color, unsigned idx) const;
 };
 
 class Animation final {

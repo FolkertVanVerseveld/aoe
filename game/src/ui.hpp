@@ -4,11 +4,15 @@
 
 #include "imfilebrowser.h"
 
+#include "idpool.hpp"
 #include "legacy/strings.hpp"
+
+#include <SDL2/SDL_rect.h>
 
 #include <cstdint>
 
 #include <initializer_list>
+#include <vector>
 
 /**
  * Wrappers to make ImGui:: calls less tedious
@@ -174,15 +178,30 @@ public:
 	bool show();
 };
 
+struct VisualEntity final {
+	IdPoolRef ref;
+	float x, y;
+	int w, h;
+	float s0, t0, s1, t1;
+	float z; // used for drawing priority
+
+	VisualEntity(IdPoolRef ref, float x, float y, int w, int h, float s0, float t0, float s1, float t1, float z) : ref(ref), x(x), y(y), w(w), h(h), s0(s0), t0(t0), s1(s1), t1(t1), z(z) {}
+};
+
 class UICache final {
 	std::vector<std::string> civs;
 	Engine *e;
+	std::vector<VisualEntity> entities;
 public:
 	void load(Engine &e);
+
+	void show_buildings();
 
 	void show_mph_tbl(Frame&);
 	void show_editor_menu();
 	void show_editor_scenario();
+private:
+	void load_buildings();
 };
 
 }

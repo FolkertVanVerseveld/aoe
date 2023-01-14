@@ -38,6 +38,14 @@ void Background::load(DRS &drs, DrsId id) {
 		cols.border[i] = pal->colors[this->drs.bevel_col[i]];
 }
 
+IdPoolRef ImageSet::at(unsigned color, unsigned index) const {
+	assert(dynamic);
+	assert(imgs.size() % MAX_PLAYERS == 0);
+
+	size_t image_count = imgs.size() / MAX_PLAYERS;
+	return imgs.at((color % MAX_PLAYERS) * image_count + index % image_count);
+}
+
 void Animation::load(io::DRS &drs, const SDL_Palette *pal, io::DrsId id) {
 	Slp slp(drs.open_slp((DrsId)id));
 
@@ -193,9 +201,12 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 void Assets::add_gifs(gfx::ImagePacker &p, Animation &a, DrsId id) {
 	ImageSet gifs;
 
-	for (unsigned i = 0; i < a.all_count; ++i)
-		gifs.imgs.emplace_back(p.add_img(a.images[i].hotspot_x, a.images[i].hotspot_y, a.images[i].surface.get()));
+	for (unsigned i = 0; i < a.all_count; ++i) {
+		Image &img = a.images[i];
+		gifs.imgs.emplace_back(p.add_img(img.hotspot_x, img.hotspot_y, img.surface.get(), img.mask));
+	}
 
+	gifs.dynamic = a.dynamic;
 	drs_gifs[id] = gifs;
 }
 

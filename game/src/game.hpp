@@ -99,6 +99,21 @@ public:
 	void set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
 };
 
+enum class BuildingType {
+	town_center,
+};
+
+class Building final {
+public:
+	IdPoolRef ref;
+	BuildingType type;
+
+	unsigned color;
+	int x, y;
+
+	Building(IdPoolRef ref, BuildingType type, unsigned color, int x, int y) : ref(ref), type(type), color(color), x(x), y(y) {}
+};
+
 class GameView;
 
 class Game final {
@@ -115,6 +130,7 @@ public:
 class GameView final {
 public:
 	Terrain t;
+	IdPool<Building> buildings;
 
 	GameView();
 

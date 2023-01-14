@@ -61,7 +61,13 @@ void Game::terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8
 	t.set(tiles, hmap, x, y, w, h);
 }
 
-GameView::GameView() : t() {}
+GameView::GameView() : t(), buildings() {
+	// TODO remove this test later on
+
+	for (unsigned i = 0; i < MAX_PLAYERS; ++i) {
+		buildings.emplace(BuildingType::town_center, i, 2, 1 + 3 * i);
+	}
+}
 
 bool GameView::try_read(Game &g) {
 	std::unique_lock lk(g.m, std::defer_lock);

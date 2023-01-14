@@ -364,16 +364,26 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 	uint32_t cmdpos = 0;
 	const std::vector<uint8_t> &cmd = frame.cmd;
 	unsigned maxerr = 5;
-	bool bail_out = false, dynamic = false;
+	bool bail_out = false, dynamic = false, rectangular = true;
+
+	mask.clear();
 
 	for (int y = 0, h = frame.h; y < h; ++y) {
 		const SlpFrameRowEdge &e = frame.frameEdges.at(y);
 
 		// check if row is non-zero
-		if (e.left_space == invalid_edge || e.right_space == invalid_edge)
+		if (e.left_space == invalid_edge || e.right_space == invalid_edge) {
+			mask.emplace_back(0, 0);
+			rectangular = false;
 			continue;
+		}
 
 		int line_size = frame.w - e.left_space - e.right_space;
+
+		if (line_size < frame.w)
+			rectangular = false;
+
+		mask.emplace_back(e.left_space, e.left_space + line_size);
 
 		// fill row with garbage so any funny bytes will be visible immediately
 		for (int x = e.left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
@@ -480,6 +490,10 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 			}
 		}
 	}
+
+	// delete mask if all rows are equal to image size
+	if (rectangular)
+		mask.clear();
 
 	if (SDL_SetColorKey(surface.get(), SDL_TRUE, 0))
 		fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());

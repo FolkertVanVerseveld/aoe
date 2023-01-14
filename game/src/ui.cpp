@@ -644,27 +644,7 @@ void Engine::show_terrain() {
 		}
 	}
 
-	const ImageSet &s_tc = a.anim_at(io::DrsId::bld_town_center);
-	const gfx::ImageRef &tc = a.at(s_tc.imgs[0]);
-
-	int x = 2, y = 1;
-	uint8_t h = gv.t.h_at(x, y);
-
-	ImVec2 tpos(tilepos(x, y, left, top, h));
-	float x0, y0;
-
-	x0 = tpos.x - tc.hotspot_x;
-	y0 = tpos.y - tc.hotspot_y;
-
-	lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + tc.bnds.w, y0 + tc.bnds.h), ImVec2(tc.s0, tc.t0), ImVec2(tc.s1, tc.t1));
-
-	const ImageSet &s_tcp = a.anim_at(io::DrsId::bld_town_center_player);
-	const gfx::ImageRef &tcp = a.at(s_tcp.imgs[0]);
-
-	x0 = tpos.x - tcp.hotspot_x;
-	y0 = tpos.y - tcp.hotspot_y;
-
-	lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + tcp.bnds.w, y0 + tcp.bnds.h), ImVec2(tcp.s0, tcp.t0), ImVec2(tcp.s1, tcp.t1));
+	ui.show_buildings();
 }
 
 void UICache::show_editor_scenario() {
@@ -1035,6 +1015,88 @@ void UICache::load(Engine &e) {
 	e.assets->old_lang.collect_civs(civs);
 }
 
+void UICache::show_buildings() {
+	ZoneScoped;
+	entities.clear();
+
+	load_buildings();
+
+	std::sort(entities.begin(), entities.end(), [](const VisualEntity &lhs, const VisualEntity &rhs){ return lhs.z < rhs.z; });
+	
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	Assets &a = *e->assets.get();
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+
+	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
+	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
+
+#if 0
+	// draw buildings
+	for (Building &b : e->gv.buildings) {
+		const ImageSet &s_tc = a.anim_at(io::DrsId::bld_town_center);
+		const gfx::ImageRef &tc = a.at(s_tc.imgs[0]);
+
+		int x = b.x, y = b.y;
+		uint8_t h = e->gv.t.h_at(x, y);
+
+		ImVec2 tpos(e->tilepos(x, y, left, top, h));
+		float x0, y0;
+
+		x0 = tpos.x - tc.hotspot_x;
+		y0 = tpos.y - tc.hotspot_y;
+
+		lst->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + tc.bnds.w, y0 + tc.bnds.h), ImVec2(tc.s0, tc.t0), ImVec2(tc.s1, tc.t1));
+
+		const ImageSet &s_tcp = a.anim_at(io::DrsId::bld_town_center_player);
+		const gfx::ImageRef &tcp = a.at(s_tcp.at(b.color, 0));
+
+		x0 = tpos.x - tcp.hotspot_x;
+		y0 = tpos.y - tcp.hotspot_y;
+
+		lst->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + tcp.bnds.w, y0 + tcp.bnds.h), ImVec2(tcp.s0, tcp.t0), ImVec2(tcp.s1, tcp.t1));
+	}
+#else
+	for (VisualEntity &v : entities) {
+		lst->AddImage(e->tex1, ImVec2(v.x, v.y), ImVec2(v.x + v.w, v.y + v.h), ImVec2(v.s0, v.t0), ImVec2(v.s1, v.t1));
+	}
+#endif
+}
+
+void UICache::load_buildings() {
+	ZoneScoped;
+	
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	Assets &a = *e->assets.get();
+
+	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
+	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
+
+	for (auto kv : e->gv.buildings) {
+		Building &b = kv.second;
+		const ImageSet &s_tc = a.anim_at(io::DrsId::bld_town_center);
+		const gfx::ImageRef &tc = a.at(s_tc.imgs[0]);
+
+		int x = b.x, y = b.y;
+		uint8_t h = e->gv.t.h_at(x, y);
+
+		ImVec2 tpos(e->tilepos(x, y, left, top, h));
+		float x0, y0;
+
+		x0 = tpos.x - tc.hotspot_x;
+		y0 = tpos.y - tc.hotspot_y;
+
+		entities.emplace_back(invalid_ref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+
+		const ImageSet &s_tcp = a.anim_at(io::DrsId::bld_town_center_player);
+		const gfx::ImageRef &tcp = a.at(s_tcp.at(b.color, 0));
+
+		x0 = tpos.x - tcp.hotspot_x;
+		y0 = tpos.y - tcp.hotspot_y;
+
+		entities.emplace_back(invalid_ref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f);
+	}
+}
+
 void Engine::show_mph_cfg(ui::Frame &f) {
 	ZoneScoped;
 	ScenarioSettings &scn = cv.scn;
@@ -1300,6 +1362,15 @@ void Engine::show_multiplayer_menu() {
 
 	ImGui::SetWindowSize(vp->WorkSize);
 
+	float old_x = ImGui::GetCursorPosX();
+
+	{
+		FontGuard fg(fnt.fnt_copper2);
+
+		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
+		f.str2("Multiplayer", TextHalign::center);
+	}
+
 	//f.text("username", username);
 
 	if (ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes)))
@@ -1332,6 +1403,8 @@ void Engine::show_multiplayer_menu() {
 		sfx.play_sfx(SfxId::sfx_ui_click);
 		next_menu_state = MenuState::start;
 	}
+
+	ImGui::SetCursorPosX(old_x);
 }
 
 void Engine::draw_background_border() {

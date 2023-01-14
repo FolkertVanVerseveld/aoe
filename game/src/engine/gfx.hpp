@@ -21,8 +21,9 @@ class Image final {
 public:
 	Surface surface;
 	int hotspot_x, hotspot_y;
+	std::vector<std::pair<int,int>> mask;
 
-	Image() : surface(nullptr, SDL_FreeSurface), hotspot_x(0), hotspot_y(0) {}
+	Image() : surface(nullptr, SDL_FreeSurface), hotspot_x(0), hotspot_y(0), mask() {}
 	Image(const Image&) = delete;
 	Image(Image&&) = default;
 
@@ -36,9 +37,12 @@ public:
 	int hotspot_x, hotspot_y;
 	GLfloat s0, t0, s1, t1;
 	SDL_Surface *surf; // NOTE is always NULL if retrieved from Tileset
+	std::vector<std::pair<int, int>> mask; // NOTE is empty if mask is rectangular
 
 	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, int hotspot_x, int hotspot_y);
+	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, const std::vector<std::pair<int,int>> &mask, int hotspot_x, int hotspot_y);
 	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, int hotspot_x, int hotspot_y, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1);
+	ImageRef(IdPoolRef ref, const SDL_Rect &bnds, SDL_Surface *surf, const std::vector<std::pair<int, int>> &mask, int hotspot_x, int hotspot_y, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1);
 
 	friend bool operator<(const ImageRef &lhs, const ImageRef &rhs) noexcept {
 		return lhs.ref < rhs.ref;
@@ -64,6 +68,7 @@ public:
 	ImagePacker();
 
 	IdPoolRef add_img(int hotspot_x, int hotspot_y, SDL_Surface *surf);
+	IdPoolRef add_img(int hotspot_x, int hotspot_y, SDL_Surface *surf, const std::vector<std::pair<int,int>> &mask);
 
 	Tileset collect(int w, int h);
 };
