@@ -233,8 +233,13 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	eng.sfx.load_sfx(SfxId::sfx_ui_click, drs_sounds.open_wav(DrsId::sfx_ui_click));
 	eng.sfx.load_taunt(TauntId::max, drs_sounds.open_wav(DrsId::sfx_priest_convert2));
 
-	eng.sfx.load_sfx(SfxId::towncenter, drs_sounds.open_wav(DrsId::sfx_towncenter));
-	eng.sfx.load_sfx(SfxId::barracks, drs_sounds.open_wav(DrsId::sfx_barracks));
+#define sfx(id) eng.sfx.load_sfx(SfxId:: id, drs_sounds.open_wav(DrsId:: sfx_ ## id))
+	sfx(towncenter);
+	sfx(barracks);
+	sfx(bld_die1);
+	sfx(bld_die2);
+	sfx(bld_die3);
+#undef sfx
 }
 
 void Assets::load_str(Engine &eng, UI_TaskInfo &info) {

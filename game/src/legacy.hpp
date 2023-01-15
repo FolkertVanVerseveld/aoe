@@ -64,6 +64,10 @@ enum class DrsId {
 	sfx_chat = 50302,
 	sfx_towncenter = 5044,
 	sfx_barracks = 5022,
+
+	sfx_bld_die1 = 5077,
+	sfx_bld_die2 = 5078,
+	sfx_bld_die3 = 5079,
 };
 
 struct DrsBkg final {

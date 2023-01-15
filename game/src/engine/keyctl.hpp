@@ -14,11 +14,12 @@ enum class GameKey {
 	key_right,
 	key_up,
 	key_down,
+	kill_entity,
 	max,
 };
 
 class KeyboardController final {
-	std::vector<bool> state;
+	std::vector<bool> state, state_tapped;
 	std::map<SDL_Keycode, GameKey> keys;
 public:
 	KeyboardController();
@@ -29,5 +30,6 @@ public:
 	GameKey up(const SDL_KeyboardEvent&);
 
 	bool is_down(GameKey);
+	bool is_tapped(GameKey, bool reset=true);
 };
 }

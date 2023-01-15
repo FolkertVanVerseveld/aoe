@@ -644,6 +644,7 @@ void Engine::show_terrain() {
 		}
 	}
 
+	ui.user_interact_entities();
 	ui.show_buildings();
 	ui.show_selections();
 }
@@ -1132,16 +1133,10 @@ void UICache::show_selections() {
 		ImVec2 tr(e->tilepos(x + 1, y + 1, left + e->tw / 2, top, h));
 		ImVec2 tt(e->tilepos(x - 1, y + 1, left, top - e->th / 2, h));
 
-#if 0
-		ImVec2 tpos(e->tilepos(x, y, left, top, h));
-
-		lst->AddLine(tpos, ImVec2(tpos.x + 20, tpos.y + 20), IM_COL32_WHITE, 10.0f);
-#else
 		lst->AddLine(tl, tb, IM_COL32_WHITE);
 		lst->AddLine(tb, tr, IM_COL32_WHITE);
 		lst->AddLine(tr, tt, IM_COL32_WHITE);
 		lst->AddLine(tt, tl, IM_COL32_WHITE);
-#endif
 	}
 }
 

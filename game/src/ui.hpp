@@ -196,6 +196,8 @@ class UICache final {
 public:
 	void load(Engine &e);
 
+	void user_interact_entities();
+
 	/** Show user selected entities. */
 	void show_selections();
 	void show_buildings();

@@ -59,6 +59,10 @@ enum class SfxId {
 	sfx_chat,
 	towncenter,
 	barracks,
+	bld_die_random,
+	bld_die1,
+	bld_die2,
+	bld_die3,
 };
 
 class Audio final {

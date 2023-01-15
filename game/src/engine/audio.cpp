@@ -226,6 +226,13 @@ void Audio::play_sfx(SfxId id, int loops) {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_mix);
 
+	// check if special sfxid
+	switch (id) {
+	case SfxId::bld_die_random:
+		id = (SfxId)((unsigned)SfxId::bld_die1 + rand() % 2);
+		break;
+	}
+
 	auto it = sfx.find(id);
 	if (it == sfx.end()) {
 		fprintf(stderr, "%s: cannot play sfx id %d: not found\n", __func__, id);
