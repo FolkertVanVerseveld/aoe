@@ -645,6 +645,7 @@ void Engine::show_terrain() {
 	}
 
 	ui.show_buildings();
+	ui.show_selections();
 }
 
 void UICache::show_editor_scenario() {
@@ -1078,21 +1079,69 @@ void UICache::game_mouse_process() {
 
 	//printf("selected: %llu\n", (unsigned long long)selected.size());
 
-	// TODO inspect selected types
-	if (!selected.empty()) {
-		VisualEntity &v = entities[selected[0].second];
-		Building *b = e->gv.buildings.try_get(v.ref);
+	this->selected.clear();
 
-		if (b) {
-			switch (b->type) {
-			case BuildingType::town_center:
-				e->sfx.play_sfx(SfxId::towncenter);
-				break;
-			case BuildingType::barracks:
-				e->sfx.play_sfx(SfxId::barracks);
-				break;
-			}
+	if (selected.empty())
+		return;
+
+	for (auto kv : selected) {
+		VisualEntity &v = entities[kv.second];
+		this->selected.emplace_back(v.ref);
+	}
+
+	if (this->selected.empty())
+		return;
+
+	// TODO inspect selected types
+	IdPoolRef ref = *this->selected.begin();
+	Building *b = e->gv.buildings.try_get(ref);
+
+	if (b) {
+		switch (b->type) {
+		case BuildingType::town_center:
+			e->sfx.play_sfx(SfxId::towncenter);
+			break;
+		case BuildingType::barracks:
+			e->sfx.play_sfx(SfxId::barracks);
+			break;
 		}
+	}
+}
+
+void UICache::show_selections() {
+	ZoneScoped;
+
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+
+	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
+	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
+
+	for (IdPoolRef ref : selected) {
+		Building *b = e->gv.buildings.try_get(ref);
+		if (!b)
+			continue;
+
+		// TODO determine building size
+
+		int x = b->x, y = b->y;
+		uint8_t h = e->gv.t.h_at(x, y);
+
+		ImVec2 tl(e->tilepos(x - 2, y - 1, left, top + e->th / 2, h));
+		ImVec2 tb(e->tilepos(x + 1, y - 1, left, top + e->th / 2, h));
+		ImVec2 tr(e->tilepos(x + 1, y + 1, left + e->tw / 2, top, h));
+		ImVec2 tt(e->tilepos(x - 1, y + 1, left, top - e->th / 2, h));
+
+#if 0
+		ImVec2 tpos(e->tilepos(x, y, left, top, h));
+
+		lst->AddLine(tpos, ImVec2(tpos.x + 20, tpos.y + 20), IM_COL32_WHITE, 10.0f);
+#else
+		lst->AddLine(tl, tb, IM_COL32_WHITE);
+		lst->AddLine(tb, tr, IM_COL32_WHITE);
+		lst->AddLine(tr, tt, IM_COL32_WHITE);
+		lst->AddLine(tt, tl, IM_COL32_WHITE);
+#endif
 	}
 }
 
@@ -1119,6 +1168,7 @@ void UICache::load_buildings() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	Assets &a = *e->assets.get();
 
+	// TODO move to UICache::idle()
 	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
 	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
 

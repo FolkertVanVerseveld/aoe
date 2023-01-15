@@ -192,9 +192,12 @@ class UICache final {
 	std::vector<std::string> civs;
 	Engine *e;
 	std::vector<VisualEntity> entities;
+	std::vector<IdPoolRef> selected;
 public:
 	void load(Engine &e);
 
+	/** Show user selected entities. */
+	void show_selections();
 	void show_buildings();
 
 	void show_mph_tbl(Frame&);
