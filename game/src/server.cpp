@@ -5,7 +5,7 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), scn(), logic_gamespeed(1.0), t() {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), scn(), logic_gamespeed(1.0), t(), civs() {}
 
 Server::~Server() {
 	stop();
@@ -237,7 +237,7 @@ void Server::start_game() {
 
 	std::thread t([this]() {
 		eventloop();
-		});
+	});
 	t.detach();
 
 	NetPkg pkg;
@@ -266,7 +266,11 @@ void Server::start_game() {
 				p.name = alias;
 			} else {
 				p.name = "Oerkneus de Eerste";
-				// TODO extract name from engine
+
+				if (p.civ >= 0 && p.civ < civs.size()) {
+					auto &names = civs[civnames[p.civ]];
+					p.name = names[rand() % names.size()];
+				}
 			}
 		}
 
@@ -327,6 +331,11 @@ bool Server::process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> 
 int Server::mainloop(int, uint16_t port, uint16_t protocol) {
 	this->port = port;
 	this->protocol = protocol;
+
+	Assets &a = eng->gamedata();
+
+	civs = a.old_lang.civs;
+	a.old_lang.collect_civs(civnames);
 
 	m_active = true;
 	int r = s.mainloop(port, 10, *this);

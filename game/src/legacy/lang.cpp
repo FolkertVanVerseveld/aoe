@@ -46,6 +46,7 @@ void LanguageData::civ_add(PE &dll, res_id &tbl, StrId civid) {
 }
 
 void LanguageData::collect_civs(std::vector<std::string> &lst) {
+	lst.clear();
 	for (auto kv : civs)
 		lst.emplace_back(kv.first);
 }

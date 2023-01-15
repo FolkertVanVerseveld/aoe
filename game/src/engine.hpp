@@ -163,6 +163,7 @@ public:
 	int mainloop();
 
 	gfx::GL &gl();
+	Assets &gamedata() { return *assets.get(); }
 private:
 	static constexpr float frame_height = 0.9f, player_height = 0.55f, frame_margin = 0.075f;
 

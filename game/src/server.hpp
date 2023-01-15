@@ -198,6 +198,8 @@ class Server final : public ServerSocketController {
 	ScenarioSettings scn;
 	std::atomic<double> logic_gamespeed;
 	Terrain t;
+	std::map<std::string, std::vector<std::string>> civs;
+	std::vector<std::string> civnames;
 
 	friend Debug;
 public:
