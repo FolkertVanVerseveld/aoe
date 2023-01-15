@@ -179,13 +179,13 @@ public:
 };
 
 struct VisualEntity final {
-	IdPoolRef ref;
+	IdPoolRef ref, imgref;
 	float x, y;
 	int w, h;
 	float s0, t0, s1, t1;
 	float z; // used for drawing priority
 
-	VisualEntity(IdPoolRef ref, float x, float y, int w, int h, float s0, float t0, float s1, float t1, float z) : ref(ref), x(x), y(y), w(w), h(h), s0(s0), t0(t0), s1(s1), t1(t1), z(z) {}
+	VisualEntity(IdPoolRef ref, IdPoolRef imgref, float x, float y, int w, int h, float s0, float t0, float s1, float t1, float z) : ref(ref), imgref(imgref), x(x), y(y), w(w), h(h), s0(s0), t0(t0), s1(s1), t1(t1), z(z) {}
 };
 
 class UICache final {
@@ -202,6 +202,8 @@ public:
 	void show_editor_scenario();
 private:
 	void load_buildings();
+
+	void game_mouse_process();
 };
 
 }

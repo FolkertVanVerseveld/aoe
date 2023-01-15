@@ -57,10 +57,13 @@ enum class DrsId {
 
 	bld_town_center = 280,
 	bld_town_center_player = 230,
+	bld_barracks = 254,
 
 	sfx_ui_click = 5035,
 	sfx_priest_convert2 = 5051,
 	sfx_chat = 50302,
+	sfx_towncenter = 5044,
+	sfx_barracks = 5022,
 };
 
 struct DrsBkg final {

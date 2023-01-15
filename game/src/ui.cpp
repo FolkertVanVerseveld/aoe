@@ -1015,51 +1015,102 @@ void UICache::load(Engine &e) {
 	e.assets->old_lang.collect_civs(civs);
 }
 
+void UICache::game_mouse_process() {
+	ZoneScoped;
+
+	ImGuiIO &io = ImGui::GetIO();
+
+	if (!io.MouseDown[0] || io.MouseDownDuration[0] > 0.0f)
+		return;
+
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+
+	// click
+	std::vector<std::pair<float, size_t>> selected;
+
+	float off_x = io.MousePos.x, off_y = io.MousePos.y;
+
+	// first pass to filter all rectangles
+	for (size_t i = 0; i < entities.size(); ++i) {
+		VisualEntity &v = entities[i];
+
+		if (off_x >= v.x && off_x < v.x + v.w && off_y >= v.y && off_y < v.y + v.h)
+			selected.emplace_back(v.z, i);
+	}
+
+	Assets &a = *e->assets.get();
+	std::set<IdPoolRef> refs;
+
+	// second pass to filter by silhouttes and to remove duplicates
+	for (auto it = selected.begin(); it != selected.end();) {
+		VisualEntity &v = entities[it->second];
+
+		int y = (int)(off_y - v.y);
+
+		const gfx::ImageRef &r = a.at(v.imgref);
+
+		// ignore if out of range
+		if (y < 0 || y >= r.mask.size()) {
+			it = selected.erase(it);
+			continue;
+		}
+
+		auto row = r.mask.at(y);
+		int x = (int)(off_x - v.x);
+
+		// ignore if point not on line
+		if (x < row.first || x >= row.second) {
+			it = selected.erase(it);
+			continue;
+		}
+
+		// ignore if already added
+		if (!refs.emplace(v.ref).second) {
+			it = selected.erase(it);
+			continue;
+		}
+
+		++it;
+	}
+
+	// sort on Z-order. NOTE: order is flipped compared to drawing
+	std::sort(selected.begin(), selected.end(), [](const auto &lhs, const auto &rhs) { return lhs.first > rhs.first; });
+
+	//printf("selected: %llu\n", (unsigned long long)selected.size());
+
+	// TODO inspect selected types
+	if (!selected.empty()) {
+		VisualEntity &v = entities[selected[0].second];
+		Building *b = e->gv.buildings.try_get(v.ref);
+
+		if (b) {
+			switch (b->type) {
+			case BuildingType::town_center:
+				e->sfx.play_sfx(SfxId::towncenter);
+				break;
+			case BuildingType::barracks:
+				e->sfx.play_sfx(SfxId::barracks);
+				break;
+			}
+		}
+	}
+}
+
 void UICache::show_buildings() {
 	ZoneScoped;
 	entities.clear();
 
 	load_buildings();
 
+	game_mouse_process();
+
 	std::sort(entities.begin(), entities.end(), [](const VisualEntity &lhs, const VisualEntity &rhs){ return lhs.z < rhs.z; });
 	
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	Assets &a = *e->assets.get();
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 
-	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
-	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
-
-#if 0
-	// draw buildings
-	for (Building &b : e->gv.buildings) {
-		const ImageSet &s_tc = a.anim_at(io::DrsId::bld_town_center);
-		const gfx::ImageRef &tc = a.at(s_tc.imgs[0]);
-
-		int x = b.x, y = b.y;
-		uint8_t h = e->gv.t.h_at(x, y);
-
-		ImVec2 tpos(e->tilepos(x, y, left, top, h));
-		float x0, y0;
-
-		x0 = tpos.x - tc.hotspot_x;
-		y0 = tpos.y - tc.hotspot_y;
-
-		lst->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + tc.bnds.w, y0 + tc.bnds.h), ImVec2(tc.s0, tc.t0), ImVec2(tc.s1, tc.t1));
-
-		const ImageSet &s_tcp = a.anim_at(io::DrsId::bld_town_center_player);
-		const gfx::ImageRef &tcp = a.at(s_tcp.at(b.color, 0));
-
-		x0 = tpos.x - tcp.hotspot_x;
-		y0 = tpos.y - tcp.hotspot_y;
-
-		lst->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + tcp.bnds.w, y0 + tcp.bnds.h), ImVec2(tcp.s0, tcp.t0), ImVec2(tcp.s1, tcp.t1));
-	}
-#else
 	for (VisualEntity &v : entities) {
 		lst->AddImage(e->tex1, ImVec2(v.x, v.y), ImVec2(v.x + v.w, v.y + v.h), ImVec2(v.s0, v.t0), ImVec2(v.s1, v.t1));
 	}
-#endif
 }
 
 void UICache::load_buildings() {
@@ -1073,8 +1124,15 @@ void UICache::load_buildings() {
 
 	for (auto kv : e->gv.buildings) {
 		Building &b = kv.second;
-		const ImageSet &s_tc = a.anim_at(io::DrsId::bld_town_center);
-		const gfx::ImageRef &tc = a.at(s_tc.imgs[0]);
+
+		io::DrsId bld_base = io::DrsId::bld_town_center;
+		io::DrsId bld_player = io::DrsId::bld_town_center_player;
+
+		switch (b.type) {
+		case BuildingType::barracks:
+			bld_base = bld_player = io::DrsId::bld_barracks;
+			break;
+		}
 
 		int x = b.x, y = b.y;
 		uint8_t h = e->gv.t.h_at(x, y);
@@ -1082,18 +1140,23 @@ void UICache::load_buildings() {
 		ImVec2 tpos(e->tilepos(x, y, left, top, h));
 		float x0, y0;
 
-		x0 = tpos.x - tc.hotspot_x;
-		y0 = tpos.y - tc.hotspot_y;
+		if (bld_player != bld_base) {
+			const ImageSet &s_tc = a.anim_at(bld_base);
+			const gfx::ImageRef &tc = a.at(s_tc.imgs[0]);
 
-		entities.emplace_back(invalid_ref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+			x0 = tpos.x - tc.hotspot_x;
+			y0 = tpos.y - tc.hotspot_y;
 
-		const ImageSet &s_tcp = a.anim_at(io::DrsId::bld_town_center_player);
+			entities.emplace_back(b.ref, s_tc.imgs[0], x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+		}
+
+		const ImageSet &s_tcp = a.anim_at(bld_player);
 		const gfx::ImageRef &tcp = a.at(s_tcp.at(b.color, 0));
 
 		x0 = tpos.x - tcp.hotspot_x;
 		y0 = tpos.y - tcp.hotspot_y;
 
-		entities.emplace_back(invalid_ref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f);
+		entities.emplace_back(b.ref, s_tcp.at(b.color, 0), x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f);
 	}
 }
 

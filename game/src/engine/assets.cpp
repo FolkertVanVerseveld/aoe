@@ -145,7 +145,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		trn_deepwater.load(drs_terrain, pal.get(), DrsId::trn_deepwater);
 	}
 
-	Animation bld_town_center, bld_town_center_player;
+	Animation bld_town_center, bld_town_center_player, bld_barracks, bld_barracks_player;
 	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
 	info.next("Loading game entities data");
 	{
@@ -155,6 +155,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		bld_town_center.load(drs_graphics, pal.get(), DrsId::bld_town_center);
 		bld_town_center_player.load(drs_graphics, pal.get(), DrsId::bld_town_center_player);
+
+		bld_barracks.load(drs_graphics, pal.get(), DrsId::bld_barracks);
 
 		gif_villager_stand.load(drs_graphics, pal.get(), DrsId::gif_villager_stand);
 		gif_villager_move.load(drs_graphics, pal.get(), DrsId::gif_villager_move);
@@ -180,6 +182,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		add_gifs(p, bld_town_center, DrsId::bld_town_center);
 		add_gifs(p, bld_town_center_player, DrsId::bld_town_center_player);
+
+		add_gifs(p, bld_barracks, DrsId::bld_barracks);
 
 		add_gifs(p, gif_villager_stand, DrsId::gif_villager_stand);
 		add_gifs(p, gif_villager_move, DrsId::gif_villager_move);
@@ -228,6 +232,9 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 
 	eng.sfx.load_sfx(SfxId::sfx_ui_click, drs_sounds.open_wav(DrsId::sfx_ui_click));
 	eng.sfx.load_taunt(TauntId::max, drs_sounds.open_wav(DrsId::sfx_priest_convert2));
+
+	eng.sfx.load_sfx(SfxId::towncenter, drs_sounds.open_wav(DrsId::sfx_towncenter));
+	eng.sfx.load_sfx(SfxId::barracks, drs_sounds.open_wav(DrsId::sfx_barracks));
 }
 
 void Assets::load_str(Engine &eng, UI_TaskInfo &info) {

@@ -54,8 +54,11 @@ enum class TauntId {
 };
 
 enum class SfxId {
+	// TODO /sfx_//g
 	sfx_ui_click,
 	sfx_chat,
+	towncenter,
+	barracks,
 };
 
 class Audio final {

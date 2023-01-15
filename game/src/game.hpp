@@ -101,6 +101,7 @@ public:
 
 enum class BuildingType {
 	town_center,
+	barracks,
 };
 
 class Building final {
@@ -130,7 +131,7 @@ public:
 class GameView final {
 public:
 	Terrain t;
-	IdPool<Building> buildings;
+	IdPool<Building> buildings; // TODO use std::variant or Entity uniqueptr
 
 	GameView();
 
