@@ -16,8 +16,7 @@ void UICache::user_interact_entities() {
 
 	// find first entity in selection
 	for (IdPoolRef ref : selected) {
-		if (e->gv.buildings.try_invalidate(ref)) {
-			puts("kill");
+		if (e->gv.entities.try_invalidate(ref)) {
 			e->sfx.play_sfx(SfxId::bld_die_random);
 			break;
 		}

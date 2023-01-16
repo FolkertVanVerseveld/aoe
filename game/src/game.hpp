@@ -7,6 +7,7 @@
 #include <map>
 
 #include <mutex>
+#include <set>
 
 #include "idpool.hpp"
 
@@ -30,6 +31,7 @@ public:
 	Resources res;
 
 	PlayerSetting() : name(), ai(false), civ(0), team(1), res() {}
+	PlayerSetting(const PlayerSetting&) = default;
 };
 
 class ScenarioSettings final {
@@ -99,20 +101,74 @@ public:
 	void set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
 };
 
-enum class BuildingType {
+enum class EntityType {
 	town_center,
 	barracks,
 };
 
-class Building final {
+class Entity final {
 public:
 	IdPoolRef ref;
-	BuildingType type;
+	EntityType type;
 
 	unsigned color;
 	int x, y;
 
-	Building(IdPoolRef ref, BuildingType type, unsigned color, int x, int y) : ref(ref), type(type), color(color), x(x), y(y) {}
+	Entity(IdPoolRef ref, EntityType type, unsigned color, int x, int y) : ref(ref), type(type), color(color), x(x), y(y) {}
+};
+
+class PlayerAchievements final {
+public:
+	// too lazy to check if smaller types will fit, this should be fine.
+	int64_t kills, losses, razings;
+	size_t military_size;
+	int64_t military_score;
+
+	int64_t food, wood, stone, gold, tribute;
+	size_t villager_count, unit_count;
+	size_t explored_tiles, explored_max;
+	int64_t economy_score;
+
+	int64_t conversions, converted;
+	int64_t temples, ruins, artifacts;
+	int64_t religion_score;
+
+	unsigned technologies;
+	bool bronze_first, iron_first;
+	int64_t technology_score;
+
+	int64_t wonders;
+
+	bool alive;
+	int64_t score;
+
+	int64_t recompute(size_t max_military, size_t max_villagers, unsigned max_tech) noexcept;
+};
+
+class PlayerView;
+
+class Player final {
+public:
+	PlayerSetting init;
+	Resources res;
+	PlayerAchievements achievements;
+	uint64_t explored_max;
+	std::set<IdPoolRef> entities;
+	bool alive;
+
+	Player(const PlayerSetting&, size_t explored_max);
+
+	PlayerView view() const noexcept;
+};
+
+class PlayerView final {
+public:
+	PlayerSetting init;
+	Resources res;
+	int64_t score;
+	bool alive;
+
+	PlayerView(const PlayerSetting &ps) : init(ps), res(ps.res), score(0), alive(true) {}
 };
 
 class GameView;
@@ -120,18 +176,22 @@ class GameView;
 class Game final {
 	std::mutex m;
 	Terrain t;
+	std::vector<PlayerView> players;
 	friend GameView;
 public:
 	Game();
 
 	void resize(const ScenarioSettings &scn);
 	void terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
+
+	void set_players(const std::vector<PlayerSetting>&);
 };
 
 class GameView final {
 public:
 	Terrain t;
-	IdPool<Building> buildings; // TODO use std::variant or Entity uniqueptr
+	IdPool<Entity> entities; // TODO use std::variant or Entity uniqueptr
+	std::vector<PlayerView> players;
 
 	GameView();
 

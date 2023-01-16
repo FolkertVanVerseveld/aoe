@@ -1,6 +1,14 @@
 #include "../server.hpp"
 
+#include "../engine.hpp"
+
 namespace aoe {
+
+Client::Client() : s(), port(0), m_connected(false), starting(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1) {}
+
+Client::~Client() {
+	stop();
+}
 
 void Client::send_players_resize(unsigned n) {
 	NetPkg pkg;
@@ -92,6 +100,16 @@ void Client::playermod(const NetPlayerControl &ctl) {
 	}
 
 	modflags |= (unsigned)ClientModFlags::scn;
+}
+
+void Client::start_game() {
+	std::lock_guard<std::mutex> lk(m_eng);
+
+	g.set_players(scn.players);
+
+	puts("start game");
+	if (eng)
+		eng->trigger_multiplayer_started();
 }
 
 }

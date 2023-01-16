@@ -138,4 +138,85 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 	return false;
 }
 
+void Server::start_game() {
+	if (m_running)
+		return;
+
+	m_running = true;
+
+	std::thread t([this]() {
+		eventloop();
+	});
+	t.detach();
+
+	NetPkg pkg;
+
+	pkg.set_start_game();
+	broadcast(pkg);
+
+	pkg.set_scn_vars(scn);
+	broadcast(pkg);
+
+	for (unsigned i = 0; i < scn.players.size(); ++i) {
+		PlayerSetting &p = scn.players[i];
+
+		p.res = scn.res;
+
+		// if player has no name, try find an owner that has one
+		if (p.name.empty()) {
+			unsigned owners = 0;
+			std::string alias;
+
+			for (auto kv : scn.owners) {
+				if (kv.second == i + 1) {
+					++owners;
+					alias = get_ci(kv.first).username;
+				}
+			}
+
+			if (owners == 1) {
+				p.name = alias;
+			} else {
+				p.name = "Oerkneus de Eerste";
+
+				if (p.civ >= 0 && p.civ < civs.size()) {
+					auto &names = civs[civnames[p.civ]];
+					p.name = names[rand() % names.size()];
+				}
+			}
+		}
+
+		pkg.set_player_name(i + 1, p.name);
+		broadcast(pkg);
+		pkg.set_player_civ(i + 1, p.civ);
+		broadcast(pkg);
+		pkg.set_player_team(i + 1, p.team);
+		broadcast(pkg);
+	}
+
+	size_t size = scn.width * scn.height;
+	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
+	this->t.generate();
+
+	entities.clear();
+
+	players.clear();
+	for (const PlayerSetting &ps : scn.players)
+		players.emplace_back(ps, size);
+
+	NetTerrainMod tm;
+
+	unsigned w = std::min(16u, this->t.w), h = std::min(16u, this->t.h);
+	this->t.fetch(tm.tiles, tm.hmap, 0, 0, w, h);
+
+	tm.x = tm.y = 0;
+	tm.w = w; tm.h = h;
+
+	pkg.set_terrain_mod(tm);
+	broadcast(pkg);
+
+	pkg.set_start_game();
+	broadcast(pkg);
+}
+
 }

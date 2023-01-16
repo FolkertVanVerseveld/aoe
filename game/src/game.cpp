@@ -48,7 +48,7 @@ void Server::eventloop() {
 	}
 }
 
-Game::Game() : m(), t() {}
+Game::Game() : m(), t(), players() {}
 
 void Game::resize(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m);
@@ -61,17 +61,26 @@ void Game::terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8
 	t.set(tiles, hmap, x, y, w, h);
 }
 
-GameView::GameView() : t(), buildings() {
+void Game::set_players(const std::vector<PlayerSetting> &lst) {
+	std::lock_guard<std::mutex> lk(m);
+
+	players.clear();
+
+	for (const PlayerSetting &ps : lst)
+		players.emplace_back(ps);
+}
+
+GameView::GameView() : t(), entities() {
 	// TODO remove this test later on
 
 #if 1
 	for (unsigned i = 0; i < MAX_PLAYERS; ++i) {
-		buildings.emplace(BuildingType::town_center, i, 2, 1 + 3 * i);
-		buildings.emplace(BuildingType::barracks, i, 2 + 3, 1 + 3 * i);
+		entities.emplace(EntityType::town_center, i, 2, 1 + 3 * i);
+		entities.emplace(EntityType::barracks, i, 2 + 3, 1 + 3 * i);
 	}
 #else
 	unsigned i = 0;
-	buildings.emplace(BuildingType::town_center, i, 2, 1 + 3 * i);
+	entities.emplace(EntityType::town_center, i, 2, 1 + 3 * i);
 #endif
 }
 
@@ -83,6 +92,7 @@ bool GameView::try_read(Game &g) {
 
 	// TODO only copy what has changed
 	t = g.t;
+	players = g.players;
 
 	return true;
 }

@@ -5,7 +5,7 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), scn(), logic_gamespeed(1.0), t(), civs() {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), scn(), logic_gamespeed(1.0), t(), entities(), players(), civs() {}
 
 Server::~Server() {
 	stop();
@@ -163,11 +163,20 @@ bool Server::chk_username(const Peer &p, std::deque<uint8_t> &out, const std::st
 
 	std::string old(it->second.username);
 
+	// disallow name change while game is running
+	if (m_running) {
+		NetPkg pkg;
+		pkg.set_username(old);
+		pkg.write(out);
+
+		return true;
+	}
+
 	printf("%s: (%s,%s) wants to change username from \"%s\" to \"%s\"\n", __func__, p.host.c_str(), p.server.c_str(), old.c_str(), name.c_str());
 
 	// allow anything when it's unique and doesn't contain `:'. we use : ourselves when generating names
 	size_t pos = name.find(':');
-	if (m_running || pos != std::string::npos) {
+	if (pos != std::string::npos) {
 		// : found. ignore and send back old name
 		NetPkg pkg;
 		pkg.set_username(old);
@@ -229,77 +238,6 @@ bool Server::set_scn_vars(const Peer &p, ScenarioSettings &scn) {
 	return true;
 }
 
-void Server::start_game() {
-	if (m_running)
-		return;
-
-	m_running = true;
-
-	std::thread t([this]() {
-		eventloop();
-	});
-	t.detach();
-
-	NetPkg pkg;
-
-	pkg.set_scn_vars(scn);
-	broadcast(pkg);
-
-	for (unsigned i = 0; i < scn.players.size(); ++i) {
-		PlayerSetting &p = scn.players[i];
-
-		p.res = scn.res;
-
-		// if player has no name, try find an owner that has one
-		if (p.name.empty()) {
-			unsigned owners = 0;
-			std::string alias;
-
-			for (auto kv : scn.owners) {
-				if (kv.second == i + 1) {
-					++owners;
-					alias = get_ci(kv.first).username;
-				}
-			}
-
-			if (owners == 1) {
-				p.name = alias;
-			} else {
-				p.name = "Oerkneus de Eerste";
-
-				if (p.civ >= 0 && p.civ < civs.size()) {
-					auto &names = civs[civnames[p.civ]];
-					p.name = names[rand() % names.size()];
-				}
-			}
-		}
-
-		pkg.set_player_name(i + 1, p.name);
-		broadcast(pkg);
-		pkg.set_player_civ(i + 1, p.civ);
-		broadcast(pkg);
-		pkg.set_player_team(i + 1, p.team);
-		broadcast(pkg);
-	}
-
-	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
-	this->t.generate();
-
-	NetTerrainMod tm;
-
-	unsigned w = std::min(16u, this->t.w), h = std::min(16u, this->t.h);
-	this->t.fetch(tm.tiles, tm.hmap, 0, 0, w, h);
-
-	tm.x = tm.y = 0;
-	tm.w = w; tm.h = h;
-
-	pkg.set_terrain_mod(tm);
-	broadcast(pkg);
-
-	pkg.set_start_game();
-	broadcast(pkg);
-}
-
 bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 	pkg.ntoh();
 
@@ -356,12 +294,6 @@ void Server::close() {
 	s.close();
 }
 
-Client::Client() : s(), port(0), m_connected(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1) {}
-
-Client::~Client() {
-	stop();
-}
-
 void Client::stop() {
 	std::lock_guard<std::mutex> lk(m);
 	m_connected = false;
@@ -407,13 +339,6 @@ void Client::add_chat_text(IdPoolRef ref, const std::string &s) {
 		if (maybe_taunt)
 			eng->sfx.play_taunt(maybe_taunt.value());
 	}
-}
-
-void Client::start_game() {
-	std::lock_guard<std::mutex> lk(m_eng);
-	puts("start game");
-	if (eng)
-		eng->trigger_multiplayer_started();
 }
 
 void Client::set_scn_vars(const ScenarioSettings &scn) {
@@ -515,6 +440,8 @@ void Client::mainloop() {
 	send_protocol(1);
 
 	try {
+		starting = false;
+
 		while (m_connected) {
 			NetPkg pkg = recv();
 
@@ -527,9 +454,15 @@ void Client::mainloop() {
 					add_chat_text(p.first, p.second);
 					break;
 				}
-				case NetPkgType::start_game:
-					start_game();
+				case NetPkgType::start_game: {
+					if (starting) {
+						start_game();
+					} else {
+						starting = true;
+						add_chat_text(invalid_ref, "game starting now");
+					}
 					break;
+				}
 				case NetPkgType::set_scn_vars:
 					set_scn_vars(pkg.get_scn_vars());
 					break;

@@ -206,6 +206,8 @@ class Server final : public ServerSocketController {
 	ScenarioSettings scn;
 	std::atomic<double> logic_gamespeed;
 	Terrain t;
+	IdPool<Entity> entities;
+	std::vector<Player> players;
 	std::map<std::string, std::vector<std::string>> civs;
 	std::vector<std::string> civnames;
 
@@ -262,7 +264,7 @@ class Client final {
 	TcpSocket s;
 	std::string host;
 	uint16_t port;
-	std::atomic<bool> m_connected;
+	std::atomic<bool> m_connected, starting;
 	std::mutex m;
 
 	std::map<IdPoolRef, ClientInfo> peers;

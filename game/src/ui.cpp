@@ -554,7 +554,7 @@ void Engine::show_multiplayer_achievements() {
 			// 40, 338
 			// 40, 386
 
-
+#if 0
 			for (unsigned i = 0; i < cv.scn.players.size(); ++i) {
 				PlayerSetting &p = cv.scn.players[i];
 
@@ -580,6 +580,25 @@ void Engine::show_multiplayer_achievements() {
 				sz = ImGui::CalcTextSize("100");
 				lst->AddText(ImVec2(tl.x + 830 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "100");
 			}
+#else
+			for (unsigned i = 0; i < gv.players.size(); ++i) {
+				PlayerView &v = gv.players[i];
+
+				float rowy = tl.y + 300 * sy + (348 - 300) * i * sy;
+
+				std::string txt;
+
+				txt = v.alive ? "Yes" : "No";
+
+				sz = ImGui::CalcTextSize(txt.c_str());
+				lst->AddText(ImVec2(tl.x + 662 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, txt.c_str());
+
+				txt = std::to_string(v.score);
+
+				sz = ImGui::CalcTextSize(txt.c_str());
+				lst->AddText(ImVec2(tl.x + 830 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, txt.c_str());
+			}
+#endif
 		}
 
 		if (f.btn("Timeline")) {
@@ -644,7 +663,8 @@ void Engine::show_terrain() {
 		}
 	}
 
-	ui.user_interact_entities();
+	if (!io.WantCaptureMouse)
+		ui.user_interact_entities();
 	ui.show_buildings();
 	ui.show_selections();
 }
@@ -1024,7 +1044,7 @@ void UICache::game_mouse_process() {
 
 	ImGuiIO &io = ImGui::GetIO();
 
-	if (!io.MouseDown[0] || io.MouseDownDuration[0] > 0.0f)
+	if (io.WantCaptureMouse || !io.MouseDown[0] || io.MouseDownDuration[0] > 0.0f)
 		return;
 
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -1097,14 +1117,14 @@ void UICache::game_mouse_process() {
 
 	// TODO inspect selected types
 	IdPoolRef ref = *this->selected.begin();
-	Building *b = e->gv.buildings.try_get(ref);
+	Entity *ent = e->gv.entities.try_get(ref);
 
-	if (b) {
-		switch (b->type) {
-		case BuildingType::town_center:
+	if (ent) {
+		switch (ent->type) {
+		case EntityType::town_center:
 			e->sfx.play_sfx(SfxId::towncenter);
 			break;
-		case BuildingType::barracks:
+		case EntityType::barracks:
 			e->sfx.play_sfx(SfxId::barracks);
 			break;
 		}
@@ -1121,13 +1141,13 @@ void UICache::show_selections() {
 	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
 
 	for (IdPoolRef ref : selected) {
-		Building *b = e->gv.buildings.try_get(ref);
-		if (!b)
+		Entity *ent = e->gv.entities.try_get(ref);
+		if (!ent)
 			continue;
 
-		// TODO determine building size
+		// TODO determine entity (i.e. unit or building) size
 
-		int x = b->x, y = b->y;
+		int x = ent->x, y = ent->y;
 		uint8_t h = e->gv.t.h_at(x, y);
 
 		ImVec2 tl(e->tilepos(x - 2, y - 1, left, top + e->th / 2, h));
@@ -1169,19 +1189,19 @@ void UICache::load_buildings() {
 	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
 	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
 
-	for (auto kv : e->gv.buildings) {
-		Building &b = kv.second;
+	for (auto kv : e->gv.entities) {
+		Entity &ent = kv.second;
 
 		io::DrsId bld_base = io::DrsId::bld_town_center;
 		io::DrsId bld_player = io::DrsId::bld_town_center_player;
 
-		switch (b.type) {
-		case BuildingType::barracks:
+		switch (ent.type) {
+		case EntityType::barracks:
 			bld_base = bld_player = io::DrsId::bld_barracks;
 			break;
 		}
 
-		int x = b.x, y = b.y;
+		int x = ent.x, y = ent.y;
 		uint8_t h = e->gv.t.h_at(x, y);
 
 		ImVec2 tpos(e->tilepos(x, y, left, top, h));
@@ -1189,21 +1209,23 @@ void UICache::load_buildings() {
 
 		if (bld_player != bld_base) {
 			const ImageSet &s_tc = a.anim_at(bld_base);
-			const gfx::ImageRef &tc = a.at(s_tc.imgs[0]);
+			IdPoolRef imgref = s_tc.imgs[0];
+			const gfx::ImageRef &tc = a.at(imgref);
 
 			x0 = tpos.x - tc.hotspot_x;
 			y0 = tpos.y - tc.hotspot_y;
 
-			entities.emplace_back(b.ref, s_tc.imgs[0], x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+			entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
 		}
 
 		const ImageSet &s_tcp = a.anim_at(bld_player);
-		const gfx::ImageRef &tcp = a.at(s_tcp.at(b.color, 0));
+		IdPoolRef imgref = s_tcp.at(ent.color, 0);
+		const gfx::ImageRef &tcp = a.at(imgref);
 
 		x0 = tpos.x - tcp.hotspot_x;
 		y0 = tpos.y - tcp.hotspot_y;
 
-		entities.emplace_back(b.ref, s_tcp.at(b.color, 0), x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f);
+		entities.emplace_back(ent.ref, imgref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f);
 	}
 }
 
