@@ -14,6 +14,18 @@ void Client::send_set_player_name(unsigned idx, const std::string &s) {
 	send(pkg);
 }
 
+void Client::send_set_player_civ(unsigned idx, unsigned civ) {
+	NetPkg pkg;
+	pkg.set_player_civ(idx, civ);
+	send(pkg);
+}
+
+void Client::send_set_player_team(unsigned idx, unsigned team) {
+	NetPkg pkg;
+	pkg.set_player_team(idx, team);
+	send(pkg);
+}
+
 void Client::playermod(const NetPlayerControl &ctl) {
 	std::lock_guard<std::mutex> lk(m);
 
@@ -51,6 +63,26 @@ void Client::playermod(const NetPlayerControl &ctl) {
 
 			if (pos < scn.players.size())
 				scn.players[pos].name = p.second;
+
+			break;
+		}
+		case NetPlayerControlType::set_civ: {
+			auto p = std::get<std::pair<uint16_t, uint16_t>>(ctl.data);
+
+			unsigned pos = p.first - 1;
+
+			if (pos < scn.players.size())
+				scn.players[pos].civ = p.second;
+
+			break;
+		}
+		case NetPlayerControlType::set_team: {
+			auto p = std::get<std::pair<uint16_t, uint16_t>>(ctl.data);
+
+			unsigned pos = p.first - 1;
+
+			if (pos < scn.players.size())
+				scn.players[pos].team = p.second;
 
 			break;
 		}

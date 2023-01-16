@@ -167,7 +167,7 @@ bool Server::chk_username(const Peer &p, std::deque<uint8_t> &out, const std::st
 
 	// allow anything when it's unique and doesn't contain `:'. we use : ourselves when generating names
 	size_t pos = name.find(':');
-	if (pos != std::string::npos) {
+	if (m_running || pos != std::string::npos) {
 		// : found. ignore and send back old name
 		NetPkg pkg;
 		pkg.set_username(old);
@@ -275,6 +275,10 @@ void Server::start_game() {
 		}
 
 		pkg.set_player_name(i + 1, p.name);
+		broadcast(pkg);
+		pkg.set_player_civ(i + 1, p.civ);
+		broadcast(pkg);
+		pkg.set_player_team(i + 1, p.team);
 		broadcast(pkg);
 	}
 

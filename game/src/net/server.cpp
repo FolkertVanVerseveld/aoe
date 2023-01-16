@@ -10,6 +10,20 @@ ClientInfo &Server::get_ci(IdPoolRef ref) {
 bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out) {
 	NetPkg pkg;
 
+	if (m_running) {
+		// filter types that cannot be changed while the game is running
+		switch (ctl.type) {
+		case NetPlayerControlType::resize:
+		case NetPlayerControlType::erase:
+		case NetPlayerControlType::set_player_name:
+		case NetPlayerControlType::set_civ:
+		case NetPlayerControlType::set_team:
+			return true;
+		default:
+			break;
+		}
+	}
+
 	switch (ctl.type) {
 		case NetPlayerControlType::resize: {
 			uint16_t size = std::get<uint16_t>(ctl.data);
@@ -58,6 +72,43 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 
 			// tell everyone and don't care to check which player had claimed this before
 			pkg.set_cpu_player(idx);
+			broadcast(pkg);
+
+			return true;
+		}
+		case NetPlayerControlType::set_civ: {
+			auto p = std::get<std::pair<uint16_t, uint16_t>>(ctl.data);
+			unsigned idx = p.first; // remember, it is 1-based
+
+			// ignore bad index, might be desync
+			if (!idx || idx > scn.players.size())
+				return true;
+
+			unsigned civ = p.second;
+
+			if (civ > civnames.size())
+				return false; // kick, cuz we have data inconsistency
+
+			scn.players[idx - 1].civ = civ;
+
+			pkg.set_player_civ(idx, civ);
+			broadcast(pkg);
+
+			return true;
+		}
+		case NetPlayerControlType::set_team: {
+			auto p = std::get<std::pair<uint16_t, uint16_t>>(ctl.data);
+			unsigned idx = p.first; // remember, it is 1-based
+
+			// ignore bad index, might be desync
+			if (!idx || idx > scn.players.size())
+				return true;
+
+			unsigned team = p.second;
+
+			scn.players[idx - 1].team = team;
+
+			pkg.set_player_team(idx, team);
 			broadcast(pkg);
 
 			return true;

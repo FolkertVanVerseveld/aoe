@@ -7,15 +7,6 @@
 namespace aoe {
 namespace io {
 
-static std::map<StrId, std::string> lang_defs{
-	{StrId::age_nomad, "Hunter & Gatherer Age"},
-	{StrId::age_stone, "Neolithic Age"},
-	{StrId::age_tool, "Civilisation Age"},
-	{StrId::age_bronze, "Bronze Age"},
-	{StrId::age_iron, "Iron Age"},
-	{StrId::age_postiron, "Warfare Age"},
-};
-
 static std::string load_string(PE &dll, StrId id) {
 	return dll.load_string((res_id)id);
 }
@@ -86,7 +77,7 @@ void LanguageData::load(PE &dll) {
 }
 
 std::string LanguageData::find(StrId id) {
-	return find(id, "???");// lang_defs.at(id));
+	return find(id, "???");
 }
 
 std::string LanguageData::find(StrId id, const std::string &def) {

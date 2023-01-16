@@ -950,11 +950,13 @@ void UICache::show_mph_tbl(ui::Frame &f) {
 				r.next();
 			}
 
-			f.combo("##1", p.civ, civs);
+			if (f.combo("##1", p.civ, civs))
+				e->client->send_set_player_civ(i + 1, p.civ);
 			r.next();
 
 			p.team = std::max(1u, p.team);
-			f.scalar("##2", p.team, 1);
+			if (f.scalar("##2", p.team, 1))
+				e->client->send_set_player_team(i + 1, p.team);
 			r.next();
 		}
 	}

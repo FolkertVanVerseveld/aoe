@@ -54,6 +54,8 @@ enum class NetPlayerControlType {
 	set_ref,
 	set_cpu_ref,
 	set_player_name,
+	set_civ,
+	set_team,
 };
 
 enum class NetPeerControlType {
@@ -66,14 +68,16 @@ enum class NetPeerControlType {
 class NetPlayerControl final {
 public:
 	NetPlayerControlType type;
-	std::variant<std::nullopt_t, IdPoolRef, uint16_t, std::pair<uint16_t, std::string>> data;
+	std::variant<std::nullopt_t, IdPoolRef, uint16_t, std::pair<uint16_t, std::string>, std::pair<uint16_t, uint16_t>> data;
 
 	static constexpr unsigned resize_size = 2 * sizeof(uint16_t);
+	static constexpr unsigned set_pos_size = 3 * sizeof(uint16_t);
 
 	NetPlayerControl() : type(NetPlayerControlType::resize), data(std::nullopt) {}
 	NetPlayerControl(NetPlayerControlType type, uint16_t arg) : type(type), data(arg) {}
 	NetPlayerControl(NetPlayerControlType type, IdPoolRef ref) : type(type), data(ref) {}
 	NetPlayerControl(NetPlayerControlType type, uint16_t idx, const std::string &name) : type(type), data(std::make_pair(idx, name)) {}
+	NetPlayerControl(NetPlayerControlType type, uint16_t idx, uint16_t pos) : type(type), data(std::make_pair(idx, pos)) {}
 };
 
 class NetPeerControl final {
@@ -131,6 +135,8 @@ public:
 	void claim_player_setting(uint16_t); // client to server
 	void claim_cpu_setting(uint16_t); // client to server
 	void set_cpu_player(uint16_t); // server to client
+	void set_player_civ(uint16_t, uint16_t);
+	void set_player_team(uint16_t, uint16_t);
 	void set_player_name(uint16_t, const std::string&);
 	NetPlayerControl get_player_control();
 
@@ -160,6 +166,8 @@ public:
 private:
 	void set_hdr(NetPkgType type);
 	void need_payload(size_t n);
+
+	void playermod2(NetPlayerControlType, uint16_t, uint16_t);
 };
 
 enum class ClientInfoFlags {
@@ -304,6 +312,8 @@ public:
 	void send_start_game();
 	void send_players_resize(unsigned n);
 	void send_set_player_name(unsigned idx, const std::string&);
+	void send_set_player_civ(unsigned idx, unsigned civ);
+	void send_set_player_team(unsigned idx, unsigned team);
 
 	void send_scn_vars(const ScenarioSettings &scn);
 	void send_username(const std::string&);

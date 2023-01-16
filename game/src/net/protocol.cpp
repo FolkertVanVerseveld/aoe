@@ -71,6 +71,8 @@ void NetPkg::ntoh() {
 
 			switch (type) {
 			case NetPlayerControlType::set_player_name:
+			case NetPlayerControlType::set_civ:
+			case NetPlayerControlType::set_team:
 				dw[2] = ntohs(dw[2]);
 				break;
 			}
@@ -177,6 +179,8 @@ void NetPkg::hton() {
 
 			switch (type) {
 			case NetPlayerControlType::set_player_name:
+			case NetPlayerControlType::set_civ:
+			case NetPlayerControlType::set_team:
 				dw[2] = htons(dw[2]);
 				break;
 			}
@@ -550,6 +554,11 @@ NetPlayerControl NetPkg::get_player_control() {
 
 			return NetPlayerControl(type, idx, name);
 		}
+		case NetPlayerControlType::set_civ:
+		case NetPlayerControlType::set_team: {
+			uint16_t idx = dw[1], pos = dw[2];
+			return NetPlayerControl(type, idx, pos);
+		}
 		default:
 			throw std::runtime_error("bad player control type");
 	}
@@ -619,6 +628,26 @@ void NetPkg::set_cpu_player(uint16_t idx) {
 	dw[1] = (uint16_t)idx;
 
 	set_hdr(NetPkgType::playermod);
+}
+
+void NetPkg::playermod2(NetPlayerControlType type, uint16_t idx, uint16_t pos) {
+	data.resize(NetPlayerControl::set_pos_size);
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)(unsigned)type;
+	dw[1] = idx;
+	dw[2] = pos;
+
+	set_hdr(NetPkgType::playermod);
+}
+
+void NetPkg::set_player_civ(uint16_t idx, uint16_t civ) {
+	playermod2(NetPlayerControlType::set_civ, idx, civ);
+}
+
+void NetPkg::set_player_team(uint16_t idx, uint16_t team) {
+	playermod2(NetPlayerControlType::set_team, idx, team);
 }
 
 void NetPkg::set_player_name(uint16_t idx, const std::string &s) {
