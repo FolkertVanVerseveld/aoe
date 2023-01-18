@@ -7,6 +7,32 @@ ClientInfo &Server::get_ci(IdPoolRef ref) {
 	return peers.at(p);
 }
 
+bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint8_t> &out) {
+	NetPkg pkg;
+
+	if (!m_running)
+		return false; // desync, kick
+
+	switch (em.type) {
+	case NetEntityControlType::kill: {
+		// TODO send command to game eventloop thread
+		IdPoolRef ref = std::get<IdPoolRef>(em.data);
+
+		// TODO check if player is allowed to kill this entity
+		if (entities.try_invalidate(ref)) {
+			pkg.set_entity_kill(ref);
+			broadcast(pkg);
+		}
+		return true;
+	}
+	default:
+		fprintf(stderr, "%s: bad entity control type %u\n", __func__, em.type);
+		break;
+	}
+
+	return false;
+}
+
 bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out) {
 	NetPkg pkg;
 
@@ -46,7 +72,7 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			if (idx)
 				scn.players[idx - 1].ai = false;
 
-			// sent to players
+			// send to players
 			pkg.set_claim_player(ref, idx);
 			broadcast(pkg);
 

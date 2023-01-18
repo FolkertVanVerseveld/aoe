@@ -1,64 +1,28 @@
 #include "game.hpp"
 #include "server.hpp"
 
-#include "legacy.hpp"
-
-#include <chrono>
-
 #include <tracy/Tracy.hpp>
 
 namespace aoe {
 
-void Server::tick() {
-	ZoneScoped;
-}
+enum class GameMod {
+	terrain = 1 << 0,
+	entities = 1 << 1,
+};
 
-void Server::eventloop() {
-	ZoneScoped;
-
-	auto last = std::chrono::steady_clock::now();
-	double dt = 0;
-
-	while (m_running.load()) {
-		// recompute as logic_gamespeed may change
-		double interval_inv = logic_gamespeed * DEFAULT_TICKS_PER_SECOND;
-		double interval = 1 / std::max(0.01, interval_inv);
-
-		auto now = std::chrono::steady_clock::now();
-		std::chrono::duration<double> elapsed = now - last;
-		last = now;
-		dt += elapsed.count();
-
-		size_t steps = (size_t)(dt * interval_inv);
-
-		// do steps
-		for (; steps; --steps)
-			tick();
-
-		dt = fmod(dt, interval);
-
-		unsigned us = 0;
-
-		if (!steps)
-			us = (unsigned)(interval * 1000 * 1000);
-		// 100000000
-
-		if (us > 500)
-			std::this_thread::sleep_for(std::chrono::microseconds(us));
-	}
-}
-
-Game::Game() : m(), t(), players(), entities() {}
+Game::Game() : m(), t(), players(), entities(), entities_killed(), modflags((unsigned)-1) {}
 
 void Game::resize(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m);
-
 	t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
+	modflags |= (unsigned)GameMod::terrain;
 }
 
 void Game::terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h) {
 	std::lock_guard<std::mutex> lk(m);
+
 	t.set(tiles, hmap, x, y, w, h);
+	modflags |= (unsigned)GameMod::terrain;
 }
 
 void Game::set_players(const std::vector<PlayerSetting> &lst) {
@@ -74,20 +38,48 @@ void Game::entity_add(const EntityView &ev) {
 	std::lock_guard<std::mutex> lk(m);
 
 	entities.emplace(ev);
+	modflags |= (unsigned)GameMod::entities;
 }
 
-GameView::GameView() : t(), entities() {}
+bool Game::entity_kill(IdPoolRef ref) {
+	std::lock_guard<std::mutex> lk(m);
 
-bool GameView::try_read(Game &g) {
+	auto it = entities.find(ref);
+	if (it == entities.end())
+		return false;
+
+	entities_killed.emplace_back(it->ref, it->type, it->color, it->x, it->y);
+	entities.erase(it);
+
+	modflags |= (unsigned)GameMod::entities;
+
+	return true;
+}
+
+GameView::GameView() : t(), entities(), entities_killed() {}
+
+bool GameView::try_read(Game &g, bool reset) {
 	std::unique_lock lk(g.m, std::defer_lock);
 
 	if (!lk.try_lock())
 		return false;
 
+	if (g.modflags & (unsigned)GameMod::terrain)
+		t = g.t;
+
 	// TODO only copy what has changed
-	t = g.t;
 	players = g.players;
-	entities = g.entities;
+
+	if (g.modflags & (unsigned)GameMod::entities) {
+		entities = g.entities;
+		entities_killed = g.entities_killed;
+
+		if (reset)
+			g.entities_killed.clear();
+	}
+
+	if (reset)
+		g.modflags = 0;
 
 	return true;
 }

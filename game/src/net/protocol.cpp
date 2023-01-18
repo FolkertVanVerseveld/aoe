@@ -6,6 +6,11 @@
 
 namespace aoe {
 
+static void refcheck(const IdPoolRef &ref) {
+	if (ref == invalid_ref)
+		throw std::runtime_error("invalid ref");
+}
+
 void NetPkgHdr::ntoh() {
 	if (native_ordering)
 		return;
@@ -163,8 +168,13 @@ void NetPkg::ntoh() {
 				dw = (uint16_t*)&dd[4];
 				dw[0] = ntohs(dw[0]); // e.color
 				break;
-			default:
+			case NetEntityControlType::kill:
+				need_payload(NetEntityMod::killsize);
+				dd = (uint32_t*)&dw[1];
+				dd[0] = ntohl(dd[0]); dd[1] = ntohl(dd[1]);
 				break;
+			default:
+				throw std::runtime_error("bad entity control type");
 			}
 			break;
 		}
@@ -283,8 +293,12 @@ void NetPkg::hton() {
 				dw = (uint16_t*)&dd[4];
 				dw[0] = htons(dw[0]); // e.color
 				break;
-			default:
+			case NetEntityControlType::kill:
+				dd = (uint32_t*)&dw[1];
+				dd[0] = htonl(dd[0]); dd[1] = htonl(dd[1]);
 				break;
+			default:
+				throw std::runtime_error("bad entity control type");
 			}
 			break;
 		}
@@ -781,8 +795,7 @@ void NetPkg::set_entity_add(const Entity &e) {
 void NetPkg::set_entity_add(const EntityView &e) {
 	static_assert(sizeof(float) <= sizeof(uint32_t));
 
-	if (e.ref == invalid_ref)
-		throw std::runtime_error("invalid ref");
+	refcheck(e.ref);
 
 	data.resize(NetEntityMod::addsize);
 
@@ -816,6 +829,25 @@ void NetPkg::set_entity_add(const EntityView &e) {
 	set_hdr(NetPkgType::entity_mod);
 }
 
+void NetPkg::set_entity_kill(IdPoolRef ref) {
+	static_assert(sizeof(RefCounter) <= sizeof(uint32_t));
+
+	refcheck(ref);
+
+	// TODO byte misalignment. this will cause bus errors on archs that don't support unaligned fetching
+	data.resize(NetEntityMod::killsize);
+
+	uint16_t *dw = (uint16_t*)data.data();
+	uint32_t *dd;
+
+	dw[0] = (uint16_t)NetEntityControlType::kill;
+
+	dd = (uint32_t*)&dw[1];
+	dd[0] = ref.first; dd[1] = ref.second;
+
+	set_hdr(NetPkgType::entity_mod);
+}
+
 NetEntityMod NetPkg::get_entity_mod() {
 	ZoneScoped;
 	ntoh();
@@ -842,6 +874,15 @@ NetEntityMod NetPkg::get_entity_mod() {
 		ev.color = dw[0];
 
 		return NetEntityMod(ev);
+	}
+	case NetEntityControlType::kill: {
+		IdPoolRef ref;
+
+		dd = (uint32_t*)&dw[1];
+
+		ref.first = dd[0]; ref.second = dd[1];
+
+		return NetEntityMod(ref);
 	}
 	default:
 		throw std::runtime_error("unknown entity control packet");

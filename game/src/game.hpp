@@ -106,12 +106,16 @@ enum class EntityType {
 	barracks,
 };
 
+static bool constexpr is_building(EntityType t) {
+	return t >= EntityType::town_center && t <= EntityType::barracks;
+}
+
 class EntityView final {
 public:
 	IdPoolRef ref;
 	EntityType type;
 
-	unsigned color;
+	unsigned color; // TODO /color/playerid/ ?
 	float x, y;
 
 	// TODO add ui info
@@ -125,7 +129,7 @@ public:
 	IdPoolRef ref;
 	EntityType type;
 
-	unsigned color;
+	unsigned color; // TODO /color/playerid/ ?
 	float x, y;
 
 	// TODO add more params
@@ -204,6 +208,8 @@ class Game final {
 	std::vector<PlayerView> players;
 	// no IdPool as we have no control over IdPoolRefs: the server does
 	std::set<Entity> entities;
+	std::vector<EntityView> entities_killed;
+	unsigned modflags;
 	friend GameView;
 public:
 	Game();
@@ -214,17 +220,19 @@ public:
 	void set_players(const std::vector<PlayerSetting>&);
 
 	void entity_add(const EntityView &ev);
+	bool entity_kill(IdPoolRef);
 };
 
 class GameView final {
 public:
 	Terrain t;
 	std::set<Entity> entities; // TODO use std::variant or Entity uniqueptr
+	std::vector<EntityView> entities_killed;
 	std::vector<PlayerView> players;
 
 	GameView();
 
-	bool try_read(Game&);
+	bool try_read(Game&, bool reset=true);
 
 	Entity *try_get(IdPoolRef) noexcept;
 };

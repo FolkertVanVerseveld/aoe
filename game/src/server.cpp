@@ -257,6 +257,8 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 			return chk_username(p, out, pkg.username());
 		case NetPkgType::playermod:
 			return process_playermod(p, pkg.get_player_control(), out);
+		case NetPkgType::entity_mod:
+			return process_entity_mod(p, pkg.get_entity_mod(), out);
 		default:
 			fprintf(stderr, "bad type: %u\n", pkg.type());
 			throw "invalid type";

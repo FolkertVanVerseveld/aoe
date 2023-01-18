@@ -609,9 +609,12 @@ void Engine::idle_game() {
 	// TODO clamp right, top and bottom side as well
 	cam_x = std::max(0.0f, cam_x);
 
-	std::lock_guard<std::mutex> lk(m);
-	if (client)
-		gv.try_read(client->g);
+	{
+		std::lock_guard<std::mutex> lk(m);
+		if (client)
+			gv.try_read(client->g);
+	}
+	ui.idle();
 }
 
 void Engine::idle_async() {

@@ -109,6 +109,9 @@ void Client::entitymod(const NetEntityMod &em) {
 	case NetEntityControlType::add:
 		g.entity_add(std::get<EntityView>(em.data));
 		break;
+	case NetEntityControlType::kill:
+		g.entity_kill(std::get<IdPoolRef>(em.data));
+		break;
 	default:
 		fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)em.type);
 		break;
@@ -123,6 +126,12 @@ void Client::start_game() {
 	puts("start game");
 	if (eng)
 		eng->trigger_multiplayer_started();
+}
+
+void Client::entity_kill(IdPoolRef ref) {
+	NetPkg pkg;
+	pkg.set_entity_kill(ref);
+	send(pkg);
 }
 
 }

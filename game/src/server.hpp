@@ -111,13 +111,13 @@ enum class NetEntityControlType {
 
 static constexpr size_t refsize = 2 * sizeof(uint32_t);
 
-// TODO byte misalignment. this will cause bus errors on archs that don't support unaligned fetching
 class NetEntityMod final {
 public:
 	NetEntityControlType type;
 	std::variant<std::nullopt_t, IdPoolRef, EntityView> data;
 
 	static constexpr size_t minsize = 2;
+	// TODO byte misalignment. this will cause bus errors on archs that don't support unaligned fetching
 	static constexpr size_t killsize = refsize + minsize;
 	static constexpr size_t addsize = 2 + 2 + 8 + 4 + 4 + 2;
 
@@ -178,6 +178,7 @@ public:
 
 	void set_entity_add(const Entity&);
 	void set_entity_add(const EntityView&);
+	void set_entity_kill(IdPoolRef);
 	NetEntityMod get_entity_mod();
 
 	NetPkgType type();
@@ -268,6 +269,7 @@ private:
 	bool set_scn_vars(const Peer &p, ScenarioSettings &scn);
 
 	bool process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out);
+	bool process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint8_t> &out);
 
 	void start_game();
 
@@ -351,6 +353,9 @@ public:
 
 	void claim_player(unsigned);
 	void claim_cpu(unsigned);
+
+	/** Try to destroy entity. */
+	void entity_kill(IdPoolRef);
 };
 
 class ClientView final {
