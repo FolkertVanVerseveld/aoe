@@ -14,6 +14,7 @@ void UICache::user_interact_entities() {
 	if (!e->keyctl.is_tapped(GameKey::kill_entity) && !selected.empty())
 		return;
 
+#if 0
 	// find first entity in selection
 	for (IdPoolRef ref : selected) {
 		if (e->gv.entities.try_invalidate(ref)) {
@@ -21,6 +22,7 @@ void UICache::user_interact_entities() {
 			break;
 		}
 	}
+#endif
 }
 
 }

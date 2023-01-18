@@ -102,6 +102,19 @@ void Client::playermod(const NetPlayerControl &ctl) {
 	modflags |= (unsigned)ClientModFlags::scn;
 }
 
+void Client::entitymod(const NetEntityMod &em) {
+	std::lock_guard<std::mutex> lk(m);
+
+	switch (em.type) {
+	case NetEntityControlType::add:
+		g.entity_add(std::get<EntityView>(em.data));
+		break;
+	default:
+		fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)em.type);
+		break;
+	}
+}
+
 void Client::start_game() {
 	std::lock_guard<std::mutex> lk(m_eng);
 

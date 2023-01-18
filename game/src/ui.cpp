@@ -1117,7 +1117,7 @@ void UICache::game_mouse_process() {
 
 	// TODO inspect selected types
 	IdPoolRef ref = *this->selected.begin();
-	Entity *ent = e->gv.entities.try_get(ref);
+	Entity *ent = e->gv.try_get(ref);
 
 	if (ent) {
 		switch (ent->type) {
@@ -1141,7 +1141,7 @@ void UICache::show_selections() {
 	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
 
 	for (IdPoolRef ref : selected) {
-		Entity *ent = e->gv.entities.try_get(ref);
+		Entity *ent = e->gv.try_get(ref);
 		if (!ent)
 			continue;
 
@@ -1189,9 +1189,7 @@ void UICache::load_buildings() {
 	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
 	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
 
-	for (auto kv : e->gv.entities) {
-		Entity &ent = kv.second;
-
+	for (const Entity &ent : e->gv.entities) {
 		io::DrsId bld_base = io::DrsId::bld_town_center;
 		io::DrsId bld_player = io::DrsId::bld_town_center_player;
 

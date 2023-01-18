@@ -139,6 +139,35 @@ void NetPkg::ntoh() {
 
 			break;
 		}
+		case NetPkgType::entity_mod: {
+			need_payload(NetEntityMod::minsize);
+			uint16_t *dw = (uint16_t*)data.data();
+			uint32_t *dd;
+
+			dw[0] = ntohs(dw[0]); // type
+
+			switch ((NetEntityControlType)dw[0]) {
+			case NetEntityControlType::add:
+				need_payload(NetEntityMod::addsize);
+				dw[1] = ntohs(dw[1]); // e.type
+
+				dd = (uint32_t*)&dw[2];
+
+				// e.ref
+				dd[0] = ntohl(dd[0]);
+				dd[1] = ntohl(dd[1]);
+
+				dd[2] = ntohl(dd[2]); // e.x
+				dd[3] = ntohl(dd[3]); // e.y
+
+				dw = (uint16_t*)&dd[4];
+				dw[0] = ntohs(dw[0]); // e.color
+				break;
+			default:
+				break;
+			}
+			break;
+		}
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -232,6 +261,31 @@ void NetPkg::hton() {
 			for (unsigned i = 0; i < 4; ++i)
 				dd[i] = htonl(dd[i]);
 
+			break;
+		}
+		case NetPkgType::entity_mod: {
+			uint16_t *dw = (uint16_t*)data.data();
+			uint32_t *dd;
+
+			NetEntityControlType type = (NetEntityControlType)dw[0];
+			dw[0] = htons(dw[0]);
+
+			switch (type) {
+			case NetEntityControlType::add:
+				dw[1] = htons(dw[1]); // e.type
+
+				dd = (uint32_t*)&dw[2];
+
+				dd[0] = htonl(dd[0]); dd[1] = htonl(dd[1]); // e.ref
+				dd[2] = htonl(dd[2]); // e.x
+				dd[3] = htonl(dd[3]); // e.y
+
+				dw = (uint16_t*)&dd[4];
+				dw[0] = htons(dw[0]); // e.color
+				break;
+			default:
+				break;
+			}
 			break;
 		}
 		default:
@@ -716,6 +770,81 @@ NetPeerControl NetPkg::get_peer_control() {
 			return NetPeerControl(ref, type, dw[1]);
 		default:
 			return NetPeerControl(ref, (NetPeerControlType)dw[0]);
+	}
+}
+
+void NetPkg::set_entity_add(const Entity &e) {
+	EntityView ev(e.ref, e.type, e.color, e.x, e.y);
+	set_entity_add(ev);
+}
+
+void NetPkg::set_entity_add(const EntityView &e) {
+	static_assert(sizeof(float) <= sizeof(uint32_t));
+
+	if (e.ref == invalid_ref)
+		throw std::runtime_error("invalid ref");
+
+	data.resize(NetEntityMod::addsize);
+
+	/*
+	layout:
+	b # sz  name
+	2 1 u16 type
+	2 1 u16 e.type
+	8 2 u32 e.ref
+	4 1 u32 e.x
+	4 1 u32 e.y
+	2 1 u16 e.color
+	*/
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)NetEntityControlType::add;
+	dw[1] = (uint16_t)e.type;
+
+	uint32_t *dd = (uint32_t*)&dw[2];
+
+	dd[0] = e.ref.first;
+	dd[1] = e.ref.second;
+
+	dd[2] = (uint32_t)e.x;
+	dd[3] = (uint32_t)e.y;
+
+	dw = (uint16_t*)&dd[4];
+	dw[0] = e.color;
+
+	set_hdr(NetPkgType::entity_mod);
+}
+
+NetEntityMod NetPkg::get_entity_mod() {
+	ZoneScoped;
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::entity_mod)
+		throw std::runtime_error("not an entity control packet");
+
+	const uint16_t *dw = (const uint16_t*)data.data();
+	const uint32_t *dd;
+
+	NetEntityControlType type = (NetEntityControlType)dw[0];
+
+	switch (type) {
+	case NetEntityControlType::add: {
+		EntityView ev;
+
+		ev.type = (EntityType)dw[1];
+
+		dd = (const uint32_t*)&dw[2];
+		ev.ref.first = dd[0]; ev.ref.second = dd[1];
+		ev.x = dd[2]; ev.y = dd[3];
+
+		dw = (const uint16_t*)&dd[4];
+		ev.color = dw[0];
+
+		return NetEntityMod(ev);
+	}
+	default:
+		throw std::runtime_error("unknown entity control packet");
 	}
 }
 

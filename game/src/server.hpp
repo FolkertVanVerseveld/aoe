@@ -33,6 +33,7 @@ enum class NetPkgType {
 	peermod,
 	terrainmod,
 	resmod,
+	entity_mod,
 };
 
 struct NetPkgHdr final {
@@ -102,6 +103,28 @@ public:
 	NetTerrainMod() : x(0), y(0), w(0), h(0), tiles(), hmap() {}
 };
 
+enum class NetEntityControlType {
+	add,
+	update,
+	kill,
+};
+
+static constexpr size_t refsize = 2 * sizeof(uint32_t);
+
+// TODO byte misalignment. this will cause bus errors on archs that don't support unaligned fetching
+class NetEntityMod final {
+public:
+	NetEntityControlType type;
+	std::variant<std::nullopt_t, IdPoolRef, EntityView> data;
+
+	static constexpr size_t minsize = 2;
+	static constexpr size_t killsize = refsize + minsize;
+	static constexpr size_t addsize = 2 + 2 + 8 + 4 + 4 + 2;
+
+	NetEntityMod(IdPoolRef ref) : type(NetEntityControlType::kill), data(ref) {}
+	NetEntityMod(const EntityView &e) : type(NetEntityControlType::add), data(e) {}
+};
+
 static_assert(sizeof(int) >= sizeof(int32_t));
 
 class NetPkg final {
@@ -149,8 +172,13 @@ public:
 	void set_terrain_mod(const NetTerrainMod&);
 	NetTerrainMod get_terrain_mod();
 
+	// TODO repurpose to playerview?
 	void set_resources(const Resources&);
 	Resources get_resources();
+
+	void set_entity_add(const Entity&);
+	void set_entity_add(const EntityView&);
+	NetEntityMod get_entity_mod();
 
 	NetPkgType type();
 
@@ -291,6 +319,7 @@ private:
 	void playermod(const NetPlayerControl&);
 	void peermod(const NetPeerControl&);
 	void terrainmod(const NetTerrainMod&);
+	void entitymod(const NetEntityMod&);
 public:
 	bool connected() const noexcept { return m_connected; }
 

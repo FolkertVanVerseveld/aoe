@@ -106,15 +106,39 @@ enum class EntityType {
 	barracks,
 };
 
+class EntityView final {
+public:
+	IdPoolRef ref;
+	EntityType type;
+
+	unsigned color;
+	float x, y;
+
+	// TODO add ui info
+
+	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0) {}
+	EntityView(IdPoolRef ref, EntityType type, unsigned color, float x, float y) : ref(ref), type(type), color(color), x(x), y(y) {}
+};
+
 class Entity final {
 public:
 	IdPoolRef ref;
 	EntityType type;
 
 	unsigned color;
-	int x, y;
+	float x, y;
 
-	Entity(IdPoolRef ref, EntityType type, unsigned color, int x, int y) : ref(ref), type(type), color(color), x(x), y(y) {}
+	// TODO add more params
+
+	Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), color(0), x(0), y(0) {}
+
+	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y) : ref(ref), type(type), color(color), x(x), y(y) {}
+
+	Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y) {}
+
+	friend bool operator<(const Entity &lhs, const Entity &rhs) noexcept {
+		return lhs.ref < rhs.ref;
+	}
 };
 
 class PlayerAchievements final {
@@ -166,9 +190,10 @@ public:
 	PlayerSetting init;
 	Resources res;
 	int64_t score;
+	unsigned age;
 	bool alive;
 
-	PlayerView(const PlayerSetting &ps) : init(ps), res(ps.res), score(0), alive(true) {}
+	PlayerView(const PlayerSetting &ps) : init(ps), res(ps.res), score(0), age(1), alive(true) {}
 };
 
 class GameView;
@@ -177,6 +202,8 @@ class Game final {
 	std::mutex m;
 	Terrain t;
 	std::vector<PlayerView> players;
+	// no IdPool as we have no control over IdPoolRefs: the server does
+	std::set<Entity> entities;
 	friend GameView;
 public:
 	Game();
@@ -185,17 +212,21 @@ public:
 	void terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
 
 	void set_players(const std::vector<PlayerSetting>&);
+
+	void entity_add(const EntityView &ev);
 };
 
 class GameView final {
 public:
 	Terrain t;
-	IdPool<Entity> entities; // TODO use std::variant or Entity uniqueptr
+	std::set<Entity> entities; // TODO use std::variant or Entity uniqueptr
 	std::vector<PlayerView> players;
 
 	GameView();
 
 	bool try_read(Game&);
+
+	Entity *try_get(IdPoolRef) noexcept;
 };
 
 }

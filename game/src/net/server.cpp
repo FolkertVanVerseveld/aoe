@@ -198,11 +198,17 @@ void Server::start_game() {
 	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
 	this->t.generate();
 
-	entities.clear();
-
 	players.clear();
 	for (const PlayerSetting &ps : scn.players)
 		players.emplace_back(ps, size);
+
+	entities.clear();
+	for (unsigned i = 0; i < players.size(); ++i) {
+		// TODO wrap in spawn(towncenter) function or smth
+		auto p = entities.emplace(EntityType::town_center, i, 2, 1 + 3 * i);
+		assert(p.second);
+		players[i].entities.emplace(p.first->first);
+	}
 
 	NetTerrainMod tm;
 
@@ -214,6 +220,13 @@ void Server::start_game() {
 
 	pkg.set_terrain_mod(tm);
 	broadcast(pkg);
+
+	// now send all entities to each client
+	for (auto &kv : entities) {
+		pkg.set_entity_add(kv.second);
+		// TODO only send to clients that can see this entity
+		broadcast(pkg);
+	}
 
 	pkg.set_start_game();
 	broadcast(pkg);

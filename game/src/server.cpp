@@ -478,6 +478,9 @@ void Client::mainloop() {
 				case NetPkgType::terrainmod:
 					terrainmod(pkg.get_terrain_mod());
 					break;
+				case NetPkgType::entity_mod:
+					entitymod(pkg.get_entity_mod());
+					break;
 				default:
 					printf("%s: type=%X\n", __func__, pkg.type());
 					break;
