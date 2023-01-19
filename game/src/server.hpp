@@ -225,6 +225,37 @@ public:
 	SocketRef(IdPoolRef ref, SOCKET sock) : ref(ref), sock(sock) {}
 };
 
+// TODO create world events and use them in world::event_queue
+enum class WorldEventType {
+	entity_add,
+	entity_kill,
+	player_kill,
+	gameover,
+};
+
+class Server;
+
+class World final {
+	std::mutex m;
+	Terrain t;
+	IdPool<Entity> entities;
+	std::vector<Player> players;
+public:
+	ScenarioSettings scn;
+	std::atomic<double> logic_gamespeed;
+
+	World();
+
+	void load_scn(const ScenarioSettings &scn);
+	void create_terrain();
+
+	NetTerrainMod fetch_terrain(int x, int y, unsigned &w, unsigned &h);
+
+	void eventloop(Server &s);
+private:
+	void tick();
+};
+
 class Server final : public ServerSocketController {
 	ServerSocket s;
 	std::atomic<bool> m_active, m_running;
@@ -232,15 +263,15 @@ class Server final : public ServerSocketController {
 	uint16_t port, protocol;
 	std::map<Peer, ClientInfo> peers;
 	IdPool<SocketRef> refs;
-	ScenarioSettings scn;
-	std::atomic<double> logic_gamespeed;
-	Terrain t;
+	// TODO move these into a world class or smth
+	World w;
 	IdPool<Entity> entities;
 	std::vector<Player> players;
 	std::map<std::string, std::vector<std::string>> civs;
 	std::vector<std::string> civnames;
 
 	friend Debug;
+	friend World;
 public:
 	Server();
 	~Server();
@@ -278,9 +309,6 @@ private:
 	void broadcast(NetPkg &pkg, bool include_host=true);
 	void broadcast(NetPkg &pkg, const Peer &exclude);
 	void send(const Peer &p, NetPkg &pkg);
-
-	void eventloop();
-	void tick();
 };
 
 class ClientView;

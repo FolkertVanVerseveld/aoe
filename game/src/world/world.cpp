@@ -8,18 +8,61 @@
 
 namespace aoe {
 
-void Server::tick() {
+World::World() : m(), t(), entities(), players(), scn(), logic_gamespeed(1.0) {}
+
+void World::load_scn(const ScenarioSettings &scn) {
+	ZoneScoped;
+
+	// TODO filter bogus settings
+	this->scn.width = scn.width;
+	this->scn.height = scn.height;
+	this->scn.popcap = scn.popcap;
+	this->scn.age = scn.age;
+	this->scn.seed = scn.seed;
+	this->scn.villagers = scn.villagers;
+
+	this->scn.res = scn.res;
+
+	this->scn.fixed_start = scn.fixed_start;
+	this->scn.explored = scn.explored;
+	this->scn.all_technologies = scn.all_technologies;
+	this->scn.cheating = scn.cheating;
+	this->scn.square = scn.square;
+	this->scn.wrap = scn.wrap;
+
+	t.resize(this->scn.width, this->scn.height, this->scn.seed, this->scn.players.size(), this->scn.wrap);
+}
+
+void World::create_terrain() {
+	ZoneScoped;
+	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
+	this->t.generate();
+}
+
+NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
+	ZoneScoped;
+	assert(x >= 0 && y >= 0);
+
+	NetTerrainMod tm;
+	t.fetch(tm.tiles, tm.hmap, 0, 0, w, h);
+
+	tm.x = x; tm.y = y; tm.w = w; tm.h = h;
+
+	return tm;
+}
+
+void World::tick() {
 	ZoneScoped;
 	// TODO stub
 }
 
-void Server::eventloop() {
+void World::eventloop(Server &s) {
 	ZoneScoped;
 
 	auto last = std::chrono::steady_clock::now();
 	double dt = 0;
 
-	while (m_running.load()) {
+	while (s.m_running.load()) {
 		// recompute as logic_gamespeed may change
 		double interval_inv = logic_gamespeed * DEFAULT_TICKS_PER_SECOND;
 		double interval = 1 / std::max(0.01, interval_inv);

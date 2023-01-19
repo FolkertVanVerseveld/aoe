@@ -5,7 +5,7 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), scn(), logic_gamespeed(1.0), t(), entities(), players(), civs() {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), w(), entities(), players(), civs() {}
 
 Server::~Server() {
 	stop();
@@ -38,7 +38,7 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 	pkg.set_username(name);
 	send(p, pkg);
 
-	pkg.set_player_resize(scn.players.size());
+	pkg.set_player_resize(w.scn.players.size());
 	send(p, pkg);
 
 	// now send all other player refs we have to the joined peer
@@ -212,27 +212,8 @@ bool Server::set_scn_vars(const Peer &p, ScenarioSettings &scn) {
 		return false;
 	}
 
-	// TODO filter bogus settings
-	this->scn.width = scn.width;
-	this->scn.height = scn.height;
-	this->scn.popcap = scn.popcap;
-	this->scn.age = scn.age;
-	this->scn.seed = scn.seed;
-	this->scn.villagers = scn.villagers;
-
-	this->scn.res = scn.res;
-
-	this->scn.fixed_start = scn.fixed_start;
-	this->scn.explored = scn.explored;
-	this->scn.all_technologies = scn.all_technologies;
-	this->scn.cheating = scn.cheating;
-	this->scn.square = scn.square;
-	this->scn.wrap = scn.wrap;
-
-	t.resize(this->scn.width, this->scn.height, this->scn.seed, this->scn.players.size(), this->scn.wrap);
-
 	NetPkg pkg;
-	pkg.set_scn_vars(this->scn);
+	pkg.set_scn_vars(w.scn);
 	broadcast(pkg);
 
 	return true;

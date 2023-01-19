@@ -53,7 +53,7 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 	switch (ctl.type) {
 		case NetPlayerControlType::resize: {
 			uint16_t size = std::get<uint16_t>(ctl.data);
-			scn.players.resize(size);
+			w.scn.players.resize(size);
 			pkg.set_player_resize(size);
 			broadcast(pkg);
 			return true;
@@ -62,15 +62,15 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			unsigned idx = std::get<uint16_t>(ctl.data); // remember, it is 1-based
 
 			// ignore bad index, might be desync. also allow 0 to release ref
-			if (idx > scn.players.size())
+			if (idx > w.scn.players.size())
 				return true;
 
 			// claim slot. NOTE multiple players can claim the same slot
 			IdPoolRef ref = peers.at(p).ref;
-			scn.owners[ref] = idx;
+			w.scn.owners[ref] = idx;
 
 			if (idx)
-				scn.players[idx - 1].ai = false;
+				w.scn.players[idx - 1].ai = false;
 
 			// send to players
 			pkg.set_claim_player(ref, idx);
@@ -82,16 +82,16 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			unsigned idx = std::get<uint16_t>(ctl.data); // remember, it is 1-based
 
 			// ignore bad index, might be desync
-			if (!idx || idx > scn.players.size())
+			if (!idx || idx > w.scn.players.size())
 				return true;
 
 			// claim slot
-			scn.players[idx - 1].ai = true;
+			w.scn.players[idx - 1].ai = true;
 
 			// purge any players that had this one claimed
-			for (auto it = scn.owners.begin(); it != scn.owners.end();) {
+			for (auto it = w.scn.owners.begin(); it != w.scn.owners.end();) {
 				if (it->second == idx)
-					it = scn.owners.erase(it);
+					it = w.scn.owners.erase(it);
 				else
 					++it;
 			}
@@ -107,7 +107,7 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			unsigned idx = p.first; // remember, it is 1-based
 
 			// ignore bad index, might be desync
-			if (!idx || idx > scn.players.size())
+			if (!idx || idx > w.scn.players.size())
 				return true;
 
 			unsigned civ = p.second;
@@ -115,7 +115,7 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			if (civ > civnames.size())
 				return false; // kick, cuz we have data inconsistency
 
-			scn.players[idx - 1].civ = civ;
+			w.scn.players[idx - 1].civ = civ;
 
 			pkg.set_player_civ(idx, civ);
 			broadcast(pkg);
@@ -127,12 +127,12 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			unsigned idx = p.first; // remember, it is 1-based
 
 			// ignore bad index, might be desync
-			if (!idx || idx > scn.players.size())
+			if (!idx || idx > w.scn.players.size())
 				return true;
 
 			unsigned team = p.second;
 
-			scn.players[idx - 1].team = team;
+			w.scn.players[idx - 1].team = team;
 
 			pkg.set_player_team(idx, team);
 			broadcast(pkg);
@@ -146,10 +146,10 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			unsigned idx = p.first;
 
 			// ignore bad index, might be desync
-			if (!idx || idx > scn.players.size())
+			if (!idx || idx > w.scn.players.size())
 				return true;
 
-			scn.players[idx - 1].name = p.second;
+			w.scn.players[idx - 1].name = p.second;
 
 			pkg.set_player_name(idx, p.second);
 			broadcast(pkg);
@@ -171,7 +171,7 @@ void Server::start_game() {
 	m_running = true;
 
 	std::thread t([this]() {
-		eventloop();
+		w.eventloop(*this);
 	});
 	t.detach();
 
@@ -180,20 +180,20 @@ void Server::start_game() {
 	pkg.set_start_game();
 	broadcast(pkg);
 
-	pkg.set_scn_vars(scn);
+	pkg.set_scn_vars(w.scn);
 	broadcast(pkg);
 
-	for (unsigned i = 0; i < scn.players.size(); ++i) {
-		PlayerSetting &p = scn.players[i];
+	for (unsigned i = 0; i < w.scn.players.size(); ++i) {
+		PlayerSetting &p = w.scn.players[i];
 
-		p.res = scn.res;
+		p.res = w.scn.res;
 
 		// if player has no name, try find an owner that has one
 		if (p.name.empty()) {
 			unsigned owners = 0;
 			std::string alias;
 
-			for (auto kv : scn.owners) {
+			for (auto kv : w.scn.owners) {
 				if (kv.second == i + 1) {
 					++owners;
 					alias = get_ci(kv.first).username;
@@ -220,12 +220,11 @@ void Server::start_game() {
 		broadcast(pkg);
 	}
 
-	size_t size = scn.width * scn.height;
-	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
-	this->t.generate();
+	size_t size = w.scn.width * w.scn.height;
+	w.create_terrain();
 
 	players.clear();
-	for (const PlayerSetting &ps : scn.players)
+	for (const PlayerSetting &ps : w.scn.players)
 		players.emplace_back(ps, size);
 
 	entities.clear();
@@ -234,15 +233,14 @@ void Server::start_game() {
 		auto p = entities.emplace(EntityType::town_center, i, 2, 1 + 3 * i);
 		assert(p.second);
 		players[i].entities.emplace(p.first->first);
+
+		p = entities.emplace(EntityType::barracks, i, 2 + 2 * 3, 1 + 4 * i);
+		assert(p.second);
+		players[i].entities.emplace(p.first->first);
 	}
 
-	NetTerrainMod tm;
-
-	unsigned w = std::min(16u, this->t.w), h = std::min(16u, this->t.h);
-	this->t.fetch(tm.tiles, tm.hmap, 0, 0, w, h);
-
-	tm.x = tm.y = 0;
-	tm.w = w; tm.h = h;
+	unsigned w = 16, h = 16;
+	NetTerrainMod tm(this->w.fetch_terrain(0, 0, w, h));
 
 	pkg.set_terrain_mod(tm);
 	broadcast(pkg);
