@@ -49,6 +49,11 @@ void Client::playermod(const NetPlayerControl &ctl) {
 
 			break;
 		}
+		case NetPlayerControlType::died: {
+			unsigned pos = std::get<uint16_t>(ctl.data);
+			g.player_died(pos);
+			break;
+		}
 		case NetPlayerControlType::set_cpu_ref: {
 			unsigned pos = std::get<uint16_t>(ctl.data) - 1; // remember, it is 1-based
 

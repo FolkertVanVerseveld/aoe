@@ -52,6 +52,7 @@ struct NetPkgHdr final {
 enum class NetPlayerControlType {
 	resize,
 	erase,
+	died,
 	set_ref,
 	set_cpu_ref,
 	set_player_name,
@@ -161,6 +162,7 @@ public:
 	void set_player_civ(uint16_t, uint16_t);
 	void set_player_team(uint16_t, uint16_t);
 	void set_player_name(uint16_t, const std::string&);
+	void set_player_died(uint16_t); // server to client
 	NetPlayerControl get_player_control();
 
 	void set_incoming(IdPoolRef);

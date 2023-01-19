@@ -63,6 +63,7 @@ enum class SfxId {
 	bld_die1,
 	bld_die2,
 	bld_die3,
+	player_resign,
 };
 
 class Audio final {

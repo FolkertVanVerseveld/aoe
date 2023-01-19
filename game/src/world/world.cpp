@@ -53,12 +53,15 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 
 void World::tick_players() {
 	ZoneScoped;
-	for (Player &p : players) {
-		if (p.check_alive())
+	for (unsigned i = 0; i < players.size(); ++i) {
+		Player &p = players[i];
+
+		if (!p.alive || !p.entities.empty())
 			continue;
 
+		p.alive = false;
 		NetPkg pkg;
-		pkg.set_chat_text(invalid_ref, p.init.name + " died");
+		pkg.set_player_died(i);
 		s->broadcast(pkg);
 	}
 }

@@ -186,8 +186,6 @@ public:
 
 	Player(const PlayerSetting&, size_t explored_max);
 
-	bool check_alive() noexcept;
-
 	PlayerView view() const noexcept;
 };
 
@@ -221,6 +219,8 @@ public:
 
 	void set_players(const std::vector<PlayerSetting>&);
 
+	void player_died(unsigned);
+
 	void entity_add(const EntityView &ev);
 	bool entity_kill(IdPoolRef);
 };
@@ -231,6 +231,7 @@ public:
 	std::set<Entity> entities; // TODO use std::variant or Entity uniqueptr
 	std::vector<EntityView> entities_killed;
 	std::vector<PlayerView> players;
+	std::vector<unsigned> players_died;
 
 	GameView();
 

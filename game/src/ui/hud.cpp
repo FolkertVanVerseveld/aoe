@@ -23,6 +23,12 @@ void UICache::idle() {
 	}
 
 	killed.clear();
+
+	for (unsigned pos : e->gv.players_died) {
+		PlayerView &pv = e->gv.players[pos];
+		e->add_chat_text(pv.init.name + " resigned");
+		e->sfx.play_sfx(SfxId::player_resign);
+	}
 }
 
 void UICache::user_interact_entities() {

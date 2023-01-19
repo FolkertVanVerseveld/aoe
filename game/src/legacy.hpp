@@ -68,6 +68,8 @@ enum class DrsId {
 	sfx_bld_die1 = 5077,
 	sfx_bld_die2 = 5078,
 	sfx_bld_die3 = 5079,
+
+	sfx_player_resign = 50306,
 };
 
 struct DrsBkg final {

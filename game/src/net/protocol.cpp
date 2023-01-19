@@ -581,7 +581,18 @@ void NetPkg::claim_player_setting(uint16_t idx) {
 	uint16_t *dw = (uint16_t*)data.data();
 
 	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_ref;
-	dw[1] = (uint16_t)idx;
+	dw[1] = idx;
+
+	set_hdr(NetPkgType::playermod);
+}
+
+void NetPkg::set_player_died(uint16_t idx) {
+	data.resize(NetPlayerControl::resize_size);
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::died;
+	dw[1] = idx;
 
 	set_hdr(NetPkgType::playermod);
 }
@@ -611,6 +622,7 @@ NetPlayerControl NetPkg::get_player_control() {
 	switch (type) {
 		case NetPlayerControlType::resize:
 		case NetPlayerControlType::erase:
+		case NetPlayerControlType::died:
 		case NetPlayerControlType::set_ref:
 		case NetPlayerControlType::set_cpu_ref:
 			return NetPlayerControl(type, dw[1]);

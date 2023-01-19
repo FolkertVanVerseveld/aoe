@@ -8,6 +8,7 @@ namespace aoe {
 enum class GameMod {
 	terrain = 1 << 0,
 	entities = 1 << 1,
+	players = 1 << 2,
 };
 
 Game::Game() : m(), t(), players(), entities(), entities_killed(), modflags((unsigned)-1) {}
@@ -32,6 +33,15 @@ void Game::set_players(const std::vector<PlayerSetting> &lst) {
 
 	for (const PlayerSetting &ps : lst)
 		players.emplace_back(ps);
+
+	modflags |= (unsigned)GameMod::players;
+}
+
+void Game::player_died(unsigned pos) {
+	std::lock_guard<std::mutex> lk(m);
+
+	players.at(pos).alive = false;
+	modflags |= (unsigned)GameMod::players;
 }
 
 void Game::entity_add(const EntityView &ev) {
@@ -68,7 +78,20 @@ bool GameView::try_read(Game &g, bool reset) {
 		t = g.t;
 
 	// TODO only copy what has changed
+	players_died.clear();
+
+	std::vector<bool> players_alive;
+	size_t size = players.size();
+
+	for (PlayerView &pv : players)
+		players_alive.emplace_back(pv.alive);
+
 	players = g.players;
+
+	for (unsigned i = 0; i < std::min(size, g.players.size()); ++i)
+		if (players_alive[i] != g.players[i].alive)
+			players_died.emplace_back(i);
+	// end todo
 
 	if (g.modflags & (unsigned)GameMod::entities) {
 		entities = g.entities;

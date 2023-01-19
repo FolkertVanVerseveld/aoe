@@ -200,6 +200,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	}
 
 	eng.sfx.load_sfx(SfxId::sfx_chat, drs_ui.open_wav(DrsId::sfx_chat));
+	eng.sfx.load_sfx(SfxId::player_resign, drs_ui.open_wav(DrsId::sfx_player_resign));
 }
 
 void Assets::add_gifs(gfx::ImagePacker &p, Animation &a, DrsId id) {
