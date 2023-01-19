@@ -186,6 +186,8 @@ public:
 
 	Player(const PlayerSetting&, size_t explored_max);
 
+	bool check_alive() noexcept;
+
 	PlayerView view() const noexcept;
 };
 

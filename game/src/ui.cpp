@@ -501,8 +501,6 @@ void Engine::show_multiplayer_achievements() {
 	ImVec2 pos(ImGui::GetWindowPos());
 	ImVec2 tl(ImGui::GetWindowContentRegionMin()), br(ImGui::GetWindowContentRegionMax());
 	tl.x += pos.x; tl.y += pos.y; br.x += pos.x; br.y += pos.y;
-	//ImVec2 pos(ImGui::GetWindowPos()), size(ImGui::GetWindowSize());
-	//lst->AddImage(tex1, pos, ImVec2(pos.x + size.x, pos.y + size.y), ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
 	lst->AddImage(tex1, tl, br, ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
 
 	float w = br.x - tl.x;
@@ -587,6 +585,10 @@ void Engine::show_multiplayer_achievements() {
 				float rowy = tl.y + 300 * sy + (348 - 300) * i * sy;
 
 				std::string txt;
+
+				txt = v.init.name;
+
+				lst->AddText(ImVec2(tl.x + 40 * sx, rowy - sz.y), IM_COL32_WHITE, txt.c_str());
 
 				txt = v.alive ? "Yes" : "No";
 

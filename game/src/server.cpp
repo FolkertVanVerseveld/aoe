@@ -5,7 +5,7 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), w(), entities(), players(), civs() {}
+Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), w(), civs() {}
 
 Server::~Server() {
 	stop();
@@ -481,54 +481,6 @@ void Client::mainloop() {
 			eng->push_error("Game session aborted");
 		}
 	}
-}
-
-void Client::send_protocol(uint16_t version) {
-	NetPkg pkg;
-	pkg.set_protocol(version);
-	send(pkg);
-}
-
-uint16_t Client::recv_protocol() {
-	NetPkg pkg = recv();
-	return pkg.protocol_version();
-}
-
-void Client::send_chat_text(const std::string &s) {
-	NetPkg pkg;
-	pkg.set_chat_text(me, s);
-	send(pkg);
-}
-
-void Client::send_start_game() {
-	NetPkg pkg;
-	pkg.set_start_game();
-	send(pkg);
-}
-
-void Client::send_username(const std::string &s) {
-	NetPkg pkg;
-	pkg.set_username(s);
-	send(pkg);
-}
-
-void Client::claim_player(unsigned idx) {
-	NetPkg pkg;
-	pkg.claim_player_setting(idx);
-	send(pkg);
-}
-
-void Client::claim_cpu(unsigned idx) {
-	NetPkg pkg;
-	pkg.claim_cpu_setting(idx);
-	send(pkg);
-}
-
-void Client::send_scn_vars(const ScenarioSettings &scn) {
-	//printf("%s: %u,%u\n", __func__, scn.width, scn.height);
-	NetPkg pkg;
-	pkg.set_scn_vars(scn);
-	send(pkg);
 }
 
 }

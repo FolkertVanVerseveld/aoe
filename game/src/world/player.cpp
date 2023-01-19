@@ -17,6 +17,13 @@ int64_t PlayerAchievements::recompute(size_t max_military, size_t max_villagers,
 
 Player::Player(const PlayerSetting &ps, size_t explored_max) : init(ps), res(ps.res), achievements(), explored_max(explored_max), entities(), alive(true) {}
 
+bool Player::check_alive() noexcept {
+	if (entities.empty())
+		alive = false;
+
+	return alive;
+}
+
 PlayerView Player::view() const noexcept {
 	PlayerView v(init);
 

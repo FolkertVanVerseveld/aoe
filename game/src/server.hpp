@@ -235,11 +235,21 @@ enum class WorldEventType {
 
 class Server;
 
+class WorldEvent final {
+public:
+	WorldEventType type;
+	std::variant<std::nullopt_t, IdPoolRef> data;
+
+	template<class... Args> WorldEvent(WorldEventType type, Args&&... data) : type(type), data(data...) {}
+};
+
 class World final {
-	std::mutex m;
+	std::mutex m, m_events;
 	Terrain t;
 	IdPool<Entity> entities;
 	std::vector<Player> players;
+	std::deque<WorldEvent> events_in;
+	Server *s;
 public:
 	ScenarioSettings scn;
 	std::atomic<double> logic_gamespeed;
@@ -247,13 +257,28 @@ public:
 	World();
 
 	void load_scn(const ScenarioSettings &scn);
-	void create_terrain();
 
 	NetTerrainMod fetch_terrain(int x, int y, unsigned &w, unsigned &h);
 
 	void eventloop(Server &s);
+
+	template<class... Args> void add_event(WorldEventType type, Args&&... data) {
+		std::lock_guard<std::mutex> lk(m_events);
+		events_in.emplace_back(type, data...);
+	}
 private:
+	void startup();
+	void create_terrain();
+	void create_players();
+	void create_entities();
+
+	void spawn_building(EntityType t, unsigned player, int x, int y);
+
 	void tick();
+	void tick_players();
+	void pump_events();
+
+	void entity_kill(WorldEvent &ev);
 };
 
 class Server final : public ServerSocketController {
@@ -265,8 +290,6 @@ class Server final : public ServerSocketController {
 	IdPool<SocketRef> refs;
 	// TODO move these into a world class or smth
 	World w;
-	IdPool<Entity> entities;
-	std::vector<Player> players;
 	std::map<std::string, std::vector<std::string>> civs;
 	std::vector<std::string> civnames;
 

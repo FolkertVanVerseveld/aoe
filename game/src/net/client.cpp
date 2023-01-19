@@ -134,4 +134,51 @@ void Client::entity_kill(IdPoolRef ref) {
 	send(pkg);
 }
 
+void Client::send_protocol(uint16_t version) {
+	NetPkg pkg;
+	pkg.set_protocol(version);
+	send(pkg);
+}
+
+uint16_t Client::recv_protocol() {
+	NetPkg pkg = recv();
+	return pkg.protocol_version();
+}
+
+void Client::send_chat_text(const std::string &s) {
+	NetPkg pkg;
+	pkg.set_chat_text(me, s);
+	send(pkg);
+}
+
+void Client::send_start_game() {
+	NetPkg pkg;
+	pkg.set_start_game();
+	send(pkg);
+}
+
+void Client::send_username(const std::string &s) {
+	NetPkg pkg;
+	pkg.set_username(s);
+	send(pkg);
+}
+
+void Client::claim_player(unsigned idx) {
+	NetPkg pkg;
+	pkg.claim_player_setting(idx);
+	send(pkg);
+}
+
+void Client::claim_cpu(unsigned idx) {
+	NetPkg pkg;
+	pkg.claim_cpu_setting(idx);
+	send(pkg);
+}
+
+void Client::send_scn_vars(const ScenarioSettings &scn) {
+	NetPkg pkg;
+	pkg.set_scn_vars(scn);
+	send(pkg);
+}
+
 }

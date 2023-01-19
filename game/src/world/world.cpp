@@ -8,7 +8,7 @@
 
 namespace aoe {
 
-World::World() : m(), t(), entities(), players(), scn(), logic_gamespeed(1.0) {}
+World::World() : m(), m_events(), t(), entities(), players(), events_in(), s(nullptr), scn(), logic_gamespeed(1.0) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -51,13 +51,166 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 	return tm;
 }
 
+void World::tick_players() {
+	ZoneScoped;
+	for (Player &p : players) {
+		if (p.check_alive())
+			continue;
+
+		NetPkg pkg;
+		pkg.set_chat_text(invalid_ref, p.init.name + " died");
+		s->broadcast(pkg);
+	}
+}
+
 void World::tick() {
 	ZoneScoped;
-	// TODO stub
+	tick_players();
+}
+
+void World::pump_events() {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m_events);
+
+	for (WorldEvent &ev : events_in) {
+		// TODO stub
+
+		try {
+			switch (ev.type) {
+			case WorldEventType::entity_kill:
+				entity_kill(ev);
+				break;
+			default:
+				printf("%s: todo: process event: %u\n", __func__, (unsigned)ev.type);
+				break;
+			}
+		} catch (const std::runtime_error &e) {
+			fprintf(stderr, "%s: bad event: %u\n", __func__, (unsigned)ev.type);
+		}
+	}
+
+	events_in.clear();
+}
+
+void World::entity_kill(WorldEvent &ev) {
+	ZoneScoped;
+	IdPoolRef ref = std::get<IdPoolRef>(ev.data);
+
+	// TODO add client info that sent kill command
+	// TODO check if player is allowed to kill this entity
+	if (entities.try_invalidate(ref)) {
+		for (Player &p : players)
+			p.entities.erase(ref);
+
+		NetPkg pkg;
+		pkg.set_entity_kill(ref);
+		s->broadcast(pkg);
+	}
+}
+
+void World::create_players() {
+	ZoneScoped;
+
+	NetPkg pkg;
+
+	for (unsigned i = 0; i < scn.players.size(); ++i) {
+		PlayerSetting &p = scn.players[i];
+
+		p.res = scn.res;
+
+		// if player has no name, try find an owner that has one
+		if (p.name.empty()) {
+			unsigned owners = 0;
+			std::string alias;
+
+			for (auto kv : scn.owners) {
+				if (kv.second == i + 1) {
+					++owners;
+					alias = s->get_ci(kv.first).username;
+				}
+			}
+
+			if (owners == 1) {
+				p.name = alias;
+			} else {
+				p.name = "Oerkneus de Eerste";
+
+				if (p.civ >= 0 && p.civ < s->civs.size()) {
+					auto &names = s->civs[s->civnames[p.civ]];
+					p.name = names[rand() % names.size()];
+				}
+			}
+		}
+
+		pkg.set_player_name(i + 1, p.name);
+		s->broadcast(pkg);
+		pkg.set_player_civ(i + 1, p.civ);
+		s->broadcast(pkg);
+		pkg.set_player_team(i + 1, p.team);
+		s->broadcast(pkg);
+	}
+
+	size_t size = scn.width * scn.height;
+	players.clear();
+	for (const PlayerSetting &ps : scn.players)
+		players.emplace_back(ps, size);
+}
+
+void World::spawn_building(EntityType t, unsigned player, int x, int y) {
+	ZoneScoped;
+	assert(is_building(t) && player < MAX_PLAYERS);
+	auto p = entities.emplace(t, player, x, y);
+	assert(p.second);
+	players.at(player).entities.emplace(p.first->first);
+}
+
+void World::create_entities() {
+	ZoneScoped;
+
+	entities.clear();
+	for (unsigned i = 0; i < players.size(); ++i) {
+		spawn_building(EntityType::town_center, i, 2, 1 + 3 * i);
+		spawn_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 4 * i);
+	}
+}
+
+void World::startup() {
+	ZoneScoped;
+
+	NetPkg pkg;
+
+	pkg.set_start_game();
+	s->broadcast(pkg);
+
+	pkg.set_scn_vars(scn);
+	s->broadcast(pkg);
+
+	create_terrain();
+	create_players();
+	create_entities();
+
+	// now send all entities to each client
+	for (auto &kv : entities) {
+		pkg.set_entity_add(kv.second);
+		// TODO only send to clients that can see this entity
+		s->broadcast(pkg);
+	}
+
+	unsigned w = 16, h = 16;
+	NetTerrainMod tm(fetch_terrain(0, 0, w, h));
+
+	pkg.set_terrain_mod(tm);
+	s->broadcast(pkg);
+
+	pkg.set_start_game();
+	s->broadcast(pkg);
 }
 
 void World::eventloop(Server &s) {
 	ZoneScoped;
+
+	this->s = &s;
+	startup();
 
 	auto last = std::chrono::steady_clock::now();
 	double dt = 0;
@@ -73,6 +226,8 @@ void World::eventloop(Server &s) {
 		dt += elapsed.count();
 
 		size_t steps = (size_t)(dt * interval_inv);
+
+		pump_events();
 
 		// do steps
 		for (; steps; --steps)

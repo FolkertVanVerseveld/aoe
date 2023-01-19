@@ -18,11 +18,15 @@ bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint
 		// TODO send command to game eventloop thread
 		IdPoolRef ref = std::get<IdPoolRef>(em.data);
 
+		w.add_event(WorldEventType::entity_kill, ref);
+
+#if 0
 		// TODO check if player is allowed to kill this entity
 		if (entities.try_invalidate(ref)) {
 			pkg.set_entity_kill(ref);
 			broadcast(pkg);
 		}
+#endif
 		return true;
 	}
 	default:
@@ -170,90 +174,11 @@ void Server::start_game() {
 
 	m_running = true;
 
+	// TODO move all this into world::eventloop
 	std::thread t([this]() {
 		w.eventloop(*this);
 	});
 	t.detach();
-
-	NetPkg pkg;
-
-	pkg.set_start_game();
-	broadcast(pkg);
-
-	pkg.set_scn_vars(w.scn);
-	broadcast(pkg);
-
-	for (unsigned i = 0; i < w.scn.players.size(); ++i) {
-		PlayerSetting &p = w.scn.players[i];
-
-		p.res = w.scn.res;
-
-		// if player has no name, try find an owner that has one
-		if (p.name.empty()) {
-			unsigned owners = 0;
-			std::string alias;
-
-			for (auto kv : w.scn.owners) {
-				if (kv.second == i + 1) {
-					++owners;
-					alias = get_ci(kv.first).username;
-				}
-			}
-
-			if (owners == 1) {
-				p.name = alias;
-			} else {
-				p.name = "Oerkneus de Eerste";
-
-				if (p.civ >= 0 && p.civ < civs.size()) {
-					auto &names = civs[civnames[p.civ]];
-					p.name = names[rand() % names.size()];
-				}
-			}
-		}
-
-		pkg.set_player_name(i + 1, p.name);
-		broadcast(pkg);
-		pkg.set_player_civ(i + 1, p.civ);
-		broadcast(pkg);
-		pkg.set_player_team(i + 1, p.team);
-		broadcast(pkg);
-	}
-
-	size_t size = w.scn.width * w.scn.height;
-	w.create_terrain();
-
-	players.clear();
-	for (const PlayerSetting &ps : w.scn.players)
-		players.emplace_back(ps, size);
-
-	entities.clear();
-	for (unsigned i = 0; i < players.size(); ++i) {
-		// TODO wrap in spawn(towncenter) function or smth
-		auto p = entities.emplace(EntityType::town_center, i, 2, 1 + 3 * i);
-		assert(p.second);
-		players[i].entities.emplace(p.first->first);
-
-		p = entities.emplace(EntityType::barracks, i, 2 + 2 * 3, 1 + 4 * i);
-		assert(p.second);
-		players[i].entities.emplace(p.first->first);
-	}
-
-	unsigned w = 16, h = 16;
-	NetTerrainMod tm(this->w.fetch_terrain(0, 0, w, h));
-
-	pkg.set_terrain_mod(tm);
-	broadcast(pkg);
-
-	// now send all entities to each client
-	for (auto &kv : entities) {
-		pkg.set_entity_add(kv.second);
-		// TODO only send to clients that can see this entity
-		broadcast(pkg);
-	}
-
-	pkg.set_start_game();
-	broadcast(pkg);
 }
 
 }
