@@ -8,7 +8,7 @@
 
 namespace aoe {
 
-World::World() : m(), m_events(), t(), entities(), players(), events_in(), s(nullptr), scn(), logic_gamespeed(1.0) {}
+World::World() : m(), m_events(), t(), entities(), players(), events_in(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -53,6 +53,8 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 
 void World::tick_players() {
 	ZoneScoped;
+
+	// collect dead players
 	for (unsigned i = 0; i < players.size(); ++i) {
 		Player &p = players[i];
 
@@ -64,6 +66,31 @@ void World::tick_players() {
 		pkg.set_player_died(i);
 		s->broadcast(pkg);
 	}
+
+	if (players.size() <= 1)
+		return; // no game over condition
+
+	std::set<unsigned> alive_teams;
+
+	// check surviving teams
+	for (Player &p : players)
+		if (p.alive)
+			alive_teams.emplace(p.init.team);
+
+	if (alive_teams.size() <= 1) {
+		// game has ended
+		stop();
+		return;
+	}
+}
+
+void World::stop() {
+	ZoneScoped;
+	gameover = true;
+
+	NetPkg pkg;
+	pkg.set_gameover();
+	s->broadcast(pkg);
 }
 
 void World::tick() {
@@ -111,13 +138,30 @@ void World::entity_kill(WorldEvent &ev) {
 	}
 }
 
+bool World::single_team() const noexcept {
+	unsigned team = scn.players.at(0).team;
+
+	for (unsigned i = 1; i < scn.players.size(); ++i)
+		if (scn.players[i].team != team)
+			return false;
+
+	return true;
+}
+
 void World::create_players() {
 	ZoneScoped;
 
 	NetPkg pkg;
 
+	bool one_team = single_team();
+
+	// sanitize players: change team if one_team and check civ and name
 	for (unsigned i = 0; i < scn.players.size(); ++i) {
 		PlayerSetting &p = scn.players[i];
+
+		if (one_team)
+			// change team
+			p.team = i;
 
 		p.res = scn.res;
 
@@ -167,6 +211,14 @@ void World::spawn_building(EntityType t, unsigned player, int x, int y) {
 	players.at(player).entities.emplace(p.first->first);
 }
 
+void World::spawn_unit(EntityType t, unsigned player, float x, float y) {
+	ZoneScoped;
+	assert(!is_building(t) && player < MAX_PLAYERS);
+	auto p = entities.emplace(t, player, x, y);
+	assert(p.second);
+	players.at(player).entities.emplace(p.first->first);
+}
+
 void World::create_entities() {
 	ZoneScoped;
 
@@ -175,6 +227,12 @@ void World::create_entities() {
 		spawn_building(EntityType::town_center, i, 2, 1 + 3 * i);
 		spawn_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 4 * i);
 	}
+
+	spawn_unit(EntityType::bird1, 0, 8, 6);
+	spawn_unit(EntityType::bird1, 0, 9, 6);
+
+	spawn_unit(EntityType::villager, 0, 4, 4);
+	spawn_unit(EntityType::villager, 0, 5, 5);
 }
 
 void World::startup() {
@@ -182,6 +240,7 @@ void World::startup() {
 
 	NetPkg pkg;
 
+	// announce server is starting
 	pkg.set_start_game();
 	s->broadcast(pkg);
 
@@ -199,12 +258,14 @@ void World::startup() {
 		s->broadcast(pkg);
 	}
 
+	// send initial terrain chunk
 	unsigned w = 16, h = 16;
 	NetTerrainMod tm(fetch_terrain(0, 0, w, h));
 
 	pkg.set_terrain_mod(tm);
 	s->broadcast(pkg);
 
+	// start!
 	pkg.set_start_game();
 	s->broadcast(pkg);
 }
@@ -218,7 +279,7 @@ void World::eventloop(Server &s) {
 	auto last = std::chrono::steady_clock::now();
 	double dt = 0;
 
-	while (s.m_running.load()) {
+	while (s.m_running.load() && !gameover) {
 		// recompute as logic_gamespeed may change
 		double interval_inv = logic_gamespeed * DEFAULT_TICKS_PER_SECOND;
 		double interval = 1 / std::max(0.01, interval_inv);
@@ -233,7 +294,7 @@ void World::eventloop(Server &s) {
 		pump_events();
 
 		// do steps
-		for (; steps; --steps)
+		for (; steps && !gameover; --steps)
 			tick();
 
 		dt = fmod(dt, interval);

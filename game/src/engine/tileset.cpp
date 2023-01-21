@@ -25,6 +25,8 @@ void Tileset::write(GLuint tex) {
 
 	GLenum mode = GL_RGBA;
 
+	//surf->w = std::min(4096 * 2, surf->w);
+
 	std::vector<uint32_t> data;
 	{
 		ZoneScopedN("resize");
@@ -35,9 +37,10 @@ void Tileset::write(GLuint tex) {
 		uint32_t *pixels = (uint32_t*)surf->pixels;
 		size_t pos = 0;
 
-		for (int y = 0, h = surf->h, p = surf->pitch >> 2; y < h; ++y)
-			for (int x = 0, w = surf->w; x < w; ++x)
-				data[pos++] = pixels[y * p + x];
+		for (int y = 0, h = surf->h, p = surf->pitch >> 2; y < h; ++y) {
+			memcpy(&data[pos], &pixels[y * p], 4 * surf->w);
+			pos += surf->w;
+		}
 	}
 	{
 		ZoneScopedN("flush");

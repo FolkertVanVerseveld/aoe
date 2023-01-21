@@ -34,6 +34,7 @@ enum class NetPkgType {
 	terrainmod,
 	resmod,
 	entity_mod,
+	gameover,
 };
 
 struct NetPkgHdr final {
@@ -151,6 +152,7 @@ public:
 	std::string username();
 
 	void set_start_game();
+	void set_gameover();
 
 	void set_scn_vars(const ScenarioSettings&);
 	ScenarioSettings get_scn_vars();
@@ -252,6 +254,7 @@ class World final {
 	std::vector<Player> players;
 	std::deque<WorldEvent> events_in;
 	Server *s;
+	bool gameover;
 public:
 	ScenarioSettings scn;
 	std::atomic<double> logic_gamespeed;
@@ -275,10 +278,15 @@ private:
 	void create_entities();
 
 	void spawn_building(EntityType t, unsigned player, int x, int y);
+	void spawn_unit(EntityType t, unsigned player, float x, float y);
 
 	void tick();
 	void tick_players();
 	void pump_events();
+
+	bool single_team() const noexcept;
+
+	void stop();
 
 	void entity_kill(WorldEvent &ev);
 };
@@ -354,6 +362,7 @@ class Client final {
 	IdPoolRef me;
 	ScenarioSettings scn;
 	unsigned modflags;
+	std::atomic<bool> gameover;
 	friend Debug;
 	friend ClientView;
 public:
@@ -415,6 +424,7 @@ class ClientView final {
 public:
 	IdPoolRef me;
 	ScenarioSettings scn;
+	bool gameover;
 
 	ClientView();
 

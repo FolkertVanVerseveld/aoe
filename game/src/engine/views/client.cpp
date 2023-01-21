@@ -2,7 +2,7 @@
 
 namespace aoe {
 
-ClientView::ClientView() : me(invalid_ref), scn() {}
+ClientView::ClientView() : me(invalid_ref), scn(), gameover(false) {}
 
 bool ClientView::try_read(Client &c) {
 	std::unique_lock lk(c.m, std::defer_lock);
@@ -15,6 +15,8 @@ bool ClientView::try_read(Client &c) {
 		scn = c.scn;
 	if (c.modflags & (unsigned)ClientModFlags::terrain)
 		me = c.me;
+
+	gameover = c.gameover;
 
 	c.modflags = 0;
 

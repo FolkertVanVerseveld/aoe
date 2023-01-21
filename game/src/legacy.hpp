@@ -48,6 +48,16 @@ enum class DrsId {
 	gif_menubar0 = 50741,
 	gif_cursors = 51000,
 
+	gif_bird1 = 404,
+	gif_bird1_shadow = 405,
+	gif_bird1_glide = 406,
+	gif_bird1_glide_shadow = 407,
+
+	gif_bird2 = 518,
+	gif_bird2_shadow = 519,
+	gif_bird2_glide = 521,
+	gif_bird2_glide_shadow = 520,
+
 	gif_villager_stand = 418,
 	gif_villager_move = 657,
 	gif_villager_attack = 224,
@@ -69,7 +79,16 @@ enum class DrsId {
 	sfx_bld_die2 = 5078,
 	sfx_bld_die3 = 5079,
 
+	sfx_villager1 = 5037,
+	sfx_villager2 = 5053,
+	sfx_villager3 = 5054,
+	sfx_villager4 = 5158,
+	sfx_villager5 = 5171,
+	sfx_villager6 = 5205,
+	sfx_villager7 = 5206,
+
 	sfx_player_resign = 50306,
+	sfx_gameover_defeat = 50321,
 };
 
 struct DrsBkg final {

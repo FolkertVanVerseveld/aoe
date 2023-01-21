@@ -4,10 +4,77 @@
 
 namespace aoe {
 
-Client::Client() : s(), port(0), m_connected(false), starting(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1) {}
+Client::Client() : s(), port(0), m_connected(false), starting(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1), gameover(false) {}
 
 Client::~Client() {
 	stop();
+}
+
+void Client::mainloop() {
+	send_protocol(1);
+
+	try {
+		starting = false;
+
+		while (m_connected) {
+			NetPkg pkg = recv();
+
+			switch (pkg.type()) {
+				case NetPkgType::set_protocol:
+					printf("prot=%u\n", pkg.protocol_version());
+					break;
+				case NetPkgType::chat_text: {
+					auto p = pkg.chat_text();
+					add_chat_text(p.first, p.second);
+					break;
+				}
+				case NetPkgType::start_game: {
+					if (starting) {
+						start_game();
+					} else {
+						starting = true;
+						add_chat_text(invalid_ref, "game starting now");
+					}
+					break;
+				}
+				case NetPkgType::gameover:
+					gameover = true;
+					break;
+				case NetPkgType::set_scn_vars:
+					set_scn_vars(pkg.get_scn_vars());
+					break;
+				case NetPkgType::set_username:
+					set_username(pkg.username());
+					break;
+				case NetPkgType::playermod:
+					playermod(pkg.get_player_control());
+					break;
+				case NetPkgType::peermod:
+					peermod(pkg.get_peer_control());
+					break;
+				case NetPkgType::terrainmod:
+					terrainmod(pkg.get_terrain_mod());
+					break;
+				case NetPkgType::entity_mod:
+					entitymod(pkg.get_entity_mod());
+					break;
+				default:
+					printf("%s: type=%X\n", __func__, pkg.type());
+					break;
+			}
+		}
+	} catch (std::runtime_error &e) {
+		if (m_connected)
+			fprintf(stderr, "%s: client stopped: %s\n", __func__, e.what());
+	}
+
+	std::lock_guard<std::mutex> lk(m_eng);
+	if (eng) {
+		eng->trigger_multiplayer_stop();
+		if (m_connected && !eng->is_hosting()) {
+			eng->push_error("Game session aborted");
+		}
+	}
 }
 
 void Client::send_players_resize(unsigned n) {

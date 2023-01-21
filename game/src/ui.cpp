@@ -667,7 +667,7 @@ void Engine::show_terrain() {
 
 	if (!io.WantCaptureMouse)
 		ui.user_interact_entities();
-	ui.show_buildings();
+	ui.show_entities();
 	ui.show_selections();
 }
 
@@ -838,6 +838,21 @@ void Engine::show_multiplayer_game() {
 
 	if (show_diplomacy)
 		show_multiplayer_diplomacy();
+
+	if (gameover != cv.gameover && cv.gameover)
+		sfx.play_sfx(SfxId::gameover_defeat);
+
+	gameover = cv.gameover;
+
+	if (gameover) {
+		FontGuard fg(fnt.fnt_copper2);
+
+		const char *txt = "Game Over";
+
+		ImVec2 sz(ImGui::CalcTextSize(txt));
+
+		lst->AddText(ImVec2((io.DisplaySize.x - sz.x) / 2, (io.DisplaySize.y - sz.y) / 2), IM_COL32_WHITE, txt);
+	}
 }
 
 bool Engine::locked_settings() const noexcept {
@@ -1129,6 +1144,9 @@ void UICache::game_mouse_process() {
 		case EntityType::barracks:
 			e->sfx.play_sfx(SfxId::barracks);
 			break;
+		case EntityType::villager:
+			e->sfx.play_sfx(SfxId::villager_random);
+			break;
 		}
 	}
 }
@@ -1148,6 +1166,10 @@ void UICache::show_selections() {
 			continue;
 
 		// TODO determine entity (i.e. unit or building) size
+		float size = 1;
+
+		if (is_building(ent->type))
+			size = 3;
 
 		int x = ent->x, y = ent->y;
 		uint8_t h = e->gv.t.h_at(x, y);
@@ -1157,6 +1179,14 @@ void UICache::show_selections() {
 		ImVec2 tr(e->tilepos(x + 1, y + 1, left + e->tw / 2, top, h));
 		ImVec2 tt(e->tilepos(x - 1, y + 1, left, top - e->th / 2, h));
 
+		if (!is_building(ent->type)) {
+			float offx = left + fmodf(x, 1), offy = top + fmodf(y, 1);
+			tl = ImVec2(e->tilepos(x, y, offx - 10.0f, offy, h));
+			tb = ImVec2(e->tilepos(x, y, offx, offy + 5.0f, h));
+			tr = ImVec2(e->tilepos(x, y, offx + 10.0f, offy, h));
+			tt = ImVec2(e->tilepos(x, y, offx, offy - 5.0f, h));
+		}
+
 		lst->AddLine(tl, tb, IM_COL32_WHITE);
 		lst->AddLine(tb, tr, IM_COL32_WHITE);
 		lst->AddLine(tr, tt, IM_COL32_WHITE);
@@ -1164,11 +1194,11 @@ void UICache::show_selections() {
 	}
 }
 
-void UICache::show_buildings() {
+void UICache::show_entities() {
 	ZoneScoped;
 	entities.clear();
 
-	load_buildings();
+	load_entities();
 
 	game_mouse_process();
 
@@ -1181,51 +1211,74 @@ void UICache::show_buildings() {
 	}
 }
 
-void UICache::load_buildings() {
+void UICache::load_entities() {
 	ZoneScoped;
 	
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	Assets &a = *e->assets.get();
 
-	// TODO move to UICache::idle()
-	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
-	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
-
 	for (const Entity &ent : e->gv.entities) {
-		io::DrsId bld_base = io::DrsId::bld_town_center;
-		io::DrsId bld_player = io::DrsId::bld_town_center_player;
+		if (is_building(ent.type)) {
+			io::DrsId bld_base = io::DrsId::bld_town_center;
+			io::DrsId bld_player = io::DrsId::bld_town_center_player;
 
-		switch (ent.type) {
-		case EntityType::barracks:
-			bld_base = bld_player = io::DrsId::bld_barracks;
-			break;
-		}
+			switch (ent.type) {
+			case EntityType::barracks:
+				bld_base = bld_player = io::DrsId::bld_barracks;
+				break;
+			}
 
-		int x = ent.x, y = ent.y;
-		uint8_t h = e->gv.t.h_at(x, y);
+			int x = ent.x, y = ent.y;
+			uint8_t h = e->gv.t.h_at(x, y);
 
-		ImVec2 tpos(e->tilepos(x, y, left, top, h));
-		float x0, y0;
+			ImVec2 tpos(e->tilepos(x, y, left, top, h));
+			float x0, y0;
 
-		if (bld_player != bld_base) {
-			const ImageSet &s_tc = a.anim_at(bld_base);
+			if (bld_player != bld_base) {
+				const ImageSet &s_tc = a.anim_at(bld_base);
+				IdPoolRef imgref = s_tc.imgs[0];
+				const gfx::ImageRef &tc = a.at(imgref);
+
+				x0 = tpos.x - tc.hotspot_x;
+				y0 = tpos.y - tc.hotspot_y;
+
+				entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+			}
+
+			const ImageSet &s_tcp = a.anim_at(bld_player);
+			IdPoolRef imgref = s_tcp.at(ent.color, 0);
+			const gfx::ImageRef &tcp = a.at(imgref);
+
+			x0 = tpos.x - tcp.hotspot_x;
+			y0 = tpos.y - tcp.hotspot_y;
+
+			entities.emplace_back(ent.ref, imgref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f);
+		} else {
+			// TODO figure out orientation and animation
+			float x = ent.x, y = ent.y;
+			int ix = std::clamp<int>(x, 0, e->gv.t.w), iy = std::clamp<int>(y, 0, e->gv.t.h);
+			uint8_t h = e->gv.t.h_at(ix, iy);
+			ImVec2 tpos(e->tilepos(ix, iy, left + fmodf(x, 1), top + fmodf(y, 1), h));
+
+			io::DrsId gif = io::DrsId::gif_bird1;
+
+			switch (ent.type) {
+			case EntityType::bird1:
+				break;
+			case EntityType::villager:
+				gif = io::DrsId::gif_villager_stand;
+				break;
+			}
+
+			const ImageSet &s_tc = a.anim_at(gif);
 			IdPoolRef imgref = s_tc.imgs[0];
 			const gfx::ImageRef &tc = a.at(imgref);
 
-			x0 = tpos.x - tc.hotspot_x;
-			y0 = tpos.y - tc.hotspot_y;
+			float x0 = tpos.x - tc.hotspot_x;
+			float y0 = tpos.y - tc.hotspot_y;
 
 			entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
 		}
-
-		const ImageSet &s_tcp = a.anim_at(bld_player);
-		IdPoolRef imgref = s_tcp.at(ent.color, 0);
-		const gfx::ImageRef &tcp = a.at(imgref);
-
-		x0 = tpos.x - tcp.hotspot_x;
-		y0 = tpos.y - tcp.hotspot_y;
-
-		entities.emplace_back(ent.ref, imgref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f);
 	}
 }
 

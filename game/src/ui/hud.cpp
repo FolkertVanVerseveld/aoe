@@ -11,6 +11,10 @@ namespace ui {
 void UICache::idle() {
 	ZoneScoped;
 
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
+	top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
+
 	auto &killed = e->gv.entities_killed;
 
 	if (killed.empty())
@@ -18,8 +22,8 @@ void UICache::idle() {
 
 	for (const EntityView &ev : killed) {
 		// TODO filter if out of camera range
-		if (is_building(ev.type))
-			e->sfx.play_sfx(SfxId::bld_die_random);
+		//if (is_building(ev.type))
+		e->sfx.play_sfx(SfxId::bld_die_random);
 	}
 
 	killed.clear();
@@ -34,23 +38,10 @@ void UICache::idle() {
 void UICache::user_interact_entities() {
 	ZoneScoped;
 
-#if 1
 	if (e->keyctl.is_tapped(GameKey::kill_entity) && !selected.empty()) {
 		e->client->entity_kill(*selected.begin());
 		return;
 	}
-#else
-	if (!e->keyctl.is_tapped(GameKey::kill_entity) && !selected.empty())
-		return;
-
-	// find first entity in selection
-	for (IdPoolRef ref : selected) {
-		if (e->gv.entities.try_invalidate(ref)) {
-			e->sfx.play_sfx(SfxId::bld_die_random);
-			break;
-		}
-	}
-#endif
 }
 
 }

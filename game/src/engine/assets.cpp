@@ -146,6 +146,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	}
 
 	Animation bld_town_center, bld_town_center_player, bld_barracks, bld_barracks_player;
+	Animation gif_bird1, gif_bird1_shadow, gif_bird1_glide, gif_bird1_glide_shadow;
+	Animation gif_bird2, gif_bird2_shadow, gif_bird2_glide, gif_bird2_glide_shadow;
 	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
 	info.next("Loading game entities data");
 	{
@@ -158,12 +160,25 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		bld_barracks.load(drs_graphics, pal.get(), DrsId::bld_barracks);
 
+#define load_gif(id) id.load(drs_graphics, pal.get(), DrsId:: ##id)
+		// TODO shadow images are incorrectly parsed as dynamic, unknown command FE
+		load_gif(gif_bird1);
+		//load_gif(gif_bird1_shadow);
+		load_gif(gif_bird1_glide);
+		//load_gif(gif_bird1_glide_shadow);
+
+		load_gif(gif_bird2);
+		//load_gif(gif_bird2_shadow);
+		load_gif(gif_bird2_glide);
+		//load_gif(gif_bird2_glide_shadow);
+
 		gif_villager_stand.load(drs_graphics, pal.get(), DrsId::gif_villager_stand);
 		gif_villager_move.load(drs_graphics, pal.get(), DrsId::gif_villager_move);
 		gif_villager_attack.load(drs_graphics, pal.get(), DrsId::gif_villager_attack);
 		gif_villager_die1.load(drs_graphics, pal.get(), DrsId::gif_villager_die1);
 		gif_villager_die2.load(drs_graphics, pal.get(), DrsId::gif_villager_die2);
 		gif_villager_decay.load(drs_graphics, pal.get(), DrsId::gif_villager_decay);
+#undef load_gif
 	}
 
 	info.next("Packing graphics");
@@ -185,6 +200,11 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		add_gifs(p, bld_barracks, DrsId::bld_barracks);
 
+		add_gifs(p, gif_bird1, DrsId::gif_bird1);
+		add_gifs(p, gif_bird1_glide, DrsId::gif_bird1_glide);
+		add_gifs(p, gif_bird2, DrsId::gif_bird2);
+		add_gifs(p, gif_bird2_glide, DrsId::gif_bird2_glide);
+
 		add_gifs(p, gif_villager_stand, DrsId::gif_villager_stand);
 		add_gifs(p, gif_villager_move, DrsId::gif_villager_move);
 		add_gifs(p, gif_villager_attack, DrsId::gif_villager_attack);
@@ -195,12 +215,15 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		drs_ids[DrsId::img_dialog0] = p.add_img(0, 0, img_dialog0.surface.get());
 
 		// pack images
-		GLint size = eng.gl().max_texture_size;
+		GLint size = std::min(4096, eng.gl().max_texture_size);
 		ts_ui = p.collect(size, size);
 	}
 
+#define sfx(id) eng.sfx.load_sfx(SfxId:: id, drs_ui.open_wav(DrsId:: sfx_ ## id))
 	eng.sfx.load_sfx(SfxId::sfx_chat, drs_ui.open_wav(DrsId::sfx_chat));
-	eng.sfx.load_sfx(SfxId::player_resign, drs_ui.open_wav(DrsId::sfx_player_resign));
+	sfx(player_resign);
+	sfx(gameover_defeat);
+#undef sfx
 }
 
 void Assets::add_gifs(gfx::ImagePacker &p, Animation &a, DrsId id) {
@@ -240,6 +263,14 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	sfx(bld_die1);
 	sfx(bld_die2);
 	sfx(bld_die3);
+
+	sfx(villager1);
+	sfx(villager2);
+	sfx(villager3);
+	sfx(villager4);
+	sfx(villager5);
+	sfx(villager6);
+	sfx(villager7);
 #undef sfx
 }
 

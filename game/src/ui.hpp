@@ -193,6 +193,7 @@ class UICache final {
 	Engine *e;
 	std::vector<VisualEntity> entities;
 	std::vector<IdPoolRef> selected;
+	float left, top;
 public:
 	void load(Engine &e);
 
@@ -202,13 +203,13 @@ public:
 
 	/** Show user selected entities. */
 	void show_selections();
-	void show_buildings();
+	void show_entities();
 
 	void show_mph_tbl(Frame&);
 	void show_editor_menu();
 	void show_editor_scenario();
 private:
-	void load_buildings();
+	void load_entities();
 
 	void game_mouse_process();
 };

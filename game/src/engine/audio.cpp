@@ -231,6 +231,20 @@ void Audio::play_sfx(SfxId id, int loops) {
 	case SfxId::bld_die_random:
 		id = (SfxId)((unsigned)SfxId::bld_die1 + rand() % 2);
 		break;
+	case SfxId::villager_random: {
+		const SfxId lst[7] = {
+			SfxId::villager1,
+			SfxId::villager2,
+			SfxId::villager3,
+			SfxId::villager4,
+			SfxId::villager5,
+			SfxId::villager6,
+			SfxId::villager7,
+		};
+
+		id = lst[rand() % 7];
+		break;
+	}
 	}
 
 	auto it = sfx.find(id);

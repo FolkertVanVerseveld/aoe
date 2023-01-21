@@ -104,6 +104,8 @@ public:
 enum class EntityType {
 	town_center,
 	barracks,
+	bird1,
+	villager,
 };
 
 static bool constexpr is_building(EntityType t) {
@@ -183,6 +185,7 @@ public:
 	uint64_t explored_max;
 	std::set<IdPoolRef> entities;
 	bool alive;
+	// TODO add team
 
 	Player(const PlayerSetting&, size_t explored_max);
 

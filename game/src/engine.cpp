@@ -74,7 +74,7 @@ Engine::Engine()
 		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
 	}, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
-	, player_tbl_y(0), ui(), fnt()
+	, player_tbl_y(0), ui(), fnt(), gameover(false)
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;

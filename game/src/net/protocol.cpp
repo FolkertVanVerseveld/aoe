@@ -120,6 +120,7 @@ void NetPkg::ntoh() {
 			break;
 		}
 		case NetPkgType::start_game:
+		case NetPkgType::gameover:
 			// no payload
 			break;
 		case NetPkgType::terrainmod: {
@@ -255,6 +256,7 @@ void NetPkg::hton() {
 			break;
 		}
 		case NetPkgType::start_game:
+		case NetPkgType::gameover:
 			// no payload
 			break;
 		case NetPkgType::terrainmod: {
@@ -488,6 +490,11 @@ void NetPkg::set_username(const std::string &s) {
 void NetPkg::set_start_game() {
 	data.clear();
 	set_hdr(NetPkgType::start_game);
+}
+
+void NetPkg::set_gameover() {
+	data.clear();
+	set_hdr(NetPkgType::gameover);
 }
 
 void NetPkg::set_scn_vars(const ScenarioSettings &scn) {
