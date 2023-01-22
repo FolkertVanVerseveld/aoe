@@ -119,12 +119,12 @@ public:
 	EntityType type;
 
 	unsigned color; // TODO /color/playerid/ ?
-	float x, y;
+	float x, y, angle;
 
 	// TODO add ui info
 
-	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0) {}
-	EntityView(IdPoolRef ref, EntityType type, unsigned color, float x, float y) : ref(ref), type(type), color(color), x(x), y(y) {}
+	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0) {}
+	EntityView(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle) {}
 };
 
 class Entity final {
@@ -133,13 +133,13 @@ public:
 	EntityType type;
 
 	unsigned color; // TODO /color/playerid/ ?
-	float x, y;
+	float x, y, angle;
 
 	// TODO add more params
 
-	Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), color(0), x(0), y(0) {}
+	Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0) {}
 
-	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y) : ref(ref), type(type), color(color), x(x), y(y) {}
+	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle) {}
 
 	Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y) {}
 

@@ -118,7 +118,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		drs_ids[DrsId::bkg_achievements] = p.add_img(0, 0, bkg_achievements);
 	}
 
-	Animation gif_menubar0;
+	Animation gif_menubar0, gif_building_icons, gif_unit_icons;
 	Image img_dialog0, img_dialog_editor;
 	auto pal = drs_ui.open_pal(DrsId::pal_default);
 	{
@@ -130,6 +130,11 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		gif_cursors.load(drs_ui, pal.get(), DrsId::gif_cursors);
 		slp = drs_ui.open_slp(DrsId::img_editor);
 		img_dialog_editor.load(pal.get(), slp, 0, 0);
+
+#define load_gif(id) id.load(drs_ui, pal.get(), DrsId:: ##id)
+		load_gif(gif_building_icons);
+		load_gif(gif_unit_icons);
+#undef load_gif
 	}
 
 	Animation trn_desert, trn_grass, trn_water, trn_deepwater;
@@ -172,12 +177,12 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_bird2_glide);
 		//load_gif(gif_bird2_glide_shadow);
 
-		gif_villager_stand.load(drs_graphics, pal.get(), DrsId::gif_villager_stand);
-		gif_villager_move.load(drs_graphics, pal.get(), DrsId::gif_villager_move);
-		gif_villager_attack.load(drs_graphics, pal.get(), DrsId::gif_villager_attack);
-		gif_villager_die1.load(drs_graphics, pal.get(), DrsId::gif_villager_die1);
-		gif_villager_die2.load(drs_graphics, pal.get(), DrsId::gif_villager_die2);
-		gif_villager_decay.load(drs_graphics, pal.get(), DrsId::gif_villager_decay);
+		load_gif(gif_villager_stand);
+		load_gif(gif_villager_move);
+		load_gif(gif_villager_attack);
+		load_gif(gif_villager_die1);
+		load_gif(gif_villager_die2);
+		load_gif(gif_villager_decay);
 #undef load_gif
 	}
 
@@ -187,8 +192,11 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		drs_ids[DrsId::img_editor] = p.add_img(0, 0, img_dialog_editor.surface.get());
 
+#define gif(id) add_gifs(p, id, DrsId:: ##id)
 		add_gifs(p, gif_cursors, DrsId::gif_cursors);
 		add_gifs(p, gif_menubar0, DrsId::gif_menubar0);
+		gif(gif_building_icons);
+		gif(gif_unit_icons);
 
 		add_gifs(p, trn_desert, DrsId::trn_desert);
 		add_gifs(p, trn_grass, DrsId::trn_grass);
@@ -211,6 +219,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, gif_villager_die1, DrsId::gif_villager_die1);
 		add_gifs(p, gif_villager_die2, DrsId::gif_villager_die2);
 		add_gifs(p, gif_villager_decay, DrsId::gif_villager_decay);
+#undef gif
 
 		drs_ids[DrsId::img_dialog0] = p.add_img(0, 0, img_dialog0.surface.get());
 

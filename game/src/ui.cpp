@@ -867,6 +867,11 @@ void UICache::load(Engine &e) {
 	e.assets->old_lang.collect_civs(civs);
 }
 
+void UICache::str2(const ImVec2 &pos, const char *text) {
+	bkg->AddText(ImVec2(pos.x - 1, pos.y + 1), IM_COL32(255, 255, 255, 255), text);
+	bkg->AddText(pos, IM_COL32(0, 0, 0, 255), text);
+}
+
 void UICache::game_mouse_process() {
 	ZoneScoped;
 
@@ -968,9 +973,6 @@ void UICache::show_selections() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 
-	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
-	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
-
 	for (IdPoolRef ref : selected) {
 		Entity *ent = e->gv.try_get(ref);
 		if (!ent)
@@ -992,16 +994,19 @@ void UICache::show_selections() {
 
 		if (!is_building(ent->type)) {
 			float offx = left + fmodf(x, 1), offy = top + fmodf(y, 1);
-			tl = ImVec2(e->tilepos(x, y, offx - 10.0f, offy, h));
-			tb = ImVec2(e->tilepos(x, y, offx, offy + 5.0f, h));
-			tr = ImVec2(e->tilepos(x, y, offx + 10.0f, offy, h));
-			tt = ImVec2(e->tilepos(x, y, offx, offy - 5.0f, h));
+
+			size = 5.0f;
+
+			tl = ImVec2(e->tilepos(x, y, offx - 2 * size, offy, h));
+			tb = ImVec2(e->tilepos(x, y, offx, offy + size, h));
+			tr = ImVec2(e->tilepos(x, y, offx + 2 * size, offy, h));
+			tt = ImVec2(e->tilepos(x, y, offx, offy - size, h));
 		}
 
 		lst->AddLine(tl, tb, IM_COL32_WHITE);
 		lst->AddLine(tb, tr, IM_COL32_WHITE);
-		lst->AddLine(tr, tt, IM_COL32_WHITE);
-		lst->AddLine(tt, tl, IM_COL32_WHITE);
+		lst->AddLine(tr, tt, IM_COL32(255, 255, 255, 160));
+		lst->AddLine(tt, tl, IM_COL32(255, 255, 255, 160));
 	}
 }
 

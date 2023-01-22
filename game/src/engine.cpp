@@ -133,7 +133,7 @@ void Engine::show_general_settings() {
 	chkbox("Music enabled", music_on);
 	chkbox("Play chat taunts", sfx.play_taunts);
 	chkbox("Autostart", cfg.autostart);
-	chkbox("Font scaling", font_scaling);
+	chkbox("UI scaling", font_scaling);
 
 	if (music_on)
 		sfx.unmute_music();
@@ -213,7 +213,7 @@ void Engine::display_ui() {
 			draw_background_border();
 			break;
 		case MenuState::multiplayer_game:
-			show_terrain();
+			ui.show_world();
 			show_multiplayer_game();
 			break;
 		case MenuState::multiplayer_menu:
@@ -985,21 +985,23 @@ int Engine::mainloop() {
 
 		GLCHK;
 
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		// bind textures on corresponding texture units
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture1);
-		//GLint tex;
-		//glGetUniformiv(prog, glGetUniformLocation(prog, "texture1"), &tex);
-		prog.use();
-		glUniform1i(glGetUniformLocation(prog, "texture1"), 0);
+		if (menu_state != MenuState::multiplayer_game) {
+			// bind textures on corresponding texture units
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, texture1);
+			//GLint tex;
+			//glGetUniformiv(prog, glGetUniformLocation(prog, "texture1"), &tex);
+			prog.use();
+			glUniform1i(glGetUniformLocation(prog, "texture1"), 0);
 
-		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(vao);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		GLCHK;
+			GLCHK;
+		}
 
 		display();
 

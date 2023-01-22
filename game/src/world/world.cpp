@@ -155,10 +155,15 @@ void World::create_players() {
 
 	NetPkg pkg;
 
+	// force Gaia as special player
+	PlayerSetting &gaia = scn.players.at(0);
+	gaia.ai = true;
+	gaia.team = 0;
+
 	bool one_team = single_team();
 
 	// sanitize players: change team if one_team and check civ and name
-	for (unsigned i = 1; i < scn.players.size(); ++i) {
+	for (unsigned i = 0; i < scn.players.size(); ++i) {
 		PlayerSetting &p = scn.players[i];
 
 		if (one_team)
@@ -173,7 +178,7 @@ void World::create_players() {
 			std::string alias;
 
 			for (auto kv : scn.owners) {
-				if (kv.second == i + 1) {
+				if (kv.second == i) {
 					++owners;
 					alias = s->get_ci(kv.first).username;
 				}
@@ -191,11 +196,11 @@ void World::create_players() {
 			}
 		}
 
-		pkg.set_player_name(i + 1, p.name);
+		pkg.set_player_name(i, p.name);
 		s->broadcast(pkg);
-		pkg.set_player_civ(i + 1, p.civ);
+		pkg.set_player_civ(i, p.civ);
 		s->broadcast(pkg);
-		pkg.set_player_team(i + 1, p.team);
+		pkg.set_player_team(i, p.team);
 		s->broadcast(pkg);
 	}
 
@@ -225,16 +230,15 @@ void World::create_entities() {
 	ZoneScoped;
 
 	entities.clear();
-	for (unsigned i = 0; i < players.size(); ++i) {
+	for (unsigned i = 1; i < players.size(); ++i) {
 		spawn_building(EntityType::town_center, i, 2, 1 + 3 * i);
 		spawn_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 4 * i);
+
+		spawn_unit(EntityType::villager, i, 5, 1 + 3 * i);
 	}
 
-	spawn_unit(EntityType::bird1, 0, 8, 6);
-	spawn_unit(EntityType::bird1, 0, 9, 6);
-
-	spawn_unit(EntityType::villager, 0, 4, 4);
-	spawn_unit(EntityType::villager, 0, 5, 5);
+	spawn_unit(EntityType::bird1, 0, 11, 6);
+	spawn_unit(EntityType::bird1, 0, 12, 6);
 }
 
 void World::startup() {

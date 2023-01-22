@@ -193,7 +193,7 @@ class UICache final {
 	Engine *e;
 	std::vector<VisualEntity> entities;
 	std::vector<IdPoolRef> selected;
-	float left, top;
+	float left, top, scale;
 	ImDrawList *bkg;
 public:
 	void load(Engine &e);
@@ -202,14 +202,21 @@ public:
 
 	void user_interact_entities();
 
-	/** Show user selected entities. */
-	void show_selections();
-	void show_entities();
+	void show_world();
 
 	void show_mph_tbl(Frame&);
 	void show_editor_menu();
 	void show_editor_scenario();
+
+	void show_hud_selection(float left, float top, float menubar_h);
+
+	void str2(const ImVec2 &pos, const char *text);
 private:
+	void show_terrain();
+	/** Show user selected entities. */
+	void show_selections();
+	void show_entities();
+
 	void load_entities();
 
 	void game_mouse_process();

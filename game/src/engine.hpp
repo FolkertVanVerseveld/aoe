@@ -190,7 +190,6 @@ private:
 
 	void cancel_multiplayer_host(MenuState next);
 
-	void show_terrain();
 	void show_multiplayer_game();
 	void show_multiplayer_achievements();
 	void show_multiplayer_diplomacy();

@@ -116,7 +116,7 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 
 			unsigned civ = p.second;
 
-			if (civ > civnames.size())
+			if (civ >= civnames.size())
 				return false; // kick, cuz we have data inconsistency
 
 			w.scn.players[idx].civ = civ;
@@ -150,7 +150,7 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			unsigned idx = p.first;
 
 			// ignore bad index, might be desync
-			if (idx > w.scn.players.size())
+			if (idx >= w.scn.players.size())
 				return true;
 
 			w.scn.players[idx].name = p.second;
@@ -174,7 +174,6 @@ void Server::start_game() {
 
 	m_running = true;
 
-	// TODO move all this into world::eventloop
 	std::thread t([this]() {
 		w.eventloop(*this);
 	});

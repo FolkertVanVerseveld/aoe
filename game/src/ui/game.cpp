@@ -4,14 +4,10 @@ namespace aoe {
 
 using namespace ui;
 
-void Engine::show_terrain() {
+void UICache::show_terrain() {
 	ZoneScoped;
 
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGuiIO &io = ImGui::GetIO();
-
-	Assets &a = *assets.get();
-	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+	Assets &a = *e->assets.get();
 
 	const ImageSet &s_desert = a.anim_at(io::DrsId::trn_desert);
 	const ImageSet &s_grass = a.anim_at(io::DrsId::trn_grass);
@@ -25,8 +21,7 @@ void Engine::show_terrain() {
 
 	const gfx::ImageRef tt[] = { t0, t1, t2, t3 };
 
-	float left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(cam_x) - 0.5f;
-	float top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(cam_y) - 0.5f;
+	GameView &gv = e->gv;
 
 	for (int y = 0; y < gv.t.h; ++y) {
 		for (int x = 0; x < gv.t.w; ++x) {
@@ -43,19 +38,28 @@ void Engine::show_terrain() {
 
 			const gfx::ImageRef &img = tt[id];
 
-			ImVec2 tpos(tilepos(x, y, left, top, h));
+			ImVec2 tpos(e->tilepos(x, y, left, top, h));
 
 			float x0 = tpos.x - img.hotspot_x;
 			float y0 = tpos.y - img.hotspot_y;
 
-			lst->AddImage(tex1, ImVec2(x0, y0), ImVec2(x0 + img.bnds.w, y0 + img.bnds.h), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1), col);
+			bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img.bnds.w, y0 + img.bnds.h), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1), col);
 		}
 	}
+}
+
+void UICache::show_world() {
+	ZoneScoped;
+
+	ImGuiIO &io = ImGui::GetIO();
+
+	show_terrain();
 
 	if (!io.WantCaptureMouse)
-		ui.user_interact_entities();
-	ui.show_entities();
-	ui.show_selections();
+		user_interact_entities();
+
+	show_entities();
+	show_selections();
 }
 
 void Engine::show_multiplayer_game() {
@@ -77,6 +81,7 @@ void Engine::show_multiplayer_game() {
 	const ImageSet &s = a.anim_at(io::DrsId::gif_menubar0);
 	const gfx::ImageRef &rtop = a.at(s.imgs[0]), &rbottom = a.at(s.imgs[1]);
 
+	// TODO /scale/ui.scale/
 	float scale = std::max(1.0f, font_scaling ? io.DisplaySize.y / WINDOW_HEIGHT_MAX : 1.0f);
 
 	float menubar_left = vp->WorkPos.x;
@@ -123,33 +128,28 @@ void Engine::show_multiplayer_game() {
 	snprintf(buf, sizeof buf, "%d", food);
 	buf[(sizeof buf) - 1] = '\0';
 
-	float y = vp->WorkPos.y + 2;
+	float y = vp->WorkPos.y + 2 * scale;
 
-	lst->AddText(ImVec2(menubar_left + 32 * scale - 1, y + 1), IM_COL32(255, 255, 255, 255), buf);
-	lst->AddText(ImVec2(menubar_left + 32 * scale, y), IM_COL32(0, 0, 0, 255), buf);
+	ui.str2(ImVec2(menubar_left + 32 * scale, y), buf);
 
 	snprintf(buf, sizeof buf, "%d", wood);
 	buf[(sizeof buf) - 1] = '\0';
 
-	lst->AddText(ImVec2(menubar_left + 99 * scale - 1, y + 1), IM_COL32(255, 255, 255, 255), buf);
-	lst->AddText(ImVec2(menubar_left + 99 * scale, y), IM_COL32(0, 0, 0, 255), buf);
+	ui.str2(ImVec2(menubar_left + 99 * scale, y), buf);
 
 	snprintf(buf, sizeof buf, "%d", gold);
 	buf[(sizeof buf) - 1] = '\0';
 
-	lst->AddText(ImVec2(menubar_left + 166 * scale - 1, y + 1), IM_COL32(255, 255, 255, 255), buf);
-	lst->AddText(ImVec2(menubar_left + 166 * scale, y), IM_COL32(0, 0, 0, 255), buf);
+	ui.str2(ImVec2(menubar_left + 166 * scale, y), buf);
 
 	snprintf(buf, sizeof buf, "%d", stone);
 	buf[(sizeof buf) - 1] = '\0';
 
-	lst->AddText(ImVec2(menubar_left + 234 * scale - 1, y + 1), IM_COL32(255, 255, 255, 255), buf);
-	lst->AddText(ImVec2(menubar_left + 234 * scale, y), IM_COL32(0, 0, 0, 255), buf);
+	ui.str2(ImVec2(menubar_left + 234 * scale, y), buf);
 
 	ImVec2 sz(ImGui::CalcTextSize(age.c_str()));
 
-	lst->AddText(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y + 1), IM_COL32(255, 255, 255, 255), age.c_str());
-	lst->AddText(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y), IM_COL32(0, 0, 0, 255), age.c_str());
+	ui.str2(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y), age.c_str());
 
 	menubar_bottom += menubar_h;
 
@@ -180,7 +180,12 @@ void Engine::show_multiplayer_game() {
 	menubar_w = rbottom.bnds.w * scale;
 	menubar_h = rbottom.bnds.h * scale;
 
-	lst->AddImage(tex1, ImVec2(menubar_left, vp->WorkPos.y + vp->WorkSize.y - menubar_h), ImVec2(menubar_left + menubar_w, vp->WorkPos.y + vp->WorkSize.y), ImVec2(rbottom.s0, rbottom.t0), ImVec2(rbottom.s1, rbottom.t1));
+	float top = vp->WorkPos.y + vp->WorkSize.y - menubar_h;
+
+	lst->AddImage(tex1, ImVec2(menubar_left, top), ImVec2(menubar_left + menubar_w, top + menubar_h), ImVec2(rbottom.s0, rbottom.t0), ImVec2(rbottom.s1, rbottom.t1));
+
+
+	ui.show_hud_selection(menubar_left, top, menubar_h);
 
 	if (show_achievements)
 		show_multiplayer_achievements();
