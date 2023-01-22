@@ -139,9 +139,9 @@ void World::entity_kill(WorldEvent &ev) {
 }
 
 bool World::single_team() const noexcept {
-	unsigned team = scn.players.at(0).team;
+	unsigned team = scn.players.at(1).team;
 
-	for (unsigned i = 1; i < scn.players.size(); ++i)
+	for (unsigned i = 2; i < scn.players.size(); ++i)
 		if (scn.players[i].team != team)
 			return false;
 
@@ -156,7 +156,7 @@ void World::create_players() {
 	bool one_team = single_team();
 
 	// sanitize players: change team if one_team and check civ and name
-	for (unsigned i = 0; i < scn.players.size(); ++i) {
+	for (unsigned i = 1; i < scn.players.size(); ++i) {
 		PlayerSetting &p = scn.players[i];
 
 		if (one_team)

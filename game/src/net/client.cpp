@@ -37,9 +37,12 @@ void Client::mainloop() {
 					}
 					break;
 				}
-				case NetPkgType::gameover:
+				case NetPkgType::gameover: {
 					gameover = true;
+					EngineView ev;
+					ev.play_sfx(SfxId::gameover_defeat);
 					break;
+				}
 				case NetPkgType::set_scn_vars:
 					set_scn_vars(pkg.get_scn_vars());
 					break;
@@ -122,7 +125,7 @@ void Client::playermod(const NetPlayerControl &ctl) {
 			break;
 		}
 		case NetPlayerControlType::set_cpu_ref: {
-			unsigned pos = std::get<uint16_t>(ctl.data) - 1; // remember, it is 1-based
+			unsigned pos = std::get<uint16_t>(ctl.data);
 
 			if (pos < scn.players.size())
 				scn.players[pos].ai = true;
@@ -139,7 +142,7 @@ void Client::playermod(const NetPlayerControl &ctl) {
 		case NetPlayerControlType::set_player_name: {
 			auto p = std::get<std::pair<uint16_t, std::string>>(ctl.data);
 
-			unsigned pos = p.first - 1;
+			unsigned pos = p.first;
 
 			if (pos < scn.players.size())
 				scn.players[pos].name = p.second;
@@ -149,7 +152,7 @@ void Client::playermod(const NetPlayerControl &ctl) {
 		case NetPlayerControlType::set_civ: {
 			auto p = std::get<std::pair<uint16_t, uint16_t>>(ctl.data);
 
-			unsigned pos = p.first - 1;
+			unsigned pos = p.first;
 
 			if (pos < scn.players.size())
 				scn.players[pos].civ = p.second;
@@ -159,7 +162,7 @@ void Client::playermod(const NetPlayerControl &ctl) {
 		case NetPlayerControlType::set_team: {
 			auto p = std::get<std::pair<uint16_t, uint16_t>>(ctl.data);
 
-			unsigned pos = p.first - 1;
+			unsigned pos = p.first;
 
 			if (pos < scn.players.size())
 				scn.players[pos].team = p.second;

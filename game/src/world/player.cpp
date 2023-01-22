@@ -1,5 +1,7 @@
 #include "../game.hpp"
 
+#include "../nominmax.hpp"
+
 namespace aoe {
 
 int64_t PlayerAchievements::recompute(size_t max_military, size_t max_villagers, unsigned max_tech) noexcept {

@@ -345,6 +345,13 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 	ZoneScoped;
 	const SlpFrame &frame = slp.frames.at(index);
 
+	assert(player < MAX_PLAYERS);
+
+	if (!player)
+		player = 9;
+	else
+		--player;
+
 	hotspot_x = frame.hotspot_x;
 	hotspot_y = frame.hotspot_y;
 

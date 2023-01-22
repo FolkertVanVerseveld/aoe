@@ -148,7 +148,6 @@ private:
 	float player_tbl_y;
 	ui::UICache ui;
 	FontCache fnt;
-	bool gameover;
 
 	friend Debug;
 	friend Config;

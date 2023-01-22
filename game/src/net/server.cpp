@@ -63,10 +63,10 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			return true;
 		}
 		case NetPlayerControlType::set_ref: {
-			unsigned idx = std::get<uint16_t>(ctl.data); // remember, it is 1-based
+			unsigned idx = std::get<uint16_t>(ctl.data);
 
 			// ignore bad index, might be desync. also allow 0 to release ref
-			if (idx > w.scn.players.size())
+			if (idx >= w.scn.players.size())
 				return true;
 
 			// claim slot. NOTE multiple players can claim the same slot
@@ -74,7 +74,7 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			w.scn.owners[ref] = idx;
 
 			if (idx)
-				w.scn.players[idx - 1].ai = false;
+				w.scn.players[idx].ai = false;
 
 			// send to players
 			pkg.set_claim_player(ref, idx);
@@ -83,14 +83,14 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			return true;
 		}
 		case NetPlayerControlType::set_cpu_ref: {
-			unsigned idx = std::get<uint16_t>(ctl.data); // remember, it is 1-based
+			unsigned idx = std::get<uint16_t>(ctl.data);
 
 			// ignore bad index, might be desync
-			if (!idx || idx > w.scn.players.size())
+			if (idx >= w.scn.players.size())
 				return true;
 
 			// claim slot
-			w.scn.players[idx - 1].ai = true;
+			w.scn.players[idx].ai = true;
 
 			// purge any players that had this one claimed
 			for (auto it = w.scn.owners.begin(); it != w.scn.owners.end();) {
@@ -108,10 +108,10 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 		}
 		case NetPlayerControlType::set_civ: {
 			auto p = std::get<std::pair<uint16_t, uint16_t>>(ctl.data);
-			unsigned idx = p.first; // remember, it is 1-based
+			unsigned idx = p.first;
 
 			// ignore bad index, might be desync
-			if (!idx || idx > w.scn.players.size())
+			if (idx >= w.scn.players.size())
 				return true;
 
 			unsigned civ = p.second;
@@ -119,7 +119,7 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			if (civ > civnames.size())
 				return false; // kick, cuz we have data inconsistency
 
-			w.scn.players[idx - 1].civ = civ;
+			w.scn.players[idx].civ = civ;
 
 			pkg.set_player_civ(idx, civ);
 			broadcast(pkg);
@@ -128,15 +128,15 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 		}
 		case NetPlayerControlType::set_team: {
 			auto p = std::get<std::pair<uint16_t, uint16_t>>(ctl.data);
-			unsigned idx = p.first; // remember, it is 1-based
+			unsigned idx = p.first;
 
 			// ignore bad index, might be desync
-			if (!idx || idx > w.scn.players.size())
+			if (idx >= w.scn.players.size())
 				return true;
 
 			unsigned team = p.second;
 
-			w.scn.players[idx - 1].team = team;
+			w.scn.players[idx].team = team;
 
 			pkg.set_player_team(idx, team);
 			broadcast(pkg);
@@ -150,10 +150,10 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			unsigned idx = p.first;
 
 			// ignore bad index, might be desync
-			if (!idx || idx > w.scn.players.size())
+			if (idx > w.scn.players.size())
 				return true;
 
-			w.scn.players[idx - 1].name = p.second;
+			w.scn.players[idx].name = p.second;
 
 			pkg.set_player_name(idx, p.second);
 			broadcast(pkg);

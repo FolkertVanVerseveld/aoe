@@ -579,7 +579,7 @@ void Engine::show_multiplayer_achievements() {
 				lst->AddText(ImVec2(tl.x + 830 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "100");
 			}
 #else
-			for (unsigned i = 0; i < gv.players.size(); ++i) {
+			for (unsigned i = 1; i < gv.players.size(); ++i) {
 				PlayerView &v = gv.players[i];
 
 				float rowy = tl.y + 300 * sy + (348 - 300) * i * sy;
@@ -839,12 +839,7 @@ void Engine::show_multiplayer_game() {
 	if (show_diplomacy)
 		show_multiplayer_diplomacy();
 
-	if (gameover != cv.gameover && cv.gameover)
-		sfx.play_sfx(SfxId::gameover_defeat);
-
-	gameover = cv.gameover;
-
-	if (gameover) {
+	if (cv.gameover) {
 		FontGuard fg(fnt.fnt_copper2);
 
 		const char *txt = "Game Over";
@@ -877,7 +872,9 @@ void Engine::show_multiplayer_host() {
 		f.str("Multiplayer game  -");
 		f.sl();
 
+		--player_count;
 		f.scalar(player_count == 1 ? "player" : "players", player_count, 1, 1, MAX_PLAYERS - 1);
+		++player_count;
 
 		if (player_count != scn.players.size()) {
 			client->send_players_resize(player_count);
@@ -951,7 +948,7 @@ void UICache::show_mph_tbl(ui::Frame &f) {
 		unsigned del = scn.players.size();
 		unsigned from = 0, to = 0;
 
-		for (unsigned i = 0; i < scn.players.size(); ++i) {
+		for (unsigned i = 1; i < scn.players.size(); ++i) {
 			Row r(3, i);
 			PlayerSetting &p = scn.players[i];
 
@@ -967,33 +964,33 @@ void UICache::show_mph_tbl(ui::Frame &f) {
 				continue;
 			}
 
-			if (i + 1 == idx) {
+			if (i == idx) {
 				if (f.btn("X"))
 					e->client->claim_player(0);
 
 				f.sl();
 
 				if (r.text("##0", p.name, ImGuiInputTextFlags_EnterReturnsTrue))
-					e->client->send_set_player_name(i + 1, p.name);
+					e->client->send_set_player_name(i, p.name);
 			} else {
 				if (f.btn("Claim"))
-					e->client->claim_player(i + 1); // NOTE 1-based
+					e->client->claim_player(i);
 
 				f.sl();
 
 				if (!p.ai && e->server.get() != nullptr && f.btn("Set CPU"))
-					e->client->claim_cpu(i + 1); // NOTE 1-based
+					e->client->claim_cpu(i);
 
 				r.next();
 			}
 
 			if (f.combo("##1", p.civ, civs))
-				e->client->send_set_player_civ(i + 1, p.civ);
+				e->client->send_set_player_civ(i, p.civ);
 			r.next();
 
 			p.team = std::max(1u, p.team);
 			if (f.scalar("##2", p.team, 1))
-				e->client->send_set_player_team(i + 1, p.team);
+				e->client->send_set_player_team(i, p.team);
 			r.next();
 		}
 	}
@@ -1419,10 +1416,18 @@ void Engine::show_start() {
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
 
+#if 0
 		if (f.btn("Scenario Builder", TextHalign::center)) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
 			next_menu_state = MenuState::editor_menu;
 		}
+#else
+		f.xbtn("Scenario Builder", TextHalign::center);
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+			FontGuard fg2(fnt.fnt_arial);
+			ImGui::Tooltip("Work in progress");
+		}
+#endif
 
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(604.0f / 768.0f * vp->WorkSize.y);

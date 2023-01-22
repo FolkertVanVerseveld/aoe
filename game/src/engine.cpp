@@ -52,7 +52,10 @@ ScenarioSettings::ScenarioSettings()
 	, square(true), wrap(false), restricted(true), reorder(false), width(48), height(48)
 	, popcap(100)
 	, age(1), seed(1), villagers(3)
-	, res(200, 200, 0, 0) {}
+	, res(200, 200, 0, 0)
+{
+	players.emplace_back("Gaia", true, 0, 0, Resources());
+}
 
 Engine::Engine()
 	: net(), show_demo(false), show_debug(false), font_scaling(true)
@@ -74,7 +77,7 @@ Engine::Engine()
 		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
 	}, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
-	, player_tbl_y(0), ui(), fnt(), gameover(false)
+	, player_tbl_y(0), ui(), fnt()
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
