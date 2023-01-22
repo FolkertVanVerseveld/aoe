@@ -194,6 +194,7 @@ class UICache final {
 	std::vector<VisualEntity> entities;
 	std::vector<IdPoolRef> selected;
 	float left, top;
+	ImDrawList *bkg;
 public:
 	void load(Engine &e);
 

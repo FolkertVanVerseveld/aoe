@@ -54,8 +54,8 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 void World::tick_players() {
 	ZoneScoped;
 
-	// collect dead players
-	for (unsigned i = 0; i < players.size(); ++i) {
+	// collect dead players, skip gaia cuz gaia is immortal
+	for (unsigned i = 1; i < players.size(); ++i) {
 		Player &p = players[i];
 
 		if (!p.alive || !p.entities.empty())
@@ -67,15 +67,17 @@ void World::tick_players() {
 		s->broadcast(pkg);
 	}
 
-	if (players.size() <= 1)
+	if (players.size() <= 2)
 		return; // no game over condition
 
 	std::set<unsigned> alive_teams;
 
 	// check surviving teams
-	for (Player &p : players)
+	for (unsigned i = 1; i < players.size(); ++i) {
+		Player &p = players[i];
 		if (p.alive)
 			alive_teams.emplace(p.init.team);
+	}
 
 	if (alive_teams.size() <= 1) {
 		// game has ended

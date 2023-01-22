@@ -56,7 +56,7 @@ SDLguard::~SDLguard() {
 }
 
 float SDL::fnt_scale = 1.0f;
-int SDL::max_h = 480;
+int SDL::max_h = WINDOW_HEIGHT_MIN;
 
 SDL::SDL(Uint32 flags) : guard(flags)
 	, window("Age of Empires", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN)

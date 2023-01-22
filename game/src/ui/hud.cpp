@@ -14,6 +14,7 @@ void UICache::idle() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
 	top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
+	bkg = ImGui::GetBackgroundDrawList();
 
 	auto &killed = e->gv.entities_killed;
 
