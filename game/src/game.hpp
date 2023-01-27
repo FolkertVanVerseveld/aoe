@@ -122,9 +122,10 @@ public:
 	float x, y, angle;
 
 	// TODO add ui info
+	unsigned subimage;
 
-	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0) {}
-	EntityView(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle) {}
+	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0) {}
+	EntityView(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), subimage(0) {}
 };
 
 class Entity final {
@@ -141,7 +142,7 @@ public:
 
 	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle) {}
 
-	Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y) {}
+	Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y), angle(0) {}
 
 	friend bool operator<(const Entity &lhs, const Entity &rhs) noexcept {
 		return lhs.ref < rhs.ref;

@@ -9,6 +9,8 @@ KeyboardController::KeyboardController() : state((size_t)GameKey::max, false), s
 	keys[SDLK_w] = GameKey::key_up;
 	keys[SDLK_s] = GameKey::key_down;
 	keys[SDLK_DELETE] = GameKey::kill_entity;
+	keys[SDLK_RETURN] = GameKey::toggle_chat;
+	keys[SDLK_RETURN2] = GameKey::toggle_chat;
 }
 
 void KeyboardController::clear() {

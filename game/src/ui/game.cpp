@@ -69,6 +69,7 @@ void Engine::show_multiplayer_game() {
 	Assets &a = *assets.get();
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 
+	// only use custom mouse if not hovering any imgui elements
 	if (!io.WantCaptureMouse) {
 		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 		sdl->set_cursor(1);
@@ -94,6 +95,9 @@ void Engine::show_multiplayer_game() {
 		menubar_left = vp->WorkPos.x + (vp->WorkSize.x - menubar_w) / 2;
 
 	if (ImGui::BeginMainMenuBar()) {
+		if (keyctl.is_tapped(GameKey::toggle_chat) && !show_chat)
+			show_chat = true;
+
 		if (ImGui::Button("Chat")) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
 			show_chat = !show_chat;

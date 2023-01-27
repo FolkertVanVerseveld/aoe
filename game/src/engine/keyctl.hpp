@@ -15,6 +15,7 @@ enum class GameKey {
 	key_up,
 	key_down,
 	kill_entity,
+	toggle_chat,
 	max,
 };
 
