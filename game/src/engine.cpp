@@ -138,7 +138,7 @@ void Engine::show_general_settings() {
 	int ivol = music_volume / 100.0 * SDL_MIX_MAXVOLUME;
 	//ivol = (int)((SDL_MIX_MAXVOLUME * 1.01) * (2.0 * exp(x) / (exp(x) + 1.0) - 1.0));
 
-	Mix_VolumeMusic(std::clamp(ivol, 0, SDL_MIX_MAXVOLUME));
+	Mix_VolumeMusic(cfg.music_volume = std::clamp(ivol, 0, SDL_MIX_MAXVOLUME));
 
 	chkbox("Sound effects enabled", sfx_on);
 	ImGui::SliderFloat("Sfx volume", &sfx_volume, 0, 100);
@@ -147,7 +147,7 @@ void Engine::show_general_settings() {
 	ivol = sfx_volume / 100.0 * SDL_MIX_MAXVOLUME;
 	//ivol = (int)((SDL_MIX_MAXVOLUME * 1.01) * (2.0 * exp(x) / (exp(x) + 1.0) - 1.0));
 
-	Mix_Volume(-1, std::clamp(ivol, 0, SDL_MIX_MAXVOLUME));
+	Mix_Volume(-1, cfg.sfx_volume = std::clamp(ivol, 0, SDL_MIX_MAXVOLUME));
 
 	// TODO save music_volume, sfx_on, sfx_volume
 
@@ -827,6 +827,9 @@ int Engine::mainloop() {
 
 	try {
 		cfg.load(cfg.path);
+
+		music_volume = cfg.music_volume * 100.0f / SDL_MIX_MAXVOLUME;
+		sfx_volume = cfg.sfx_volume * 100.0f / SDL_MIX_MAXVOLUME;
 	} catch (const std::runtime_error &e) {
 		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
 		cfg.reset(); // TODO maybe only disable autostart and not reset?
