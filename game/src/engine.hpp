@@ -45,12 +45,15 @@ public:
 	SDL_Rect bnds, display, vp;
 	std::string path, game_dir;
 	bool autostart;
+	uint8_t music_volume, sfx_volume;
 
 	static constexpr uint32_t magic = 0x06ce09f6;
 
 	Config(Engine&);
 	Config(Engine&, const std::string&);
 	~Config();
+
+	void reset();
 
 	void load(const std::string&);
 	void save(const std::string&);

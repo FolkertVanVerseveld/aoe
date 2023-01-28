@@ -14,7 +14,7 @@
 
 namespace aoe {
 
-Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic), music_mute(false), music_file()
+Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic), music_mute(false), sfx_mute(false), music_file()
 	, m_mix(), taunts(), sfx(), jukebox(), play_taunts(true)
 {
 	int flags = MIX_INIT_MP3;

@@ -46,7 +46,7 @@ static void write(std::ofstream &out, const std::string &s) {
 }
 
 Config::Config(Engine &e) : Config(e, "") {}
-Config::Config(Engine &e, const std::string &s) : e(e), bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s), game_dir(), autostart(false) {}
+Config::Config(Engine &e, const std::string &s) : e(e), bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s), game_dir(), autostart(false), music_volume(SDL_MIX_MAXVOLUME), sfx_volume(SDL_MIX_MAXVOLUME) {}
 
 Config::~Config() {
 	if (path.empty())
@@ -55,6 +55,14 @@ Config::~Config() {
 	try {
 		save(path);
 	} catch (std::exception&) {}
+}
+
+void Config::reset() {
+	vp = display = bnds = SDL_Rect{0, 0, 1, 1};
+	path.clear();
+	game_dir.clear();
+	autostart = false;
+	music_volume = sfx_volume = SDL_MIX_MAXVOLUME;
 }
 
 void Config::load(const std::string &path) {
@@ -82,11 +90,15 @@ void Config::load(const std::string &path) {
 
 	bool mute_music = !!(dw & (1 << 0));
 	bool autostart  = !!(dw & (1 << 1));
+	bool mute_sfx   = !!(dw & (1 << 2));
 
 	if (mute_music)
 		sfx.mute_music();
 	else
 		sfx.unmute_music();
+
+	in.read((char*)&music_volume, 1);
+	in.read((char*)&sfx_volume, 1);
 
 	this->autostart = autostart;
 
@@ -122,8 +134,12 @@ void Config::save(const std::string &path) {
 
 	if (sfx.is_muted_music()) dw |= 1 << 0;
 	if (autostart           ) dw |= 1 << 1;
+	if (sfx.is_muted_sfx()  ) dw |= 1 << 2;
 
 	out.write((const char*)&dw, sizeof(dw));
+
+	out.write((const char*)&music_volume, 1);
+	out.write((const char*)&sfx_volume, 1);
 
 	write(out, e.game_dir);
 

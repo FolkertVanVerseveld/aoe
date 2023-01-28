@@ -80,7 +80,7 @@ class Audio final {
 	Uint16 format;
 
 	std::unique_ptr<Mix_Music, decltype(&Mix_FreeMusic)> music;
-	bool music_mute;
+	bool music_mute, sfx_mute;
 	std::string music_file;
 
 	std::mutex m_mix;
@@ -108,6 +108,7 @@ public:
 	void unmute_music();
 
 	constexpr bool is_muted_music() const noexcept { return music_mute; }
+	constexpr bool is_muted_sfx() const noexcept { return sfx_mute; }
 
 	void load_taunt(TauntId id, const char *file);
 	void load_taunt(TauntId id, const std::vector<uint8_t> &data);

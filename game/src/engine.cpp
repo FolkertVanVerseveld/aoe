@@ -829,6 +829,7 @@ int Engine::mainloop() {
 		cfg.load(cfg.path);
 	} catch (const std::runtime_error &e) {
 		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
+		cfg.reset(); // TODO maybe only disable autostart and not reset?
 	}
 
 	m_gl.reset(new gfx::GL());
