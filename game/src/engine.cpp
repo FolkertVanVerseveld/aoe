@@ -65,7 +65,7 @@ Engine::Engine()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
 	, tsk_start_server{ invalid_ref }, chat_async(), async_tasks(0)
-	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), game_dir()
+	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), music_volume(100.0f), sfx_on(true), sfx_volume(100.0f), game_dir()
 	, debug()
 	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), m_gl(nullptr), assets(), assets_good(false)
 	, show_chat(true), show_achievements(false), show_timeline(false), show_diplomacy(false)
@@ -131,6 +131,26 @@ void Engine::show_general_settings() {
 		sdl->gl_context.set_vsync(vsync_mode);
 
 	chkbox("Music enabled", music_on);
+	ImGui::SliderFloat("Music volume", &music_volume, 0, 100);
+	// plot 129 * (2*(e^x)/(e^x+1) - 1) from 0 to 5
+
+	float x = music_volume / 20.0f;
+	int ivol = music_volume / 100.0 * SDL_MIX_MAXVOLUME;
+	//ivol = (int)((SDL_MIX_MAXVOLUME * 1.01) * (2.0 * exp(x) / (exp(x) + 1.0) - 1.0));
+
+	Mix_VolumeMusic(std::clamp(ivol, 0, SDL_MIX_MAXVOLUME));
+
+	chkbox("Sound effects enabled", sfx_on);
+	ImGui::SliderFloat("Sfx volume", &sfx_volume, 0, 100);
+
+	x = sfx_volume / 20.0f;
+	ivol = sfx_volume / 100.0 * SDL_MIX_MAXVOLUME;
+	//ivol = (int)((SDL_MIX_MAXVOLUME * 1.01) * (2.0 * exp(x) / (exp(x) + 1.0) - 1.0));
+
+	Mix_Volume(-1, std::clamp(ivol, 0, SDL_MIX_MAXVOLUME));
+
+	// TODO save music_volume, sfx_on, sfx_volume
+
 	chkbox("Play chat taunts", sfx.play_taunts);
 	chkbox("Autostart", cfg.autostart);
 	chkbox("UI scaling", font_scaling);

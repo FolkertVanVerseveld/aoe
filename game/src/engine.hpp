@@ -115,6 +115,9 @@ public:
 private:
 	int music_id;
 	bool music_on;
+	float music_volume;
+	bool sfx_on;
+	float sfx_volume;
 
 	std::string game_dir;
 
@@ -181,6 +184,7 @@ private:
 	void show_start();
 	void show_defeat();
 
+	void multiplayer_set_localhost();
 	void show_multiplayer_menu();
 	// TODO extract as HUD
 	void show_multiplayer_host();

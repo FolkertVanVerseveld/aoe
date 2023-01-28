@@ -1235,6 +1235,7 @@ void Engine::show_start() {
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
 
+		// TODO enable again when working on scenario editor
 #if 0
 		if (f.btn("Scenario Builder", TextHalign::center)) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
@@ -1359,6 +1360,10 @@ void Engine::show_init() {
 
 static const char *connection_modes[] = { "host game", "join game" };
 
+void Engine::multiplayer_set_localhost() {
+	strncpy0(connection_host, "127.0.0.1", sizeof(connection_host));
+}
+
 void Engine::show_multiplayer_menu() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -1380,16 +1385,14 @@ void Engine::show_multiplayer_menu() {
 		f.str2("Multiplayer", TextHalign::center);
 	}
 
-	//f.text("username", username);
-
-	if (ImGui::Combo("connection mode", &connection_mode, connection_modes, IM_ARRAYSIZE(connection_modes)))
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	ImGui::RadioButton(connection_modes[0], &connection_mode, 0); ImGui::SameLine();
+	ImGui::RadioButton(connection_modes[1], &connection_mode, 1);
 
 	if (connection_mode == 1) {
 		ImGui::InputText("host", connection_host, sizeof(connection_host));
 		ImGui::SameLine();
 		if (ImGui::Button("localhost"))
-			strncpy0(connection_host, "127.0.0.1", sizeof(connection_host));
+			multiplayer_set_localhost();
 	}
 
 	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
@@ -1401,6 +1404,9 @@ void Engine::show_multiplayer_menu() {
 				start_server(connection_port);
 				break;
 			case 1:
+				if (!connection_host[0])
+					multiplayer_set_localhost();
+
 				start_client(connection_host, connection_port);
 				break;
 		}

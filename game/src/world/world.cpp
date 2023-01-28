@@ -204,7 +204,7 @@ void World::create_players() {
 		s->broadcast(pkg);
 	}
 
-	size_t size = scn.width * scn.height;
+	size_t size = (size_t)scn.width * scn.height;
 	players.clear();
 	for (const PlayerSetting &ps : scn.players)
 		players.emplace_back(ps, size);
