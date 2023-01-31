@@ -151,6 +151,8 @@ enum class DrsId {
 
 	img_dialog0 = 50210,
 
+	gif_menu_btn_small0 = 50717,
+	gif_menu_btn_medium0 = 50747,
 	gif_menubar0 = 50741,
 	gif_cursors = 51000,
 

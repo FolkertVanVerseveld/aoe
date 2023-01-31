@@ -155,6 +155,38 @@ void Engine::show_multiplayer_game() {
 
 	ui.str2(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y), age.c_str());
 
+	// draw menu button
+	
+	const ImageSet &btns_s = a.anim_at(io::DrsId::gif_menu_btn_small0);
+	const gfx::ImageRef &rbtns = a.at(btns_s.imgs[0]);
+
+	float menubar_right = std::min(io.DisplaySize.x, menubar_left + menubar_w);
+
+	float btn_w = rbtns.bnds.w * scale;
+	float btn_left = menubar_right - btn_w;
+	
+	lst->AddImage(tex1, ImVec2(btn_left, vp->WorkPos.y), ImVec2(btn_left + btn_w, vp->WorkPos.y + rbtns.bnds.h * scale), ImVec2(rbtns.s0, rbtns.t0), ImVec2(rbtns.s1, rbtns.t1));
+
+	sz = ImGui::CalcTextSize("Menu");
+	ui.str2(ImVec2(btn_left + (btn_w - sz.x) / 2, y), "Menu");
+
+	const ImageSet &btnm_s = a.anim_at(io::DrsId::gif_menu_btn_medium0);
+	const gfx::ImageRef &rbtnm = a.at(btnm_s.imgs[0]);
+
+	btn_left -= btn_w = rbtnm.bnds.w * scale;
+
+	lst->AddImage(tex1, ImVec2(btn_left, vp->WorkPos.y), ImVec2(btn_left + btn_w, vp->WorkPos.y + rbtnm.bnds.h * scale), ImVec2(rbtnm.s0, rbtnm.t0), ImVec2(rbtnm.s1, rbtnm.t1));
+
+	sz = ImGui::CalcTextSize("Diplomacy");
+	ui.str2(ImVec2(btn_left + (btn_w - sz.x) / 2, y), "Diplomacy");
+
+	btn_left -= btn_w = rbtns.bnds.w * scale;
+
+	lst->AddImage(tex1, ImVec2(btn_left, vp->WorkPos.y), ImVec2(btn_left + btn_w, vp->WorkPos.y + rbtns.bnds.h * scale), ImVec2(rbtns.s0, rbtns.t0), ImVec2(rbtns.s1, rbtns.t1));
+
+	sz = ImGui::CalcTextSize("Chat");
+	ui.str2(ImVec2(btn_left + (btn_w - sz.x) / 2, y), "Chat");
+
 	menubar_bottom += menubar_h;
 
 	if (show_chat)
