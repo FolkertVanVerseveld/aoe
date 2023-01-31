@@ -62,6 +62,43 @@ void UICache::show_world() {
 	show_selections();
 }
 
+#undef small
+
+static bool menu_btn(ImTextureID tex, UICache &ui, const Assets &a, const char *lbl, float x, float scale, bool small) {
+	ZoneScoped;
+	const ImageSet &btns_s = a.anim_at(small ? io::DrsId::gif_menu_btn_small0 : io::DrsId::gif_menu_btn_medium0);
+	
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGuiIO &io = ImGui::GetIO();
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+	const gfx::ImageRef &rbtns = a.at(btns_s.imgs[0]);
+
+	float btn_w = rbtns.bnds.w * scale, btn_h = rbtns.bnds.h * scale;
+	float y = vp->WorkPos.y + 2 * scale;
+
+	float s0 = rbtns.s0, t0 = rbtns.t0, s1 = rbtns.s1, t1 = rbtns.t1;
+	bool held = false;
+
+	if (io.MousePos.x >= x && io.MousePos.x < x + btn_w && io.MousePos.y >= vp->WorkPos.y && io.MousePos.y < vp->WorkPos.y + btn_h) {
+		auto &r = a.at(btns_s.imgs[1]);
+		s0 = r.s0; t0 = r.t0; s1 = r.s1; t1 = r.t1;
+		held = true;
+	}
+
+	lst->AddImage(tex, ImVec2(x, vp->WorkPos.y), ImVec2(x + btn_w, vp->WorkPos.y + btn_h), ImVec2(s0, t0), ImVec2(s1, t1));
+
+	ImVec2 sz(ImGui::CalcTextSize(lbl));
+	if (held) { ++x; ++y; }
+	ui.str2(ImVec2(x + (btn_w - sz.x) / 2, y), lbl);
+
+	// TODO use held for sfx and image
+
+	if (held && io.MouseDown[0] && io.MouseDownDuration[0] <= 0.0f)
+		return true;
+
+	return false;
+}
+
 void Engine::show_multiplayer_game() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGuiIO &io = ImGui::GetIO();
@@ -94,33 +131,8 @@ void Engine::show_multiplayer_game() {
 	if (vp->WorkSize.x > menubar_w)
 		menubar_left = vp->WorkPos.x + (vp->WorkSize.x - menubar_w) / 2;
 
-	if (ImGui::BeginMainMenuBar()) {
-		if (keyctl.is_tapped(GameKey::toggle_chat) && !show_chat)
-			show_chat = true;
-
-		if (ImGui::Button("Chat")) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
-			show_chat = !show_chat;
-		}
-
-		if (ImGui::Button("Diplomacy")) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
-			show_diplomacy = !show_diplomacy;
-		}
-
-		// TODO refactor beginmenu/menuitem to our wrappers
-		if (ImGui::BeginMenu("Menu")) {
-			if (ImGui::MenuItem("Achievements"))
-				show_achievements = !show_achievements;
-
-			if (ImGui::MenuItem("Quit"))
-				cancel_multiplayer_host(MenuState::defeat);
-
-			ImGui::EndMenu();
-		}
-
-		ImGui::EndMainMenuBar();
-	}
+	if (keyctl.is_tapped(GameKey::toggle_chat) && !show_chat)
+		show_chat = true;
 
 	// TODO fetch from player view
 	int food = 200, wood = 200, gold = 0, stone = 150;
@@ -164,28 +176,36 @@ void Engine::show_multiplayer_game() {
 
 	float btn_w = rbtns.bnds.w * scale;
 	float btn_left = menubar_right - btn_w;
-	
-	lst->AddImage(tex1, ImVec2(btn_left, vp->WorkPos.y), ImVec2(btn_left + btn_w, vp->WorkPos.y + rbtns.bnds.h * scale), ImVec2(rbtns.s0, rbtns.t0), ImVec2(rbtns.s1, rbtns.t1));
-
-	sz = ImGui::CalcTextSize("Menu");
-	ui.str2(ImVec2(btn_left + (btn_w - sz.x) / 2, y), "Menu");
 
 	const ImageSet &btnm_s = a.anim_at(io::DrsId::gif_menu_btn_medium0);
 	const gfx::ImageRef &rbtnm = a.at(btnm_s.imgs[0]);
 
-	btn_left -= btn_w = rbtnm.bnds.w * scale;
+	if (menu_btn(tex1, ui, a, "Menu", btn_left, scale, true)) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		ImGui::OpenPopup("MenuPopup");
+	}
 
-	lst->AddImage(tex1, ImVec2(btn_left, vp->WorkPos.y), ImVec2(btn_left + btn_w, vp->WorkPos.y + rbtnm.bnds.h * scale), ImVec2(rbtnm.s0, rbtnm.t0), ImVec2(rbtnm.s1, rbtnm.t1));
+	if (ImGui::BeginPopup("MenuPopup")) {
+		if (ImGui::MenuItem("Achievements"))
+			show_achievements = !show_achievements;
 
-	sz = ImGui::CalcTextSize("Diplomacy");
-	ui.str2(ImVec2(btn_left + (btn_w - sz.x) / 2, y), "Diplomacy");
+		if (ImGui::MenuItem("Quit"))
+			cancel_multiplayer_host(MenuState::defeat);
 
-	btn_left -= btn_w = rbtns.bnds.w * scale;
+		ImGui::EndPopup();
+	}
 
-	lst->AddImage(tex1, ImVec2(btn_left, vp->WorkPos.y), ImVec2(btn_left + btn_w, vp->WorkPos.y + rbtns.bnds.h * scale), ImVec2(rbtns.s0, rbtns.t0), ImVec2(rbtns.s1, rbtns.t1));
+	btn_left -= rbtnm.bnds.w * scale;
+	if (menu_btn(tex1, ui, a, "Diplomacy", btn_left, scale, false)) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		show_diplomacy = !show_diplomacy;
+	}
 
-	sz = ImGui::CalcTextSize("Chat");
-	ui.str2(ImVec2(btn_left + (btn_w - sz.x) / 2, y), "Chat");
+	btn_left -= rbtns.bnds.w * scale;
+	if (menu_btn(tex1, ui, a, "Chat", btn_left, scale, true)) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		show_chat = !show_chat;
+	}
 
 	menubar_bottom += menubar_h;
 
