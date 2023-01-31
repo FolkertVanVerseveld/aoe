@@ -33,7 +33,7 @@ set(IMGUI_SRC ${IMGUI_CORE_SRC} ${IMGUI_BACKEND_SRC})
 file(GLOB AOE_DLLS "*.dll")
 file(COPY ${AOE_DLLS} DESTINATION ${CMAKE_BINARY_DIR})
 
-include_directories("../imgui/" "../imgui/backends" ${SDL2_INCLUDE_DIRS} "../wepoll/" "../tracy/public" "../external/json/single_include")
+include_directories("../imgui/" "../imgui/backends" ${SDL2_INCLUDE_DIRS} "../wepoll/" "../tracy/public" "../wepoll" "../json/single_include")
 
 add_executable(empires "main.cpp" ${AOE_SRC} ${IMGUI_SRC} ${PROFILE_SOURCES})
 add_executable(testempires ${AOE_TEST} ${AOE_SRC} ${IMGUI_SRC} ${PROFILE_SOURCES})

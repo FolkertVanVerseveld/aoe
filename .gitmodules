@@ -8,5 +8,5 @@
 	path = wepoll
 	url = https://github.com/piscisaureus/wepoll.git
 [submodule "external/json"]
-	path = external/json
+	path = json
 	url = https://github.com/nlohmann/json.git
