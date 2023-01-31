@@ -6,7 +6,7 @@
 #include <atomic>
 #include <string>
 
-#include "nominmax.hpp"
+#include "../nominmax.hpp"
 
 #if _WIN32
 #include <winsock2.h>

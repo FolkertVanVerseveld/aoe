@@ -4,7 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "../idpool.hpp"
+#include <idpool.hpp>
+
 #include "../legacy.hpp"
 
 #define GLCHK aoe::gfx::glchk(__FILE__, __func__, __LINE__)

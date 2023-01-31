@@ -27,8 +27,8 @@
 #define EPOLLET 0
 #endif
 
-#include "debug.hpp"
-#include "ctpl_stl.hpp"
+#include "../debug.hpp"
+#include <ctpl_stl.hpp>
 
 namespace aoe {
 

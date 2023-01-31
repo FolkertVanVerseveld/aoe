@@ -4,7 +4,7 @@
  * Define network protocol application layer and low level server/client infrastructure.
  */
 
-#include "net.hpp"
+#include "../net/net.hpp"
 
 #include <mutex>
 #include <deque>
@@ -15,7 +15,8 @@
 
 #include "game.hpp"
 #include "debug.hpp"
-#include "idpool.hpp"
+
+#include <idpool.hpp>
 
 #if _WIN32
 #include <wepoll.h>
