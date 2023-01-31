@@ -73,6 +73,17 @@ enum class SfxId {
 	villager5,
 	villager6,
 	villager7,
+	villager_die_random,
+	villager_die1,
+	villager_die2,
+	villager_die3,
+	villager_die4,
+	villager_die5,
+	villager_die6,
+	villager_die7,
+	villager_die8,
+	villager_die9,
+	villager_die10,
 };
 
 class Audio final {
@@ -106,6 +117,9 @@ public:
 
 	void mute_music();
 	void unmute_music();
+
+	void mute_sfx();
+	void unmute_sfx();
 
 	constexpr bool is_muted_music() const noexcept { return music_mute; }
 	constexpr bool is_muted_sfx() const noexcept { return sfx_mute; }

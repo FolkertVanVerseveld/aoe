@@ -832,7 +832,7 @@ int Engine::mainloop() {
 		sfx_volume = cfg.sfx_volume * 100.0f / SDL_MIX_MAXVOLUME;
 	} catch (const std::runtime_error &e) {
 		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
-		cfg.reset(); // TODO maybe only disable autostart and not reset?
+		cfg.autostart = false;
 	}
 
 	m_gl.reset(new gfx::GL());

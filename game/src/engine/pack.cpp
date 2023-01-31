@@ -131,15 +131,8 @@ Tileset ImagePacker::collect(int w, int h) {
 			int p1 = ts.surf->pitch >> 2, p0 = tmp->pitch >> 2;
 
 			// copy data
-			for (int y0 = 0, y1 = r.bnds.y, h = tmp->h; y0 < h; ++y0, ++y1) {
-#if 0
-				// TODO use memcpy?
-				for (int x0 = 0, x1 = r.bnds.x, w = tmp->w; x0 < w; ++x0, ++x1)
-					pixels1[y1 * p1 + x1] = pixels0[y0 * p0 + x0];
-#else
+			for (int y0 = 0, y1 = r.bnds.y, h = tmp->h; y0 < h; ++y0, ++y1)
 				memcpy(&pixels1[y1 * p1 + r.bnds.x], &pixels0[y0 * p0], 4 * tmp->w);
-#endif
-			}
 		}
 	}
 

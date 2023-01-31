@@ -2,8 +2,11 @@
 
 #include <cstdint>
 
+#include <iostream>
 #include <fstream>
 #include <string>
+
+#include <nlohmann/json.hpp>
 
 #include "../debug.hpp"
 
@@ -67,91 +70,103 @@ void Config::reset() {
 
 void Config::load(const std::string &path) {
 	ZoneScoped;
-	std::ifstream in(path, std::ios_base::binary);
+	using json = nlohmann::json;
+
+	std::ifstream in(path);// , std::ios_base::binary);
 
 	// let c++ take care of any errors
 	in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
-	uint32_t actual_magic;
+	try {
+		json data(json::parse(in));
 
-	in.read((char*)&actual_magic, sizeof(actual_magic));
+		bnds.x = data["game_window"]["x"];
+		bnds.y = data["game_window"]["y"];
+		bnds.w = data["game_window"]["w"];
+		bnds.h = data["game_window"]["h"];
 
-	if (magic != actual_magic)
-		throw std::runtime_error("magic mismatch");
+		display.x = data["display"]["x"];
+		display.y = data["display"]["y"];
+		display.w = data["display"]["w"];
+		display.h = data["display"]["h"];
 
-	read(in, bnds);
-	read(in, display);
-	read(in, vp);
+		vp.x = data["viewport"]["x"];
+		vp.y = data["viewport"]["y"];
+		vp.w = data["viewport"]["w"];
+		vp.h = data["viewport"]["h"];
 
-	Audio &sfx = e.sfx;
-	uint32_t dw;
+		bool mute_music = !data["audio"]["music_enabled"];
+		bool mute_sfx   = !data["audio"]["sounds_enabled"];
 
-	in.read((char*)&dw, sizeof(dw));
+		music_volume = (uint8_t)std::clamp<int>(data["audio"]["music_volume"], 0, SDL_MIX_MAXVOLUME);
+		sfx_volume = (uint8_t)std::clamp<int>(data["audio"]["sounds_volume"], 0, SDL_MIX_MAXVOLUME);
 
-	bool mute_music = !!(dw & (1 << 0));
-	bool autostart  = !!(dw & (1 << 1));
-	bool mute_sfx   = !!(dw & (1 << 2));
+		Audio &sfx = e.sfx;
 
-	if (mute_music)
-		sfx.mute_music();
-	else
-		sfx.unmute_music();
+		if (mute_music)
+			sfx.mute_music();
+		else
+			sfx.unmute_music();
 
-	in.read((char*)&music_volume, 1);
-	in.read((char*)&sfx_volume, 1);
+		if (mute_sfx)
+			sfx.mute_sfx();
+		else
+			sfx.unmute_sfx();
 
-	this->autostart = autostart;
+		sfx.jukebox[MusicId::menu   ] = data["audio"]["music_main_menu"];
+		sfx.jukebox[MusicId::success] = data["audio"]["music_victory"  ];
+		sfx.jukebox[MusicId::fail   ] = data["audio"]["music_defeat"   ];
+		sfx.jukebox[MusicId::game   ] = data["audio"]["music_gameplay" ];
 
-	read(in, game_dir, UINT16_MAX);
+		this->autostart = data["autostart"];
 
-	in.read((char*)&dw, sizeof(dw));
-
-	for (uint32_t i = 0; i < dw; ++i) {
-		uint32_t id;
-		std::string path;
-
-		in.read((char*)&id, sizeof(id));
-		read(in, path, UINT16_MAX);
-
-		sfx.jukebox[(MusicId)id] = path;
+		game_dir = data["original_game_directory"];
+	} catch (std::exception &e) {
+		throw std::runtime_error(e.what());
 	}
 }
 
 void Config::save(const std::string &path) {
 	ZoneScoped;
-	std::ofstream out(path, std::ios_base::binary | std::ios_base::trunc);
+	using json = nlohmann::json;
+	json data;
+
+	data["game_window"]["x"] = bnds.x;
+	data["game_window"]["y"] = bnds.y;
+	data["game_window"]["w"] = bnds.w;
+	data["game_window"]["h"] = bnds.h;
+
+	data["display"]["x"] = display.x;
+	data["display"]["y"] = display.y;
+	data["display"]["w"] = display.w;
+	data["display"]["h"] = display.h;
+
+	data["viewport"]["x"] = vp.x;
+	data["viewport"]["y"] = vp.y;
+	data["viewport"]["w"] = vp.w;
+	data["viewport"]["h"] = vp.h;
+
+	Audio &sfx = e.sfx;
+
+	data["audio"]["music_enabled"]  = !sfx.is_muted_music();
+	data["audio"]["sounds_enabled"] = !sfx.is_muted_sfx();
+	data["audio"]["music_volume"]   = music_volume;
+	data["audio"]["sounds_volume"]  = sfx_volume;
+
+	data["audio"]["music_main_menu"] = sfx.jukebox[MusicId::menu];
+	data["audio"]["music_victory"  ] = sfx.jukebox[MusicId::success];
+	data["audio"]["music_defeat"   ] = sfx.jukebox[MusicId::fail];
+	data["audio"]["music_gameplay" ] = sfx.jukebox[MusicId::game];
+
+	data["autostart"] = autostart;
+
+	data["original_game_directory"] = e.game_dir;
+	std::ofstream out(path);// , std::ios_base::binary | std::ios_base::trunc);
 
 	// let c++ take care of any errors
 	out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-	out.write((const char*)&magic, sizeof magic);
-	write(out, bnds);
-	write(out, display);
-	write(out, vp);
-
-	uint32_t dw = 0;
-	Audio &sfx = e.sfx;
-
-	if (sfx.is_muted_music()) dw |= 1 << 0;
-	if (autostart           ) dw |= 1 << 1;
-	if (sfx.is_muted_sfx()  ) dw |= 1 << 2;
-
-	out.write((const char*)&dw, sizeof(dw));
-
-	out.write((const char*)&music_volume, 1);
-	out.write((const char*)&sfx_volume, 1);
-
-	write(out, e.game_dir);
-
-	dw = sfx.jukebox.size();
-
-	out.write((const char*)&dw, sizeof(dw));
-
-	for (auto kv : sfx.jukebox) {
-		dw = (unsigned)kv.first;
-		out.write((const char*)&dw, sizeof(dw));
-		write(out, kv.second);
-	}
+	out << data.dump(4) << std::endl;
 }
 
 }

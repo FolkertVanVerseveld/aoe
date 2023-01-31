@@ -29,8 +29,16 @@ void UICache::idle() {
 
 	for (const EntityView &ev : killed) {
 		// TODO filter if out of camera range
-		//if (is_building(ev.type))
-		e->sfx.play_sfx(SfxId::bld_die_random);
+		if (is_building(ev.type)) {
+			e->sfx.play_sfx(SfxId::bld_die_random);
+			continue;
+		}
+
+		switch (ev.type) {
+		default:
+			e->sfx.play_sfx(SfxId::villager_die_random);
+			break;
+		}
 	}
 
 	killed.clear();

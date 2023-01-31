@@ -93,6 +93,18 @@ void Audio::unmute_music() {
 		Mix_PlayMusic(music.get(), 0);
 }
 
+void Audio::mute_sfx() {
+	if (sfx_mute)
+		return;
+
+	Mix_HaltChannel(-1);
+	sfx_mute = true;
+}
+
+void Audio::unmute_sfx() {
+	sfx_mute = false;
+}
+
 void Audio::load_taunt(TauntId id, const char *file) {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_mix);
@@ -228,23 +240,40 @@ void Audio::play_sfx(SfxId id, int loops) {
 
 	// check if special sfxid
 	switch (id) {
-	case SfxId::bld_die_random:
-		id = (SfxId)((unsigned)SfxId::bld_die1 + rand() % 2);
-		break;
-	case SfxId::villager_random: {
-		const SfxId lst[7] = {
-			SfxId::villager1,
-			SfxId::villager2,
-			SfxId::villager3,
-			SfxId::villager4,
-			SfxId::villager5,
-			SfxId::villager6,
-			SfxId::villager7,
-		};
+		case SfxId::bld_die_random:
+			id = (SfxId)((unsigned)SfxId::bld_die1 + rand() % 2);
+			break;
+		case SfxId::villager_random: {
+			const SfxId lst[7] = {
+				SfxId::villager1,
+				SfxId::villager2,
+				SfxId::villager3,
+				SfxId::villager4,
+				SfxId::villager5,
+				SfxId::villager6,
+				SfxId::villager7,
+			};
 
-		id = lst[rand() % 7];
-		break;
-	}
+			id = lst[rand() % 7];
+			break;
+		}
+		case SfxId::villager_die_random: {
+			const SfxId lst[] = {
+				SfxId::villager_die1,
+				SfxId::villager_die2,
+				SfxId::villager_die3,
+				SfxId::villager_die4,
+				SfxId::villager_die5,
+				SfxId::villager_die6,
+				SfxId::villager_die7,
+				SfxId::villager_die8,
+				SfxId::villager_die9,
+				SfxId::villager_die10,
+			};
+
+			id = lst[rand() % 10];
+			break;
+		}
 	}
 
 	auto it = sfx.find(id);

@@ -7,3 +7,6 @@
 [submodule "wepoll"]
 	path = wepoll
 	url = https://github.com/piscisaureus/wepoll.git
+[submodule "external/json"]
+	path = external/json
+	url = https://github.com/nlohmann/json.git
