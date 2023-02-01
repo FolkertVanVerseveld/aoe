@@ -62,39 +62,46 @@ void UICache::show_world() {
 	show_selections();
 }
 
-#undef small
-
-static bool menu_btn(ImTextureID tex, UICache &ui, const Assets &a, const char *lbl, float x, float scale, bool small) {
+bool UICache::menu_btn(ImTextureID tex, const Assets& a, const char* lbl, float x, float scale, bool small) {
 	ZoneScoped;
-	const ImageSet &btns_s = a.anim_at(small ? io::DrsId::gif_menu_btn_small0 : io::DrsId::gif_menu_btn_medium0);
-	
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGuiIO &io = ImGui::GetIO();
-	ImDrawList *lst = ImGui::GetBackgroundDrawList();
-	const gfx::ImageRef &rbtns = a.at(btns_s.imgs[0]);
+	const ImageSet& btns_s = a.anim_at(small ? io::DrsId::gif_menu_btn_small0 : io::DrsId::gif_menu_btn_medium0);
+
+	ImGuiViewport* vp = ImGui::GetMainViewport();
+	ImGuiIO& io = ImGui::GetIO();
+	ImDrawList* lst = ImGui::GetBackgroundDrawList();
+	const gfx::ImageRef& rbtns = a.at(btns_s.imgs[0]);
 
 	float btn_w = rbtns.bnds.w * scale, btn_h = rbtns.bnds.h * scale;
 	float y = vp->WorkPos.y + 2 * scale;
 
 	float s0 = rbtns.s0, t0 = rbtns.t0, s1 = rbtns.s1, t1 = rbtns.t1;
-	bool held = false;
+	bool held = false, snd = false;
 
 	if (io.MousePos.x >= x && io.MousePos.x < x + btn_w && io.MousePos.y >= vp->WorkPos.y && io.MousePos.y < vp->WorkPos.y + btn_h) {
-		auto &r = a.at(btns_s.imgs[1]);
-		s0 = r.s0; t0 = r.t0; s1 = r.s1; t1 = r.t1;
+		if (btnsel == lbl && io.MouseDown[0]) {
+			auto &r = a.at(btns_s.imgs[1]);
+			s0 = r.s0; t0 = r.t0; s1 = r.s1; t1 = r.t1;
+			snd = true;
+		}
 		held = true;
 	}
 
 	lst->AddImage(tex, ImVec2(x, vp->WorkPos.y), ImVec2(x + btn_w, vp->WorkPos.y + btn_h), ImVec2(s0, t0), ImVec2(s1, t1));
 
 	ImVec2 sz(ImGui::CalcTextSize(lbl));
-	if (held) { ++x; ++y; }
-	ui.str2(ImVec2(x + (btn_w - sz.x) / 2, y), lbl);
+	if (snd) { ++x; ++y; }
+	str2(ImVec2(x + (btn_w - sz.x) / 2, y), lbl);
 
 	// TODO use held for sfx and image
 
 	if (held && io.MouseDown[0] && io.MouseDownDuration[0] <= 0.0f)
-		return true;
+		btnsel = lbl;
+
+	if (!io.MouseDown[0] && btnsel == lbl) {
+		btnsel.clear();
+		if (held)
+			return true;
+	}
 
 	return false;
 }
@@ -180,7 +187,7 @@ void UICache::show_multiplayer_game() {
 	const ImageSet &btnm_s = a.anim_at(io::DrsId::gif_menu_btn_medium0);
 	const gfx::ImageRef &rbtnm = a.at(btnm_s.imgs[0]);
 
-	if (menu_btn(e->tex1, *this, a, "Menu", btn_left, scale, true)) {
+	if (menu_btn(e->tex1, a, "Menu", btn_left, scale, true)) {
 		e->sfx.play_sfx(SfxId::sfx_ui_click);
 		ImGui::OpenPopup("MenuPopup");
 	}
@@ -196,13 +203,13 @@ void UICache::show_multiplayer_game() {
 	}
 
 	btn_left -= rbtnm.bnds.w * scale;
-	if (menu_btn(e->tex1, *this, a, "Diplomacy", btn_left, scale, false)) {
+	if (menu_btn(e->tex1, a, "Diplomacy", btn_left, scale, false)) {
 		e->sfx.play_sfx(SfxId::sfx_ui_click);
 		e->show_diplomacy = !e->show_diplomacy;
 	}
 
 	btn_left -= rbtns.bnds.w * scale;
-	if (menu_btn(e->tex1, *this, a, "Chat", btn_left, scale, true)) {
+	if (menu_btn(e->tex1, a, "Chat", btn_left, scale, true)) {
 		e->sfx.play_sfx(SfxId::sfx_ui_click);
 		e->show_chat = !e->show_chat;
 	}
