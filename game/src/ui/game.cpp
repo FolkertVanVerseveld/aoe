@@ -64,12 +64,12 @@ void UICache::show_world() {
 
 bool UICache::menu_btn(ImTextureID tex, const Assets& a, const char* lbl, float x, float scale, bool small) {
 	ZoneScoped;
-	const ImageSet& btns_s = a.anim_at(small ? io::DrsId::gif_menu_btn_small0 : io::DrsId::gif_menu_btn_medium0);
+	const ImageSet &btns_s = a.anim_at(small ? io::DrsId::gif_menu_btn_small0 : io::DrsId::gif_menu_btn_medium0);
 
-	ImGuiViewport* vp = ImGui::GetMainViewport();
-	ImGuiIO& io = ImGui::GetIO();
-	ImDrawList* lst = ImGui::GetBackgroundDrawList();
-	const gfx::ImageRef& rbtns = a.at(btns_s.imgs[0]);
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGuiIO &io = ImGui::GetIO();
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+	const gfx::ImageRef &rbtns = a.at(btns_s.imgs[0]);
 
 	float btn_w = rbtns.bnds.w * scale, btn_h = rbtns.bnds.h * scale;
 	float y = vp->WorkPos.y + 2 * scale;
@@ -91,8 +91,6 @@ bool UICache::menu_btn(ImTextureID tex, const Assets& a, const char* lbl, float 
 	ImVec2 sz(ImGui::CalcTextSize(lbl));
 	if (snd) { ++x; ++y; }
 	str2(ImVec2(x + (btn_w - sz.x) / 2, y), lbl);
-
-	// TODO use held for sfx and image
 
 	if (held && io.MouseDown[0] && io.MouseDownDuration[0] <= 0.0f)
 		btnsel = lbl;

@@ -154,6 +154,7 @@ void NetPkg::ntoh() {
 
 			switch ((NetEntityControlType)dw[0]) {
 			case NetEntityControlType::add:
+			case NetEntityControlType::spawn:
 				need_payload(NetEntityMod::addsize);
 				dw[1] = ntohs(dw[1]); // e.type
 
@@ -168,6 +169,7 @@ void NetPkg::ntoh() {
 
 				dw = (uint16_t*)&dd[4];
 				dw[0] = ntohs(dw[0]); // e.color
+				dw[1] = ntohs(dw[1]); // e.subimage
 				break;
 			case NetEntityControlType::kill:
 				need_payload(NetEntityMod::killsize);
@@ -284,6 +286,7 @@ void NetPkg::hton() {
 
 			switch (type) {
 			case NetEntityControlType::add:
+			case NetEntityControlType::spawn:
 				dw[1] = htons(dw[1]); // e.type
 
 				dd = (uint32_t*)&dw[2];
@@ -294,6 +297,7 @@ void NetPkg::hton() {
 
 				dw = (uint16_t*)&dd[4];
 				dw[0] = htons(dw[0]); // e.color
+				dw[1] = htons(dw[1]); // e.subimage
 				break;
 			case NetEntityControlType::kill:
 				dd = (uint32_t*)&dw[1];
@@ -812,6 +816,19 @@ void NetPkg::set_entity_add(const Entity &e) {
 }
 
 void NetPkg::set_entity_add(const EntityView &e) {
+	entity_add(e, NetEntityControlType::add);
+}
+
+void NetPkg::set_entity_spawn(const Entity &e) {
+	EntityView ev(e.ref, e.type, e.color, e.x, e.y);
+	set_entity_spawn(ev);
+}
+
+void NetPkg::set_entity_spawn(const EntityView &e) {
+	entity_add(e, NetEntityControlType::spawn);
+}
+
+void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	static_assert(sizeof(float) <= sizeof(uint32_t));
 
 	refcheck(e.ref);
@@ -827,11 +844,12 @@ void NetPkg::set_entity_add(const EntityView &e) {
 	4 1 u32 e.x
 	4 1 u32 e.y
 	2 1 u16 e.color
+	2 1 u16 e.subimage
 	*/
 
 	uint16_t *dw = (uint16_t*)data.data();
 
-	dw[0] = (uint16_t)NetEntityControlType::add;
+	dw[0] = (uint16_t)type;
 	dw[1] = (uint16_t)e.type;
 
 	uint32_t *dd = (uint32_t*)&dw[2];
@@ -844,6 +862,7 @@ void NetPkg::set_entity_add(const EntityView &e) {
 
 	dw = (uint16_t*)&dd[4];
 	dw[0] = e.color;
+	dw[1] = e.subimage;
 
 	set_hdr(NetPkgType::entity_mod);
 }
@@ -880,7 +899,8 @@ NetEntityMod NetPkg::get_entity_mod() {
 	NetEntityControlType type = (NetEntityControlType)dw[0];
 
 	switch (type) {
-	case NetEntityControlType::add: {
+	case NetEntityControlType::add:
+	case NetEntityControlType::spawn: {
 		EntityView ev;
 
 		ev.type = (EntityType)dw[1];

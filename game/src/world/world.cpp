@@ -51,6 +51,17 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 	return tm;
 }
 
+void World::tick_entities() {
+	ZoneScoped;
+
+	for (auto kv: entities) {
+		Entity &ent = kv.second;
+
+		if (is_building(ent.type))
+			continue;
+	}
+}
+
 void World::tick_players() {
 	ZoneScoped;
 
@@ -97,6 +108,7 @@ void World::stop() {
 
 void World::tick() {
 	ZoneScoped;
+	tick_entities();
 	tick_players();
 }
 
@@ -210,7 +222,7 @@ void World::create_players() {
 		players.emplace_back(ps, size);
 }
 
-void World::spawn_building(EntityType t, unsigned player, int x, int y) {
+void World::add_building(EntityType t, unsigned player, int x, int y) {
 	ZoneScoped;
 	assert(is_building(t) && player < MAX_PLAYERS);
 	auto p = entities.emplace(t, player, x, y);
@@ -218,7 +230,7 @@ void World::spawn_building(EntityType t, unsigned player, int x, int y) {
 	players.at(player).entities.emplace(p.first->first);
 }
 
-void World::spawn_unit(EntityType t, unsigned player, float x, float y) {
+void World::add_unit(EntityType t, unsigned player, float x, float y) {
 	ZoneScoped;
 	assert(!is_building(t) && player < MAX_PLAYERS);
 	auto p = entities.emplace(t, player, x, y);
@@ -231,14 +243,14 @@ void World::create_entities() {
 
 	entities.clear();
 	for (unsigned i = 1; i < players.size(); ++i) {
-		spawn_building(EntityType::town_center, i, 2, 1 + 3 * i);
-		spawn_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 4 * i);
+		add_building(EntityType::town_center, i, 2, 1 + 3 * i);
+		add_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 4 * i);
 
-		spawn_unit(EntityType::villager, i, 5, 1 + 3 * i);
+		add_unit(EntityType::villager, i, 5, 1 + 3 * i);
 	}
 
-	spawn_unit(EntityType::bird1, 0, 11, 6);
-	spawn_unit(EntityType::bird1, 0, 12, 6);
+	add_unit(EntityType::bird1, 0, 11, 6);
+	add_unit(EntityType::bird1, 0, 12, 6);
 }
 
 void World::startup() {

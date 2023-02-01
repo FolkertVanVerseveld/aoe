@@ -108,6 +108,7 @@ public:
 
 enum class NetEntityControlType {
 	add,
+	spawn,
 	update,
 	kill,
 };
@@ -122,7 +123,7 @@ public:
 	static constexpr size_t minsize = 2;
 	// TODO byte misalignment. this will cause bus errors on archs that don't support unaligned fetching
 	static constexpr size_t killsize = refsize + minsize;
-	static constexpr size_t addsize = 2 + 2 + 8 + 4 + 4 + 2;
+	static constexpr size_t addsize = 2 + 2 + 8 + 4 + 4 + 2 + 2;
 
 	NetEntityMod(IdPoolRef ref) : type(NetEntityControlType::kill), data(ref) {}
 	NetEntityMod(const EntityView &e) : type(NetEntityControlType::add), data(e) {}
@@ -181,8 +182,12 @@ public:
 	void set_resources(const Resources&);
 	Resources get_resources();
 
+	// add is used to create entity without sfx
 	void set_entity_add(const Entity&);
 	void set_entity_add(const EntityView&);
+	// spawn entity and make all sounds and particles needed for it
+	void set_entity_spawn(const Entity&);
+	void set_entity_spawn(const EntityView&);
 	void set_entity_kill(IdPoolRef);
 	NetEntityMod get_entity_mod();
 
@@ -198,6 +203,7 @@ public:
 		return NetPkgHdr::size + data.size();
 	}
 private:
+	void entity_add(const EntityView&, NetEntityControlType);
 	void set_hdr(NetPkgType type);
 	void need_payload(size_t n);
 
@@ -233,6 +239,7 @@ public:
 // TODO create world events and use them in world::event_queue
 enum class WorldEventType {
 	entity_add,
+	entity_spawn,
 	entity_kill,
 	player_kill,
 	gameover,
@@ -243,7 +250,7 @@ class Server;
 class WorldEvent final {
 public:
 	WorldEventType type;
-	std::variant<std::nullopt_t, IdPoolRef> data;
+	std::variant<std::nullopt_t, IdPoolRef, Entity> data;
 
 	template<class... Args> WorldEvent(WorldEventType type, Args&&... data) : type(type), data(data...) {}
 };
@@ -278,10 +285,11 @@ private:
 	void create_players();
 	void create_entities();
 
-	void spawn_building(EntityType t, unsigned player, int x, int y);
-	void spawn_unit(EntityType t, unsigned player, float x, float y);
+	void add_building(EntityType t, unsigned player, int x, int y);
+	void add_unit(EntityType t, unsigned player, float x, float y);
 
 	void tick();
+	void tick_entities();
 	void tick_players();
 	void pump_events();
 
