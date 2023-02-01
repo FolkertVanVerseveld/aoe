@@ -234,7 +234,7 @@ void Engine::display_ui() {
 			break;
 		case MenuState::multiplayer_game:
 			ui.show_world();
-			show_multiplayer_game();
+			ui.show_multiplayer_game();
 			break;
 		case MenuState::multiplayer_menu:
 			show_multiplayer_menu();

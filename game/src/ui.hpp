@@ -199,6 +199,7 @@ public:
 	void load(Engine &e);
 
 	void idle();
+	void show_multiplayer_game();
 
 	void user_interact_entities();
 

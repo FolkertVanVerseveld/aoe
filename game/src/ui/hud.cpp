@@ -17,8 +17,8 @@ void UICache::idle() {
 	ImGuiIO &io = ImGui::GetIO();
 
 	scale = std::max(1.0f, e->font_scaling ? io.DisplaySize.y / WINDOW_HEIGHT_MAX : 1.0f);
-	left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x) - 0.5f;
-	top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y) - 0.5f;
+	left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x);
+	top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y);
 
 	bkg = ImGui::GetBackgroundDrawList();
 

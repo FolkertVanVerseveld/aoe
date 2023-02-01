@@ -99,17 +99,17 @@ static bool menu_btn(ImTextureID tex, UICache &ui, const Assets &a, const char *
 	return false;
 }
 
-void Engine::show_multiplayer_game() {
+void UICache::show_multiplayer_game() {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGuiIO &io = ImGui::GetIO();
 
-	Assets &a = *assets.get();
+	Assets &a = *e->assets.get();
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 
 	// only use custom mouse if not hovering any imgui elements
 	if (!io.WantCaptureMouse) {
 		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-		sdl->set_cursor(1);
+		e->sdl->set_cursor(1);
 	} else {
 		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
 	}
@@ -120,7 +120,7 @@ void Engine::show_multiplayer_game() {
 	const gfx::ImageRef &rtop = a.at(s.imgs[0]), &rbottom = a.at(s.imgs[1]);
 
 	// TODO /scale/ui.scale/
-	float scale = std::max(1.0f, font_scaling ? io.DisplaySize.y / WINDOW_HEIGHT_MAX : 1.0f);
+	float scale = std::max(1.0f, e->font_scaling ? io.DisplaySize.y / WINDOW_HEIGHT_MAX : 1.0f);
 
 	float menubar_left = vp->WorkPos.x;
 
@@ -131,14 +131,14 @@ void Engine::show_multiplayer_game() {
 	if (vp->WorkSize.x > menubar_w)
 		menubar_left = vp->WorkPos.x + (vp->WorkSize.x - menubar_w) / 2;
 
-	if (keyctl.is_tapped(GameKey::toggle_chat) && !show_chat)
-		show_chat = true;
+	if (e->keyctl.is_tapped(GameKey::toggle_chat) && !e->show_chat)
+		e->show_chat = true;
 
 	// TODO fetch from player view
 	int food = 200, wood = 200, gold = 0, stone = 150;
-	std::string age(txt(StrId::age_stone));
+	std::string age(e->txt(StrId::age_stone));
 
-	lst->AddImage(tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_left + menubar_w, vp->WorkPos.y + menubar_h), ImVec2(rtop.s0, rtop.t0), ImVec2(rtop.s1, rtop.t1));
+	lst->AddImage(e->tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_left + menubar_w, vp->WorkPos.y + menubar_h), ImVec2(rtop.s0, rtop.t0), ImVec2(rtop.s1, rtop.t1));
 
 	char buf[16];
 	snprintf(buf, sizeof buf, "%d", food);
@@ -146,26 +146,26 @@ void Engine::show_multiplayer_game() {
 
 	float y = vp->WorkPos.y + 2 * scale;
 
-	ui.str2(ImVec2(menubar_left + 32 * scale, y), buf);
+	str2(ImVec2(menubar_left + 32 * scale, y), buf);
 
 	snprintf(buf, sizeof buf, "%d", wood);
 	buf[(sizeof buf) - 1] = '\0';
 
-	ui.str2(ImVec2(menubar_left + 99 * scale, y), buf);
+	str2(ImVec2(menubar_left + 99 * scale, y), buf);
 
 	snprintf(buf, sizeof buf, "%d", gold);
 	buf[(sizeof buf) - 1] = '\0';
 
-	ui.str2(ImVec2(menubar_left + 166 * scale, y), buf);
+	str2(ImVec2(menubar_left + 166 * scale, y), buf);
 
 	snprintf(buf, sizeof buf, "%d", stone);
 	buf[(sizeof buf) - 1] = '\0';
 
-	ui.str2(ImVec2(menubar_left + 234 * scale, y), buf);
+	str2(ImVec2(menubar_left + 234 * scale, y), buf);
 
 	ImVec2 sz(ImGui::CalcTextSize(age.c_str()));
 
-	ui.str2(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y), age.c_str());
+	str2(ImVec2(vp->WorkPos.x + (vp->WorkSize.x - sz.x) / 2, y), age.c_str());
 
 	// draw menu button
 	
@@ -180,42 +180,42 @@ void Engine::show_multiplayer_game() {
 	const ImageSet &btnm_s = a.anim_at(io::DrsId::gif_menu_btn_medium0);
 	const gfx::ImageRef &rbtnm = a.at(btnm_s.imgs[0]);
 
-	if (menu_btn(tex1, ui, a, "Menu", btn_left, scale, true)) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (menu_btn(e->tex1, *this, a, "Menu", btn_left, scale, true)) {
+		e->sfx.play_sfx(SfxId::sfx_ui_click);
 		ImGui::OpenPopup("MenuPopup");
 	}
 
 	if (ImGui::BeginPopup("MenuPopup")) {
 		if (ImGui::MenuItem("Achievements"))
-			show_achievements = !show_achievements;
+			e->show_achievements = !e->show_achievements;
 
 		if (ImGui::MenuItem("Quit"))
-			cancel_multiplayer_host(MenuState::defeat);
+			e->cancel_multiplayer_host(MenuState::defeat);
 
 		ImGui::EndPopup();
 	}
 
 	btn_left -= rbtnm.bnds.w * scale;
-	if (menu_btn(tex1, ui, a, "Diplomacy", btn_left, scale, false)) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		show_diplomacy = !show_diplomacy;
+	if (menu_btn(e->tex1, *this, a, "Diplomacy", btn_left, scale, false)) {
+		e->sfx.play_sfx(SfxId::sfx_ui_click);
+		e->show_diplomacy = !e->show_diplomacy;
 	}
 
 	btn_left -= rbtns.bnds.w * scale;
-	if (menu_btn(tex1, ui, a, "Chat", btn_left, scale, true)) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		show_chat = !show_chat;
+	if (menu_btn(e->tex1, *this, a, "Chat", btn_left, scale, true)) {
+		e->sfx.play_sfx(SfxId::sfx_ui_click);
+		e->show_chat = !e->show_chat;
 	}
 
 	menubar_bottom += menubar_h;
 
-	if (show_chat)
+	if (e->show_chat)
 	{
 		Frame f;
 
 		ImGui::SetNextWindowPos(ImVec2(menubar_left, menubar_bottom));
 
-		if (f.begin("Chat", show_chat, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
+		if (f.begin("Chat", e->show_chat, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse)) {
 			ImGui::SetWindowSize(ImVec2(400, 0));
 
 			{
@@ -223,13 +223,13 @@ void Engine::show_multiplayer_game() {
 
 				if (ch.begin("ChatHistory", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * 0.8f), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
 
-					for (std::string &s : chat)
+					for (std::string &s : e->chat)
 						ImGui::TextWrapped("%s", s.c_str());
 
 				ImGui::SetScrollHereY(1.0f);
 			}
 
-			show_chat_line(f);
+			e->show_chat_line(f);
 		}
 	}
 
@@ -238,19 +238,19 @@ void Engine::show_multiplayer_game() {
 
 	float top = vp->WorkPos.y + vp->WorkSize.y - menubar_h;
 
-	lst->AddImage(tex1, ImVec2(menubar_left, top), ImVec2(menubar_left + menubar_w, top + menubar_h), ImVec2(rbottom.s0, rbottom.t0), ImVec2(rbottom.s1, rbottom.t1));
+	lst->AddImage(e->tex1, ImVec2(menubar_left, top), ImVec2(menubar_left + menubar_w, top + menubar_h), ImVec2(rbottom.s0, rbottom.t0), ImVec2(rbottom.s1, rbottom.t1));
 
 
-	ui.show_hud_selection(menubar_left, top, menubar_h);
+	show_hud_selection(menubar_left, top, menubar_h);
 
-	if (show_achievements)
-		show_multiplayer_achievements();
+	if (e->show_achievements)
+		e->show_multiplayer_achievements();
 
-	if (show_diplomacy)
-		show_multiplayer_diplomacy();
+	if (e->show_diplomacy)
+		e->show_multiplayer_diplomacy();
 
-	if (cv.gameover) {
-		FontGuard fg(fnt.fnt_copper2);
+	if (e->cv.gameover) {
+		FontGuard fg(e->fnt.fnt_copper2);
 
 		const char *txt = "Game Over";
 
