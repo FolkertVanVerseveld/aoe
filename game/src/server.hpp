@@ -22,34 +22,9 @@
 #include <wepoll.h>
 #endif
 
+#include "net/protocol.hpp"
+
 namespace aoe {
-
-enum class NetPkgType {
-	set_protocol,
-	chat_text,
-	start_game,
-	set_scn_vars,
-	set_username,
-	playermod,
-	peermod,
-	terrainmod,
-	resmod,
-	entity_mod,
-	gameover,
-};
-
-struct NetPkgHdr final {
-	uint16_t type, payload;
-	bool native_ordering;
-
-	static constexpr size_t size = 4;
-
-	NetPkgHdr(uint16_t type, uint16_t payload, bool native=true) : type(type), payload(payload), native_ordering(native) {}
-
-	// byte swapping
-	void ntoh();
-	void hton();
-};
 
 enum class NetPlayerControlType {
 	resize,
@@ -175,6 +150,9 @@ public:
 	void set_claim_player(IdPoolRef, uint16_t); // server to client
 	NetPeerControl get_peer_control();
 
+	void cam_set(float x, float y, float w, float h);
+	NetCamSet get_cam_set();
+
 	void set_terrain_mod(const NetTerrainMod&);
 	NetTerrainMod get_terrain_mod();
 
@@ -190,6 +168,9 @@ public:
 	void set_entity_spawn(const EntityView&);
 	void set_entity_kill(IdPoolRef);
 	NetEntityMod get_entity_mod();
+
+	uint16_t get_gameticks();
+	void set_gameticks(unsigned n);
 
 	NetPkgType type();
 
@@ -242,15 +223,24 @@ enum class WorldEventType {
 	entity_spawn,
 	entity_kill,
 	player_kill,
+	peer_cam_move,
 	gameover,
 };
 
 class Server;
 
+class EventCameraMove final {
+public:
+	IdPoolRef ref;
+	NetCamSet cam;
+
+	EventCameraMove(IdPoolRef ref, const NetCamSet &cam) : ref(ref), cam(cam) {}
+};
+
 class WorldEvent final {
 public:
 	WorldEventType type;
-	std::variant<std::nullopt_t, IdPoolRef, Entity> data;
+	std::variant<std::nullopt_t, IdPoolRef, Entity, EventCameraMove> data;
 
 	template<class... Args> WorldEvent(WorldEventType type, Args&&... data) : type(type), data(data...) {}
 };
@@ -261,6 +251,7 @@ class World final {
 	IdPool<Entity> entities;
 	std::vector<Player> players;
 	std::deque<WorldEvent> events_in;
+	std::map<IdPoolRef, NetCamSet> views; // display area for each peer
 	Server *s;
 	bool gameover;
 public:
@@ -292,6 +283,9 @@ private:
 	void tick_entities();
 	void tick_players();
 	void pump_events();
+	void cam_move(WorldEvent&);
+
+	void send_gameticks(unsigned);
 
 	bool single_team() const noexcept;
 
@@ -344,6 +338,8 @@ private:
 	bool process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out);
 	bool process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint8_t> &out);
 
+	bool cam_set(const Peer &p, NetCamSet &cam);
+
 	void start_game();
 
 	ClientInfo &get_ci(IdPoolRef);
@@ -393,6 +389,7 @@ private:
 	void peermod(const NetPeerControl&);
 	void terrainmod(const NetTerrainMod&);
 	void entitymod(const NetEntityMod&);
+	void gameticks(unsigned n);
 public:
 	bool connected() const noexcept { return m_connected; }
 
@@ -424,6 +421,8 @@ public:
 
 	void claim_player(unsigned);
 	void claim_cpu(unsigned);
+
+	void cam_move(float x, float y, float w, float h);
 
 	/** Try to destroy entity. */
 	void entity_kill(IdPoolRef);

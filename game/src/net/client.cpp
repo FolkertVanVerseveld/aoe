@@ -61,6 +61,9 @@ void Client::mainloop() {
 				case NetPkgType::entity_mod:
 					entitymod(pkg.get_entity_mod());
 					break;
+				case NetPkgType::gameticks:
+					gameticks(pkg.get_gameticks());
+					break;
 				default:
 					printf("%s: type=%X\n", __func__, pkg.type());
 					break;
@@ -78,6 +81,10 @@ void Client::mainloop() {
 			eng->push_error("Game session aborted");
 		}
 	}
+}
+
+void Client::gameticks(unsigned n) {
+	g.imgtick(n);
 }
 
 void Client::send_players_resize(unsigned n) {
@@ -247,6 +254,12 @@ void Client::claim_player(unsigned idx) {
 void Client::claim_cpu(unsigned idx) {
 	NetPkg pkg;
 	pkg.claim_cpu_setting(idx);
+	send(pkg);
+}
+
+void Client::cam_move(float x, float y, float w, float h) {
+	NetPkg pkg;
+	pkg.cam_set(x, y, w, h);
 	send(pkg);
 }
 

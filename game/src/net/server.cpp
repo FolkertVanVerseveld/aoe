@@ -7,6 +7,44 @@ ClientInfo &Server::get_ci(IdPoolRef ref) {
 	return peers.at(p);
 }
 
+bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
+	pkg.ntoh();
+
+	// TODO for broadcasts, check packet on bogus data if reusing pkg
+	switch (pkg.type()) {
+		case NetPkgType::set_protocol:
+			return chk_protocol(p, out, pkg.protocol_version());
+		case NetPkgType::chat_text:
+			broadcast(pkg);
+			break;
+		case NetPkgType::start_game:
+			start_game();
+			break;
+		case NetPkgType::set_scn_vars:
+			return set_scn_vars(p, pkg.get_scn_vars());
+		case NetPkgType::set_username:
+			return chk_username(p, out, pkg.username());
+		case NetPkgType::playermod:
+			return process_playermod(p, pkg.get_player_control(), out);
+		case NetPkgType::entity_mod:
+			return process_entity_mod(p, pkg.get_entity_mod(), out);
+		case NetPkgType::cam_set:
+			return cam_set(p, pkg.get_cam_set());
+		default:
+			fprintf(stderr, "bad type: %u\n", pkg.type());
+			throw "invalid type";
+	}
+
+	return true;
+}
+
+bool Server::cam_set(const Peer &p, NetCamSet &cam) {
+	IdPoolRef ref = peers.at(p).ref;
+	w.add_event(WorldEventType::peer_cam_move, EventCameraMove(ref, cam));
+
+	return true;
+}
+
 bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint8_t> &out) {
 	NetPkg pkg;
 

@@ -181,6 +181,24 @@ void NetPkg::ntoh() {
 			}
 			break;
 		}
+		case NetPkgType::cam_set: {
+			need_payload(NetCamSet::size);
+
+			int32_t *dd = (int32_t*)data.data();
+
+			for (unsigned i = 0; i < 4; ++i)
+				dd[i] = ntohl(dd[i]);
+
+			break;
+		}
+		case NetPkgType::gameticks: {
+			need_payload(sizeof(uint16_t));
+
+			int16_t *dw = (int16_t*)data.data();
+			dw[0] = ntohs(dw[0]);
+
+			break;
+		}
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -306,6 +324,19 @@ void NetPkg::hton() {
 			default:
 				throw std::runtime_error("bad entity control type");
 			}
+			break;
+		}
+		case NetPkgType::cam_set: {
+			int32_t *dd = (int32_t*)data.data();
+
+			for (unsigned i = 0; i < 4; ++i)
+				dd[i] = htonl(dd[i]);
+
+			break;
+		}
+		case NetPkgType::gameticks: {
+			int16_t *dw = (int16_t*)data.data();
+			dw[0] = htons(dw[0]);
 			break;
 		}
 		default:
@@ -499,6 +530,17 @@ void NetPkg::set_start_game() {
 void NetPkg::set_gameover() {
 	data.clear();
 	set_hdr(NetPkgType::gameover);
+}
+
+void NetPkg::cam_set(float x, float y, float w, float h) {
+	data.resize(NetCamSet::size);
+
+	int32_t *dd = (int32_t*)data.data();
+
+	dd[0] = (int32_t)x; dd[1] = (int32_t)y;
+	dd[2] = (int32_t)w; dd[3] = (int32_t)h;
+
+	set_hdr(NetPkgType::cam_set);
 }
 
 void NetPkg::set_scn_vars(const ScenarioSettings &scn) {
@@ -926,6 +968,49 @@ NetEntityMod NetPkg::get_entity_mod() {
 	default:
 		throw std::runtime_error("unknown entity control packet");
 	}
+}
+
+NetCamSet NetPkg::get_cam_set() {
+	ZoneScoped;
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::cam_set)
+		throw std::runtime_error("not a camera set packet");
+
+	NetCamSet s;
+
+	const int32_t *dd = (const int32_t*)data.data();
+
+	s.x = dd[0];
+	s.y = dd[1];
+	s.w = dd[2];
+	s.h = dd[3];
+
+	return s;
+}
+
+uint16_t NetPkg::get_gameticks() {
+	ZoneScoped;
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::gameticks)
+		throw std::runtime_error("not a gameticks packet");
+
+	const int16_t *dw = (const int16_t*)data.data();
+
+	return dw[0];
+}
+
+void NetPkg::set_gameticks(unsigned n) {
+	ZoneScoped;
+	assert(n <= UINT16_MAX);
+
+	data.resize(sizeof(uint16_t));
+
+	uint16_t *dw = (uint16_t*)data.data();
+	dw[0] = n;
+
+	set_hdr(NetPkgType::gameticks);
 }
 
 void NetPkg::set_terrain_mod(const NetTerrainMod &tm) {

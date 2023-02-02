@@ -26,6 +26,7 @@ public:
 	}
 
 	IdPoolRef at(unsigned color, unsigned idx) const;
+	IdPoolRef try_at(unsigned color, unsigned idx) const;
 };
 
 class Animation final {

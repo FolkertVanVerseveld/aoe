@@ -625,6 +625,8 @@ void Engine::idle_game() {
 	if (keyctl.is_down(GameKey::key_up   )) --dy;
 	if (keyctl.is_down(GameKey::key_down )) ++dy;
 
+	bool cam_move = dx || dy;
+
 	if (dx) cam_x += dx * cam_speed * dt;
 	if (dy) cam_y += dy * cam_speed * dt;
 
@@ -634,8 +636,12 @@ void Engine::idle_game() {
 
 	{
 		std::lock_guard<std::mutex> lk(m);
-		if (client)
+		if (client) {
+			if (cam_move)
+				client->cam_move(cam_x - io.DisplaySize.x / 2, cam_y - io.DisplaySize.y / 2, io.DisplaySize.x, io.DisplaySize.y);
+
 			gv.try_read(client->g);
+		}
 	}
 	ui.idle();
 }

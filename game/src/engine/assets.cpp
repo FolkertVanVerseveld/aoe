@@ -46,6 +46,14 @@ IdPoolRef ImageSet::at(unsigned color, unsigned index) const {
 	return imgs.at((color % MAX_PLAYERS) * image_count + index % image_count);
 }
 
+IdPoolRef ImageSet::try_at(unsigned color, unsigned index) const {
+	if (!dynamic)
+		return imgs[index % imgs.size()];
+
+	size_t image_count = imgs.size() / MAX_PLAYERS;
+	return imgs[((color % MAX_PLAYERS) * image_count + index % image_count) % imgs.size()];
+}
+
 void Animation::load(io::DRS &drs, const SDL_Palette *pal, io::DrsId id) {
 	Slp slp(drs.open_slp((DrsId)id));
 

@@ -213,37 +213,9 @@ bool Server::set_scn_vars(const Peer &p, ScenarioSettings &scn) {
 	}
 
 	NetPkg pkg;
+	w.load_scn(scn);
 	pkg.set_scn_vars(w.scn);
 	broadcast(pkg);
-
-	return true;
-}
-
-bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
-	pkg.ntoh();
-
-	// TODO for broadcasts, check packet on bogus data if reusing pkg
-	switch (pkg.type()) {
-		case NetPkgType::set_protocol:
-			return chk_protocol(p, out, pkg.protocol_version());
-		case NetPkgType::chat_text:
-			broadcast(pkg);
-			break;
-		case NetPkgType::start_game:
-			start_game();
-			break;
-		case NetPkgType::set_scn_vars:
-			return set_scn_vars(p, pkg.get_scn_vars());
-		case NetPkgType::set_username:
-			return chk_username(p, out, pkg.username());
-		case NetPkgType::playermod:
-			return process_playermod(p, pkg.get_player_control(), out);
-		case NetPkgType::entity_mod:
-			return process_entity_mod(p, pkg.get_entity_mod(), out);
-		default:
-			fprintf(stderr, "bad type: %u\n", pkg.type());
-			throw "invalid type";
-	}
 
 	return true;
 }

@@ -8,7 +8,7 @@
 
 namespace aoe {
 
-World::World() : m(), m_events(), t(), entities(), players(), events_in(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0) {}
+World::World() : m(), m_events(), t(), entities(), players(), events_in(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -59,6 +59,8 @@ void World::tick_entities() {
 
 		if (is_building(ent.type))
 			continue;
+
+		++ent.subimage;
 	}
 }
 
@@ -124,6 +126,9 @@ void World::pump_events() {
 			case WorldEventType::entity_kill:
 				entity_kill(ev);
 				break;
+			case WorldEventType::peer_cam_move:
+				cam_move(ev);
+				break;
 			default:
 				printf("%s: todo: process event: %u\n", __func__, (unsigned)ev.type);
 				break;
@@ -134,6 +139,12 @@ void World::pump_events() {
 	}
 
 	events_in.clear();
+}
+
+void World::cam_move(WorldEvent &ev) {
+	ZoneScoped;
+	EventCameraMove move(std::get<EventCameraMove>(ev.data));
+	views.at(move.ref) = move.cam;
 }
 
 void World::entity_kill(WorldEvent &ev) {
@@ -220,6 +231,11 @@ void World::create_players() {
 	players.clear();
 	for (const PlayerSetting &ps : scn.players)
 		players.emplace_back(ps, size);
+
+	// create player views
+	for (auto kv : s->peers)
+		views.emplace(kv.second.ref, NetCamSet());
+		// TODO send view to client
 }
 
 void World::add_building(EntityType t, unsigned player, int x, int y) {
@@ -288,6 +304,16 @@ void World::startup() {
 	s->broadcast(pkg);
 }
 
+void World::send_gameticks(unsigned n) {
+	ZoneScoped;
+	if (!n)
+		return;
+
+	NetPkg pkg;
+	pkg.set_gameticks(n);
+	s->broadcast(pkg);
+}
+
 void World::eventloop(Server &s) {
 	ZoneScoped;
 
@@ -311,6 +337,9 @@ void World::eventloop(Server &s) {
 
 		pump_events();
 
+		if (!gameover)
+			send_gameticks(steps);
+
 		// do steps
 		for (; steps && !gameover; --steps)
 			tick();
@@ -321,7 +350,6 @@ void World::eventloop(Server &s) {
 
 		if (!steps)
 			us = (unsigned)(interval * 1000 * 1000);
-		// 100000000
 
 		if (us > 500)
 			std::this_thread::sleep_for(std::chrono::microseconds(us));

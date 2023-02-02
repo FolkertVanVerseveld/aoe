@@ -144,7 +144,7 @@ private:
 	int vsync_mode, vsync_idx;
 
 	float cam_x, cam_y;
-	static constexpr float cam_speed = 200.0f;
+	static constexpr float cam_speed = 400.0f;
 
 	KeyboardController keyctl;
 	GameView gv;

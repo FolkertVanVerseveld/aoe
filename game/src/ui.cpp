@@ -1087,7 +1087,7 @@ void UICache::load_entities() {
 			}
 
 			const ImageSet &s_tc = a.anim_at(gif);
-			IdPoolRef imgref = s_tc.imgs[0];
+			IdPoolRef imgref = s_tc.try_at(ent.color, ent.subimage);
 			const gfx::ImageRef &tc = a.at(imgref);
 
 			float x0 = tpos.x - tc.hotspot_x;

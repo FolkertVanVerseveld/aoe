@@ -143,7 +143,7 @@ public:
 
 	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), subimage(0) {}
 
-	Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y), angle(0), subimage(0) {}
+	Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y), angle(0), subimage(ev.subimage) {}
 
 	friend bool operator<(const Entity &lhs, const Entity &rhs) noexcept {
 		return lhs.ref < rhs.ref;
@@ -219,6 +219,8 @@ class Game final {
 	friend GameView;
 public:
 	Game();
+
+	void imgtick(unsigned n);
 
 	void resize(const ScenarioSettings &scn);
 	void terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);

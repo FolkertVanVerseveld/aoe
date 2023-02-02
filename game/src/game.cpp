@@ -19,6 +19,17 @@ void Game::resize(const ScenarioSettings &scn) {
 	modflags |= (unsigned)GameMod::terrain;
 }
 
+void Game::imgtick(unsigned n) {
+	std::lock_guard<std::mutex> lk(m);
+
+	for (const Entity &e : entities) {
+		Entity &ent = const_cast<Entity&>(e);
+		ent.subimage++;
+	}
+
+	modflags |= (unsigned)GameMod::entities;
+}
+
 void Game::terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h) {
 	std::lock_guard<std::mutex> lk(m);
 
