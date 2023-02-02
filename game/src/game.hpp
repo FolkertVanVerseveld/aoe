@@ -148,6 +148,8 @@ public:
 	friend bool operator<(const Entity &lhs, const Entity &rhs) noexcept {
 		return lhs.ref < rhs.ref;
 	}
+
+	void imgtick(unsigned n);
 };
 
 class PlayerAchievements final {
@@ -215,12 +217,12 @@ class Game final {
 	// no IdPool as we have no control over IdPoolRefs: the server does
 	std::set<Entity> entities;
 	std::vector<EntityView> entities_killed;
-	unsigned modflags;
+	unsigned modflags, ticks, imgcnt;
 	friend GameView;
 public:
 	Game();
 
-	void imgtick(unsigned n);
+	void tick(unsigned n);
 
 	void resize(const ScenarioSettings &scn);
 	void terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
@@ -231,6 +233,8 @@ public:
 
 	void entity_add(const EntityView &ev);
 	bool entity_kill(IdPoolRef);
+private:
+	void imgtick(unsigned n);
 };
 
 class GameView final {

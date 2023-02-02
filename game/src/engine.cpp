@@ -68,7 +68,7 @@ Engine::Engine()
 	, running(false), logic_gamespeed(1.0f), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), music_volume(100.0f), sfx_on(true), sfx_volume(100.0f), game_dir()
 	, debug()
 	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), m_gl(nullptr), assets(), assets_good(false)
-	, show_chat(true), show_achievements(false), show_timeline(false), show_diplomacy(false)
+	, show_chat(false), show_achievements(false), show_timeline(false), show_diplomacy(false)
 	, bkg_vertices{
 		// positions          // colors           // texture coords
 		 1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f, // top right
@@ -693,6 +693,7 @@ void Engine::start_multiplayer_game() {
 	ZoneScoped;
 
 	next_menu_state = MenuState::multiplayer_game;
+	show_chat = false;
 	show_achievements = false;
 	show_timeline = false;
 	show_diplomacy = false;

@@ -11,7 +11,7 @@ enum class GameMod {
 	players = 1 << 2,
 };
 
-Game::Game() : m(), t(), players(), entities(), entities_killed(), modflags((unsigned)-1) {}
+Game::Game() : m(), t(), players(), entities(), entities_killed(), modflags((unsigned)-1), ticks(0), imgcnt(0) {}
 
 void Game::resize(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m);
@@ -19,12 +19,22 @@ void Game::resize(const ScenarioSettings &scn) {
 	modflags |= (unsigned)GameMod::terrain;
 }
 
-void Game::imgtick(unsigned n) {
+void Game::tick(unsigned n) {
 	std::lock_guard<std::mutex> lk(m);
+	ticks += n;
 
+	imgcnt += n;
+
+	if (imgcnt / 5) {
+		imgtick(imgcnt / 5);
+		imgcnt /= 5;
+	}
+}
+
+void Game::imgtick(unsigned n) {
 	for (const Entity &e : entities) {
 		Entity &ent = const_cast<Entity&>(e);
-		ent.subimage++;
+		ent.imgtick(n);
 	}
 
 	modflags |= (unsigned)GameMod::entities;

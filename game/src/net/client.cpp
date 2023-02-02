@@ -84,7 +84,7 @@ void Client::mainloop() {
 }
 
 void Client::gameticks(unsigned n) {
-	g.imgtick(n);
+	g.tick(n);
 }
 
 void Client::send_players_resize(unsigned n) {
