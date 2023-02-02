@@ -53,18 +53,9 @@ bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint
 
 	switch (em.type) {
 	case NetEntityControlType::kill: {
-		// TODO send command to game eventloop thread
 		IdPoolRef ref = std::get<IdPoolRef>(em.data);
-
 		w.add_event(WorldEventType::entity_kill, ref);
 
-#if 0
-		// TODO check if player is allowed to kill this entity
-		if (entities.try_invalidate(ref)) {
-			pkg.set_entity_kill(ref);
-			broadcast(pkg);
-		}
-#endif
 		return true;
 	}
 	default:

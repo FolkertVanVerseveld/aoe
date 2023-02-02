@@ -102,6 +102,12 @@ public:
 	void set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
 };
 
+enum class EntityState {
+	alive,
+	dying,
+	decaying,
+};
+
 enum class EntityType {
 	town_center,
 	barracks,
@@ -123,9 +129,10 @@ public:
 
 	// TODO add ui info
 	unsigned subimage;
+	EntityState state;
 
-	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0) {}
-	EntityView(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), subimage(0) {}
+	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive) {}
+	EntityView(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), subimage(0), state(EntityState::alive) {}
 };
 
 class Entity final {
@@ -138,12 +145,13 @@ public:
 
 	// TODO add more params
 	unsigned subimage;
+	EntityState state;
 
-	Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0) {}
+	Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive) {}
 
-	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), subimage(0) {}
+	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), subimage(0), state(EntityState::alive) {}
 
-	Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y), angle(0), subimage(ev.subimage) {}
+	Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y), angle(0), subimage(ev.subimage), state(ev.state) {}
 
 	friend bool operator<(const Entity &lhs, const Entity &rhs) noexcept {
 		return lhs.ref < rhs.ref;

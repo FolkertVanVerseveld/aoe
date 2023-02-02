@@ -44,4 +44,103 @@ public:
 	NetCamSet(int32_t x, int32_t y, int32_t w, int32_t h) : x(x), y(y), w(w), h(h) {}
 };
 
+enum class NetPlayerControlType {
+	resize,
+	erase,
+	died,
+	set_ref,
+	set_cpu_ref,
+	set_player_name,
+	set_civ,
+	set_team,
+};
+
+enum class NetPeerControlType {
+	incoming,
+	dropped,
+	set_username,
+	set_player_idx,
+};
+
+class NetPlayerControl final {
+public:
+	NetPlayerControlType type;
+	std::variant<std::nullopt_t, IdPoolRef, uint16_t, std::pair<uint16_t, std::string>, std::pair<uint16_t, uint16_t>> data;
+
+	static constexpr unsigned resize_size = 2 * sizeof(uint16_t);
+	static constexpr unsigned set_pos_size = 3 * sizeof(uint16_t);
+
+	NetPlayerControl() : type(NetPlayerControlType::resize), data(std::nullopt) {}
+	NetPlayerControl(NetPlayerControlType type, uint16_t arg) : type(type), data(arg) {}
+	NetPlayerControl(NetPlayerControlType type, IdPoolRef ref) : type(type), data(ref) {}
+	NetPlayerControl(NetPlayerControlType type, uint16_t idx, const std::string &name) : type(type), data(std::make_pair(idx, name)) {}
+	NetPlayerControl(NetPlayerControlType type, uint16_t idx, uint16_t pos) : type(type), data(std::make_pair(idx, pos)) {}
+};
+
+class NetPeerControl final {
+public:
+	IdPoolRef ref;
+	NetPeerControlType type;
+	std::variant<std::nullopt_t, std::string, uint16_t> data;
+
+	NetPeerControl(IdPoolRef ref, NetPeerControlType type) : ref(ref), type(type), data(std::nullopt) {}
+	NetPeerControl(IdPoolRef ref, const std::string &name) : ref(ref), type(NetPeerControlType::set_username), data(name) {}
+	NetPeerControl(IdPoolRef ref, NetPeerControlType type, uint16_t idx) : ref(ref), type(type), data(idx) {}
+};
+
+class NetTerrainMod final {
+public:
+	uint16_t x, y, w, h;
+	std::vector<uint8_t> tiles;
+	std::vector<int8_t> hmap;
+
+	static constexpr size_t possize = 4 * sizeof(uint16_t);
+
+	NetTerrainMod() : x(0), y(0), w(0), h(0), tiles(), hmap() {}
+};
+
+enum class NetEntityControlType {
+	add,
+	spawn,
+	update,
+	kill,
+};
+
+static constexpr size_t refsize = 2 * sizeof(uint32_t);
+
+class NetEntityMod final {
+public:
+	NetEntityControlType type;
+	std::variant<std::nullopt_t, IdPoolRef, EntityView> data;
+
+	static constexpr size_t minsize = 2;
+	// TODO byte misalignment. this will cause bus errors on archs that don't support unaligned fetching
+	static constexpr size_t killsize = minsize + refsize;
+	/*
+	2 minsize
+	2 type
+	2*4 ref
+	4 x
+	4 y
+	2 angle
+	2 color
+	2 subimage
+	1 state
+	*/
+	static constexpr size_t addsize = minsize + 2 + refsize + 2*4 + 3*2 + 1;
+	/*
+	2 minsize
+
+	2*4 ref
+	2 color
+	3*4 x, y, angle
+	1 state
+
+	*/
+	static constexpr size_t changesize = minsize + 2 + refsize + 3*4 + 1;
+
+	NetEntityMod(IdPoolRef ref) : type(NetEntityControlType::kill), data(ref) {}
+	NetEntityMod(const EntityView &e, NetEntityControlType t) : type(t), data(e) {}
+};
+
 }

@@ -168,8 +168,11 @@ void NetPkg::ntoh() {
 				dd[3] = ntohl(dd[3]); // e.y
 
 				dw = (uint16_t*)&dd[4];
-				dw[0] = ntohs(dw[0]); // e.color
-				dw[1] = ntohs(dw[1]); // e.subimage
+				dw[0] = ntohs(dw[0]); // e.angle
+				dw[1] = ntohs(dw[1]); // e.color
+				dw[2] = ntohs(dw[2]); // e.subimage
+
+				// e.state
 				break;
 			case NetEntityControlType::kill:
 				need_payload(NetEntityMod::killsize);
@@ -314,8 +317,11 @@ void NetPkg::hton() {
 				dd[3] = htonl(dd[3]); // e.y
 
 				dw = (uint16_t*)&dd[4];
-				dw[0] = htons(dw[0]); // e.color
-				dw[1] = htons(dw[1]); // e.subimage
+				dw[0] = htons(dw[0]); // e.angle
+				dw[1] = htons(dw[1]); // e.color
+				dw[2] = htons(dw[2]); // e.subimage
+
+				// e.state
 				break;
 			case NetEntityControlType::kill:
 				dd = (uint32_t*)&dw[1];
@@ -885,8 +891,10 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	8 2 u32 e.ref
 	4 1 u32 e.x
 	4 1 u32 e.y
+	2 1 u16 e.angle
 	2 1 u16 e.color
 	2 1 u16 e.subimage
+	1 1 u8  e.state
 	*/
 
 	uint16_t *dw = (uint16_t*)data.data();
@@ -903,8 +911,14 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	dd[3] = (uint32_t)e.y;
 
 	dw = (uint16_t*)&dd[4];
-	dw[0] = e.color;
-	dw[1] = e.subimage;
+	int16_t *sw = (int16_t*)dw;
+	sw[0] = e.angle;
+	dw[1] = e.color;
+	dw[2] = e.subimage;
+
+	uint8_t *db = (uint8_t*)&dw[3];
+
+	db[0] = (uint8_t)e.state;
 
 	set_hdr(NetPkgType::entity_mod);
 }
@@ -936,13 +950,16 @@ NetEntityMod NetPkg::get_entity_mod() {
 		throw std::runtime_error("not an entity control packet");
 
 	const uint16_t *dw = (const uint16_t*)data.data();
+	const int16_t *sw;
 	const uint32_t *dd;
+	const uint8_t *db;
 
 	NetEntityControlType type = (NetEntityControlType)dw[0];
 
 	switch (type) {
 	case NetEntityControlType::add:
-	case NetEntityControlType::spawn: {
+	case NetEntityControlType::spawn:
+	case NetEntityControlType::update: {
 		EntityView ev;
 
 		ev.type = (EntityType)dw[1];
@@ -952,9 +969,15 @@ NetEntityMod NetPkg::get_entity_mod() {
 		ev.x = dd[2]; ev.y = dd[3];
 
 		dw = (const uint16_t*)&dd[4];
-		ev.color = dw[0];
+		sw = (const int16_t*)dw;
+		ev.angle = sw[0];
+		ev.color = dw[1];
+		ev.subimage = dw[2];
 
-		return NetEntityMod(ev);
+		db = (const uint8_t*)&dw[3];
+		ev.state = (EntityState)db[0];
+
+		return NetEntityMod(ev, type);
 	}
 	case NetEntityControlType::kill: {
 		IdPoolRef ref;
