@@ -226,7 +226,7 @@ private:
 
 	bool locked_settings() const noexcept;
 
-	ImVec2 tilepos(int x, int y, float left=0, float top=0, int h=0);
+	ImVec2 tilepos(float x, float y, float left=0, float top=0, int h=0);
 public:
 	void push_error(const std::string &msg);
 

@@ -303,6 +303,10 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	sfx(villager_die8);
 	sfx(villager_die9);
 	sfx(villager_die10);
+
+	sfx(villager_attack1);
+	sfx(villager_attack2);
+	sfx(villager_attack3);
 #undef sfx
 }
 

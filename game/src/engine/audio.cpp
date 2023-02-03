@@ -253,7 +253,7 @@ void Audio::play_sfx(SfxId id, int loops) {
 				SfxId::villager6,
 				SfxId::villager7,
 			};
-
+			// TODO use std::array
 			id = lst[rand() % 7];
 			break;
 		}
@@ -270,8 +270,18 @@ void Audio::play_sfx(SfxId id, int loops) {
 				SfxId::villager_die9,
 				SfxId::villager_die10,
 			};
-
+			// TODO use std::array
 			id = lst[rand() % 10];
+			break;
+		}
+		case SfxId::villager_attack_random: {
+			const SfxId lst[] = {
+				SfxId::villager_attack1,
+				SfxId::villager_attack2,
+				SfxId::villager_attack3,
+			};
+			// TODO use std::array
+			id = lst[rand() % 3];
 			break;
 		}
 	}

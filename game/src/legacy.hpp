@@ -209,6 +209,10 @@ enum class DrsId {
 	sfx_villager_die9 = 5063,
 	sfx_villager_die10 = 5064,
 
+	sfx_villager_attack1 = 5138,
+	sfx_villager_attack2 = 5139,
+	sfx_villager_attack3 = 5140,
+
 	sfx_player_resign = 50306,
 	sfx_gameover_defeat = 50321,
 };

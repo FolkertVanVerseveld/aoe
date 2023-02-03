@@ -537,7 +537,7 @@ void Engine::set_background(MenuState s) {
 	set_background(id);
 }
 
-ImVec2 Engine::tilepos(int x, int y, float left, float top, int h) {
+ImVec2 Engine::tilepos(float x, float y, float left, float top, int h) {
 	float x0 = left + tw / 2 * y + tw / 2 * x;
 	float y0 = top  - th / 2 * y + th / 2 * x - th / 2 * h;
 

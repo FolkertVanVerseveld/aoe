@@ -61,15 +61,19 @@ void World::tick_entities() {
 			continue;
 
 		bool more = ent.imgtick(1);
+		bool dirty = ent.tick();
 
 		switch (ent.state) {
 		case EntityState::dying:
 			if (!more) {
 				ent.decay();
-				dirty_entities.emplace_back(ent.ref);
+				dirty = true;
 			}
 			break;
 		}
+
+		if (dirty)
+			dirty_entities.emplace(ent.ref);
 	}
 }
 
@@ -191,7 +195,7 @@ void World::entity_kill(WorldEvent &ev) {
 				for (Player &p : players)
 					p.entities.erase(ref);
 
-				dirty_entities.emplace_back(ent->ref);
+				dirty_entities.emplace(ent->ref);
 			}
 			return;
 		}
@@ -310,12 +314,12 @@ void World::create_entities() {
 		add_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 3 * i);
 
 		add_unit(EntityType::villager, i, 5, 1 + 3 * i);
-		add_unit(EntityType::villager, i, 5, 2 + 3 * i);
+		add_unit(EntityType::villager, i, 5, 2 + 3 * i, 0, EntityState::moving);
 		add_unit(EntityType::villager, i, 6, 1 + 3 * i, 0, EntityState::attack);
 		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
 	}
 
-	add_unit(EntityType::bird1, 0, 11, 6);
+	add_unit(EntityType::bird1, 0, 11, 6, 0, EntityState::moving);
 	add_unit(EntityType::bird1, 0, 12, 6);
 }
 

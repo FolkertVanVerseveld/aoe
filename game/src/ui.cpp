@@ -984,8 +984,9 @@ void UICache::show_selections() {
 		if (is_building(ent->type))
 			size = 3;
 
-		int x = ent->x, y = ent->y;
-		uint8_t h = e->gv.t.h_at(x, y);
+		float x = ent->x, y = ent->y;
+		int ix = ent->x, iy = ent->y;
+		uint8_t h = e->gv.t.h_at(ix, iy);
 
 		ImVec2 tl(e->tilepos(x - 2, y - 1, left, top + e->th / 2, h));
 		ImVec2 tb(e->tilepos(x + 1, y - 1, left, top + e->th / 2, h));
@@ -993,7 +994,7 @@ void UICache::show_selections() {
 		ImVec2 tt(e->tilepos(x - 1, y + 1, left, top - e->th / 2, h));
 
 		if (!is_building(ent->type)) {
-			float offx = left + fmodf(x, 1), offy = top + fmodf(y, 1);
+			float offx = left, offy = top;
 
 			size = 5.0f;
 
@@ -1047,7 +1048,7 @@ void UICache::load_entities() {
 			int x = ent.x, y = ent.y;
 			uint8_t h = e->gv.t.h_at(x, y);
 
-			ImVec2 tpos(e->tilepos(x, y, left, top, h));
+			ImVec2 tpos(e->tilepos(ent.x, ent.y, left, top, h));
 			float x0, y0;
 
 			if (bld_player != bld_base) {
@@ -1072,12 +1073,13 @@ void UICache::load_entities() {
 		} else {
 			// TODO figure out orientation and animation
 			float x = ent.x, y = ent.y;
-			int ix = std::clamp<int>(x, 0, e->gv.t.w), iy = std::clamp<int>(y, 0, e->gv.t.h);
+			int ix = (int)x, iy = (int)y;
 			uint8_t h = e->gv.t.h_at(ix, iy);
-			ImVec2 tpos(e->tilepos(ix, iy, left + fmodf(x, 1), top + fmodf(y, 1), h));
+			ImVec2 tpos(e->tilepos(x, y, left, top, h));
 
 			io::DrsId gif = io::DrsId::gif_bird1;
 
+			// TODO use lookup table and refactor into function
 			switch (ent.type) {
 			case EntityType::bird1:
 				break;
@@ -1091,6 +1093,9 @@ void UICache::load_entities() {
 					break;
 				case EntityState::attack:
 					gif = io::DrsId::gif_villager_attack;
+					break;
+				case EntityState::moving:
+					gif = io::DrsId::gif_villager_move;
 					break;
 				default:
 					gif = io::DrsId::gif_villager_stand;

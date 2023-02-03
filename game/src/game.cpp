@@ -1,6 +1,8 @@
 #include "game.hpp"
 #include "server.hpp"
 
+#include "../engine.hpp"
+
 #include <tracy/Tracy.hpp>
 
 namespace aoe {
@@ -28,7 +30,13 @@ void Game::tick(unsigned n) {
 void Game::imgtick(unsigned n) {
 	for (const Entity &e : entities) {
 		Entity &ent = const_cast<Entity&>(e);
-		ent.imgtick(n);
+		if (!ent.imgtick(n)) {
+			std::optional<SfxId> sfx(ent.sfxtick());
+			if (sfx.has_value()) {
+				EngineView ev;
+				ev.play_sfx(sfx.value());
+			}
+		}
 	}
 
 	modflags |= (unsigned)GameMod::entities;

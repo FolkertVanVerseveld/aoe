@@ -37,6 +37,8 @@ uint8_t Terrain::id_at(unsigned x, unsigned y) {
 }
 
 int8_t Terrain::h_at(unsigned x, unsigned y) {
+	x = std::clamp(x, 0u, w - 1);
+	y = std::clamp(y, 0u, h - 1);
 	return hmap.at(y * w + x);
 }
 

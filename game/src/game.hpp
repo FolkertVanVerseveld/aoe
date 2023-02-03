@@ -9,6 +9,7 @@
 #include <mutex>
 #include <set>
 
+#include "../engine/audio.hpp"
 #include "idpool.hpp"
 
 namespace aoe {
@@ -107,6 +108,7 @@ enum class EntityState {
 	dying,
 	decaying,
 	attack,
+	moving,
 };
 
 enum class EntityType {
@@ -162,6 +164,10 @@ public:
 
 	bool die() noexcept;
 	void decay() noexcept;
+
+	bool tick() noexcept;
+
+	std::optional<SfxId> sfxtick() noexcept;
 
 	bool imgtick(unsigned n) noexcept;
 };

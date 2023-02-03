@@ -126,16 +126,10 @@ public:
 	2 color
 	2 subimage
 	1 state
+	1 dx
+	1 dy
 	*/
-	static constexpr size_t addsize = minsize + 2 + refsize + 2*4 + 3*2 + 1;
-	/*
-	2 minsize
-	2*4 ref
-	2 color
-	3*4 x, y, angle
-	1 state
-	*/
-	static constexpr size_t changesize = minsize + 2 + refsize + 3*4 + 1;
+	static constexpr size_t addsize = minsize + 2 + refsize + 2*4 + 3*2 + 3*1;
 
 	NetEntityMod(IdPoolRef ref) : type(NetEntityControlType::kill), data(ref) {}
 	NetEntityMod(const EntityView &e, NetEntityControlType t) : type(t), data(e) {}

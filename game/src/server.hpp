@@ -172,7 +172,7 @@ class World final {
 	std::mutex m, m_events;
 	Terrain t;
 	IdPool<Entity> entities;
-	std::vector<IdPoolRef> dirty_entities;
+	std::set<IdPoolRef> dirty_entities;
 	std::vector<Player> players;
 	std::deque<WorldEvent> events_in;
 	std::map<IdPoolRef, NetCamSet> views; // display area for each peer

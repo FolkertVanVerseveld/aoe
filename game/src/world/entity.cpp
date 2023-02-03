@@ -21,6 +21,33 @@ void Entity::decay() noexcept {
 	subimage = 0;
 }
 
+bool Entity::tick() noexcept {
+	switch (type) {
+	case EntityType::bird1:
+		if (state == EntityState::moving) {
+			x += 0.02f;
+			y -= 0.02f;
+			return true;
+		}
+		break;
+	}
+
+	return false;
+}
+
+std::optional<SfxId> Entity::sfxtick() noexcept {
+	switch (type) {
+	case EntityType::villager:
+		switch (state) {
+		case EntityState::attack:
+			return SfxId::villager_attack_random;
+		}
+		break;
+	}
+
+	return std::nullopt;
+}
+
 bool Entity::imgtick(unsigned n) noexcept {
 	// TODO use angle to determine where it's looking at
 	// TOOD use xflip for other half of images
@@ -38,6 +65,10 @@ bool Entity::imgtick(unsigned n) noexcept {
 			subimage = std::min(subimage + n, 5u);
 			break;
 		case EntityState::attack:
+			more = subimage != 9; // image of impact
+			subimage = (subimage + n) % 15;
+			break;
+		case EntityState::moving:
 			subimage = (subimage + n) % 15;
 			break;
 		default:
