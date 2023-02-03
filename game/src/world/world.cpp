@@ -191,6 +191,7 @@ void World::entity_kill(WorldEvent &ev) {
 	if (ent) {
 		switch (ent->type) {
 		case EntityType::villager:
+		case EntityType::priest:
 			if (ent->die()) {
 				for (Player &p : players)
 					p.entities.erase(ref);
@@ -318,6 +319,9 @@ void World::create_entities() {
 		add_unit(EntityType::villager, i, 6, 1 + 3 * i, 0, EntityState::attack);
 		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
 	}
+
+	add_unit(EntityType::priest, 0, 2.5, 1, 0, EntityState::alive);
+	add_unit(EntityType::priest, 0, 3.5, 1, 0, EntityState::attack);
 
 	add_unit(EntityType::bird1, 0, 11, 6, 0, EntityState::moving);
 	add_unit(EntityType::bird1, 0, 12, 6);

@@ -3,6 +3,7 @@
 #include <cctype>
 #include <cmath>
 
+#include <array>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -282,6 +283,12 @@ void Audio::play_sfx(SfxId id, int loops) {
 			};
 			// TODO use std::array
 			id = lst[rand() % 3];
+			break;
+		}
+		case SfxId::priest_attack_random: {
+			const std::array<SfxId, 2> lst{SfxId::priest_attack1, SfxId::priest_attack2};
+
+			id = lst[rand() % lst.size()];
 			break;
 		}
 	}

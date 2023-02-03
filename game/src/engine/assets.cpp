@@ -164,6 +164,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_bird1, gif_bird1_shadow, gif_bird1_glide, gif_bird1_glide_shadow;
 	Animation gif_bird2, gif_bird2_shadow, gif_bird2_glide, gif_bird2_glide_shadow;
 	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
+	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
 	info.next("Loading game entities data");
 	{
 		ZoneScopedN("Loading game entities data");
@@ -193,6 +194,12 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_villager_die1);
 		load_gif(gif_villager_die2);
 		load_gif(gif_villager_decay);
+
+		load_gif(gif_priest_stand);
+		load_gif(gif_priest_move);
+		load_gif(gif_priest_attack);
+		load_gif(gif_priest_die);
+		load_gif(gif_priest_decay);
 #undef load_gif
 	}
 
@@ -231,6 +238,12 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, gif_villager_die1, DrsId::gif_villager_die1);
 		add_gifs(p, gif_villager_die2, DrsId::gif_villager_die2);
 		add_gifs(p, gif_villager_decay, DrsId::gif_villager_decay);
+
+		add_gifs(p, gif_priest_stand, DrsId::gif_priest_stand);
+		add_gifs(p, gif_priest_move, DrsId::gif_priest_move);
+		add_gifs(p, gif_priest_attack, DrsId::gif_priest_attack);
+		add_gifs(p, gif_priest_die, DrsId::gif_priest_die);
+		add_gifs(p, gif_priest_decay, DrsId::gif_priest_decay);
 #undef gif
 
 		drs_ids[DrsId::img_dialog0] = p.add_img(0, 0, img_dialog0.surface.get());
@@ -307,6 +320,10 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	sfx(villager_attack1);
 	sfx(villager_attack2);
 	sfx(villager_attack3);
+
+	sfx(priest);
+	sfx(priest_attack1);
+	sfx(priest_attack2);
 #undef sfx
 }
 

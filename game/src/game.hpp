@@ -116,6 +116,7 @@ enum class EntityType {
 	barracks,
 	bird1,
 	villager,
+	priest,
 };
 
 static bool constexpr is_building(EntityType t) {

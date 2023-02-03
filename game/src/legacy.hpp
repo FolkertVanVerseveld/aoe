@@ -173,6 +173,12 @@ enum class DrsId {
 	gif_villager_die2 = 315,
 	gif_villager_decay = 373,
 
+	gif_priest_stand = 443,
+	gif_priest_move = 685,
+	gif_priest_attack = 634,
+	gif_priest_die = 341,
+	gif_priest_decay = 402,
+
 	gif_building_icons = 50704,
 	gif_unit_icons = 50730,
 
@@ -212,6 +218,10 @@ enum class DrsId {
 	sfx_villager_attack1 = 5138,
 	sfx_villager_attack2 = 5139,
 	sfx_villager_attack3 = 5140,
+
+	sfx_priest = 5165,
+	sfx_priest_attack1 = 5050,
+	sfx_priest_attack2 = 5051,
 
 	sfx_player_resign = 50306,
 	sfx_gameover_defeat = 50321,

@@ -88,6 +88,10 @@ enum class SfxId {
 	villager_attack1,
 	villager_attack2,
 	villager_attack3,
+	priest,
+	priest_attack_random,
+	priest_attack1,
+	priest_attack2,
 };
 
 class Audio final {

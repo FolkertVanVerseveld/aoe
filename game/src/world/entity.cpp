@@ -43,6 +43,12 @@ std::optional<SfxId> Entity::sfxtick() noexcept {
 			return SfxId::villager_attack_random;
 		}
 		break;
+	case EntityType::priest:
+		switch (state) {
+		case EntityState::attack:
+			return SfxId::priest_attack_random;
+		}
+		break;
 	}
 
 	return std::nullopt;
@@ -78,6 +84,26 @@ bool Entity::imgtick(unsigned n) noexcept {
 		break;
 	case EntityType::bird1:
 		subimage = (subimage + n) % 12;
+		break;
+	case EntityType::priest:
+		switch (state) {
+		case EntityState::decaying:
+			more = subimage < 5;
+			subimage = std::min(subimage + n, 5u);
+			break;
+		case EntityState::dying:
+			more = subimage < 9;
+			subimage = std::min(subimage + n, 9u);
+			break;
+		case EntityState::attack:
+			more = subimage != 0; // image of impact
+			subimage = (subimage + n) % 10;
+			break;
+		case EntityState::alive:
+		default:
+			subimage = (subimage + n) % 10;
+			break;
+		}
 		break;
 	}
 

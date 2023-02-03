@@ -1102,6 +1102,25 @@ void UICache::load_entities() {
 					break;
 				}
 				break;
+			case EntityType::priest:
+				switch (ent.state) {
+				case EntityState::attack:
+					gif = io::DrsId::gif_priest_attack;
+					break;
+				case EntityState::moving:
+					gif = io::DrsId::gif_priest_move;
+					break;
+				case EntityState::dying:
+					gif = io::DrsId::gif_priest_die;
+					break;
+				case EntityState::decaying:
+					gif = io::DrsId::gif_priest_decay;
+					break;
+				default:
+					gif = io::DrsId::gif_priest_stand;
+					break;
+				}
+				break;
 			}
 
 			const ImageSet &s_tc = a.anim_at(gif);
