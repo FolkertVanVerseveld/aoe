@@ -187,8 +187,12 @@ void World::entity_kill(WorldEvent &ev) {
 	if (ent) {
 		switch (ent->type) {
 		case EntityType::villager:
-			if (ent->die())
+			if (ent->die()) {
+				for (Player &p : players)
+					p.entities.erase(ref);
+
 				dirty_entities.emplace_back(ent->ref);
+			}
 			return;
 		}
 	}
@@ -289,10 +293,10 @@ void World::add_building(EntityType t, unsigned player, int x, int y) {
 	players.at(player).entities.emplace(p.first->first);
 }
 
-void World::add_unit(EntityType t, unsigned player, float x, float y) {
+void World::add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state) {
 	ZoneScoped;
 	assert(!is_building(t) && player < MAX_PLAYERS);
-	auto p = entities.emplace(t, player, x, y);
+	auto p = entities.emplace(t, player, x, y, angle, state);
 	assert(p.second);
 	players.at(player).entities.emplace(p.first->first);
 }
@@ -303,9 +307,12 @@ void World::create_entities() {
 	entities.clear();
 	for (unsigned i = 1; i < players.size(); ++i) {
 		add_building(EntityType::town_center, i, 2, 1 + 3 * i);
-		add_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 4 * i);
+		add_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 3 * i);
 
 		add_unit(EntityType::villager, i, 5, 1 + 3 * i);
+		add_unit(EntityType::villager, i, 5, 2 + 3 * i);
+		add_unit(EntityType::villager, i, 6, 1 + 3 * i, 0, EntityState::attack);
+		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
 	}
 
 	add_unit(EntityType::bird1, 0, 11, 6);

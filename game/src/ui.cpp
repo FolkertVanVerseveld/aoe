@@ -1086,6 +1086,12 @@ void UICache::load_entities() {
 				case EntityState::dying:
 					gif = io::DrsId::gif_villager_die1;
 					break;
+				case EntityState::decaying:
+					gif = io::DrsId::gif_villager_decay;
+					break;
+				case EntityState::attack:
+					gif = io::DrsId::gif_villager_attack;
+					break;
 				default:
 					gif = io::DrsId::gif_villager_stand;
 					break;

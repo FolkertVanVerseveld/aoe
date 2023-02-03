@@ -201,7 +201,7 @@ private:
 	void create_entities();
 
 	void add_building(EntityType t, unsigned player, int x, int y);
-	void add_unit(EntityType t, unsigned player, float x, float y);
+	void add_unit(EntityType t, unsigned player, float x, float y, float angle=0, EntityState state=EntityState::alive);
 
 	void tick();
 	void tick_entities();

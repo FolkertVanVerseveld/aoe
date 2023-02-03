@@ -861,7 +861,7 @@ NetPeerControl NetPkg::get_peer_control() {
 }
 
 void NetPkg::set_entity_add(const Entity &e) {
-	EntityView ev(e.ref, e.type, e.color, e.x, e.y);
+	EntityView ev(e);
 	set_entity_add(ev);
 }
 
@@ -870,7 +870,7 @@ void NetPkg::set_entity_add(const EntityView &e) {
 }
 
 void NetPkg::set_entity_spawn(const Entity &e) {
-	EntityView ev(e.ref, e.type, e.color, e.x, e.y);
+	EntityView ev(e);
 	set_entity_spawn(ev);
 }
 
