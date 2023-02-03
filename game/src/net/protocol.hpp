@@ -130,12 +130,10 @@ public:
 	static constexpr size_t addsize = minsize + 2 + refsize + 2*4 + 3*2 + 1;
 	/*
 	2 minsize
-
 	2*4 ref
 	2 color
 	3*4 x, y, angle
 	1 state
-
 	*/
 	static constexpr size_t changesize = minsize + 2 + refsize + 3*4 + 1;
 

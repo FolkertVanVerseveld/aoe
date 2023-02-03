@@ -1082,7 +1082,14 @@ void UICache::load_entities() {
 			case EntityType::bird1:
 				break;
 			case EntityType::villager:
-				gif = io::DrsId::gif_villager_stand;
+				switch (ent.state) {
+				case EntityState::dying:
+					gif = io::DrsId::gif_villager_die1;
+					break;
+				default:
+					gif = io::DrsId::gif_villager_stand;
+					break;
+				}
 				break;
 			}
 

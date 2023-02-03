@@ -119,6 +119,8 @@ static bool constexpr is_building(EntityType t) {
 	return t >= EntityType::town_center && t <= EntityType::barracks;
 }
 
+class Entity;
+
 class EntityView final {
 public:
 	IdPoolRef ref;
@@ -133,6 +135,7 @@ public:
 
 	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive) {}
 	EntityView(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), subimage(0), state(EntityState::alive) {}
+	EntityView(const Entity&);
 };
 
 class Entity final {
@@ -157,7 +160,10 @@ public:
 		return lhs.ref < rhs.ref;
 	}
 
-	void imgtick(unsigned n);
+	bool die() noexcept;
+	void decay() noexcept;
+
+	bool imgtick(unsigned n) noexcept;
 };
 
 class PlayerAchievements final {
@@ -225,7 +231,7 @@ class Game final {
 	// no IdPool as we have no control over IdPoolRefs: the server does
 	std::set<Entity> entities;
 	std::vector<EntityView> entities_killed;
-	unsigned modflags, ticks, imgcnt;
+	unsigned modflags, ticks;
 	friend GameView;
 public:
 	Game();
@@ -241,6 +247,7 @@ public:
 
 	void entity_add(const EntityView &ev);
 	bool entity_kill(IdPoolRef);
+	void entity_update(const EntityView &ev);
 private:
 	void imgtick(unsigned n);
 };

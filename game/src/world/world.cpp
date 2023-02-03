@@ -54,13 +54,22 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 void World::tick_entities() {
 	ZoneScoped;
 
-	for (auto kv: entities) {
+	for (auto &kv : entities) {
 		Entity &ent = kv.second;
 
 		if (is_building(ent.type))
 			continue;
 
-		++ent.subimage;
+		bool more = ent.imgtick(1);
+
+		switch (ent.state) {
+		case EntityState::dying:
+			if (!more) {
+				ent.decay();
+				dirty_entities.emplace_back(ent.ref);
+			}
+			break;
+		}
 	}
 }
 
@@ -110,17 +119,17 @@ void World::stop() {
 
 void World::tick() {
 	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
 	tick_entities();
 	tick_players();
 }
 
+/** Process all events sent from peers to us. */
 void World::pump_events() {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m_events);
 
 	for (WorldEvent &ev : events_in) {
-		// TODO stub
-
 		try {
 			switch (ev.type) {
 			case WorldEventType::entity_kill:
@@ -141,6 +150,25 @@ void World::pump_events() {
 	events_in.clear();
 }
 
+/** Send any new changes back to the peers. */
+void World::push_events() {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
+
+	NetPkg pkg;
+
+	for (IdPoolRef ref : dirty_entities) {
+		Entity *ent = entities.try_get(ref);
+		if (!ent)
+			continue;
+
+		pkg.set_entity_update(*ent);
+		s->broadcast(pkg);
+	}
+
+	dirty_entities.clear();
+}
+
 void World::cam_move(WorldEvent &ev) {
 	ZoneScoped;
 	EventCameraMove move(std::get<EventCameraMove>(ev.data));
@@ -149,7 +177,21 @@ void World::cam_move(WorldEvent &ev) {
 
 void World::entity_kill(WorldEvent &ev) {
 	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
 	IdPoolRef ref = std::get<IdPoolRef>(ev.data);
+
+	// TODO move this to an entity_die function
+	// entity_die is like it does its proper dying animation (opt. with particles)
+	// entity_kill is like when it has to be removed completely (e.g. decaying ended, resource depleted)
+	Entity *ent = entities.try_get(ref);
+	if (ent) {
+		switch (ent->type) {
+		case EntityType::villager:
+			if (ent->die())
+				dirty_entities.emplace_back(ent->ref);
+			return;
+		}
+	}
 
 	// TODO add client info that sent kill command
 	// TODO check if player is allowed to kill this entity
@@ -164,6 +206,7 @@ void World::entity_kill(WorldEvent &ev) {
 }
 
 bool World::single_team() const noexcept {
+	// skip gaia as gaia is not part of any team
 	unsigned team = scn.players.at(1).team;
 
 	for (unsigned i = 2; i < scn.players.size(); ++i)
@@ -293,6 +336,7 @@ void World::startup() {
 	}
 
 	// send initial terrain chunk
+	// TODO this is buggy if the map is too small...
 	unsigned w = 16, h = 16;
 	NetTerrainMod tm(fetch_terrain(0, 0, w, h));
 
@@ -343,6 +387,8 @@ void World::eventloop(Server &s) {
 		// do steps
 		for (; steps && !gameover; --steps)
 			tick();
+
+		push_events();
 
 		dt = fmod(dt, interval);
 

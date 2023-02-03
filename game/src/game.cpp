@@ -11,7 +11,7 @@ enum class GameMod {
 	players = 1 << 2,
 };
 
-Game::Game() : m(), t(), players(), entities(), entities_killed(), modflags((unsigned)-1), ticks(0), imgcnt(0) {}
+Game::Game() : m(), t(), players(), entities(), entities_killed(), modflags((unsigned)-1), ticks(0) {}
 
 void Game::resize(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m);
@@ -22,13 +22,7 @@ void Game::resize(const ScenarioSettings &scn) {
 void Game::tick(unsigned n) {
 	std::lock_guard<std::mutex> lk(m);
 	ticks += n;
-
-	imgcnt += n;
-
-	if (imgcnt / 5) {
-		imgtick(imgcnt / 5);
-		imgcnt /= 5;
-	}
+	imgtick(n);
 }
 
 void Game::imgtick(unsigned n) {
@@ -72,6 +66,35 @@ void Game::entity_add(const EntityView &ev) {
 	modflags |= (unsigned)GameMod::entities;
 }
 
+void Game::entity_update(const EntityView &ev) {
+	EntityView v(ev);
+	std::lock_guard<std::mutex> lk(m);
+
+	bool statechange = false;
+	auto it = entities.find(v);
+	if (it != entities.end()) {
+		// TODO subimage is always zero. prob forgot to update it somewhere on the server side or forgot to send it to the clients.
+		// only update subimage if it's state has been changed
+		// e.g. when a unit goes from alive to dying, we need to reset the animation sequence
+		if (it->state == ev.state)
+			v.subimage = it->subimage;
+		else
+			statechange = true;
+
+		entities.erase(it);
+	}
+
+	switch (ev.state) {
+	case EntityState::dying:
+		if (statechange)
+			entities_killed.emplace_back(v);
+		break;
+	}
+
+	entities.emplace(v);
+	modflags |= (unsigned)GameMod::entities;
+}
+
 bool Game::entity_kill(IdPoolRef ref) {
 	std::lock_guard<std::mutex> lk(m);
 
@@ -79,7 +102,7 @@ bool Game::entity_kill(IdPoolRef ref) {
 	if (it == entities.end())
 		return false;
 
-	entities_killed.emplace_back(it->ref, it->type, it->color, it->x, it->y);
+	entities_killed.emplace_back(*it);
 	entities.erase(it);
 
 	modflags |= (unsigned)GameMod::entities;

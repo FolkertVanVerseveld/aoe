@@ -194,6 +194,9 @@ void Client::entitymod(const NetEntityMod &em) {
 	case NetEntityControlType::kill:
 		g.entity_kill(std::get<IdPoolRef>(em.data));
 		break;
+	case NetEntityControlType::update:
+		g.entity_update(std::get<EntityView>(em.data));
+		break;
 	default:
 		fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)em.type);
 		break;

@@ -155,6 +155,7 @@ void NetPkg::ntoh() {
 			switch ((NetEntityControlType)dw[0]) {
 			case NetEntityControlType::add:
 			case NetEntityControlType::spawn:
+			case NetEntityControlType::update:
 				need_payload(NetEntityMod::addsize);
 				dw[1] = ntohs(dw[1]); // e.type
 
@@ -308,6 +309,7 @@ void NetPkg::hton() {
 			switch (type) {
 			case NetEntityControlType::add:
 			case NetEntityControlType::spawn:
+			case NetEntityControlType::update:
 				dw[1] = htons(dw[1]); // e.type
 
 				dd = (uint32_t*)&dw[2];
@@ -874,6 +876,10 @@ void NetPkg::set_entity_spawn(const Entity &e) {
 
 void NetPkg::set_entity_spawn(const EntityView &e) {
 	entity_add(e, NetEntityControlType::spawn);
+}
+
+void NetPkg::set_entity_update(const Entity &e) {
+	entity_add(EntityView(e), NetEntityControlType::update);
 }
 
 void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
