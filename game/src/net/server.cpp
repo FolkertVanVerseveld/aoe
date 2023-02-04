@@ -58,6 +58,12 @@ bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint
 
 		return true;
 	}
+	case NetEntityControlType::task: {
+		EntityTask task = std::get<EntityTask>(em.data);
+		w.add_event(WorldEventType::entity_task, task);
+
+		return true;
+	}
 	default:
 		fprintf(stderr, "%s: bad entity control type %u\n", __func__, em.type);
 		break;

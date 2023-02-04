@@ -107,7 +107,7 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 
 	// 8,679 -> 8,37
 	float x0 = menubar_left + 10 * scale, y0 = top + 37 * scale;
-	bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img.bnds.w, y0 + img.bnds.h), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1));
+	bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img.bnds.w * scale, y0 + img.bnds.h * scale), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1));
 }
 
 }

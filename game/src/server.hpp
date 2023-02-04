@@ -90,6 +90,7 @@ public:
 	void set_entity_spawn(const EntityView&);
 	void set_entity_update(const Entity&);
 	void set_entity_kill(IdPoolRef);
+	void entity_move(IdPoolRef, float x, float y);
 	NetEntityMod get_entity_mod();
 
 	uint16_t get_gameticks();
@@ -145,6 +146,7 @@ enum class WorldEventType {
 	entity_add,
 	entity_spawn,
 	entity_kill,
+	entity_task,
 	player_kill,
 	peer_cam_move,
 	gameover,
@@ -163,7 +165,7 @@ public:
 class WorldEvent final {
 public:
 	WorldEventType type;
-	std::variant<std::nullopt_t, IdPoolRef, Entity, EventCameraMove> data;
+	std::variant<std::nullopt_t, IdPoolRef, Entity, EventCameraMove, EntityTask> data;
 
 	template<class... Args> WorldEvent(WorldEventType type, Args&&... data) : type(type), data(data...) {}
 };
@@ -217,6 +219,7 @@ private:
 	void stop();
 
 	void entity_kill(WorldEvent &ev);
+	void entity_task(WorldEvent &ev);
 };
 
 class Server final : public ServerSocketController {
@@ -348,6 +351,8 @@ public:
 	void claim_cpu(unsigned);
 
 	void cam_move(float x, float y, float w, float h);
+
+	void entity_move(IdPoolRef, float x, float y);
 
 	/** Try to destroy entity. */
 	void entity_kill(IdPoolRef);

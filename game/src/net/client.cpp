@@ -266,6 +266,12 @@ void Client::cam_move(float x, float y, float w, float h) {
 	send(pkg);
 }
 
+void Client::entity_move(IdPoolRef ref, float x, float y) {
+	NetPkg pkg;
+	pkg.entity_move(ref, x, y);
+	send(pkg);
+}
+
 void Client::send_scn_vars(const ScenarioSettings &scn) {
 	NetPkg pkg;
 	pkg.set_scn_vars(scn);

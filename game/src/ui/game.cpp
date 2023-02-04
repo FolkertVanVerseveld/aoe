@@ -8,20 +8,18 @@ void UICache::show_terrain() {
 	ZoneScoped;
 
 	Assets &a = *e->assets.get();
+	ImGuiIO &io = ImGui::GetIO();
 
-	const ImageSet &s_desert = a.anim_at(io::DrsId::trn_desert);
-	const ImageSet &s_grass = a.anim_at(io::DrsId::trn_grass);
-	const ImageSet &s_water = a.anim_at(io::DrsId::trn_water);
-	const ImageSet &s_deepwater = a.anim_at(io::DrsId::trn_deepwater);
-
-	const gfx::ImageRef &t0 = a.at(s_desert.imgs[0]);
-	const gfx::ImageRef &t1 = a.at(s_grass.imgs[0]);
-	const gfx::ImageRef &t2 = a.at(s_water.imgs[0]);
-	const gfx::ImageRef &t3 = a.at(s_deepwater.imgs[0]);
+	const gfx::ImageRef &t0 = a.at(t_imgs[0].imgs[0]);
+	const gfx::ImageRef &t1 = a.at(t_imgs[1].imgs[0]);
+	const gfx::ImageRef &t2 = a.at(t_imgs[2].imgs[0]);
+	const gfx::ImageRef &t3 = a.at(t_imgs[3].imgs[0]);
 
 	const gfx::ImageRef tt[] = { t0, t1, t2, t3 };
 
 	GameView &gv = e->gv;
+
+	display_area.clear();
 
 	for (int y = 0; y < gv.t.h; ++y) {
 		for (int x = 0; x < gv.t.w; ++x) {
@@ -43,7 +41,17 @@ void UICache::show_terrain() {
 			float x0 = tpos.x - img.hotspot_x;
 			float y0 = tpos.y - img.hotspot_y;
 
-			bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img.bnds.w, y0 + img.bnds.h), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1), col);
+			float x1 = x0 + img.bnds.w;
+			float y1 = y0 + img.bnds.h;
+
+			if (x1 >= 0 && x0 < io.DisplaySize.x && y1 >= 0 && y0 < io.DisplaySize.y) {
+				if (x == 0 && y == 0) {
+					tpos.x--;
+				}
+				display_area.emplace_back(x, y, SDL_Rect{ (int)x0, (int)y0, (int)img.bnds.w + 1, (int)img.bnds.h + 1 });
+
+				bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x1, y1), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1), col);
+			}
 		}
 	}
 }

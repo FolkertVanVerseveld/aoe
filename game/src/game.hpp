@@ -119,6 +119,11 @@ enum class EntityType {
 	priest,
 };
 
+enum class EntityTaskType {
+	move,
+	attack,
+};
+
 static bool constexpr is_building(EntityType t) {
 	return t >= EntityType::town_center && t <= EntityType::barracks;
 }
@@ -141,6 +146,16 @@ public:
 	EntityView(const Entity&);
 };
 
+class EntityTask final {
+public:
+	EntityTaskType type;
+	IdPoolRef ref1, ref2;
+	uint32_t x, y;
+
+	EntityTask(IdPoolRef ref, uint32_t x, uint32_t y) : type(EntityTaskType::move), ref1(ref), ref2(invalid_ref), x(x), y(y) {}
+	EntityTask(EntityTaskType type, IdPoolRef ref1, IdPoolRef ref2) : type(type), ref1(ref1), ref2(ref2), x(0), y(0) {}
+};
+
 class Entity final {
 public:
 	IdPoolRef ref;
@@ -149,13 +164,16 @@ public:
 	unsigned color; // TODO /color/playerid/ ?
 	float x, y, angle;
 
+	IdPoolRef target_ref; // if == invalid_ref, use target_x,target_y
+	float target_x, target_y;
+
 	// TODO add more params
 	unsigned subimage;
 	EntityState state;
 
-	Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive) {}
+	Entity(IdPoolRef ref);
 
-	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0, EntityState state=EntityState::alive) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), subimage(0), state(state) {}
+	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0, EntityState state=EntityState::alive) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state) {}
 
 	Entity(const EntityView &ev);
 
@@ -167,6 +185,12 @@ public:
 	void decay() noexcept;
 
 	bool tick() noexcept;
+
+	constexpr bool is_alive() const noexcept {
+		return state != EntityState::dying && state != EntityState::decaying;
+	}
+
+	bool task_move(float x, float y) noexcept;
 
 	std::optional<SfxId> sfxtick() noexcept;
 

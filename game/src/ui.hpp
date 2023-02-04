@@ -6,6 +6,7 @@
 
 #include "idpool.hpp"
 #include "legacy/strings.hpp"
+#include "engine/assets.hpp"
 
 #include <SDL2/SDL_rect.h>
 
@@ -191,14 +192,24 @@ struct VisualEntity final {
 
 #undef small
 
+struct VisualTile final {
+	int tx, ty;
+	SDL_Rect bnds;
+
+	VisualTile(int tx, int ty, const SDL_Rect &bnds) : tx(tx), ty(ty), bnds(bnds) {}
+};
+
 class UICache final {
 	std::vector<std::string> civs;
 	Engine *e;
 	std::vector<VisualEntity> entities;
 	std::vector<IdPoolRef> selected;
+	std::vector<VisualTile> display_area;
 	float left, top, scale;
 	ImDrawList *bkg;
 	std::string btnsel;
+
+	std::vector<ImageSet> t_imgs;
 public:
 	void load(Engine &e);
 
@@ -225,6 +236,8 @@ private:
 	void load_entities();
 
 	void game_mouse_process();
+	void mouse_left_process();
+	void mouse_right_process();
 
 	bool menu_btn(ImTextureID tex, const Assets &a, const char *lbl, float x, float scale, bool small);
 };

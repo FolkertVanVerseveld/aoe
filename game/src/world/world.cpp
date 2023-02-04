@@ -142,6 +142,9 @@ void World::pump_events() {
 			case WorldEventType::peer_cam_move:
 				cam_move(ev);
 				break;
+			case WorldEventType::entity_task:
+				entity_task(ev);
+				break;
 			default:
 				printf("%s: todo: process event: %u\n", __func__, (unsigned)ev.type);
 				break;
@@ -211,6 +214,23 @@ void World::entity_kill(WorldEvent &ev) {
 		NetPkg pkg;
 		pkg.set_entity_kill(ref);
 		s->broadcast(pkg);
+	}
+}
+
+void World::entity_task(WorldEvent &ev) {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
+	EntityTask task = std::get<EntityTask>(ev.data);
+
+	Entity *ent = entities.try_get(task.ref1);
+	if (!ent)
+		return;
+
+	switch (task.type) {
+	case EntityTaskType::move:
+		if (ent->task_move(task.x, task.y))
+			dirty_entities.emplace(ent->ref);
+		break;
 	}
 }
 
@@ -315,15 +335,15 @@ void World::create_entities() {
 		add_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 3 * i);
 
 		add_unit(EntityType::villager, i, 5, 1 + 3 * i);
-		add_unit(EntityType::villager, i, 5, 2 + 3 * i, 0, EntityState::moving);
+		add_unit(EntityType::villager, i, 5, 2 + 3 * i);
 		add_unit(EntityType::villager, i, 6, 1 + 3 * i, 0, EntityState::attack);
 		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
 	}
 
 	add_unit(EntityType::priest, 0, 2.5, 1, 0, EntityState::alive);
-	add_unit(EntityType::priest, 0, 3.5, 1, 0, EntityState::attack);
+	add_unit(EntityType::priest, 0, 3.5, 1);
 
-	add_unit(EntityType::bird1, 0, 11, 6, 0, EntityState::moving);
+	add_unit(EntityType::bird1, 0, 11, 6);
 	add_unit(EntityType::bird1, 0, 12, 6);
 }
 

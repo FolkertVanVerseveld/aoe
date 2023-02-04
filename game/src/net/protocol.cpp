@@ -182,6 +182,15 @@ void NetPkg::ntoh() {
 				dd = (uint32_t*)&dw[1];
 				dd[0] = ntohl(dd[0]); dd[1] = ntohl(dd[1]);
 				break;
+			case NetEntityControlType::task:
+				need_payload(NetEntityMod::tasksize);
+				dw[1] = ntohs(dw[1]); // type
+
+				dd = (uint32_t*)&dw[2];
+
+				for (unsigned i = 0; i < 4; ++i) // e.ref, (e.ref2 OR e.x,e.y)
+					dd[i] = ntohl(dd[i]);
+				break;
 			default:
 				throw std::runtime_error("bad entity control type");
 			}
@@ -332,6 +341,14 @@ void NetPkg::hton() {
 			case NetEntityControlType::kill:
 				dd = (uint32_t*)&dw[1];
 				dd[0] = htonl(dd[0]); dd[1] = htonl(dd[1]);
+				break;
+			case NetEntityControlType::task:
+				dw[1] = htons(dw[1]); // type
+
+				dd = (uint32_t*)&dw[2];
+
+				for (unsigned i = 0; i < 4; ++i) // e.ref, (e.ref2 OR e.x,e.y)
+					dd[i] = htonl(dd[i]);
 				break;
 			default:
 				throw std::runtime_error("bad entity control type");
@@ -955,6 +972,25 @@ void NetPkg::set_entity_kill(IdPoolRef ref) {
 	set_hdr(NetPkgType::entity_mod);
 }
 
+void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
+	refcheck(ref);
+
+	data.resize(NetEntityMod::tasksize);
+
+	uint16_t *dw = (uint16_t*)data.data();
+	uint32_t *dd;
+
+	dw[0] = (uint16_t)NetEntityControlType::task;
+	dw[1] = (uint16_t)EntityTaskType::move;
+
+	dd = (uint32_t*)&dw[2];
+
+	dd[0] = ref.first; dd[1] = ref.second;
+	dd[2] = (uint32_t)x; dd[3] = (uint32_t)y;
+
+	set_hdr(NetPkgType::entity_mod);
+}
+
 NetEntityMod NetPkg::get_entity_mod() {
 	ZoneScoped;
 	ntoh();
@@ -1006,6 +1042,24 @@ NetEntityMod NetPkg::get_entity_mod() {
 		ref.first = dd[0]; ref.second = dd[1];
 
 		return NetEntityMod(ref);
+	}
+	case NetEntityControlType::task: {
+		IdPoolRef ref1;
+
+		EntityTaskType type = (EntityTaskType)dw[1];
+		dd = (uint32_t*)&dw[2];
+
+		ref1.first = dd[0]; ref1.second = dd[1];
+
+		if (type == EntityTaskType::move) {
+			uint32_t x, y;
+			x = dd[2]; y = dd[3];
+			return NetEntityMod(EntityTask(ref1, x, y));
+		}
+
+		IdPoolRef ref2;
+		ref2.first = dd[2]; ref2.second = dd[3];
+		return NetEntityMod(EntityTask(type, ref1, ref2));
 	}
 	default:
 		throw std::runtime_error("unknown entity control packet");

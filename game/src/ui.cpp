@@ -865,6 +865,12 @@ void UICache::load(Engine &e) {
 	this->e = &e;
 	civs.clear();
 	e.assets->old_lang.collect_civs(civs);
+
+	Assets &a = *this->e->assets.get();
+	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_desert));
+	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_grass));
+	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_water));
+	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_deepwater));
 }
 
 void UICache::str2(const ImVec2 &pos, const char *text) {
@@ -877,7 +883,18 @@ void UICache::game_mouse_process() {
 
 	ImGuiIO &io = ImGui::GetIO();
 
-	if (io.WantCaptureMouse || !io.MouseDown[0] || io.MouseDownDuration[0] > 0.0f)
+	if (io.WantCaptureMouse)
+		return;
+
+	mouse_left_process();
+	mouse_right_process();
+}
+
+void UICache::mouse_left_process() {
+	ZoneScoped;
+
+	ImGuiIO &io = ImGui::GetIO();
+	if (!io.MouseDown[0] || io.MouseDownDuration[0] > 0.0f)
 		return;
 
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -967,6 +984,79 @@ void UICache::game_mouse_process() {
 	}
 }
 
+void UICache::mouse_right_process() {
+	ZoneScoped;
+
+	ImGuiIO &io = ImGui::GetIO();
+
+	if (!(io.MouseDown[1] && io.MouseDownDuration[1] <= 0.0f))
+		return;
+
+	if (selected.empty())
+		return;
+
+	// find visual tile
+	Assets &a = *e->assets.get();
+	const gfx::ImageRef &t0 = a.at(t_imgs[0].imgs[0]);
+	const gfx::ImageRef &t1 = a.at(t_imgs[1].imgs[0]);
+	const gfx::ImageRef &t2 = a.at(t_imgs[2].imgs[0]);
+	const gfx::ImageRef &t3 = a.at(t_imgs[3].imgs[0]);
+
+	const gfx::ImageRef tt[] = { t0, t1, t2, t3 };
+	GameView &gv = e->gv;
+
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+
+	float mx = io.MousePos.x, my = io.MousePos.y;
+
+	printf("right click at %.2f,%.2f\n", mx, my);
+
+	for (VisualTile &vt : display_area) {
+		if (mx >= vt.bnds.x && mx < vt.bnds.x + vt.bnds.w && my >= vt.bnds.y && my < vt.bnds.y + vt.bnds.h) {
+			// get actual image
+			uint8_t id = gv.t.id_at(vt.tx, vt.ty);
+			uint8_t h = gv.t.h_at(vt.tx, vt.ty);
+			if (!id) {
+				// TODO does not work yet :/
+				// unexplored tiles should still be clickable
+				// use dummy id, which may be sligthly inaccurate
+				id = 0;
+				continue;
+			}
+
+			id %= 4;
+			const gfx::ImageRef &r = tt[id];
+
+			int y = (int)(my - vt.bnds.y);
+
+			// ignore if out of range
+			if (y < 0 || y >= r.mask.size())
+				continue;
+
+			auto row = r.mask.at(y);
+			int x = (int)(mx - vt.bnds.x);
+
+			// ignore if point not on line
+			if (x < row.first || x >= row.second)
+				continue;
+
+			// TODO determine precise value, now we always use tile's center
+			printf("clicked on %d,%d\n", vt.tx, vt.ty);
+
+			for (IdPoolRef ref : selected) {
+				Entity *ent = e->gv.try_get(ref);
+				if (!ent)
+					continue;
+
+				e->client->entity_move(ent->ref, vt.tx, vt.ty);
+			}
+			return;
+		}
+	}
+
+	printf("nothing selected\n");
+}
+
 void UICache::show_selections() {
 	ZoneScoped;
 
@@ -984,8 +1074,8 @@ void UICache::show_selections() {
 		if (is_building(ent->type))
 			size = 3;
 
-		float x = ent->x, y = ent->y;
-		int ix = ent->x, iy = ent->y;
+		float x = ent->x + 1, y = ent->y;
+		int ix = ent->x + 1, iy = ent->y;
 		uint8_t h = e->gv.t.h_at(ix, iy);
 
 		ImVec2 tl(e->tilepos(x - 2, y - 1, left, top + e->th / 2, h));
@@ -1048,7 +1138,7 @@ void UICache::load_entities() {
 			int x = ent.x, y = ent.y;
 			uint8_t h = e->gv.t.h_at(x, y);
 
-			ImVec2 tpos(e->tilepos(ent.x, ent.y, left, top, h));
+			ImVec2 tpos(e->tilepos(ent.x + 1, ent.y, left, top, h));
 			float x0, y0;
 
 			if (bld_player != bld_base) {
@@ -1075,7 +1165,7 @@ void UICache::load_entities() {
 			float x = ent.x, y = ent.y;
 			int ix = (int)x, iy = (int)y;
 			uint8_t h = e->gv.t.h_at(ix, iy);
-			ImVec2 tpos(e->tilepos(x, y, left, top, h));
+			ImVec2 tpos(e->tilepos(x + 1, y, left, top, h));
 
 			io::DrsId gif = io::DrsId::gif_bird1;
 

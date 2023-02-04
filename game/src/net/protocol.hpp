@@ -104,6 +104,7 @@ enum class NetEntityControlType {
 	spawn,
 	update,
 	kill,
+	task,
 };
 
 static constexpr size_t refsize = 2 * sizeof(uint32_t);
@@ -111,7 +112,7 @@ static constexpr size_t refsize = 2 * sizeof(uint32_t);
 class NetEntityMod final {
 public:
 	NetEntityControlType type;
-	std::variant<std::nullopt_t, IdPoolRef, EntityView> data;
+	std::variant<std::nullopt_t, IdPoolRef, EntityView, EntityTask> data;
 
 	static constexpr size_t minsize = 2;
 	// TODO byte misalignment. this will cause bus errors on archs that don't support unaligned fetching
@@ -130,9 +131,17 @@ public:
 	1 dy
 	*/
 	static constexpr size_t addsize = minsize + 2 + refsize + 2*4 + 3*2 + 3*1;
+	/*
+	2 minsize
+	2 type
+	2*4 ref
+	2*4 ref OR x,y
+	*/
+	static constexpr size_t tasksize = minsize + 2 + refsize + 2*4;
 
 	NetEntityMod(IdPoolRef ref) : type(NetEntityControlType::kill), data(ref) {}
 	NetEntityMod(const EntityView &e, NetEntityControlType t) : type(t), data(e) {}
+	NetEntityMod(const EntityTask &t) : type(NetEntityControlType::task), data(t) {}
 };
 
 }
