@@ -978,6 +978,7 @@ void UICache::mouse_left_process() {
 			e->sfx.play_sfx(SfxId::barracks);
 			break;
 		case EntityType::villager:
+		case EntityType::priest:
 			e->sfx.play_sfx(SfxId::villager_random);
 			break;
 		}
@@ -1160,6 +1161,38 @@ void UICache::load_entities() {
 			y0 = tpos.y - tcp.hotspot_y;
 
 			entities.emplace_back(ent.ref, imgref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f);
+		} else if (is_resource(ent.type)) {
+			float x = ent.x, y = ent.y;
+			int ix = (int)x, iy = (int)y;
+			uint8_t h = e->gv.t.h_at(ix, iy);
+			ImVec2 tpos(e->tilepos(x + 1, y, left, top, h));
+
+			io::DrsId img = io::DrsId::ent_desert_tree1;
+
+			switch (ent.type) {
+			case EntityType::berries:
+				img = io::DrsId::ent_berries;
+				break;
+			case EntityType::desert_tree1:
+				img = io::DrsId::ent_desert_tree1;
+				break;
+			case EntityType::desert_tree2:
+				img = io::DrsId::ent_desert_tree2;
+				break;
+			case EntityType::desert_tree3:
+				img = io::DrsId::ent_desert_tree3;
+				break;
+			case EntityType::desert_tree4:
+				img = io::DrsId::ent_desert_tree4;
+				break;
+			}
+
+			const gfx::ImageRef &tc = a.at(img);
+
+			float x0 = tpos.x - tc.hotspot_x;
+			float y0 = tpos.y - tc.hotspot_y;
+
+			entities.emplace_back(ent.ref, tc.ref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
 		} else {
 			// TODO figure out orientation and animation
 			float x = ent.x, y = ent.y;

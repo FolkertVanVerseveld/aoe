@@ -117,6 +117,11 @@ enum class EntityType {
 	bird1,
 	villager,
 	priest,
+	berries,
+	desert_tree1,
+	desert_tree2,
+	desert_tree3,
+	desert_tree4,
 };
 
 enum class EntityTaskType {
@@ -126,6 +131,10 @@ enum class EntityTaskType {
 
 static bool constexpr is_building(EntityType t) {
 	return t >= EntityType::town_center && t <= EntityType::barracks;
+}
+
+static bool constexpr is_resource(EntityType t) {
+	return t >= EntityType::berries && t <= EntityType::desert_tree4;
 }
 
 class Entity;

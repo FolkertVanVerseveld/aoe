@@ -165,6 +165,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_bird2, gif_bird2_shadow, gif_bird2_glide, gif_bird2_glide_shadow;
 	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
 	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
+	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4;
 	info.next("Loading game entities data");
 	{
 		ZoneScopedN("Loading game entities data");
@@ -200,6 +201,12 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_priest_attack);
 		load_gif(gif_priest_die);
 		load_gif(gif_priest_decay);
+
+		img_berries.load(pal.get(), drs_graphics.open_slp(DrsId::ent_berries), 0);
+		img_desert_tree1.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree1), 0);
+		img_desert_tree2.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree2), 0);
+		img_desert_tree3.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree3), 0);
+		img_desert_tree4.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree4), 0);
 #undef load_gif
 	}
 
@@ -246,7 +253,15 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, gif_priest_decay, DrsId::gif_priest_decay);
 #undef gif
 
+
 		drs_ids[DrsId::img_dialog0] = p.add_img(0, 0, img_dialog0.surface.get());
+#define img(id) drs_ids[DrsId::ent_ ##id] = p.add_img(img_ ##id .hotspot_x, img_ ##id .hotspot_y, img_ ##id .surface.get(), img_ ##id .mask)
+		img(berries);
+		img(desert_tree1);
+		img(desert_tree2);
+		img(desert_tree3);
+		img(desert_tree4);
+#undef img
 
 		// pack images
 		GLint size = std::min(4096, eng.gl().max_texture_size);

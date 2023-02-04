@@ -186,6 +186,12 @@ enum class DrsId {
 	bld_town_center_player = 230,
 	bld_barracks = 254,
 
+	ent_berries = 240,
+	ent_desert_tree1 = 463,
+	ent_desert_tree2 = 464,
+	ent_desert_tree3 = 465,
+	ent_desert_tree4 = 466,
+
 	sfx_ui_click = 5035,
 	sfx_priest_convert2 = 5051,
 	sfx_chat = 50302,
