@@ -933,6 +933,7 @@ void UICache::mouse_left_process() {
 		int x = (int)(off_x - v.x);
 
 		// ignore if point not on line
+		// TODO xflip
 		if (x < row.first || x >= row.second) {
 			it = selected.erase(it);
 			continue;
@@ -1115,7 +1116,7 @@ void UICache::show_entities() {
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 
 	for (VisualEntity &v : entities) {
-		lst->AddImage(e->tex1, ImVec2(v.x, v.y), ImVec2(v.x + v.w, v.y + v.h), ImVec2(v.s0, v.t0), ImVec2(v.s1, v.t1));
+		lst->AddImage(e->tex1, ImVec2((int)v.x, (int)v.y), ImVec2(int(v.x + v.w), int(v.y + v.h)), ImVec2(v.s0, v.t0), ImVec2(v.s1, v.t1));
 	}
 }
 
@@ -1193,7 +1194,8 @@ void UICache::load_entities() {
 			float y0 = tpos.y - tc.hotspot_y;
 
 			entities.emplace_back(ent.ref, tc.ref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
-		} else {
+		}
+		else {
 			// TODO figure out orientation and animation
 			float x = ent.x, y = ent.y;
 			int ix = (int)x, iy = (int)y;
@@ -1253,7 +1255,12 @@ void UICache::load_entities() {
 			float x0 = tpos.x - tc.hotspot_x;
 			float y0 = tpos.y - tc.hotspot_y;
 
-			entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+			if (ent.xflip) {
+				x0 = tpos.x - tc.bnds.w + tc.hotspot_x;
+				entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s1, tc.t0, tc.s0, tc.t1, tpos.y);
+			} else {
+				entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+			}
 		}
 	}
 }

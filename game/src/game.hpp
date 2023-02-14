@@ -150,8 +150,9 @@ public:
 	// TODO add ui info
 	unsigned subimage;
 	EntityState state;
+	bool xflip;
 
-	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive) {}
+	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive), xflip(false) {}
 	EntityView(const Entity&);
 };
 
@@ -179,10 +180,10 @@ public:
 	// TODO add more params
 	unsigned subimage;
 	EntityState state;
+	bool xflip;
 
 	Entity(IdPoolRef ref);
-
-	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0, EntityState state=EntityState::alive) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state) {}
+	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0, EntityState state=EntityState::alive);
 
 	Entity(const EntityView &ev);
 

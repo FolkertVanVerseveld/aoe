@@ -60,8 +60,8 @@ void World::tick_entities() {
 		if (is_building(ent.type))
 			continue;
 
-		bool more = ent.imgtick(1);
 		bool dirty = ent.tick();
+		bool more = ent.imgtick(1);
 
 		switch (ent.state) {
 		case EntityState::dying:
@@ -343,7 +343,7 @@ void World::create_entities() {
 
 		add_unit(EntityType::villager, i, 5, 1 + 3 * i);
 		add_unit(EntityType::villager, i, 5, 2 + 3 * i);
-		add_unit(EntityType::villager, i, 6, 1 + 3 * i, 0, EntityState::attack);
+		add_unit(EntityType::villager, i, 6, 1 + 3 * i);// , 0, EntityState::attack);
 		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
 	}
 

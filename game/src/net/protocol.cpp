@@ -939,7 +939,7 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 
 	dw = (uint16_t*)&dd[4];
 	int16_t *sw = (int16_t*)dw;
-	sw[0] = e.angle;
+	dw[0] = e.angle * UINT16_MAX / (2 * M_PI);
 	dw[1] = e.color;
 	dw[2] = e.subimage;
 
@@ -1020,7 +1020,7 @@ NetEntityMod NetPkg::get_entity_mod() {
 
 		dw = (const uint16_t*)&dd[4];
 		sw = (const int16_t*)dw;
-		ev.angle = sw[0];
+		ev.angle = dw[0] * (2 * M_PI) / UINT16_MAX;
 		ev.color = dw[1];
 		ev.subimage = dw[2];
 

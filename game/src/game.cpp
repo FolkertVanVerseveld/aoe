@@ -84,10 +84,12 @@ void Game::entity_update(const EntityView &ev) {
 		// TODO subimage is always zero. prob forgot to update it somewhere on the server side or forgot to send it to the clients.
 		// only update subimage if it's state has been changed
 		// e.g. when a unit goes from alive to dying, we need to reset the animation sequence
-		if (it->state == ev.state)
+		if (it->state == ev.state) {
 			v.subimage = it->subimage;
-		else
+			v.xflip = it->xflip;
+		} else {
 			statechange = true;
+		}
 
 		entities.erase(it);
 	}
@@ -97,6 +99,10 @@ void Game::entity_update(const EntityView &ev) {
 		if (statechange)
 			entities_killed.emplace_back(v);
 		break;
+	}
+
+	if (ev.state == EntityState::moving) {
+		bool xflip = ev.xflip;
 	}
 
 	entities.emplace(v);
