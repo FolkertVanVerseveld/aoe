@@ -205,6 +205,8 @@ public:
 	std::optional<SfxId> sfxtick() noexcept;
 
 	bool imgtick(unsigned n) noexcept;
+private:
+	void set_state(EntityState) noexcept;
 };
 
 class PlayerAchievements final {

@@ -101,11 +101,10 @@ void Game::entity_update(const EntityView &ev) {
 		break;
 	}
 
-	if (ev.state == EntityState::moving) {
-		bool xflip = ev.xflip;
-	}
+	auto p = entities.emplace(v);
+	// if the entity's state changed, its subimage is zero, which is usually wrong. force recomputing fixes that
+	const_cast<Entity&>(*p.first).imgtick(0);
 
-	entities.emplace(v);
 	modflags |= (unsigned)GameMod::entities;
 }
 

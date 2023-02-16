@@ -18,15 +18,20 @@ bool Entity::die() noexcept {
 	if (state == EntityState::dying)
 		return false;
 
-	state = EntityState::dying;
-	subimage = 0;
+	set_state(EntityState::dying);
 
 	return true;
 }
 
 void Entity::decay() noexcept {
-	state = EntityState::decaying;
+	set_state(EntityState::decaying);
+}
+
+void Entity::set_state(EntityState s) noexcept {
+	state = s;
+	// reset animation
 	subimage = 0;
+	imgtick(0); // fix face depending on angle
 }
 
 template<typename T> constexpr int signum(T v) {
@@ -91,16 +96,13 @@ std::optional<SfxId> Entity::sfxtick() noexcept {
 }
 
 bool Entity::imgtick(unsigned n) noexcept {
-	// TODO use angle to determine where it's looking at
-	// TOOD use xflip for other half of images
 	bool more = true;
 	unsigned mult;
-
-	xflip = false;
 
 	const std::array<unsigned, 8> faces{ 1, 2, 3, 4, 3, 2, 1, 0 };
 	const std::array<bool, 8> xflips{ true, true, true, false, false, false, false, false };
 
+	// note that we have 8 faces, so (2pi)/8 = pi/4. then we need (2pi)/(2*8) to correct for [-a,+a) range.
 	float normface = fmodf(angle + M_PI / 8, 2 * M_PI) / (M_PI / 4);
 	unsigned uface = (unsigned)normface % 8u;
 
