@@ -10,7 +10,10 @@
 #include <set>
 
 #include "../engine/audio.hpp"
-#include "idpool.hpp"
+
+#include <idpool.hpp>
+
+#include "world/entity_info.hpp"
 
 namespace aoe {
 
@@ -109,19 +112,6 @@ enum class EntityState {
 	decaying,
 	attack,
 	moving,
-};
-
-enum class EntityType {
-	town_center,
-	barracks,
-	bird1,
-	villager,
-	priest,
-	berries,
-	desert_tree1,
-	desert_tree2,
-	desert_tree3,
-	desert_tree4,
 };
 
 enum class EntityTaskType {

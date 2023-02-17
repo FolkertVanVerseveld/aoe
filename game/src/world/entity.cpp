@@ -127,11 +127,10 @@ bool Entity::imgtick(unsigned n) noexcept {
 			more = subimage % mult != 9; // image of impact
 			subimage = (subimage + n) % mult + face * mult;
 			break;
-		case EntityState::moving: {
+		case EntityState::moving:
 			mult = 15;
 			subimage = (subimage + n) % mult + face * mult;
 			break;
-		}
 		default:
 			mult = 6;
 			subimage = (subimage + n) % mult + face * mult;
@@ -156,8 +155,12 @@ bool Entity::imgtick(unsigned n) noexcept {
 			subimage = (subimage + n) % 10;
 			break;
 		case EntityState::alive:
-		default:
-			subimage = (subimage + n) % 10;
+			mult = 10;
+			subimage = (subimage + n) % mult + face * mult;
+			break;
+		case EntityState::moving:
+			mult = 15;
+			subimage = (subimage + n) % mult + face * mult;
 			break;
 		}
 		break;

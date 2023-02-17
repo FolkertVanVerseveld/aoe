@@ -1,6 +1,7 @@
 #include "../ui.hpp"
 
 #include "../engine.hpp"
+#include "../world/entity_info.hpp"
 
 #include "../nominmax.hpp"
 
@@ -74,40 +75,30 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 
 	// TODO determine description
 	// 8, 650 -> 5, 8
-	const char *name = "???";
+	const EntityInfo &info = entity_info.at((unsigned)ent->type);
 
-	io::BldIcon icon = io::BldIcon::house1;
-
-	// TODO refactor to Entity::name() or something
-	switch (ent->type) {
-	case EntityType::town_center:
-		name = "Town Center";
-		icon = io::BldIcon::towncenter1;
-		break;
-	case EntityType::barracks:
-		name = "Barracks";
-		icon = io::BldIcon::barracks1;
-		break;
-	case EntityType::villager:
-		name = "Villager";
-		break;
-	case EntityType::bird1:
-		name = "Bird";
-		break;
-	}
+	unsigned icon = info.icon;
+	const char *name = info.name.c_str();
 
 	bkg->AddText(ImVec2(menubar_left + 8 * scale, top + 8 * scale), IM_COL32_WHITE, "Egyptian");
 	// 664 -> 22
 	bkg->AddText(ImVec2(menubar_left + 8 * scale, top + 22 * scale), IM_COL32_WHITE, name);
 
 	Assets &a = *e->assets.get();
-	const ImageSet &s_bld = a.anim_at(io::DrsId::gif_building_icons);
+	const ImageSet &s_bld = a.anim_at(is_building(ent->type) ? io::DrsId::gif_building_icons : io::DrsId::gif_unit_icons);
 	// TODO fetch player color
-	const gfx::ImageRef &img = a.at(s_bld.imgs.at((unsigned)icon));
+	const gfx::ImageRef &img = a.at(s_bld.try_at(ent->color, icon));
 
 	// 8,679 -> 8,37
 	float x0 = menubar_left + 10 * scale, y0 = top + 37 * scale;
 	bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img.bnds.w * scale, y0 + img.bnds.h * scale), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1));
+
+	// HP
+	// 8, 744 -> 8,102
+	char buf[32];
+
+	snprintf(buf, sizeof buf, "%u/%u", 0, info.hp);
+	bkg->AddText(ImVec2(menubar_left + 8 * scale, top + 102 * scale), IM_COL32_WHITE, buf);
 }
 
 }
