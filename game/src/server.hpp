@@ -184,6 +184,7 @@ public:
 	WorldView(World &w) : w(w) {}
 
 	Entity *try_get(IdPoolRef);
+	bool try_convert(Entity&, Entity &aggressor);
 };
 
 class World final {

@@ -174,6 +174,12 @@ enum class DrsId {
 	gif_villager_die2 = 315,
 	gif_villager_decay = 373,
 
+	gif_melee1_stand = 425,
+	gif_melee1_move = 664,
+	gif_melee1_attack = 212,
+	gif_melee1_die = 321,
+	gif_melee1_decay = 380,
+
 	gif_priest_stand = 443,
 	gif_priest_move = 685,
 	gif_priest_attack = 634,

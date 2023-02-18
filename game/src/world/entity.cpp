@@ -22,6 +22,7 @@ bool Entity::die() noexcept {
 	if (state == EntityState::dying)
 		return false;
 
+	stats.hp = 0;
 	set_state(EntityState::dying);
 
 	return true;
@@ -97,28 +98,26 @@ bool Entity::tick(WorldView &wv) noexcept {
 	return false;
 }
 
-bool Entity::hit(Entity &aggressor) noexcept {
-	// TODO find attack
-	unsigned atk = 3;// aggressor.stats.attack;
+bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
+	unsigned atk = aggressor.stats.attack;
 
-#if 0
 	switch (aggressor.type) {
 	case EntityType::priest:
-		// TODO convert gradually with some randomness
-		// TODO also make sure the entity is moved from the original player to the converted player entity list
-		this->color = aggressor.color;
+		if (wv.try_convert(*this, aggressor)) {
+			// TODO auto move priest to heal entity?
+			aggressor.target_ref = invalid_ref;
+			aggressor.set_state(EntityState::alive);
+			return true;
+		}
 
-		// TODO auto move priest to heal entity?
-		aggressor.target_ref = invalid_ref;
-		aggressor.set_state(EntityState::alive);
-		return true;
+		break;
+	default:
+		if (stats.hp < atk)
+			return die();
+
+		stats.hp = std::max(stats.hp - atk, 0u);
+		break;
 	}
-#endif
-
-	if (stats.hp < atk)
-		return die();
-
-	stats.hp = std::max(stats.hp - atk, 0u);
 
 	// TODO do we need to recompute target_ref?
 
@@ -163,6 +162,7 @@ bool Entity::task_attack(Entity &e) noexcept {
 std::optional<SfxId> Entity::sfxtick() noexcept {
 	switch (type) {
 	case EntityType::villager:
+	case EntityType::melee1:
 		switch (state) {
 		case EntityState::attack:
 			return SfxId::villager_attack_random;
@@ -194,6 +194,7 @@ bool Entity::imgtick(unsigned n) noexcept {
 
 	switch (type) {
 	case EntityType::villager:
+	case EntityType::melee1:
 		switch (state) {
 		case EntityState::dying:
 			mult = 10;

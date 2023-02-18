@@ -55,6 +55,19 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 	return tm;
 }
 
+bool WorldView::try_convert(Entity &e, Entity &aggressor) {
+	// TODO convert gradually with some randomness
+	for (Player &p : w.players)
+		p.entities.erase(e.ref);
+
+	unsigned player = aggressor.color;
+
+	e.color = player;
+	w.players.at(player).entities.emplace(e.ref);
+
+	return true;
+}
+
 void World::tick_entities() {
 	ZoneScoped;
 
@@ -66,8 +79,6 @@ void World::tick_entities() {
 		if (is_building(ent.type))
 			continue;
 
-		Entity *t = ent.target_ref != invalid_ref ? entities.try_get(ent.target_ref) : nullptr;
-		// i know this is hacky but it works (tm)
 		bool dirty = ent.tick(wv), tdirty = false;
 		bool more = ent.imgtick(1);
 
@@ -80,14 +91,17 @@ void World::tick_entities() {
 			break;
 		case EntityState::attack:
 			if (!more) {
-				//printf("TODO attack (%u,%u) to (%u,%u)\n", ent.ref.first, ent.ref.second, ent.target_ref.first, ent.target_ref.second);
-				dirty |= t->hit(ent);
-				tdirty = true;
+				Entity *t = entities.try_get(ent.target_ref);
+				if (t) {
+					//printf("TODO attack (%u,%u) to (%u,%u)\n", ent.ref.first, ent.ref.second, ent.target_ref.first, ent.target_ref.second);
+					dirty |= t->hit(wv, ent);
+					dirty_entities.emplace(t->ref);
 
-				// if t died just now, remove from player
-				if (!t->is_alive()) {
-					for (Player &p : players)
-						p.entities.erase(t->ref);
+					// if t died just now, remove from player
+					if (!t->is_alive()) {
+						for (Player &p : players)
+							p.entities.erase(t->ref);
+					}
 				}
 			}
 			break;
@@ -95,8 +109,6 @@ void World::tick_entities() {
 
 		if (dirty)
 			dirty_entities.emplace(ent.ref);
-		if (t && tdirty)
-			dirty_entities.emplace(t->ref);
 	}
 }
 
@@ -378,6 +390,9 @@ void World::create_entities() {
 		add_unit(EntityType::villager, i, 5, 2 + 3 * i);
 		add_unit(EntityType::villager, i, 6, 1 + 3 * i);// , 0, EntityState::attack);
 		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
+
+		add_unit(EntityType::melee1, i, 2 + 3 * 3, 1 + 3 * i);
+		add_unit(EntityType::melee1, i, 2 + 3 * 3, 2 + 3 * i);
 	}
 
 	add_unit(EntityType::priest, 0, 2.5, 1, 0, EntityState::alive);

@@ -10,6 +10,7 @@ enum class EntityType {
 	barracks,
 	bird1,
 	villager,
+	melee1,
 	priest,
 	berries,
 	desert_tree1,
@@ -28,6 +29,7 @@ struct EntityInfo final {
 	EntityType type;
 	float size;
 	unsigned hp;
+	unsigned atk;
 	unsigned icon;
 	std::string name;
 };
@@ -35,8 +37,9 @@ struct EntityInfo final {
 struct EntityStats final {
 	EntityType type;
 	unsigned hp, maxhp;
+	unsigned attack;
 
-	EntityStats(const EntityInfo &i) : type(i.type), hp(i.hp), maxhp(i.hp) {}
+	EntityStats(const EntityInfo &i) : type(i.type), hp(i.hp), maxhp(i.hp), attack(i.atk) {}
 };
 
 extern const std::vector<EntityInfo> entity_info;

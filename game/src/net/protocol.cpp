@@ -951,7 +951,7 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	1 1 u8  e.state
 	1 1 s8  e.dx
 	1 1 s8  e.dy
-	1 1 u8  [reserved]
+	1 1 u8  e.stats.attack
 	2 1 u16 e.stats.hp
 	2 1 u16 e.stats.maxhp
 	*/
@@ -981,6 +981,8 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	db[0] = (uint8_t)e.state;
 	sb[1] = (int8_t)(INT8_MAX * fmodf(e.x, 1));
 	sb[2] = (int8_t)(INT8_MAX * fmodf(e.y, 1));
+	assert(e.stats.attack <= UINT8_MAX);
+	db[3] = e.stats.attack;
 
 	dw[5] = e.stats.hp;
 	dw[6] = e.stats.maxhp;
@@ -1083,6 +1085,8 @@ NetEntityMod NetPkg::get_entity_mod() {
 			ev.x += sb[1] / (float)INT8_MAX;
 			ev.y += sb[2] / (float)INT8_MAX;
 		}
+
+		ev.stats.attack = db[3];
 
 		ev.stats.hp = dw[5];
 		ev.stats.maxhp = dw[6];

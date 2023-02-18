@@ -129,7 +129,7 @@ public:
 	1 state
 	1 dx
 	1 dy
-	1 reserved
+	1 attack
 	2 hp
 	2 maxhp
 	*/

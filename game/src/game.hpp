@@ -193,7 +193,7 @@ public:
 	void decay() noexcept;
 
 	bool tick(WorldView&) noexcept;
-	bool hit(Entity &aggressor) noexcept;
+	bool hit(WorldView&, Entity &aggressor) noexcept;
 
 	constexpr bool is_alive() const noexcept {
 		return state != EntityState::dying && state != EntityState::decaying;

@@ -169,6 +169,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_bird1, gif_bird1_shadow, gif_bird1_glide, gif_bird1_glide_shadow;
 	Animation gif_bird2, gif_bird2_shadow, gif_bird2_glide, gif_bird2_glide_shadow;
 	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
+	Animation gif_melee1_stand, gif_melee1_move, gif_melee1_attack, gif_melee1_die, gif_melee1_decay;
 	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
 	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4;
 	info.next("Loading game entities data");
@@ -200,6 +201,12 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_villager_die1);
 		load_gif(gif_villager_die2);
 		load_gif(gif_villager_decay);
+
+		load_gif(gif_melee1_stand);
+		load_gif(gif_melee1_move);
+		load_gif(gif_melee1_attack);
+		load_gif(gif_melee1_die);
+		load_gif(gif_melee1_decay);
 
 		load_gif(gif_priest_stand);
 		load_gif(gif_priest_move);
@@ -252,6 +259,12 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, gif_villager_die2, DrsId::gif_villager_die2);
 		add_gifs(p, gif_villager_decay, DrsId::gif_villager_decay);
 
+		add_gifs(p, gif_melee1_stand, DrsId::gif_melee1_stand);
+		add_gifs(p, gif_melee1_move, DrsId::gif_melee1_move);
+		add_gifs(p, gif_melee1_attack, DrsId::gif_melee1_attack);
+		add_gifs(p, gif_melee1_die, DrsId::gif_melee1_die);
+		add_gifs(p, gif_melee1_decay, DrsId::gif_melee1_decay);
+
 		add_gifs(p, gif_priest_stand, DrsId::gif_priest_stand);
 		add_gifs(p, gif_priest_move, DrsId::gif_priest_move);
 		add_gifs(p, gif_priest_attack, DrsId::gif_priest_attack);
@@ -270,7 +283,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 #undef img
 
 		// pack images
-		GLint size = std::min(4096, eng.gl().max_texture_size);
+		GLint size = std::min(5120, eng.gl().max_texture_size);
 		ts_ui = p.collect(size, size);
 	}
 
