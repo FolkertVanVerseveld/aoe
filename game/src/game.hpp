@@ -132,7 +132,7 @@ class Entity;
 class EntityView final {
 public:
 	IdPoolRef ref;
-	EntityType type;
+	EntityType type; // TODO remove this and use stats.type
 
 	unsigned color; // TODO /color/playerid/ ?
 	float x, y, angle;
@@ -142,7 +142,9 @@ public:
 	EntityState state;
 	bool xflip;
 
-	EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive), xflip(false) {}
+	EntityStats stats;
+
+	EntityView();
 	EntityView(const Entity&);
 };
 
@@ -171,6 +173,8 @@ public:
 	unsigned subimage;
 	EntityState state;
 	bool xflip;
+
+	EntityStats stats;
 
 	Entity(IdPoolRef ref);
 	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0, EntityState state=EntityState::alive);

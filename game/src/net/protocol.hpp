@@ -129,8 +129,11 @@ public:
 	1 state
 	1 dx
 	1 dy
+	1 reserved
+	2 hp
+	2 maxhp
 	*/
-	static constexpr size_t addsize = minsize + 2 + refsize + 2*4 + 3*2 + 3*1;
+	static constexpr size_t addsize = minsize + 2 + refsize + 2*4 + 3*2 + 4*1 + 2*2;
 	/*
 	2 minsize
 	2 type

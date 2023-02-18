@@ -155,6 +155,7 @@ enum class DrsId {
 	gif_menu_btn_medium0 = 50747,
 	gif_menubar0 = 50741,
 	gif_cursors = 51000,
+	gif_hpbar = 50745,
 
 	gif_bird1 = 404,
 	gif_bird1_shadow = 405,

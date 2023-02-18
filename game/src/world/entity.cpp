@@ -6,13 +6,15 @@
 
 namespace aoe {
 
-EntityView::EntityView(const Entity &e) : ref(e.ref), type(e.type), color(e.color), x(e.x), y(e.y), angle(e.angle), subimage(e.subimage), state(e.state), xflip(e.xflip) {}
+EntityView::EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
 
-Entity::Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(EntityState::alive), xflip(false) {}
+EntityView::EntityView(const Entity &e) : ref(e.ref), type(e.type), color(e.color), x(e.x), y(e.y), angle(e.angle), subimage(e.subimage), state(e.state), xflip(e.xflip), stats(e.stats) {}
 
-Entity::Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle, EntityState state) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state), xflip(false) {}
+Entity::Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
 
-Entity::Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y), angle(ev.angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(ev.subimage), state(ev.state), xflip(ev.xflip) {}
+Entity::Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle, EntityState state) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state), xflip(false), stats(entity_info.at((unsigned)type)) {}
+
+Entity::Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y), angle(ev.angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(ev.subimage), state(ev.state), xflip(ev.xflip), stats(ev.stats) {}
 
 bool Entity::die() noexcept {
 	if (state == EntityState::dying)
@@ -53,6 +55,7 @@ bool Entity::tick() noexcept {
 			state = EntityState::alive;
 			return true;
 		}
+		// compute angle and make sure it's always positive
 		angle = fmodf(atan2(dy, dx) + 2 * M_PI, 2 * M_PI);
 
 		x += speed * cos(angle);
@@ -100,14 +103,13 @@ bool Entity::imgtick(unsigned n) noexcept {
 	unsigned mult;
 
 	const std::array<unsigned, 8> faces{ 1, 2, 3, 4, 3, 2, 1, 0 };
-	const std::array<bool, 8> xflips{ true, true, true, false, false, false, false, false };
 
 	// note that we have 8 faces, so (2pi)/8 = pi/4. then we need (2pi)/(2*8) to correct for [-a,+a) range.
 	float normface = fmodf(angle + M_PI / 8, 2 * M_PI) / (M_PI / 4);
 	unsigned uface = (unsigned)normface % 8u;
 
 	unsigned face = faces[uface];
-	xflip = xflips[uface];
+	xflip = uface < 3;
 
 	switch (type) {
 	case EntityType::villager:
@@ -137,22 +139,45 @@ bool Entity::imgtick(unsigned n) noexcept {
 			break;
 		}
 		break;
-	case EntityType::bird1:
-		subimage = (subimage + n) % 12;
+	case EntityType::bird1: {
+#if 0
+		// TODO birds have more angles
+		// TODO still buggy
+		const std::array<unsigned, 16> faces{ 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, 0 };
+		const std::array<bool, 16> xflips{ true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false };
+
+		// note that we have 16 faces, so (2pi)/16 = pi/8. then we need (2pi)/(2*16) to correct for [-a,+a) range.
+		float normface = fmodf(angle + M_PI / 16, 2 * M_PI) / (M_PI / 8);
+		unsigned uface = (unsigned)normface % 16u;
+
+		unsigned face = faces[uface];
+		xflip = xflips[uface];
+
+		mult = 12;
+		subimage = (subimage + n) % mult + face * mult;
+#else
+		face = 0;
+		mult = 12;
+		subimage = (subimage + n) % mult + face * mult;
+#endif
 		break;
+	}
 	case EntityType::priest:
 		switch (state) {
 		case EntityState::decaying:
-			more = subimage < 5;
-			subimage = std::min(subimage + n, 5u);
+			mult = 6;
+			more = subimage % mult < mult - 1;
+			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
 			break;
 		case EntityState::dying:
-			more = subimage < 9;
-			subimage = std::min(subimage + n, 9u);
+			mult = 10;
+			more = subimage % mult < mult - 1;
+			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
 			break;
 		case EntityState::attack:
-			more = subimage != 0; // image of impact
-			subimage = (subimage + n) % 10;
+			mult = 10;
+			more = subimage % mult != 0; // image of impact
+			subimage = (subimage + n) % mult + face * mult;
 			break;
 		case EntityState::alive:
 			mult = 10;

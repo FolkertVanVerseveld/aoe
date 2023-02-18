@@ -176,6 +176,10 @@ void NetPkg::ntoh() {
 				// e.state
 				// e.dx
 				// e.dy
+				// e.reserved
+
+				dw[5] = ntohs(dw[5]); // e.stats.hp
+				dw[6] = ntohs(dw[6]); // e.stats.maxhp
 				break;
 			case NetEntityControlType::kill:
 				need_payload(NetEntityMod::killsize);
@@ -321,6 +325,7 @@ void NetPkg::hton() {
 			case NetEntityControlType::add:
 			case NetEntityControlType::spawn:
 			case NetEntityControlType::update:
+				// size: addsize
 				dw[1] = htons(dw[1]); // e.type
 
 				dd = (uint32_t*)&dw[2];
@@ -337,6 +342,9 @@ void NetPkg::hton() {
 				// e.state
 				// e.dx
 				// e.dy
+				// [reserved]
+				dw[5] = htons(dw[5]); // e.stats.hp
+				dw[6] = htons(dw[6]); // e.stats.maxhp
 				break;
 			case NetEntityControlType::kill:
 				dd = (uint32_t*)&dw[1];
@@ -922,6 +930,11 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	2 1 u16 e.color
 	2 1 u16 e.subimage
 	1 1 u8  e.state
+	1 1 s8  e.dx
+	1 1 s8  e.dy
+	1 1 u8  [reserved]
+	2 1 u16 e.stats.hp
+	2 1 u16 e.stats.maxhp
 	*/
 
 	uint16_t *dw = (uint16_t*)data.data();
@@ -949,6 +962,9 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	db[0] = (uint8_t)e.state;
 	sb[1] = (int8_t)(INT8_MAX * fmodf(e.x, 1));
 	sb[2] = (int8_t)(INT8_MAX * fmodf(e.y, 1));
+
+	dw[5] = e.stats.hp;
+	dw[6] = e.stats.maxhp;
 
 	set_hdr(NetPkgType::entity_mod);
 }
@@ -1031,6 +1047,9 @@ NetEntityMod NetPkg::get_entity_mod() {
 			ev.x += sb[1] / (float)INT8_MAX;
 			ev.y += sb[2] / (float)INT8_MAX;
 		}
+
+		ev.stats.hp = dw[5];
+		ev.stats.maxhp = dw[6];
 
 		return NetEntityMod(ev, type);
 	}

@@ -46,6 +46,10 @@ IdPoolRef ImageSet::at(unsigned color, unsigned index) const {
 	return imgs.at((color % MAX_PLAYERS) * image_count + index % image_count);
 }
 
+IdPoolRef ImageSet::try_at(unsigned index) const {
+	return try_at(0, index);
+}
+
 IdPoolRef ImageSet::try_at(unsigned color, unsigned index) const {
 	if (!dynamic)
 		return imgs[index % imgs.size()];
@@ -126,7 +130,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		drs_ids[DrsId::bkg_achievements] = p.add_img(0, 0, bkg_achievements);
 	}
 
-	Animation gif_menu_btn_small0, gif_menu_btn_medium0, gif_menubar0, gif_building_icons, gif_unit_icons;
+	Animation gif_menu_btn_small0, gif_menu_btn_medium0, gif_menubar0, gif_building_icons, gif_unit_icons, gif_hpbar;
 	Image img_dialog0, img_dialog_editor;
 	auto pal = drs_ui.open_pal(DrsId::pal_default);
 	{
@@ -144,6 +148,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 #define load_gif(id) id.load(drs_ui, pal.get(), DrsId:: ##id)
 		load_gif(gif_building_icons);
 		load_gif(gif_unit_icons);
+		load_gif(gif_hpbar);
 #undef load_gif
 	}
 
@@ -223,6 +228,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, gif_menubar0, DrsId::gif_menubar0);
 		gif(gif_building_icons);
 		gif(gif_unit_icons);
+		gif(gif_hpbar);
 
 		add_gifs(p, trn_desert, DrsId::trn_desert);
 		add_gifs(p, trn_grass, DrsId::trn_grass);

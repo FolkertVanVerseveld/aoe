@@ -80,9 +80,9 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 	unsigned icon = info.icon;
 	const char *name = info.name.c_str();
 
-	bkg->AddText(ImVec2(menubar_left + 8 * scale, top + 8 * scale), IM_COL32_WHITE, "Egyptian");
+	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 8 * scale), IM_COL32_WHITE, "Egyptian");
 	// 664 -> 22
-	bkg->AddText(ImVec2(menubar_left + 8 * scale, top + 22 * scale), IM_COL32_WHITE, name);
+	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 22 * scale), IM_COL32_WHITE, name);
 
 	Assets &a = *e->assets.get();
 	const ImageSet &s_bld = a.anim_at(is_building(ent->type) ? io::DrsId::gif_building_icons : io::DrsId::gif_unit_icons);
@@ -94,11 +94,22 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 	bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img.bnds.w * scale, y0 + img.bnds.h * scale), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1));
 
 	// HP
+	// 8, 733 -> 8,91
+	// TODO fetch hp from entity
+	unsigned hp = 0;
+	unsigned subimage = std::clamp(25u * (ent->stats.hp - ent->stats.maxhp) / ent->stats.maxhp, 0u, 25u);
+
+	const ImageSet &s_hpbar = a.anim_at(io::DrsId::gif_hpbar);
+	const gfx::ImageRef &hpimg = a.at(s_hpbar.try_at(subimage));
+
+	x0 = menubar_left + 10 * scale, y0 = top + 91 * scale;
+	bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + hpimg.bnds.w * scale, y0 + hpimg.bnds.h * scale), ImVec2(hpimg.s0, hpimg.t0), ImVec2(hpimg.s1, hpimg.t1));
+
 	// 8, 744 -> 8,102
 	char buf[32];
 
-	snprintf(buf, sizeof buf, "%u/%u", 0, info.hp);
-	bkg->AddText(ImVec2(menubar_left + 8 * scale, top + 102 * scale), IM_COL32_WHITE, buf);
+	snprintf(buf, sizeof buf, "%u/%u", ent->stats.hp, ent->stats.maxhp);
+	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 102 * scale), IM_COL32_WHITE, buf);
 }
 
 }

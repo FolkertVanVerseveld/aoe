@@ -32,6 +32,13 @@ struct EntityInfo final {
 	std::string name;
 };
 
+struct EntityStats final {
+	EntityType type;
+	unsigned hp, maxhp;
+
+	EntityStats(const EntityInfo &i) : type(i.type), hp(i.hp), maxhp(i.hp) {}
+};
+
 extern const std::vector<EntityInfo> entity_info;
 
 }
