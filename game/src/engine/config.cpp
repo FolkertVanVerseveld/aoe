@@ -12,42 +12,6 @@
 
 namespace aoe {
 
-static void read(std::ifstream &in, SDL_Rect &r) {
-	static_assert(sizeof(int) == sizeof(uint32_t));
-	in.read((char*)&r.x, sizeof(r.x));
-	in.read((char*)&r.y, sizeof(r.y));
-	in.read((char*)&r.w, sizeof(r.w));
-	in.read((char*)&r.h, sizeof(r.h));
-}
-
-static void read(std::ifstream &in, std::string &s, uint32_t max=UINT32_MAX) {
-	uint32_t n;
-	in.read((char*)&n, sizeof(n));
-
-	if (n > max)
-		throw std::runtime_error("string overflow");
-
-	s.resize(n, ' ');
-	in.read(s.data(), n);
-}
-
-static void write(std::ofstream &out, SDL_Rect r) {
-	static_assert(sizeof(int) == sizeof(int32_t));
-	out.write((const char*)&r.x, sizeof r.x);
-	out.write((const char*)&r.y, sizeof r.y);
-	out.write((const char*)&r.w, sizeof r.w);
-	out.write((const char*)&r.h, sizeof r.h);
-}
-
-static void write(std::ofstream &out, const std::string &s) {
-	if (s.size() > UINT32_MAX)
-		throw std::runtime_error("string overflow");
-
-	uint32_t n = s.size();
-	out.write((const char*)&n, sizeof(n));
-	out.write(s.data(), n);
-}
-
 Config::Config(Engine &e) : Config(e, "") {}
 Config::Config(Engine &e, const std::string &s) : e(e), bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s), game_dir(), autostart(false), music_volume(SDL_MIX_MAXVOLUME), sfx_volume(SDL_MIX_MAXVOLUME) {}
 

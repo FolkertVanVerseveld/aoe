@@ -111,11 +111,13 @@ enum class EntityState {
 	dying,
 	decaying,
 	attack,
+	attack_follow,
 	moving,
 };
 
 enum class EntityTaskType {
 	move,
+	infer, // use context to determine task
 	attack,
 };
 
@@ -158,6 +160,8 @@ public:
 	EntityTask(EntityTaskType type, IdPoolRef ref1, IdPoolRef ref2) : type(type), ref1(ref1), ref2(ref2), x(0), y(0) {}
 };
 
+class WorldView;
+
 class Entity final {
 public:
 	IdPoolRef ref;
@@ -188,19 +192,26 @@ public:
 	bool die() noexcept;
 	void decay() noexcept;
 
-	bool tick() noexcept;
+	bool tick(WorldView&) noexcept;
+	bool hit(Entity &aggressor) noexcept;
 
 	constexpr bool is_alive() const noexcept {
 		return state != EntityState::dying && state != EntityState::decaying;
 	}
 
 	bool task_move(float x, float y) noexcept;
+	bool task_attack(Entity&) noexcept;
 
 	std::optional<SfxId> sfxtick() noexcept;
 
 	bool imgtick(unsigned n) noexcept;
 private:
-	void set_state(EntityState) noexcept;
+	bool set_state(EntityState) noexcept;
+	bool move() noexcept;
+	bool attack(WorldView&) noexcept;
+
+	/* Compute facing angle and return euclidean distance. */
+	float lookat(float x, float y) noexcept;
 };
 
 class PlayerAchievements final {

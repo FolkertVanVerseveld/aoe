@@ -4,6 +4,8 @@
 
 #include <cmath>
 
+#include "../server.hpp"
+
 namespace aoe {
 
 EntityView::EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
@@ -29,42 +31,102 @@ void Entity::decay() noexcept {
 	set_state(EntityState::decaying);
 }
 
-void Entity::set_state(EntityState s) noexcept {
+bool Entity::set_state(EntityState s) noexcept {
+	EntityState old = state;
 	state = s;
 	// reset animation
 	subimage = 0;
 	imgtick(0); // fix face depending on angle
+	return old != s;
 }
 
 template<typename T> constexpr int signum(T v) {
 	return v > 0 ? 1 : v < 0 ? -1 : 0;
 }
 
-bool Entity::tick() noexcept {
-	if (state == EntityState::moving) {
-		if (target_ref != invalid_ref)
-			return false;
+float Entity::lookat(float x, float y) noexcept {
+	float dx = x - this->x, dy = y - this->y;
+	// compute angle and make sure it's always positive
+	angle = fmodf(atan2(dy, dx) + 2 * M_PI, 2 * M_PI);
+	return sqrt(dx * dx + dy * dy);
+}
 
-		float dx = target_x - x, dy = target_y - y;
-		float distance = sqrt(dx * dx + dy * dy);
+bool Entity::move() noexcept {
+	float distance = lookat(target_x, target_y);
 
-		float speed = 0.04f;
-		if (distance < speed) {
-			x = target_x;
-			y = target_y;
-			state = EntityState::alive;
-			return true;
-		}
-		// compute angle and make sure it's always positive
-		angle = fmodf(atan2(dy, dx) + 2 * M_PI, 2 * M_PI);
-
-		x += speed * cos(angle);
-		y += speed * sin(angle);
-
+	float speed = 0.04f; // TODO determine from entity stats
+	if (distance < speed) {
+		x = target_x;
+		y = target_y;
+		state = target_ref != invalid_ref ? EntityState::attack : EntityState::alive;
 		return true;
 	}
 
+	x += speed * cos(angle);
+	y += speed * sin(angle);
+
+	return true;
+}
+
+bool Entity::attack(WorldView &wv) noexcept {
+	// TODO determine if we have to follow the target to stay in range of attack
+	Entity *t = wv.try_get(target_ref);
+	if (!t)
+		// cannot find target, just move there
+		return set_state(EntityState::attack_follow);
+
+	if (!t->is_alive()) {
+		target_ref = invalid_ref;
+		return set_state(EntityState::alive);
+	}
+
+	// TODO stub
 	return false;
+}
+
+bool Entity::tick(WorldView &wv) noexcept {
+	if (!stats.hp)
+		return false;
+
+	switch (state) {
+	case EntityState::attack_follow:
+	case EntityState::moving: return move();
+	case EntityState::attack: return attack(wv);
+	}
+
+	return false;
+}
+
+bool Entity::hit(Entity &aggressor) noexcept {
+	// TODO find attack
+	unsigned atk = 3;// aggressor.stats.attack;
+
+#if 0
+	switch (aggressor.type) {
+	case EntityType::priest:
+		// TODO convert gradually with some randomness
+		// TODO also make sure the entity is moved from the original player to the converted player entity list
+		this->color = aggressor.color;
+
+		// TODO auto move priest to heal entity?
+		aggressor.target_ref = invalid_ref;
+		aggressor.set_state(EntityState::alive);
+		return true;
+	}
+#endif
+
+	if (stats.hp < atk)
+		return die();
+
+	stats.hp = std::max(stats.hp - atk, 0u);
+
+	// TODO do we need to recompute target_ref?
+
+	// if we don't have a target ourselves, make this our target
+	if (target_ref == invalid_ref)
+		task_attack(aggressor);
+
+	return true;
 }
 
 bool Entity::task_move(float x, float y) noexcept {
@@ -72,9 +134,28 @@ bool Entity::task_move(float x, float y) noexcept {
 		return false;
 
 	// TODO start movement stuff
+	this->target_ref = invalid_ref;
 	this->target_x = x;
 	this->target_y = y;
 	this->state = EntityState::moving;
+
+	return true;
+}
+
+bool Entity::task_attack(Entity &e) noexcept {
+	// TODO add buildings that can attack
+	if (!is_alive() || is_building(type) || is_resource(type) || !e.is_alive())
+		return false;
+
+	// TODO introduce attack_follow state where we make sure we are in range of attack
+
+	this->target_ref = e.ref;
+	// also set target_x, target_y in case the entity cannot be found anymore
+	this->target_x = e.x;
+	this->target_y = e.y;
+
+	lookat(e.x, e.y);
+	set_state(EntityState::attack);
 
 	return true;
 }

@@ -240,6 +240,8 @@ private:
 	void mouse_right_process();
 
 	bool menu_btn(ImTextureID tex, const Assets &a, const char *lbl, float x, float scale, bool small);
+
+	void collect(std::vector<IdPoolRef> &refs, float mx, float my, bool clear=true);
 };
 
 }

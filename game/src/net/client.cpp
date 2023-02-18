@@ -272,6 +272,12 @@ void Client::entity_move(IdPoolRef ref, float x, float y) {
 	send(pkg);
 }
 
+void Client::entity_infer(IdPoolRef r1, IdPoolRef r2) {
+	NetPkg pkg;
+	pkg.entity_task(r1, r2);
+	send(pkg);
+}
+
 void Client::send_scn_vars(const ScenarioSettings &scn) {
 	NetPkg pkg;
 	pkg.set_scn_vars(scn);

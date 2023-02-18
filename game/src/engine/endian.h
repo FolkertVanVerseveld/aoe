@@ -7,7 +7,6 @@
 // Addenda et corrigenda:
 //   Folkert van Verseveld 2020-01-15 08:57:45 +0100    purge bogus windows include headers
 //     since this change is trivial, its license still remains as described above by Mathias
-//     as I don't think it is justified to change to license to AGPLv3 for just a minor change
 
 #ifndef PORTABLE_ENDIAN_H__
 #define PORTABLE_ENDIAN_H__

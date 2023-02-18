@@ -8,6 +8,10 @@
 
 namespace aoe {
 
+Entity *WorldView::try_get(IdPoolRef r) {
+	return w.entities.try_get(r);
+}
+
 World::World() : m(), m_events(), t(), entities(), players(), events_in(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
@@ -54,13 +58,17 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 void World::tick_entities() {
 	ZoneScoped;
 
+	WorldView wv(*this);
+
 	for (auto &kv : entities) {
 		Entity &ent = kv.second;
 
 		if (is_building(ent.type))
 			continue;
 
-		bool dirty = ent.tick();
+		Entity *t = ent.target_ref != invalid_ref ? entities.try_get(ent.target_ref) : nullptr;
+		// i know this is hacky but it works (tm)
+		bool dirty = ent.tick(wv), tdirty = false;
 		bool more = ent.imgtick(1);
 
 		switch (ent.state) {
@@ -70,10 +78,25 @@ void World::tick_entities() {
 				dirty = true;
 			}
 			break;
+		case EntityState::attack:
+			if (!more) {
+				//printf("TODO attack (%u,%u) to (%u,%u)\n", ent.ref.first, ent.ref.second, ent.target_ref.first, ent.target_ref.second);
+				dirty |= t->hit(ent);
+				tdirty = true;
+
+				// if t died just now, remove from player
+				if (!t->is_alive()) {
+					for (Player &p : players)
+						p.entities.erase(t->ref);
+				}
+			}
+			break;
 		}
 
 		if (dirty)
 			dirty_entities.emplace(ent.ref);
+		if (t && tdirty)
+			dirty_entities.emplace(t->ref);
 	}
 }
 
@@ -227,10 +250,20 @@ void World::entity_task(WorldEvent &ev) {
 		return;
 
 	switch (task.type) {
-	case EntityTaskType::move:
-		if (ent->task_move(task.x, task.y))
-			dirty_entities.emplace(ent->ref);
-		break;
+		case EntityTaskType::move:
+			if (ent->task_move(task.x, task.y))
+				dirty_entities.emplace(ent->ref);
+			break;
+		case EntityTaskType::infer: {
+			// TODO determine task type. for now always assume attack
+			Entity *target = entities.try_get(task.ref2);
+			if (!target)
+				break;
+
+			if (ent->task_attack(*target))
+				dirty_entities.emplace(ent->ref);
+			break;
+		}
 	}
 }
 

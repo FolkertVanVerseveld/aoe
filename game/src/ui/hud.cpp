@@ -97,7 +97,7 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 	// 8, 733 -> 8,91
 	// TODO fetch hp from entity
 	unsigned hp = 0;
-	unsigned subimage = std::clamp(25u * (ent->stats.hp - ent->stats.maxhp) / ent->stats.maxhp, 0u, 25u);
+	unsigned subimage = std::clamp(25u * (ent->stats.maxhp - ent->stats.hp) / ent->stats.maxhp, 0u, 25u);
 
 	const ImageSet &s_hpbar = a.anim_at(io::DrsId::gif_hpbar);
 	const gfx::ImageRef &hpimg = a.at(s_hpbar.try_at(subimage));

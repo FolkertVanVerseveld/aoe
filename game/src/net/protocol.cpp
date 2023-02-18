@@ -11,6 +11,25 @@ static void refcheck(const IdPoolRef &ref) {
 		throw std::runtime_error("invalid ref");
 }
 
+/*
+ * since i've made the mistake multiple times to forget to call set_hdr, we can use this wrapper to take care of that.
+ * also, eventually i would like to just += to add stuff. bit similar to struct.pack in python...
+ */
+class PkgWriter final {
+public:
+	NetPkg &pkg;
+	const NetPkgType type;
+
+	PkgWriter(NetPkg &pkg, NetPkgType t, size_t n=0) : pkg(pkg), type(t) {
+		if (n)
+			pkg.data.resize(n);
+	}
+
+	~PkgWriter() {
+		pkg.set_hdr(type);
+	}
+};
+
 void NetPkgHdr::ntoh() {
 	if (native_ordering)
 		return;
@@ -991,7 +1010,7 @@ void NetPkg::set_entity_kill(IdPoolRef ref) {
 void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
 	refcheck(ref);
 
-	data.resize(NetEntityMod::tasksize);
+	PkgWriter out(*this, NetPkgType::entity_mod, NetEntityMod::tasksize);
 
 	uint16_t *dw = (uint16_t*)data.data();
 	uint32_t *dd;
@@ -1003,8 +1022,25 @@ void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
 
 	dd[0] = ref.first; dd[1] = ref.second;
 	dd[2] = (uint32_t)x; dd[3] = (uint32_t)y;
+}
 
-	set_hdr(NetPkgType::entity_mod);
+void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
+	assert(type != EntityTaskType::move);
+	refcheck(r1);
+	refcheck(r2);
+
+	PkgWriter out(*this, NetPkgType::entity_mod, NetEntityMod::tasksize);
+
+	uint16_t *dw = (uint16_t*)data.data();
+	uint32_t *dd;
+
+	dw[0] = (uint16_t)NetEntityControlType::task;
+	dw[1] = (uint16_t)type;
+
+	dd = (uint32_t*)&dw[2];
+
+	dd[0] = r1.first; dd[1] = r1.second;
+	dd[2] = r2.first; dd[3] = r2.second;
 }
 
 NetEntityMod NetPkg::get_entity_mod() {

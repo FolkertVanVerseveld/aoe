@@ -28,6 +28,8 @@ namespace aoe {
 
 static_assert(sizeof(int) >= sizeof(int32_t));
 
+class PkgWriter;
+
 class NetPkg final {
 public:
 	NetPkgHdr hdr;
@@ -35,6 +37,8 @@ public:
 
 	static constexpr unsigned max_payload = tcp4_max_size - NetPkgHdr::size;
 	static constexpr unsigned ressize = 4 * sizeof(int32_t);
+
+	friend PkgWriter;
 
 	NetPkg() : hdr(0, 0, false), data() {}
 	NetPkg(uint16_t type, uint16_t payload) : hdr(type, payload), data() {}
@@ -91,6 +95,7 @@ public:
 	void set_entity_update(const Entity&);
 	void set_entity_kill(IdPoolRef);
 	void entity_move(IdPoolRef, float x, float y);
+	void entity_task(IdPoolRef, IdPoolRef, EntityTaskType type=EntityTaskType::infer);
 	NetEntityMod get_entity_mod();
 
 	uint16_t get_gameticks();
@@ -170,6 +175,17 @@ public:
 	template<class... Args> WorldEvent(WorldEventType type, Args&&... data) : type(type), data(data...) {}
 };
 
+class World;
+
+/* Used for entity to query world info. */
+class WorldView final {
+	World &w;
+public:
+	WorldView(World &w) : w(w) {}
+
+	Entity *try_get(IdPoolRef);
+};
+
 class World final {
 	std::mutex m, m_events;
 	Terrain t;
@@ -180,6 +196,7 @@ class World final {
 	std::map<IdPoolRef, NetCamSet> views; // display area for each peer
 	Server *s;
 	bool gameover;
+	friend WorldView;
 public:
 	ScenarioSettings scn;
 	std::atomic<double> logic_gamespeed;
@@ -354,6 +371,7 @@ public:
 	void cam_move(float x, float y, float w, float h);
 
 	void entity_move(IdPoolRef, float x, float y);
+	void entity_infer(IdPoolRef, IdPoolRef);
 
 	/** Try to destroy entity. */
 	void entity_kill(IdPoolRef);

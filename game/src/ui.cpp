@@ -13,6 +13,7 @@
 #include "nominmax.hpp"
 #include "ui.hpp"
 #include "string.hpp"
+#include "world/entity_info.hpp"
 
 #include <algorithm>
 
@@ -890,6 +891,70 @@ void UICache::game_mouse_process() {
 	mouse_right_process();
 }
 
+void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, bool clear) {
+	if (clear)
+		dst.clear();
+
+	// click
+	std::vector<std::pair<float, size_t>> selected;
+
+	// first pass to filter all rectangles
+	for (size_t i = 0; i < entities.size(); ++i) {
+		VisualEntity &v = entities[i];
+
+		if (off_x >= v.x && off_x < v.x + v.w && off_y >= v.y && off_y < v.y + v.h)
+			selected.emplace_back(v.z, i);
+	}
+
+	Assets &a = *e->assets.get();
+	std::set<IdPoolRef> refs;
+
+	// second pass to filter by silhouttes and to remove duplicates
+	for (auto it = selected.begin(); it != selected.end();) {
+		VisualEntity &v = entities[it->second];
+
+		int y = (int)(off_y - v.y);
+
+		const gfx::ImageRef &r = a.at(v.imgref);
+
+		// ignore if out of range
+		if (y < 0 || y >= r.mask.size()) {
+			it = selected.erase(it);
+			continue;
+		}
+
+		auto row = r.mask.at(y);
+		int x = (int)(off_x - v.x);
+
+		// ignore if point not on line
+		// TODO xflip
+		if (x < row.first || x >= row.second) {
+			it = selected.erase(it);
+			continue;
+		}
+
+		// ignore if already added
+		if (!refs.emplace(v.ref).second) {
+			it = selected.erase(it);
+			continue;
+		}
+
+		++it;
+	}
+
+	// sort on Z-order. NOTE: order is flipped compared to drawing
+	std::sort(selected.begin(), selected.end(), [](const auto &lhs, const auto &rhs) { return lhs.first > rhs.first; });
+
+	//printf("selected: %llu\n", (unsigned long long)selected.size());
+
+	dst.clear();
+
+	for (auto kv : selected) {
+		VisualEntity &v = entities[kv.second];
+		dst.emplace_back(v.ref);
+	}
+}
+
 void UICache::mouse_left_process() {
 	ZoneScoped;
 
@@ -899,6 +964,7 @@ void UICache::mouse_left_process() {
 
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 
+#if 0
 	// click
 	std::vector<std::pair<float, size_t>> selected;
 
@@ -962,6 +1028,9 @@ void UICache::mouse_left_process() {
 		VisualEntity &v = entities[kv.second];
 		this->selected.emplace_back(v.ref);
 	}
+#else
+	collect(this->selected, io.MousePos.x, io.MousePos.y);
+#endif
 
 	if (this->selected.empty())
 		return;
@@ -1011,8 +1080,25 @@ void UICache::mouse_right_process() {
 
 	float mx = io.MousePos.x, my = io.MousePos.y;
 
-	printf("right click at %.2f,%.2f\n", mx, my);
+	//printf("right click at %.2f,%.2f\n", mx, my);
 
+	if (!selected.empty()) {
+		Entity *ent = e->gv.try_get(selected.front());
+		if (ent) {
+			// find all entities we right clicked on
+			std::vector<IdPoolRef> targets;
+			collect(targets, mx, my);
+
+			if (!targets.empty()) {
+				// TODO should we always take the first one?
+				IdPoolRef t = targets.front();
+				e->client->entity_infer(ent->ref, t);
+				return;
+			}
+		}
+	}
+
+	// no entities found to interact with, search tiles
 	for (VisualTile &vt : display_area) {
 		if (mx >= vt.bnds.x && mx < vt.bnds.x + vt.bnds.w && my >= vt.bnds.y && my < vt.bnds.y + vt.bnds.h) {
 			// get actual image
@@ -1043,7 +1129,7 @@ void UICache::mouse_right_process() {
 				continue;
 
 			// TODO determine precise value, now we always use tile's center
-			printf("clicked on %d,%d\n", vt.tx, vt.ty);
+			//printf("clicked on %d,%d\n", vt.tx, vt.ty);
 
 			for (IdPoolRef ref : selected) {
 				Entity *ent = e->gv.try_get(ref);
@@ -1056,7 +1142,7 @@ void UICache::mouse_right_process() {
 		}
 	}
 
-	printf("nothing selected\n");
+	//printf("nothing selected\n");
 }
 
 void UICache::show_selections() {
@@ -1070,11 +1156,9 @@ void UICache::show_selections() {
 		if (!ent)
 			continue;
 
-		// TODO determine entity (i.e. unit or building) size
-		float size = 1;
-
-		if (is_building(ent->type))
-			size = 3;
+		// determine entity (i.e. unit or building) size
+		const EntityInfo &i = entity_info.at((unsigned)ent->type);
+		float size = i.size;
 
 		float x = ent->x + 1, y = ent->y;
 		int ix = ent->x + 1, iy = ent->y;
@@ -1087,8 +1171,6 @@ void UICache::show_selections() {
 
 		if (!is_building(ent->type)) {
 			float offx = left, offy = top;
-
-			size = 5.0f;
 
 			tl = ImVec2(e->tilepos(x, y, offx - 2 * size, offy, h));
 			tb = ImVec2(e->tilepos(x, y, offx, offy + size, h));
@@ -1219,6 +1301,7 @@ void UICache::load_entities() {
 				case EntityState::attack:
 					gif = io::DrsId::gif_villager_attack;
 					break;
+				case EntityState::attack_follow:
 				case EntityState::moving:
 					gif = io::DrsId::gif_villager_move;
 					break;
@@ -1232,6 +1315,7 @@ void UICache::load_entities() {
 				case EntityState::attack:
 					gif = io::DrsId::gif_priest_attack;
 					break;
+				case EntityState::attack_follow:
 				case EntityState::moving:
 					gif = io::DrsId::gif_priest_move;
 					break;
