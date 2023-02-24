@@ -88,6 +88,7 @@ enum class SfxId {
 	villager_attack1,
 	villager_attack2,
 	villager_attack3,
+	wood_worker_attack,
 	priest,
 	priest_attack_random,
 	priest_attack1,

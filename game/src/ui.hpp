@@ -186,8 +186,9 @@ struct VisualEntity final {
 	int w, h;
 	float s0, t0, s1, t1;
 	float z; // used for drawing priority
+	bool xflip;
 
-	VisualEntity(IdPoolRef ref, IdPoolRef imgref, float x, float y, int w, int h, float s0, float t0, float s1, float t1, float z) : ref(ref), imgref(imgref), x(x), y(y), w(w), h(h), s0(s0), t0(t0), s1(s1), t1(t1), z(z) {}
+	VisualEntity(IdPoolRef ref, IdPoolRef imgref, float x, float y, int w, int h, float s0, float t0, float s1, float t1, float z, bool xflip) : ref(ref), imgref(imgref), x(x), y(y), w(w), h(h), s0(s0), t0(t0), s1(s1), t1(t1), z(z), xflip(xflip) {}
 };
 
 #undef small

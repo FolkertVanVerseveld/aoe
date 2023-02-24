@@ -126,7 +126,11 @@ static bool constexpr is_building(EntityType t) {
 }
 
 static bool constexpr is_resource(EntityType t) {
-	return t >= EntityType::berries && t <= EntityType::desert_tree4;
+	return t >= EntityType::berries && t <= EntityType::dead_tree2;
+}
+
+static bool constexpr is_worker(EntityType t) {
+	return t >= EntityType::villager && t <= EntityType::worker_wood2;
 }
 
 class Entity;
@@ -206,9 +210,12 @@ public:
 
 	bool imgtick(unsigned n) noexcept;
 private:
+	void reset_anim() noexcept;
 	bool set_state(EntityState) noexcept;
+	bool try_state(EntityState) noexcept;
 	bool move() noexcept;
 	bool attack(WorldView&) noexcept;
+	bool in_range(const Entity&) const noexcept;
 
 	/* Compute facing angle and return euclidean distance. */
 	float lookat(float x, float y) noexcept;

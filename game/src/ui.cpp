@@ -927,8 +927,12 @@ void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, boo
 		int x = (int)(off_x - v.x);
 
 		// ignore if point not on line
-		// TODO xflip
-		if (x < row.first || x >= row.second) {
+		if (v.xflip) {
+			if (x < v.w - row.second || x >= v.w - row.first) {
+				it = selected.erase(it);
+				continue;
+			}
+		} else if (x < row.first || x >= row.second) {
 			it = selected.erase(it);
 			continue;
 		}

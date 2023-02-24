@@ -859,7 +859,7 @@ int Engine::mainloop() {
 		#include "shaders/shader.vs"
 		;
 
-	length = strlen(src);
+	length = (GLint)strlen(src);
 
 	glShaderSource(vs, 1, &src, &length);
 	glCompileShader(vs);
@@ -884,7 +884,7 @@ int Engine::mainloop() {
 		#include "shaders/shader.fs"
 		;
 
-	length = strlen(src);
+	length = (GLint)strlen(src);
 
 	glShaderSource(fs, 1, &src, &length);
 	glCompileShader(fs);

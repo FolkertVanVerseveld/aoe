@@ -226,10 +226,10 @@ void World::entity_kill(WorldEvent &ev) {
 	// entity_die is like it does its proper dying animation (opt. with particles)
 	// entity_kill is like when it has to be removed completely (e.g. decaying ended, resource depleted)
 	Entity *ent = entities.try_get(ref);
-	if (ent) {
-		switch (ent->type) {
-		case EntityType::villager:
-		case EntityType::priest:
+	if (ent && !is_building(ent->type)) {
+		if (is_resource(ent->type)) {
+			// TODO
+		} else {
 			if (ent->die()) {
 				for (Player &p : players)
 					p.entities.erase(ref);
@@ -395,7 +395,7 @@ void World::create_entities() {
 		add_unit(EntityType::melee1, i, 2 + 3 * 3, 2 + 3 * i);
 	}
 
-	add_unit(EntityType::priest, 0, 2.5, 1, 0, EntityState::alive);
+	add_unit(EntityType::priest, 0, 2.5, 1);
 	add_unit(EntityType::priest, 0, 3.5, 1);
 
 	add_unit(EntityType::bird1, 0, 11, 6);

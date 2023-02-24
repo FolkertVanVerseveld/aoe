@@ -11,6 +11,8 @@ const std::vector<EntityInfo> entity_info {
 	{EntityType::barracks, 3, 350, 0, (unsigned)BldIcon::barracks1, "Barracks"},
 	{EntityType::bird1, 5, 1, 0, (unsigned)UnitIcon::villager, "Bird"},
 	{EntityType::villager, 5, 25, 3, (unsigned)UnitIcon::villager, "Villager"},
+	{EntityType::worker_wood1, 5, 25, 3, (unsigned)UnitIcon::villager, "Lumberjack"}, // attacking tree
+	{EntityType::worker_wood2, 5, 25, 1, (unsigned)UnitIcon::villager, "Lumberjack"}, // gather wood
 	{EntityType::melee1, 5, 40, 3, (unsigned)UnitIcon::melee1, "Clubman"},
 	// a priest converts units and does not deal damage while converting
 	{EntityType::priest, 5, 25, 0, (unsigned)UnitIcon::priest, "Priest"},
@@ -20,6 +22,9 @@ const std::vector<EntityInfo> entity_info {
 	{EntityType::desert_tree2, 5, 25, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
 	{EntityType::desert_tree3, 5, 25, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
 	{EntityType::desert_tree4, 5, 25, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
+	// hp for tree refers to amount of wood
+	{EntityType::dead_tree1, 5, 40, 0, (unsigned)UnitIcon::wood, "Tree"},
+	{EntityType::dead_tree2, 5, 40, 0, (unsigned)UnitIcon::wood, "Tree"},
 };
 
 }

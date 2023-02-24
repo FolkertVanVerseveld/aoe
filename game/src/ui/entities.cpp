@@ -39,7 +39,7 @@ void UICache::load_entities() {
 				x0 = tpos.x - tc.hotspot_x;
 				y0 = tpos.y - tc.hotspot_y;
 
-				entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+				entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y, ent.xflip);
 			}
 
 			const ImageSet &s_tcp = a.anim_at(bld_player);
@@ -49,7 +49,7 @@ void UICache::load_entities() {
 			x0 = tpos.x - tcp.hotspot_x;
 			y0 = tpos.y - tcp.hotspot_y;
 
-			entities.emplace_back(ent.ref, imgref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f);
+			entities.emplace_back(ent.ref, imgref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f, ent.xflip);
 		} else if (is_resource(ent.type)) {
 			float x = ent.x, y = ent.y;
 			int ix = (int)x, iy = (int)y;
@@ -74,6 +74,12 @@ void UICache::load_entities() {
 			case EntityType::desert_tree4:
 				img = io::DrsId::ent_desert_tree4;
 				break;
+			case EntityType::dead_tree1:
+				img = ent.state == EntityState::decaying ? io::DrsId::ent_decay_tree : io::DrsId::ent_dead_tree1;
+				break;
+			case EntityType::dead_tree2:
+				img = ent.state == EntityState::decaying ? io::DrsId::ent_decay_tree : io::DrsId::ent_dead_tree2;
+				break;
 			}
 
 			const gfx::ImageRef &tc = a.at(img);
@@ -81,7 +87,7 @@ void UICache::load_entities() {
 			float x0 = tpos.x - tc.hotspot_x;
 			float y0 = tpos.y - tc.hotspot_y;
 
-			entities.emplace_back(ent.ref, tc.ref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+			entities.emplace_back(ent.ref, tc.ref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y, ent.xflip);
 		} else {
 			// TODO figure out orientation and animation
 			float x = ent.x, y = ent.y;
@@ -112,6 +118,30 @@ void UICache::load_entities() {
 					break;
 				default:
 					gif = io::DrsId::gif_villager_stand;
+					break;
+				}
+				break;
+			case EntityType::worker_wood1:
+			case EntityType::worker_wood2:
+				switch (ent.state) {
+				case EntityState::dying:
+					gif = io::DrsId::gif_worker_wood_die;
+					break;
+				case EntityState::decaying:
+					gif = io::DrsId::gif_worker_wood_decay;
+					break;
+				case EntityState::attack:
+					if (ent.type == EntityType::worker_wood1)
+						gif = io::DrsId::gif_worker_wood_attack1;
+					else
+						gif = io::DrsId::gif_worker_wood_attack2;
+					break;
+				case EntityState::attack_follow:
+				case EntityState::moving:
+					gif = io::DrsId::gif_worker_wood_move;
+					break;
+				default:
+					gif = io::DrsId::gif_worker_wood_stand;
 					break;
 				}
 				break;
@@ -166,9 +196,9 @@ void UICache::load_entities() {
 
 			if (ent.xflip) {
 				x0 = tpos.x - tc.bnds.w + tc.hotspot_x;
-				entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s1, tc.t0, tc.s0, tc.t1, tpos.y);
+				entities.emplace_back(ent.ref, tc.ref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s1, tc.t0, tc.s0, tc.t1, tpos.y, ent.xflip);
 			} else {
-				entities.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y);
+				entities.emplace_back(ent.ref, tc.ref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y, ent.xflip);
 			}
 		}
 	}

@@ -10,6 +10,8 @@ enum class EntityType {
 	barracks,
 	bird1,
 	villager,
+	worker_wood1,
+	worker_wood2,
 	melee1,
 	priest,
 	berries,
@@ -17,6 +19,8 @@ enum class EntityType {
 	desert_tree2,
 	desert_tree3,
 	desert_tree4,
+	dead_tree1,
+	dead_tree2,
 };
 
 enum class EntityIconType {
@@ -32,6 +36,8 @@ struct EntityInfo final {
 	unsigned atk;
 	unsigned icon;
 	std::string name;
+
+	// TODO add upgrade function that copies everything except hp
 };
 
 struct EntityStats final {

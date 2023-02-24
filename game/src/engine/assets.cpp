@@ -169,9 +169,10 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_bird1, gif_bird1_shadow, gif_bird1_glide, gif_bird1_glide_shadow;
 	Animation gif_bird2, gif_bird2_shadow, gif_bird2_glide, gif_bird2_glide_shadow;
 	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
+	Animation gif_worker_wood_stand, gif_worker_wood_move, gif_worker_wood_attack1, gif_worker_wood_attack2, gif_worker_wood_die, gif_worker_wood_decay;
 	Animation gif_melee1_stand, gif_melee1_move, gif_melee1_attack, gif_melee1_die, gif_melee1_decay;
 	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
-	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4;
+	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4, img_dead_tree1, img_dead_tree2, img_decay_tree;
 	info.next("Loading game entities data");
 	{
 		ZoneScopedN("Loading game entities data");
@@ -202,6 +203,13 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_villager_die2);
 		load_gif(gif_villager_decay);
 
+		load_gif(gif_worker_wood_stand);
+		load_gif(gif_worker_wood_move);
+		load_gif(gif_worker_wood_attack1);
+		load_gif(gif_worker_wood_attack2);
+		load_gif(gif_worker_wood_die);
+		load_gif(gif_worker_wood_decay);
+
 		load_gif(gif_melee1_stand);
 		load_gif(gif_melee1_move);
 		load_gif(gif_melee1_attack);
@@ -220,6 +228,11 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		img_desert_tree3.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree3), 0);
 		img_desert_tree4.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree4), 0);
 #undef load_gif
+#define load_img(id) img_ ##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_ ##id), 0)
+		load_img(dead_tree1);
+		load_img(dead_tree2);
+		load_img(decay_tree);
+#undef load_img
 	}
 
 	info.next("Packing graphics");
@@ -259,6 +272,13 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, gif_villager_die2, DrsId::gif_villager_die2);
 		add_gifs(p, gif_villager_decay, DrsId::gif_villager_decay);
 
+		gif(gif_worker_wood_stand);
+		gif(gif_worker_wood_move);
+		gif(gif_worker_wood_attack1);
+		gif(gif_worker_wood_attack2);
+		gif(gif_worker_wood_die);
+		gif(gif_worker_wood_move);
+
 		add_gifs(p, gif_melee1_stand, DrsId::gif_melee1_stand);
 		add_gifs(p, gif_melee1_move, DrsId::gif_melee1_move);
 		add_gifs(p, gif_melee1_attack, DrsId::gif_melee1_attack);
@@ -280,6 +300,9 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		img(desert_tree2);
 		img(desert_tree3);
 		img(desert_tree4);
+		img(dead_tree1);
+		img(dead_tree2);
+		img(decay_tree);
 #undef img
 
 		// pack images
@@ -354,6 +377,7 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	sfx(villager_attack1);
 	sfx(villager_attack2);
 	sfx(villager_attack3);
+	sfx(wood_worker_attack);
 
 	sfx(priest);
 	sfx(priest_attack1);

@@ -174,6 +174,13 @@ enum class DrsId {
 	gif_villager_die2 = 315,
 	gif_villager_decay = 373,
 
+	gif_worker_wood_stand = 440,
+	gif_worker_wood_move = 682,
+	gif_worker_wood_attack1 = 625,
+	gif_worker_wood_attack2 = 627,
+	gif_worker_wood_die = 338,
+	gif_worker_wood_decay = 399,
+
 	gif_melee1_stand = 425,
 	gif_melee1_move = 664,
 	gif_melee1_attack = 212,
@@ -198,6 +205,10 @@ enum class DrsId {
 	ent_desert_tree2 = 464,
 	ent_desert_tree3 = 465,
 	ent_desert_tree4 = 466,
+
+	ent_dead_tree1 = 636,
+	ent_dead_tree2 = 637,
+	ent_decay_tree = 623,
 
 	sfx_ui_click = 5035,
 	sfx_priest_convert2 = 5051,
@@ -231,6 +242,7 @@ enum class DrsId {
 	sfx_villager_attack1 = 5138,
 	sfx_villager_attack2 = 5139,
 	sfx_villager_attack3 = 5140,
+	sfx_wood_worker_attack = 5048,
 
 	sfx_priest = 5165,
 	sfx_priest_attack1 = 5050,
