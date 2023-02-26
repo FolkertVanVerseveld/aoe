@@ -19,6 +19,7 @@ enum class NetPkgType {
 	gameover,
 	cam_set,
 	gameticks,
+	particle_mod,
 };
 
 struct NetPkgHdr final {
@@ -145,6 +146,22 @@ public:
 	NetEntityMod(IdPoolRef ref) : type(NetEntityControlType::kill), data(ref) {}
 	NetEntityMod(const EntityView &e, NetEntityControlType t) : type(t), data(e) {}
 	NetEntityMod(const EntityTask &t) : type(NetEntityControlType::task), data(t) {}
+};
+
+class NetParticleMod final {
+public:
+	Particle data;
+
+	/*
+	2*4 ref
+	4 x
+	4 y
+	2 type
+	2 subimage
+	*/
+	static constexpr size_t addsize = refsize + 2*4 + 2*2;
+
+	NetParticleMod(const Particle &p) : data(p) {}
 };
 
 }

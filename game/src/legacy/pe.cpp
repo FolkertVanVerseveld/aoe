@@ -302,7 +302,7 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Typ
 	throw std::runtime_error(std::string("PE: bad pe magic: expected ") + std::to_string(pe_magic) + " got " + std::to_string(pe.f_magic));
 
 	if (!pe.f_opthdr)
-	return;
+		return;
 
 	coffopthdr coff;
 

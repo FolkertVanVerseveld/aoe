@@ -237,6 +237,20 @@ void NetPkg::ntoh() {
 
 			break;
 		}
+		case NetPkgType::particle_mod: {
+			need_payload(NetParticleMod::addsize);
+
+			uint32_t *dd = (uint32_t*)data.data();
+
+			dd[0] = ntohl(dd[0]); dd[1] = ntohl(dd[1]); // p.ref
+
+			uint16_t *dw = (uint16_t*)&dd[2];
+
+			dw[0] = ntohs(dw[0]); // p.type
+			dw[1] = ntohs(dw[1]); // p.subimage
+
+			break;
+		}
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -393,6 +407,18 @@ void NetPkg::hton() {
 		case NetPkgType::gameticks: {
 			int16_t *dw = (int16_t*)data.data();
 			dw[0] = htons(dw[0]);
+			break;
+		}
+		case NetPkgType::particle_mod: {
+			uint32_t *dd = (uint32_t*)data.data();
+
+			dd[0] = htonl(dd[0]); dd[1] = htonl(dd[1]); // p.ref
+
+			uint16_t *dw = (uint16_t*)&dd[2];
+
+			dw[0] = htons(dw[0]); // p.type
+			dw[1] = htons(dw[1]); // p.subimage
+
 			break;
 		}
 		default:

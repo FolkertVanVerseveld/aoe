@@ -252,10 +252,10 @@ std::optional<SfxId> Entity::sfxtick() noexcept {
 
 bool Entity::in_range(const Entity &e) const noexcept {
 	const EntityInfo &info1 = entity_info.at((unsigned)type);
-	float size1 = is_building(type) ? info1.size : info1.size / 20;
+	float size1 = is_building(type) ? info1.size / 2 : info1.size / 20;
 
 	const EntityInfo &info2 = entity_info.at((unsigned)e.type);
-	float size2 = is_building(e.type) ? info2.size : info2.size / 20;
+	float size2 = is_building(e.type) ? info2.size / 2 : info2.size / 20;
 
 	float x1 = x, x2 = e.x, y1 = y, y2 = e.y;
 

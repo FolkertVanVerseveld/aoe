@@ -195,6 +195,7 @@ enum class DrsId {
 
 	gif_building_icons = 50704,
 	gif_unit_icons = 50730,
+	gif_moveto = 50405,
 
 	bld_town_center = 280,
 	bld_town_center_player = 230,

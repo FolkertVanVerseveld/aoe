@@ -172,6 +172,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_worker_wood_stand, gif_worker_wood_move, gif_worker_wood_attack1, gif_worker_wood_attack2, gif_worker_wood_die, gif_worker_wood_decay;
 	Animation gif_melee1_stand, gif_melee1_move, gif_melee1_attack, gif_melee1_die, gif_melee1_decay;
 	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
+	Animation gif_moveto;
 	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4, img_dead_tree1, img_dead_tree2, img_decay_tree;
 	info.next("Loading game entities data");
 	{
@@ -221,6 +222,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_priest_attack);
 		load_gif(gif_priest_die);
 		load_gif(gif_priest_decay);
+
+		load_gif(gif_moveto);
 
 		img_berries.load(pal.get(), drs_graphics.open_slp(DrsId::ent_berries), 0);
 		img_desert_tree1.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree1), 0);
