@@ -284,4 +284,146 @@ void Client::send_scn_vars(const ScenarioSettings &scn) {
 	send(pkg);
 }
 
+void Client::stop() {
+	std::lock_guard<std::mutex> lk(m);
+	m_connected = false;
+	s.close();
+}
+
+void Client::start(const char *host, uint16_t port, bool run) {
+	std::lock_guard<std::mutex> lk(m);
+	s.open();
+	m_connected = false;
+
+	s.connect(host, port);
+	m_connected = true;
+
+	if (run) {
+		std::thread t(&Client::mainloop, std::ref(*this));
+		t.detach();
+	}
+}
+
+void Client::add_chat_text(IdPoolRef ref, const std::string &s) {
+	std::lock_guard<std::mutex> lk(m_eng);
+
+	const ClientInfo *ci = nullptr;
+	std::string txt(s);
+
+	if (ref != invalid_ref) {
+		txt = std::string("(") + std::to_string(ref.first) + "::" + std::to_string(ref.second) + "): " + s;
+
+		auto it = peers.find(ref);
+		if (it != peers.end())
+			ci = &it->second;
+
+		if (ci && !ci->username.empty())
+			txt = ci->username + ": " + s;
+	}
+
+	printf("(%u::%u) says: \"%s\"\n", ref.first, ref.second, s.c_str());
+	if (eng) {
+		eng->add_chat_text(txt);
+
+		auto maybe_taunt = eng->sfx.is_taunt(s);
+		if (maybe_taunt)
+			eng->sfx.play_taunt(maybe_taunt.value());
+	}
+}
+
+void Client::set_scn_vars(const ScenarioSettings &scn) {
+	std::lock_guard<std::mutex> lk(m);
+
+	this->scn.fixed_start = scn.fixed_start;
+	this->scn.explored = scn.explored;
+	this->scn.all_technologies = scn.all_technologies;
+	this->scn.cheating = scn.cheating;
+	this->scn.square = scn.square;
+	this->scn.wrap = scn.wrap;
+
+	// scn.restricted is not copied for obvious reasons
+
+	this->scn.width = scn.width;
+	this->scn.height = scn.height;
+	this->scn.popcap = scn.popcap;
+	this->scn.age = scn.age;
+	this->scn.villagers = scn.villagers;
+
+	this->scn.res = scn.res;
+	this->modflags |= (unsigned)ClientModFlags::scn;
+
+	g.resize(scn);
+}
+
+void Client::set_username(const std::string &s) {
+	std::lock_guard<std::mutex> lk(m_eng);
+
+	if (me == invalid_ref) {
+		fprintf(stderr, "%s: got username before ref\n", __func__);
+	} else {
+		auto it = peers.find(me);
+		assert(it != peers.end());
+		it->second.username = s;
+	}
+
+	if (eng)
+		eng->trigger_username(s);
+}
+
+void Client::peermod(const NetPeerControl &ctl) {
+	IdPoolRef ref(ctl.ref);
+
+	switch (ctl.type) {
+		case NetPeerControlType::incoming: {
+			// name = (%u::%u)
+			std::string name(std::string("(") + std::to_string(ref.first) + "::" + std::to_string(ref.second) + ")");
+			peers.emplace(std::piecewise_construct, std::forward_as_tuple(ref), std::forward_as_tuple(ref, name));
+
+			if (me == invalid_ref)
+				me = ref;
+			break;
+		}
+		case NetPeerControlType::dropped: {
+			peers.erase(ref);
+
+			if (me == ref)
+				fprintf(stderr, "%s: dropping myself. ref (%u,%u)\n", __func__, ref.first, ref.second);
+			break;
+		}
+		case NetPeerControlType::set_username: {
+			auto it = peers.find(ref);
+			std::string name(std::get<std::string>(ctl.data));
+
+			// insert if not found
+			if (it == peers.end())
+				auto ins = peers.emplace(std::piecewise_construct, std::forward_as_tuple(ref), std::forward_as_tuple(ref, name));
+			else
+				it->second.username = name;
+
+			break;
+		}
+		case NetPeerControlType::set_player_idx: {
+			std::lock_guard<std::mutex> lk(m);
+
+			unsigned pos = std::get<uint16_t>(ctl.data);
+			scn.owners[ref] = pos;
+
+			if (pos - 1 < scn.players.size())
+				scn.players[pos - 1].ai = false;
+
+			modflags |= (unsigned)ClientModFlags::scn;
+			break;
+		}
+		default:
+			fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)ctl.type);
+			break;
+	}
+}
+
+void Client::terrainmod(const NetTerrainMod &tm) {
+	std::lock_guard<std::mutex> lk(m);
+	modflags |= (unsigned)ClientModFlags::terrain;
+	g.terrain_set(tm.tiles, tm.hmap, tm.x, tm.y, tm.w, tm.h);
+}
+
 }

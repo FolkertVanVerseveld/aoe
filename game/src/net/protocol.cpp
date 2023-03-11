@@ -738,7 +738,7 @@ void NetPkg::claim_cpu_setting(uint16_t idx) {
 	uint16_t *dw = (uint16_t*)data.data();
 
 	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_cpu_ref;
-	dw[1] = (uint16_t)idx;
+	dw[1] = idx;
 
 	set_hdr(NetPkgType::playermod);
 }

@@ -293,6 +293,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, gif_priest_attack, DrsId::gif_priest_attack);
 		add_gifs(p, gif_priest_die, DrsId::gif_priest_die);
 		add_gifs(p, gif_priest_decay, DrsId::gif_priest_decay);
+
+		gif(gif_moveto);
 #undef gif
 
 
