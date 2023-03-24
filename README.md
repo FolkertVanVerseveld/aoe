@@ -32,29 +32,13 @@ A simple, incomplete user guide is available [here](doc/user_guide.md).
 
 ## Status
 
-At the moment, there is no game to be played. Only basic functionality and lots
-of simple low-level stuff in the game engine is implemented. See
-[STATUS](STATUS.md) for more details.
+At the moment, there is no game to be played. See the github project for most
+up-to-date info: [AoE](https://github.com/FolkertVanVerseveld/aoe).
 
 ## Support
 
-*NOTE* empires/empires is considered legacy and is going to be replaced by
-empires/empiresx eventually! empires/empires is more feature complete at the
-moment, but empiresx is an improved version that provides multiplayer support
-as well.
-
-Operating System    | Supported programs and tools
---------------------|-----------------------------
-Xubuntu 18.04.4     | AoEx, server, tools
-Windows 10 Pro 1909 | AoEx, server
-
-The programs and tools are abbreviated as:
-
-Abbreviation | Program(s)/Tool(s) | Path(s)
--------------|--------------------|--------------------------
-AoEx         | Age of Empires     | empiresx/empiresx
-server       | Standalone server  | empiresx/dedicated_server
-tools        | Mod tools          | tools/
+Windows has first class support, while an Ubuntu based Linux should compile the
+project just fine.
 
 For more information how to install and run AoE, see [INSTALL](INSTALL).
 
