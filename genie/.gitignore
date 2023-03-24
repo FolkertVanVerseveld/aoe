@@ -1,6 +1,0 @@
-# binaries
-*.o
-fnt_*.png
-
-# generated
-fnt_data.c
