@@ -30,7 +30,7 @@ See also [this document](CODINGSTYLE.md) for more details.
 ### Windows
 
 Just download the official development and binary releases from libsdl.org
-This project is compiled with MinGW. MSVC++ may work, but is not supported...
+This project is compiled with CMake. It should 'just work' using Visual Studio.
 
 ### Ubuntu and variants
 
@@ -42,7 +42,6 @@ libsdl2-dev       | SDL2 development package
 libsdl2-image-dev | SDL2 graphics development package
 libsdl2-mixer-dev | SDL2 audio development package
 libopenal-dev     | OpenAL development package
-libxtcommon       | XenoTech's cross platform library
 
 The following commands are expected to be installed
 (descriptions are taken from their repsective manuals):
@@ -57,13 +56,6 @@ sed         | stream editor for filtering and transforming text
 make        | GNU make utility to maintain groups of programs
 cmake       | CMake Command-Line Reference
 
-# Tools
-
-In tools/ we have provided multiple freestanding programs that inspect the
-original data files and make porting the game a lot easier.
-
-See [this readme](tools/README.md) for more details.
-
 # Reverse engineering
 
 For compatibilty, some inner workings from the engine (e.g. assets loading and
@@ -72,7 +64,7 @@ are dissassembled in reverse_engineering/ for research purposes.
 
 The documentation is really tricky to get right here, so it may be misleading or
 plainly wrong. Feel free to look around and make your own improvements. We use
-the IDA unsupported free version (v5.0) from Hex-Rays for analyzing the code.
+the IDA unsupported free version (v8.2) from Hex-Rays for analyzing the code.
 
 You can download your own free copy at [their website](https://www.hex-rays.com/products/ida/support/download_freeware.shtml).
 *This version is free for non-commercial use only!*
