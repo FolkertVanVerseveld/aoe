@@ -6,7 +6,10 @@
 
 #include "idpool.hpp"
 #include "legacy/strings.hpp"
+#include "legacy/scenario.hpp"
 #include "engine/assets.hpp"
+
+#include "imgui_memory_editor.h"
 
 #include <SDL2/SDL_rect.h>
 
@@ -211,6 +214,9 @@ class UICache final {
 	std::string btnsel;
 
 	std::vector<ImageSet> t_imgs;
+	ImGui::FileBrowser fd; // for scn or cpx
+	io::Scenario scn;
+	MemoryEditor mem;
 public:
 	void load(Engine &e);
 

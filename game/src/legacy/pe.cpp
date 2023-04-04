@@ -238,7 +238,7 @@ struct pestr final {
 #pragma warning(pop)
 
 PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Type::unknown), bits(0), nrvasz(0), sections(), path(path) {
-	in.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+	in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
 	in.seekg(0, std::ios_base::end);
 	long long end = in.tellg();
