@@ -70,7 +70,7 @@ void UICache::show_world() {
 	show_selections();
 }
 
-bool UICache::menu_btn(ImTextureID tex, const Assets& a, const char* lbl, float x, float scale, bool small) {
+bool UICache::menu_btn(ImTextureID tex, const Assets &a, const char *lbl, float x, float scale, bool small) {
 	ZoneScoped;
 	const ImageSet &btns_s = a.anim_at(small ? io::DrsId::gif_menu_btn_small0 : io::DrsId::gif_menu_btn_medium0);
 
@@ -99,6 +99,75 @@ bool UICache::menu_btn(ImTextureID tex, const Assets& a, const char* lbl, float 
 	ImVec2 sz(ImGui::CalcTextSize(lbl));
 	if (snd) { ++x; ++y; }
 	str2(ImVec2(x + (btn_w - sz.x) / 2, y), lbl);
+
+	if (held && io.MouseDown[0] && io.MouseDownDuration[0] <= 0.0f)
+		btnsel = lbl;
+
+	if (!io.MouseDown[0] && btnsel == lbl) {
+		btnsel.clear();
+		if (held)
+			return true;
+	}
+
+	return false;
+}
+
+bool UICache::frame_btn(const BackgroundColors &col, const char *lbl, float x, float y, float w, float h, float scale, bool invert) {
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+	ImGuiIO &io = ImGui::GetIO();
+
+	float btn_w = w * scale, btn_h = h * scale;
+	GLfloat right = x + btn_w, bottom = y + btn_h;
+
+	// TODO select logic
+	bool held = false, snd = false;
+
+	if (io.MousePos.x >= x && io.MousePos.x < right && io.MousePos.y >= y && io.MousePos.y < bottom) {
+		if (btnsel == lbl && io.MouseDown[0])
+			snd = true;
+
+		held = true;
+	}
+
+	SDL_Color coltbl[6];
+
+	if (snd) {
+		coltbl[0] = col.border[2];
+		coltbl[1] = col.border[1];
+		coltbl[2] = col.border[0];
+		coltbl[3] = col.border[5];
+		coltbl[4] = col.border[4];
+		coltbl[5] = col.border[3];
+	} else {
+		coltbl[0] = col.border[0];
+		coltbl[1] = col.border[1];
+		coltbl[2] = col.border[2];
+		coltbl[3] = col.border[3];
+		coltbl[4] = col.border[4];
+		coltbl[5] = col.border[5];
+	}
+
+	lst->AddLine(ImVec2(x, y), ImVec2(right, y), IM_COL32(coltbl[0].r, coltbl[0].g, coltbl[0].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(right - 1, y), ImVec2(right - 1, bottom - 1), IM_COL32(coltbl[0].r, coltbl[0].g, coltbl[0].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(x + 1, y + 1), ImVec2(right - 1, y + 1), IM_COL32(coltbl[1].r, coltbl[1].g, coltbl[1].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(right - 2, y + 1), ImVec2(right - 2, bottom - 2), IM_COL32(coltbl[1].r, coltbl[1].g, coltbl[1].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(x + 2, y + 2), ImVec2(right - 2, y + 2), IM_COL32(coltbl[2].r, coltbl[2].g, coltbl[2].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(right - 3, y + 2), ImVec2(right - 3, bottom - 3), IM_COL32(coltbl[2].r, coltbl[2].g, coltbl[2].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(x, y), ImVec2(x, bottom), IM_COL32(coltbl[5].r, coltbl[5].g, coltbl[5].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(x, bottom - 1), ImVec2(right, bottom - 1), IM_COL32(coltbl[5].r, coltbl[5].g, coltbl[5].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(x + 1, y + 1), ImVec2(x + 1, bottom - 1), IM_COL32(coltbl[4].r, coltbl[4].g, coltbl[4].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(x + 1, bottom - 2), ImVec2(right - 1, bottom - 2), IM_COL32(coltbl[4].r, coltbl[4].g, coltbl[4].b, SDL_ALPHA_OPAQUE), 1);
+
+	lst->AddLine(ImVec2(x + 2, y + 2), ImVec2(x + 2, bottom - 2), IM_COL32(coltbl[3].r, coltbl[3].g, coltbl[3].b, SDL_ALPHA_OPAQUE), 1);
+	lst->AddLine(ImVec2(x + 2, bottom - 3), ImVec2(right - 2, bottom - 3), IM_COL32(coltbl[3].r, coltbl[3].g, coltbl[3].b, SDL_ALPHA_OPAQUE), 1);
+
+	ImVec2 sz(ImGui::CalcTextSize(lbl));
+	if (snd) { ++x; ++y; }
+	str2(ImVec2(x + (btn_w - sz.x) / 2, y + (btn_h - sz.y) / 2), lbl, invert);
 
 	if (held && io.MouseDown[0] && io.MouseDownDuration[0] <= 0.0f)
 		btnsel = lbl;
@@ -193,19 +262,21 @@ void UICache::show_multiplayer_game() {
 	const ImageSet &btnm_s = a.anim_at(io::DrsId::gif_menu_btn_medium0);
 	const gfx::ImageRef &rbtnm = a.at(btnm_s.imgs[0]);
 
-	if (menu_btn(e->tex1, a, "Menu", btn_left, scale, true)) {
-		e->sfx.play_sfx(SfxId::sfx_ui_click);
-		ImGui::OpenPopup("MenuPopup");
-	}
-
 	if (ImGui::BeginPopup("MenuPopup")) {
 		if (ImGui::MenuItem("Achievements"))
 			e->show_achievements = !e->show_achievements;
 
-		if (ImGui::MenuItem("Quit"))
+		if (ImGui::MenuItem("Quit")) {
 			e->cancel_multiplayer_host(MenuState::defeat);
+			ImGui::CloseCurrentPopup();
+		}
 
 		ImGui::EndPopup();
+	}
+
+	if (menu_btn(e->tex1, a, "Menu", btn_left, scale, true)) {
+		e->sfx.play_sfx(SfxId::sfx_ui_click);
+		ImGui::OpenPopup("MenuPopup");
 	}
 
 	btn_left -= rbtnm.bnds.w * scale;

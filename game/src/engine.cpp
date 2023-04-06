@@ -225,6 +225,7 @@ void Engine::verify_game_data(const std::string &path) {
 
 void Engine::display_ui() {
 	ZoneScoped;
+	ui.idle(*this);
 	show_menubar();
 
 	switch (menu_state) {
@@ -575,8 +576,7 @@ void Engine::set_game_data() {
 	const gfx::ImageRef &t0 = a.at(s_desert.imgs[0]);
 	tw = t0.bnds.w; th = t0.bnds.h;
 
-	// load ui cache
-	ui.load(*this);
+	ui.load();
 }
 
 void Engine::idle() {
@@ -643,7 +643,7 @@ void Engine::idle_game() {
 			gv.try_read(client->g);
 		}
 	}
-	ui.idle();
+	ui.idle_game();
 }
 
 void Engine::idle_async() {

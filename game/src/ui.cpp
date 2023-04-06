@@ -813,12 +813,11 @@ void UICache::show_editor_menu() {
 }
 
 
-void UICache::load(Engine &e) {
+void UICache::load() {
 	ZoneScoped;
 
-	this->e = &e;
 	civs.clear();
-	e.assets->old_lang.collect_civs(civs);
+	e->assets->old_lang.collect_civs(civs);
 
 	Assets &a = *this->e->assets.get();
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_desert));
@@ -827,9 +826,19 @@ void UICache::load(Engine &e) {
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_deepwater));
 }
 
-void UICache::str2(const ImVec2 &pos, const char *text) {
-	bkg->AddText(ImVec2(pos.x - 1, pos.y + 1), IM_COL32(255, 255, 255, 255), text);
-	bkg->AddText(pos, IM_COL32(0, 0, 0, 255), text);
+void UICache::str2(const ImVec2 &pos, const char *text, bool invert) {
+	ImU32 bg, fg;
+
+	if (invert) {
+		bg = IM_COL32(0, 0, 0, 255);
+		fg = IM_COL32(255, 255, 255, 255);
+	} else {
+		bg = IM_COL32(255, 255, 255, 255);
+		fg = IM_COL32(0, 0, 0, 255);
+	}
+
+	bkg->AddText(ImVec2(pos.x - 1, pos.y + 1), bg, text);
+	bkg->AddText(pos, fg, text);
 }
 
 void UICache::game_mouse_process() {

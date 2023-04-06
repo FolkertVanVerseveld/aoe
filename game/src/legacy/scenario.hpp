@@ -25,4 +25,9 @@ public:
 
 }
 
+class ScenarioEditor final {
+public:
+	unsigned top_btn_idx;
+};
+
 }
