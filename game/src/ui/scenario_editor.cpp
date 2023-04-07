@@ -38,10 +38,10 @@ void UICache::show_editor_scenario() {
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 
 	if (!io.WantCaptureMouse) {
-io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-e->sdl->set_cursor(1);
+		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+		e->sdl->set_cursor(1);
 	} else {
-	 io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
 	}
 
 	float menubar_bottom = vp->WorkPos.y;
@@ -53,24 +53,27 @@ e->sdl->set_cursor(1);
 
 	float menubar_left = vp->WorkPos.x;
 	float menubar_top = vp->WorkPos.y;
+	float menubar_w = bkg.bnds.w * scale;
 
 	// align center if menubar smaller than screen dimensions
-	if (vp->WorkSize.x > bkg.bnds.w)
-		menubar_left = vp->WorkPos.x + (vp->WorkSize.x - bkg.bnds.w) / 2;
+	if (vp->WorkSize.x > menubar_w)
+		menubar_left = vp->WorkPos.x + (vp->WorkSize.x - menubar_w) / 2;
+
+	float menubar_right = std::min(io.DisplaySize.x, menubar_left + menubar_w);
 
 	float t1, h = 50.0f;
 
 	t1 = bkg.t0 + (bkg.t1 - bkg.t0) * h / bkg.bnds.h;
 
-	lst->AddImage(e->tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_left + bkg.bnds.w, vp->WorkPos.y + h), ImVec2(bkg.s0, bkg.t0), ImVec2(bkg.s1, t1));
+	lst->AddImage(e->tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_right, vp->WorkPos.y + h * scale), ImVec2(bkg.s0, bkg.t0), ImVec2(bkg.s1, t1));
 
 	h = 143.0f;
 	float t0 = bkg.t0 + (bkg.t1 - bkg.t0) * (bkg.bnds.h - h) / bkg.bnds.h;
 
-	float menubar2_top = vp->WorkPos.y + vp->WorkSize.y - h;
+	float menubar2_top = vp->WorkPos.y + vp->WorkSize.y - h * scale;
 	float menubar2_bottom = vp->WorkPos.y + vp->WorkSize.y;
 
-	lst->AddImage(e->tex1, ImVec2(menubar_left, menubar2_top), ImVec2(menubar_left + bkg.bnds.w, menubar2_top + h), ImVec2(bkg.s0, t0), ImVec2(bkg.s1, bkg.t1));
+	lst->AddImage(e->tex1, ImVec2(menubar_left, menubar2_top), ImVec2(menubar_right, menubar2_bottom), ImVec2(bkg.s0, t0), ImVec2(bkg.s1, bkg.t1));
 
 	// draw buttons
 	BackgroundColors col;
@@ -81,11 +84,8 @@ e->sdl->set_cursor(1);
 	// XXX times scale or not?
 	float btn_x = menubar_left + padding * scale;
 	float btn_y = menubar_top + padding * scale;
-	float menubar_w = bkg.bnds.w;
 
 	float btn_w = 110, btn_h = 22;
-
-	float menubar_right = std::min(io.DisplaySize.x, menubar_left + menubar_w);
 
 	// show menubar top buttons
 	for (unsigned i = 0; i < ARRAY_SIZE(scn_btns); ++i) {
