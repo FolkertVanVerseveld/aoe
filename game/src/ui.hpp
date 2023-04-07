@@ -215,10 +215,13 @@ class UICache final {
 
 	std::vector<ImageSet> t_imgs;
 	ImGui::FileBrowser fd; // for scn or cpx
+	ImGui::FileBrowser fd2; // for saving scn or cpx
 	io::Scenario scn;
 	ScenarioEditor scn_edit;
 	MemoryEditor mem;
 public:
+	UICache();
+
 	void load();
 
 	void idle(Engine &e);

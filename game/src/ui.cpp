@@ -21,6 +21,13 @@ namespace aoe {
 
 namespace ui {
 
+UICache::UICache() : civs(), e(nullptr), entities(), selected(), display_area()
+	, left(0), top(0), scale(1)
+	, bkg(nullptr), btnsel()
+	, t_imgs()
+	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
+	, scn(), scn_edit(), mem() {}
+
 void str(const char *s, TextHalign ha, bool wrap) {
 	ImGui::TextUnformatted(s, (int)ha, wrap);
 }

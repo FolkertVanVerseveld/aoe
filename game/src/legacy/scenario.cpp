@@ -6,6 +6,12 @@
 
 #include "../engine/endian.h"
 
+#include <algorithm>
+
+#include <nlohmann/json.hpp>
+
+#include "../debug.hpp"
+
 // yes, including .c's is evil, but... we have no choice :/
 #include <miniz.c>
 
@@ -31,7 +37,13 @@ void Scenario::load(const char *path) {
 	in.read((char*)data.data(), size);
 
 	in.seekg(0);
+
 	in.read((char*)&version, sizeof(version));
+
+	// header must start with '1.' there are more versions than we support, but this should be sufficient.
+	if (version[0] != '1' || version[1] != '.')
+		throw BadScenarioError("not a scn or cpx file");
+
 	in.read((char*)&length, sizeof(length));
 	in.read((char*)&dword8, sizeof(dword8));
 	in.read((char*)&modtime, sizeof(modtime));
@@ -97,6 +109,53 @@ void Scenario::load(const char *path) {
 	data = std::move(inflated);
 }
 
+}
+
+void ScenarioEditor::create_map() {
+	map_width = std::clamp(map_gen_width, 0, UINT16_MAX + 1);
+	map_height = std::clamp(map_gen_height, 0, UINT16_MAX + 1);
+}
+
+void ScenarioEditor::load(const std::string &path) {
+	ZoneScoped;
+	using json = nlohmann::json;
+
+	std::ifstream in(path);
+
+	// let c++ take care of any errors
+	in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+	try {
+		json data(json::parse(in));
+
+		unsigned version = data["version"];
+		if (version != ScenarioEditor::version)
+			throw io::BadScenarioError("version unsupported");
+
+		map_width = data["tiles"]["w"];
+		map_height = data["tiles"]["h"];
+	} catch (std::exception &e) {
+		throw std::runtime_error(e.what());
+	}
+}
+
+void ScenarioEditor::save(const std::string &path) {
+	ZoneScoped;
+	using json = nlohmann::json;
+	json data;
+
+	data["version"] = ScenarioEditor::version;
+	data["tiles"]["w"] = map_width;
+	data["tiles"]["h"] = map_height;
+
+	// TODO add tiles data
+
+	std::ofstream out(path);// , std::ios_base::binary | std::ios_base::trunc);
+
+	// let c++ take care of any errors
+	out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+
+	out << data.dump(4) << std::endl;
 }
 
 }

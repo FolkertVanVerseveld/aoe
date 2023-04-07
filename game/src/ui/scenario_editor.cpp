@@ -10,6 +10,25 @@ namespace aoe {
 
 namespace ui {
 
+// load local strings
+struct ScnBtn {
+	std::string lbl;
+	int x, y;
+} scn_btns[] = {
+	{"Map", 0, 0},
+	{"Terrain", 1, 0},
+	{"Players", 2, 0},
+	{"Units", 3, 0},
+	{"Diplomacy", 4, 0},
+	{"Individual Victory", 0, 1},
+	{"Global Victory", 1, 1},
+	{"Options", 2, 1},
+	{"Messages", 3, 1},
+	{"Cinematics", 4, 1},
+};
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
 void UICache::show_editor_scenario() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -68,58 +87,14 @@ e->sdl->set_cursor(1);
 
 	float menubar_right = std::min(io.DisplaySize.x, menubar_left + menubar_w);
 
-	if (frame_btn(col, "Map", btn_x, btn_y, btn_w, btn_h, scale, scn_edit.top_btn_idx == 0)) {
-		scn_edit.top_btn_idx = 0;
-	}
+	// show menubar top buttons
+	for (unsigned i = 0; i < ARRAY_SIZE(scn_btns); ++i) {
+		const ScnBtn &btn = scn_btns[i];
 
-	if (frame_btn(col, "Terrain", btn_x + (btn_w + padding) * 1 * scale, btn_y, btn_w, btn_h, scale, scn_edit.top_btn_idx == 1)) {
-		scn_edit.top_btn_idx = 1;
-	}
-
-	if (frame_btn(col, "Players", btn_x + (btn_w + padding) * 2 * scale, btn_y, btn_w, btn_h, scale, scn_edit.top_btn_idx == 2)) {
-		scn_edit.top_btn_idx = 2;
-	}
-
-	if (frame_btn(col, "Units", btn_x + (btn_w + padding) * 3 * scale, btn_y, btn_w, btn_h, scale)) {
-		;
-	}
-
-	if (frame_btn(col, "Diplomacy", btn_x + (btn_w + padding) * 4 * scale, btn_y, btn_w, btn_h, scale)) {
-		;
-	}
-
-	if (frame_btn(col, "Individual Victory", btn_x, btn_y + (btn_h + padding) * scale, btn_w, btn_h, scale)) {
-		;
-	}
-
-	if (frame_btn(col, "Global Victory", btn_x + (btn_w + padding) * 1 * scale, btn_y + (btn_h + padding) * scale, btn_w, btn_h, scale)) {
-		;
-	}
-
-	if (frame_btn(col, "Options", btn_x + (btn_w + padding) * 2 * scale, btn_y + (btn_h + padding) * scale, btn_w, btn_h, scale)) {
-		;
-	}
-
-	if (frame_btn(col, "Messages", btn_x + (btn_w + padding) * 3 * scale, btn_y + (btn_h + padding) * scale, btn_w, btn_h, scale)) {
-		;
-	}
-
-	if (frame_btn(col, "Cinematics", btn_x + (btn_w + padding) * 4 * scale, btn_y + (btn_h + padding) * scale, btn_w, btn_h, scale)) {
-		;
-	}
-
-	// 11, 636 - 625
-	str2(ImVec2(menubar_left + 11 * scale, menubar2_top + 11 * scale), "Map");
-
-	// 182, 725 - 625
-
-	if (frame_btn(col, "Generate Map", menubar_left + 182 * scale, menubar2_bottom - (38 + 3) * scale, 130, 38, scale)) {
-		;
-	}
-
-	// 989, 733
-	if (frame_btn(col, "?", menubar_right - (30 + 5) * scale, menubar2_bottom - (30 + 5) * scale, 30, 30, scale)) {
-		;
+		if (frame_btn(col, btn.lbl.c_str(), btn_x + (btn_w + padding) * btn.x * scale, btn_y + (btn_h + padding) * btn.y * scale, btn_w, btn_h, scale, scn_edit.top_btn_idx == i)) {
+			e->sfx.play_sfx(SfxId::sfx_ui_click);
+			scn_edit.top_btn_idx = i;
+		}
 	}
 
 	if (ImGui::BeginPopup("EditMenuPopup")) {
@@ -128,7 +103,8 @@ e->sdl->set_cursor(1);
 			ImGui::CloseCurrentPopup();
 		}
 
-		//if (ImGui::MenuItem("Save")) {}
+		if (ImGui::MenuItem("Save"))
+			fd2.Open();
 
 		if (ImGui::MenuItem("Load"))
 			fd.Open();
@@ -146,11 +122,28 @@ e->sdl->set_cursor(1);
 	if (fd.HasSelected()) {
 		std::string path(fd.GetSelected().string());
 		try {
-			scn.load(path.c_str());
+			// TODO use scn_edit to load everything
+			try {
+				scn.load(path.c_str());
+			} catch (io::BadScenarioError &e) {
+				scn_edit.load(path.c_str());
+			}
 		} catch (std::runtime_error &e) {
-			fprintf(stderr, "%s: cannot load scn: %s", __func__, e.what());
+			fprintf(stderr, "%s: cannot load scn: %s\n", __func__, e.what());
 		}
 		fd.ClearSelected();
+	}
+
+	fd2.Display();
+
+	if (fd2.HasSelected()) {
+		std::string path(fd2.GetSelected().string());
+		try {
+			scn_edit.save(path);
+		} catch (std::runtime_error &e) {
+			fprintf(stderr, "%s: cannot save scn: %s\n", __func__, e.what());
+		}
+		fd2.ClearSelected();
 	}
 
 	if (!scn.data.empty()) {
@@ -182,6 +175,47 @@ e->sdl->set_cursor(1);
 			f.str("Instructions:");
 			ImGui::TextWrapped("%s", scn.instructions.c_str());
 		}
+	}
+
+	Frame f;
+
+	if (!f.begin("ScnEditBottom", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
+		return;
+
+	ImGui::SetWindowPos(ImVec2(menubar_left, menubar2_top));
+	ImGui::SetWindowSize(ImVec2(menubar_right - menubar_left, menubar2_bottom - menubar2_top));
+
+	// bottom menubar ui stuff
+	switch (scn_edit.top_btn_idx) {
+	case 0:
+		// 11, 636 - 625
+		//str2(ImVec2(menubar_left + 11 * scale, menubar2_top + 11 * scale), "Map");
+
+		ImGui::InputInt("map type", &scn_edit.map_gen_type);
+
+		// 182, 725 - 625
+
+		//if (frame_btn(col, "Generate Map", menubar_left + 182 * scale, menubar2_bottom - (38 + 3) * scale, 130, 38, scale)) {}
+
+		ImGui::InputInt("map width", &scn_edit.map_gen_width);
+		ImGui::InputInt("map height", &scn_edit.map_gen_height);
+
+		ImGui::InputInt("default terrain", &scn_edit.map_gen_terrain_type);
+
+		if (f.btn("Generate Map")) {
+			e->sfx.play_sfx(SfxId::sfx_ui_click);
+			scn_edit.create_map();
+		}
+		break;
+	default:
+		str2(ImVec2(menubar_left + 11 * scale, menubar2_top + 11 * scale), "Work in progress");
+		break;
+	}
+
+	// help button
+	// 989, 733
+	if (frame_btn(col, "?", menubar_right - (30 + 5) * scale, menubar2_bottom - (30 + 5) * scale, 30, 30, scale)) {
+		;
 	}
 }
 
