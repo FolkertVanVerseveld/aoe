@@ -14,6 +14,9 @@ namespace aoe {
 
 class Debug final {
 	MemoryEditor mem_edit;
+	bool show_tm;
+
+	void show_texture_map();
 public:
 	void show(bool &open);
 };
