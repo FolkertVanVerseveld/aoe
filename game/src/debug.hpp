@@ -3,7 +3,7 @@
 #include <imgui.h>
 #include "imgui_memory_editor.h"
 
-#include "nominmax.hpp"
+#include <minmax.hpp>
 
 #include <tracy/Tracy.hpp>
 

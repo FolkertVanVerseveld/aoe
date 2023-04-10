@@ -4,7 +4,7 @@
 
 #include <tracy/Tracy.hpp>
 
-#include "../nominmax.hpp"
+#include <minmax.hpp>
 
 namespace aoe {
 

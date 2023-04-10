@@ -1,3 +1,4 @@
+/* fix annoying min/max macros by always undefining them. license: public domain/MIT */
 #undef max
 #undef min
 

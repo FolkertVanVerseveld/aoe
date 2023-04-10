@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include "../nominmax.hpp"
+#include <minmax.hpp>
 
 namespace aoe {
 
