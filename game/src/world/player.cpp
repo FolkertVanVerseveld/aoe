@@ -1,6 +1,6 @@
 #include "../game.hpp"
 
-#include "../nominmax.hpp"
+#include <minmax.hpp>
 
 namespace aoe {
 
