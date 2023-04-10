@@ -1262,11 +1262,7 @@ void Engine::show_start() {
 	ImGui::SetCursorPosX(old_x);
 	ImGui::SetCursorPosY((710.0f - 40.0f) / 768.0f * vp->WorkSize.y);
 
-	f.txt2(StrId::main_copy1, TextHalign::center);
-	f.txt2(StrId::main_copy2b, TextHalign::center);
-	//f.txt2(StrId::main_copy3, TextHalign::center);
 	f.str2("Trademark reserved by Microsoft. Remake by Folkert van Verseveld.", TextHalign::center);
-	//ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
 }
 
 static const std::vector<std::string> music_ids{ "menu", "success", "fail", "game" };
