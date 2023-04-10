@@ -16,10 +16,10 @@ def funpack(f, fmt):
 	return struct.unpack(fmt, f.read(struct.calcsize(fmt)))
 
 
-def bc_parse(cols, w, bc, pos):
+def bc_parse(w, bc, pos):
 	row = []
 
-	print(w, pos)
+	#print(w, pos)
 
 	x = 0
 	size = 0
@@ -34,6 +34,55 @@ def bc_parse(cols, w, bc, pos):
 	def next_cmd(advance=1):
 		return next_byte(advance) & 0xf
 
+	b = bc[pos]
+
+	while b & 0xf != 0xf:
+
+		if b == 0x4: # fill 1
+			row += [next_byte()]
+		elif b == 0x5: # skip 1
+			row += [-1]
+		elif b == 0x8: # fill 2
+			row += [next_byte()]
+			row += [next_byte()]
+		elif b == 0x09:
+			row += [-1]
+			row += [-1]
+		elif b == 0x0c: # fill 3
+			for _ in range(3):
+				row += [next_byte()]
+		elif b == 0x10: # fill 4
+			for _ in range(4):
+				row += [next_byte()]
+		elif b == 0x11: # skip 4
+			for _ in range(4):
+				row += [-1]
+		elif b == 0x14: # fill 5
+			for _ in range(5):
+				row += [next_byte()]
+		elif b == 0x1c: # fill 7
+			for _ in range(7):
+				row += [next_byte()]
+		elif b == 0x28: # fill 10
+			for _ in range(10):
+				row += [next_byte()]
+		else:
+			print(f'unimplemented bc: {hex(b)}')
+
+			# find end of row
+			u = []
+			x = pos
+
+			while bc[x] & 0xf != 0xf:
+				u += [bc[x]]
+				x += 1
+
+			print(f'pending bytecode: {u}')
+			break
+
+		b = next_byte()
+
+	"""
 	# refactor this, it's pretty broken :/
 	while x < w:
 		x += size
@@ -67,6 +116,9 @@ def bc_parse(cols, w, bc, pos):
 
 		print(f'pending bytecode: {u}')
 		break
+	"""
+
+	pos += 1
 
 	return row, pos
 
@@ -143,7 +195,7 @@ def main():
 				frames += [img]
 				outlines += [contours]
 
-				plt.imshow(img)
+				plt.imshow(img.astype(np.uint8))
 				plt.show()
 
 			# process cmd table code
@@ -179,7 +231,20 @@ def main():
 						continue
 
 					line_size = width - m[0] - m[1]
-					row, pos = bc_parse(cols, line_size, bc, pos)
+					oldpos = pos
+					row, pos = bc_parse(line_size, bc, pos)
+					if len(row) != line_size:
+						print(f'{line_size}, {oldpos}, row: {row}')
+
+					for x, idx in zip(range(m[0], m[0] + line_size), row):
+						if idx >= 0:
+							img[y, x] = cols[idx]
+						else:
+							img[y, x, :] = 255
+
+
+				plt.imshow(img.astype(np.uint8))
+				plt.show()
 
 
 if __name__ == '__main__':
