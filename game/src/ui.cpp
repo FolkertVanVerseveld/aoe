@@ -19,6 +19,13 @@ namespace aoe {
 
 namespace ui {
 
+UICache::UICache() : civs(), e(nullptr), entities(), selected(), display_area()
+	, left(0), top(0), scale(1)
+	, bkg(nullptr), btnsel()
+	, t_imgs()
+	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
+	, scn(), scn_edit(), mem() {}
+
 void str(const char *s, TextHalign ha, bool wrap) {
 	ImGui::TextUnformatted(s, (int)ha, wrap);
 }
@@ -616,53 +623,6 @@ void Engine::show_multiplayer_achievements() {
 	}
 }
 
-void UICache::show_editor_scenario() {
-	ZoneScoped;
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGuiIO &io = ImGui::GetIO();
-
-	Assets &a = *e->assets.get();
-	ImDrawList *lst = ImGui::GetBackgroundDrawList();
-
-	if (!io.WantCaptureMouse) {
-		io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-		e->sdl->set_cursor(1);
-	} else {
-		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
-	}
-
-	if (ImGui::BeginMainMenuBar()) {
-		if (ImGui::MenuItem("Quit"))
-			e->next_menu_state = MenuState::start;
-
-		ImGui::EndMainMenuBar();
-	}
-
-	float menubar_bottom = vp->WorkPos.y;
-
-	//50
-	//625/768 -> 625-768=-143
-
-	const gfx::ImageRef &bkg = a.at(io::DrsId::img_editor);
-
-	float menubar_left = vp->WorkPos.x;
-
-	// align center if menubar smaller than screen dimensions
-	if (vp->WorkSize.x > bkg.bnds.w)
-		menubar_left = vp->WorkPos.x + (vp->WorkSize.x - bkg.bnds.w) / 2;
-
-	float t1, h = 50.0f;
-
-	t1 = bkg.t0 + (bkg.t1 - bkg.t0) * h / bkg.bnds.h;
-
-	lst->AddImage(e->tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_left + bkg.bnds.w, vp->WorkPos.y + h), ImVec2(bkg.s0, bkg.t0), ImVec2(bkg.s1, t1));
-
-	h = 143.0f;
-	float t0 = bkg.t0 + (bkg.t1 - bkg.t0) * (bkg.bnds.h - h) / bkg.bnds.h;
-
-	lst->AddImage(e->tex1, ImVec2(menubar_left, vp->WorkPos.y + vp->WorkSize.y - h), ImVec2(menubar_left + bkg.bnds.w, vp->WorkPos.y + vp->WorkSize.y), ImVec2(bkg.s0, t0), ImVec2(bkg.s1, bkg.t1));
-}
-
 bool Engine::locked_settings() const noexcept {
 	return server.get() == nullptr || multiplayer_ready;
 }
@@ -858,12 +818,11 @@ void UICache::show_editor_menu() {
 }
 
 
-void UICache::load(Engine &e) {
+void UICache::load() {
 	ZoneScoped;
 
-	this->e = &e;
 	civs.clear();
-	e.assets->old_lang.collect_civs(civs);
+	e->assets->old_lang.collect_civs(civs);
 
 	Assets &a = *this->e->assets.get();
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_desert));
@@ -872,9 +831,19 @@ void UICache::load(Engine &e) {
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_deepwater));
 }
 
-void UICache::str2(const ImVec2 &pos, const char *text) {
-	bkg->AddText(ImVec2(pos.x - 1, pos.y + 1), IM_COL32(255, 255, 255, 255), text);
-	bkg->AddText(pos, IM_COL32(0, 0, 0, 255), text);
+void UICache::str2(const ImVec2 &pos, const char *text, bool invert) {
+	ImU32 bg, fg;
+
+	if (invert) {
+		bg = IM_COL32(0, 0, 0, 255);
+		fg = IM_COL32(255, 255, 255, 255);
+	} else {
+		bg = IM_COL32(255, 255, 255, 255);
+		fg = IM_COL32(0, 0, 0, 255);
+	}
+
+	bkg->AddText(ImVec2(pos.x - 1, pos.y + 1), bg, text);
+	bkg->AddText(pos, fg, text);
 }
 
 void UICache::game_mouse_process() {
@@ -1276,19 +1245,10 @@ void Engine::show_start() {
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
 
-		// TODO enable again when working on scenario editor
-#if 0
 		if (f.btn("Scenario Builder", TextHalign::center)) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
 			next_menu_state = MenuState::editor_menu;
 		}
-#else
-		f.xbtn("Scenario Builder", TextHalign::center);
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-			FontGuard fg2(fnt.fnt_arial);
-			ImGui::Tooltip("Work in progress");
-		}
-#endif
 
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(604.0f / 768.0f * vp->WorkSize.y);
@@ -1302,11 +1262,7 @@ void Engine::show_start() {
 	ImGui::SetCursorPosX(old_x);
 	ImGui::SetCursorPosY((710.0f - 40.0f) / 768.0f * vp->WorkSize.y);
 
-	f.txt2(StrId::main_copy1, TextHalign::center);
-	f.txt2(StrId::main_copy2b, TextHalign::center);
-	//f.txt2(StrId::main_copy3, TextHalign::center);
 	f.str2("Trademark reserved by Microsoft. Remake by Folkert van Verseveld.", TextHalign::center);
-	//ImGui::TextWrapped("%s", "Copyright Age of Empires by Microsoft. Trademark reserved by Microsoft. Remake by Folkert van Verseveld");
 }
 
 static const std::vector<std::string> music_ids{ "menu", "success", "fail", "game" };

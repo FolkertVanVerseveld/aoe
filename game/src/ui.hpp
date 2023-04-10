@@ -6,7 +6,10 @@
 
 #include "idpool.hpp"
 #include "legacy/strings.hpp"
+#include "legacy/scenario.hpp"
 #include "engine/assets.hpp"
+
+#include "imgui_memory_editor.h"
 
 #include <SDL2/SDL_rect.h>
 
@@ -211,10 +214,18 @@ class UICache final {
 	std::string btnsel;
 
 	std::vector<ImageSet> t_imgs;
+	ImGui::FileBrowser fd; // for scn or cpx
+	ImGui::FileBrowser fd2; // for saving scn or cpx
+	io::Scenario scn;
+	ScenarioEditor scn_edit;
+	MemoryEditor mem;
 public:
-	void load(Engine &e);
+	UICache();
 
-	void idle();
+	void load();
+
+	void idle(Engine &e);
+	void idle_game();
 	void show_multiplayer_game();
 
 	void user_interact_entities();
@@ -227,7 +238,7 @@ public:
 
 	void show_hud_selection(float left, float top, float menubar_h);
 
-	void str2(const ImVec2 &pos, const char *text);
+	void str2(const ImVec2 &pos, const char *text, bool invert=false);
 private:
 	void show_terrain();
 	/** Show user selected entities. */
@@ -241,6 +252,7 @@ private:
 	void mouse_right_process();
 
 	bool menu_btn(ImTextureID tex, const Assets &a, const char *lbl, float x, float scale, bool small);
+	bool frame_btn(const BackgroundColors &col, const char *lbl, float x, float y, float w, float h, float scale, bool invert=false);
 
 	void collect(std::vector<IdPoolRef> &refs, float mx, float my, bool clear=true);
 };

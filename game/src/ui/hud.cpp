@@ -11,7 +11,21 @@ namespace aoe {
 
 namespace ui {
 
-void UICache::idle() {
+void UICache::idle(Engine &e) {
+	ZoneScoped;
+
+	this->e = &e;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGuiIO &io = ImGui::GetIO();
+
+	scale = std::max(1.0f, e.font_scaling ? io.DisplaySize.y / WINDOW_HEIGHT_MAX : 1.0f);
+	left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e.cam_x);
+	top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e.cam_y);
+
+	bkg = ImGui::GetBackgroundDrawList();
+}
+
+void UICache::idle_game() {
 	ZoneScoped;
 
 	ImGuiViewport *vp = ImGui::GetMainViewport();
