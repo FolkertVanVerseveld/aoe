@@ -37,35 +37,15 @@ def bc_parse(w, bc, pos):
 	b = bc[pos]
 
 	while b & 0xf != 0xf:
+		cmd = b & 0xf
+		lp = b & 0x3
 
-		if b == 0x4: # fill 1
-			row += [next_byte()]
-		elif b == 0x5: # skip 1
-			row += [-1]
-		elif b == 0x8: # fill 2
-			row += [next_byte()]
-			row += [next_byte()]
-		elif b == 0x09:
-			row += [-1]
-			row += [-1]
-		elif b == 0x0c: # fill 3
-			for _ in range(3):
+		if lp == 0 and b >= 0x04 and b <= 0xa8: # fill 1..42
+			for _ in range(b >> 2):
 				row += [next_byte()]
-		elif b == 0x10: # fill 4
-			for _ in range(4):
-				row += [next_byte()]
-		elif b == 0x11: # skip 4
-			for _ in range(4):
+		elif lp == 1 and b >= 0x05 and b <= 0xa9: # skip 1..42
+			for _ in range(b >> 2):
 				row += [-1]
-		elif b == 0x14: # fill 5
-			for _ in range(5):
-				row += [next_byte()]
-		elif b == 0x1c: # fill 7
-			for _ in range(7):
-				row += [next_byte()]
-		elif b == 0x28: # fill 10
-			for _ in range(10):
-				row += [next_byte()]
 		else:
 			print(f'unimplemented bc: {hex(b)}')
 
@@ -81,42 +61,6 @@ def bc_parse(w, bc, pos):
 			break
 
 		b = next_byte()
-
-	"""
-	# refactor this, it's pretty broken :/
-	while x < w:
-		x += size
-		b = next_byte()
-		size = 0
-
-		print(f'b:{b}')
-		cmd = b & 0xf
-		if cmd == 0xf:
-			# next one should be 0xf
-			cmd = next_cmd()
-			if cmd != 0xf:
-				raise ValueError(f'row does not end with close bytecode, expected 0xf, got {cmd}')
-
-			break
-
-		if b == 0x8:
-			# two bytes
-			row += [next_byte()]
-			row += [next_byte()]
-			print('0x08: {pos},{size}')
-			continue
-
-		print(f'unimplemented bc: {hex(bc[pos])}')
-		# find end of row
-		u = []
-
-		while bc[x] & 0xf != 0xf:
-			u += [bc[x]]
-			x += 1
-
-		print(f'pending bytecode: {u}')
-		break
-	"""
 
 	pos += 1
 
