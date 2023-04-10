@@ -16,10 +16,10 @@ def funpack(f, fmt):
 	return struct.unpack(fmt, f.read(struct.calcsize(fmt)))
 
 
-def bc_parse(w, bc, pos):
+def bc_parse(y, w, bc, pos):
 	row = []
 
-	#print(w, pos)
+	print(w, pos)
 
 	x = 0
 	size = 0
@@ -40,14 +40,19 @@ def bc_parse(w, bc, pos):
 		cmd = b & 0xf
 		lp = b & 0x3
 
-		if lp == 0 and b >= 0x04 and b <= 0xa8: # fill 1..42
+		if lp == 0 and b >= 0x04 and b <= 0xf8: # fill 1..62
 			for _ in range(b >> 2):
 				row += [next_byte()]
-		elif lp == 1 and b >= 0x05 and b <= 0xa9: # skip 1..42
+		elif lp == 1 and b >= 0x05 and b <= 0xf9: # skip 1..62
 			for _ in range(b >> 2):
 				row += [-1]
+		elif b == 0x02: # large fill
+			steps = next_byte()
+			print(f'large fill {steps}')
+			for _ in range(steps):
+				row += [next_byte()]
 		else:
-			print(f'unimplemented bc: {hex(b)}')
+			print(f'row {y}: unimplemented bc: {hex(b)}')
 
 			# find end of row
 			u = []
@@ -168,15 +173,12 @@ def main():
 
 				# try to load reference file so we can check if parsing is correct
 				ref_path = f'{i:03d}_{os.path.splitext(path)[0]}.bmp'
-				print(ref_path)
+				print(f'todo try load ref bitmap to {ref_path}')
 
 				for m, y in zip(contour, range(height)):
-					if m == (0, 0):
-						continue
-
 					line_size = width - m[0] - m[1]
 					oldpos = pos
-					row, pos = bc_parse(line_size, bc, pos)
+					row, pos = bc_parse(y, line_size, bc, pos)
 					if len(row) != line_size:
 						print(f'{line_size}, {oldpos}, row: {row}')
 
