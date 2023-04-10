@@ -56,6 +56,7 @@ public:
 	std::set<ImageRef> imgs;
 	/** Raw surface where images are blitted to. Note that after write(GLuint), this will become undefined! */
 	Surface surf;
+	int w, h;
 
 	Tileset();
 

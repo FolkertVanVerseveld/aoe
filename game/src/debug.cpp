@@ -14,6 +14,23 @@ static ImU8 read_incoming(const ImU8 *ptr, size_t off) {
 	return data.at(off);
 }
 
+void Debug::show_texture_map() {
+	ZoneScoped;
+
+	if (!show_tm)
+		return;
+
+	Frame f;
+
+	if (!f.begin("Texturemap", show_tm, ImGuiWindowFlags_HorizontalScrollbar))
+		return;
+
+	Engine &e = *eng;
+	Assets &a = *e.assets.get();
+	ImTextureID tex = (ImTextureID)1;
+	ImGui::Image(tex, ImVec2(a.ts_ui.w, a.ts_ui.h));
+}
+
 void Debug::show(bool &open) {
 	ZoneScoped;
 
@@ -207,6 +224,10 @@ void Debug::show(bool &open) {
 			}
 		}
 	}
+
+	f.chkbox("Show Texture Map", show_tm);
+
+	show_texture_map();
 }
 
 #if TRACY_ENABLE

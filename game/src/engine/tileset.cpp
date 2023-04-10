@@ -7,11 +7,14 @@
 namespace aoe {
 namespace gfx {
 
-Tileset::Tileset() : imgs(), surf(nullptr, SDL_FreeSurface) {}
+Tileset::Tileset() : imgs(), surf(nullptr, SDL_FreeSurface), w(0), h(0) {}
 
 void Tileset::write(GLuint tex) {
 	ZoneScoped;
 	assert(surf.get());
+
+	w = surf->w;
+	h = surf->h;
 
 	{
 		ZoneScopedN("prepare");

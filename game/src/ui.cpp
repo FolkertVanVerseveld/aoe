@@ -10,12 +10,10 @@
 #include <imgui_impl_sdl.h>
 #include <imgui_impl_opengl3.h>
 
-#include "nominmax.hpp"
+#include <minmax.hpp>
 #include "ui.hpp"
 #include "string.hpp"
 #include "world/entity_info.hpp"
-
-#include <algorithm>
 
 namespace aoe {
 

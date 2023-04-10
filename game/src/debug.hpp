@@ -3,7 +3,7 @@
 #include <imgui.h>
 #include "imgui_memory_editor.h"
 
-#include "nominmax.hpp"
+#include <minmax.hpp>
 
 #include <tracy/Tracy.hpp>
 
@@ -14,6 +14,9 @@ namespace aoe {
 
 class Debug final {
 	MemoryEditor mem_edit;
+	bool show_tm;
+
+	void show_texture_map();
 public:
 	void show(bool &open);
 };
