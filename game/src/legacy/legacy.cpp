@@ -4,18 +4,17 @@
 
 #include <vector>
 
-#include "endian.h"
-
-#include "gfx.hpp"
+#include "../engine/endian.h"
+#include "../engine/gfx.hpp"
 
 #include <except.hpp>
 #include <minmax.hpp>
 
 #include <tracy/Tracy.hpp>
 
-namespace aoe {
-
 int ::rand(void);
+
+namespace aoe {
 
 namespace gfx {
 
@@ -83,7 +82,8 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 			pixels[y * p + x] = rand();
 
 		for (int i = e.left_space, x = i, w = x + line_size, p = surface->pitch; i <= w; ++i, ++cmdpos) {
-			unsigned char bc = cmd.at(cmdpos), count = 0;
+			unsigned char bc = cmd.at(cmdpos);
+			unsigned count = 0;
 
 			switch (bc & 0xf) {
 				// eol

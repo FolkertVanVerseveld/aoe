@@ -19,7 +19,7 @@ def funpack(f, fmt):
 def bc_parse(y, w, bc, pos):
 	row = []
 
-	print(w, pos)
+	#print(w, pos)
 
 	x = 0
 	size = 0
@@ -40,30 +40,42 @@ def bc_parse(y, w, bc, pos):
 		cmd = b & 0xf
 		lp = b & 0x3
 
-		if lp == 0 and b >= 0x04 and b <= 0xf8: # fill 1..62
+		if lp == 0 and b >= 0x04: # fill 1..63
 			for _ in range(b >> 2):
 				row += [next_byte()]
-		elif lp == 1 and b >= 0x05 and b <= 0xf9: # skip 1..62
+		elif lp == 1 and b >= 0x05: # skip 1..63
 			for _ in range(b >> 2):
 				row += [-1]
-		elif b == 0x02: # large fill
-			steps = next_byte()
-			print(f'large fill {steps}')
+		elif lp == 2 and b >= 0x02 and b <= 0x32: # large fill
+			steps = ((b & 0xf0) << 4) + next_byte()
+			#print(f'large fill {steps}')
 			for _ in range(steps):
 				row += [next_byte()]
+		elif cmd == 7 and b >= 0x17 and b <= 0xf7: # block fill
+			steps = (b & 0xf0) >> 4
+			brush = next_byte()
+			for _ in range(steps):
+				row += [brush]
+		elif b == 0x07: # block fill
+			steps = next_byte()
+			brush = next_byte()
+			for _ in range(steps):
+				row += [brush]
 		else:
 			print(f'row {y}: unimplemented bc: {hex(b)}')
 
 			# find end of row
 			u = []
 			x = pos
+			limit = 16
 
-			while bc[x] & 0xf != 0xf:
+			while bc[x] != 0xf and limit > 0:
 				u += [bc[x]]
 				x += 1
+				limit -= 1
 
 			print(f'pending bytecode: {u}')
-			break
+			#raise ValueError()
 
 		b = next_byte()
 
@@ -188,6 +200,10 @@ def main():
 						else:
 							img[y, x, :] = 255
 
+
+				img_path = f'{i:03d}-{os.path.splitext(path)[0]}.bmp'
+				#print(f'{img.shape}')
+				plt.imsave(img_path, img.astype(np.uint8))
 
 				plt.imshow(img.astype(np.uint8))
 				plt.show()
