@@ -185,6 +185,8 @@ public:
 
 	Entity *try_get(IdPoolRef);
 	bool try_convert(Entity&, Entity &aggressor);
+
+	void terrain_get_size(unsigned &w, unsigned &h) const noexcept;
 };
 
 class World final {
@@ -214,6 +216,12 @@ public:
 		std::lock_guard<std::mutex> lk(m_events);
 		events_in.emplace_back(type, data...);
 	}
+
+	constexpr void get_size(unsigned &w, unsigned &h) const noexcept {
+		w = t.w;
+		h = t.h;
+	}
+
 private:
 	void startup();
 	void create_terrain();

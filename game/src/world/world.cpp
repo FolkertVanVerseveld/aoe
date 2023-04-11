@@ -68,6 +68,10 @@ bool WorldView::try_convert(Entity &e, Entity &aggressor) {
 	return true;
 }
 
+void WorldView::terrain_get_size(unsigned &w, unsigned &h) const noexcept {
+	this->w.get_size(w, h);
+}
+
 void World::tick_entities() {
 	ZoneScoped;
 

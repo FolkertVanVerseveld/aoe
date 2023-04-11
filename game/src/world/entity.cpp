@@ -111,6 +111,30 @@ bool Entity::tick(WorldView &wv) noexcept {
 	if (!stats.hp)
 		return false;
 
+	switch (type) {
+		case EntityType::bird1: {
+			state = EntityState::moving;
+
+			float distance = lookat(target_x, target_y);
+
+			if (distance < 0.1f || (target_x <= 0.5f && target_y <= 0.5f)) {
+				// TODO fetch world dimensions
+				unsigned w, h;
+				wv.terrain_get_size(w, h);
+
+				for (unsigned i = 0; i < 8; ++i) {
+					target_x = 0.5f + rand() % (w - 1);
+					target_y = 0.5f + rand() % (h - 1);
+
+					distance = lookat(target_x, target_y);
+					if (distance > 8.0f)
+						break;
+				}
+			}
+			break;
+		}
+	}
+
 	switch (state) {
 	case EntityState::moving: return move();
 	case EntityState::attack:
