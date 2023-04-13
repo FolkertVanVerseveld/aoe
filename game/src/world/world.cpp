@@ -12,7 +12,7 @@ Entity *WorldView::try_get(IdPoolRef r) {
 	return w.entities.try_get(r);
 }
 
-World::World() : m(), m_events(), t(), entities(), players(), events_in(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0) {}
+World::World() : m(), m_events(), t(), entities(), players(), events_in(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -180,6 +180,9 @@ void World::pump_events() {
 			case WorldEventType::entity_task:
 				entity_task(ev);
 				break;
+			case WorldEventType::gamespeed_control:
+				gamespeed_control(ev);
+				break;
 			default:
 				printf("%s: todo: process event: %u\n", __func__, (unsigned)ev.type);
 				break;
@@ -215,6 +218,14 @@ void World::cam_move(WorldEvent &ev) {
 	ZoneScoped;
 	EventCameraMove move(std::get<EventCameraMove>(ev.data));
 	views.at(move.ref) = move.cam;
+}
+
+void World::gamespeed_control(WorldEvent &ev) {
+	ZoneScoped;
+	NetGamespeedControl ctl(std::get< NetGamespeedControl>(ev.data));
+
+	this->logic_gamespeed = ctl.value;
+	this->running = ctl.running;
 }
 
 void World::entity_kill(WorldEvent &ev) {
@@ -442,6 +453,8 @@ void World::startup() {
 
 	pkg.set_terrain_mod(tm);
 	s->broadcast(pkg);
+
+	this->running = true;
 
 	// start!
 	pkg.set_start_game();

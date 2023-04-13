@@ -30,6 +30,9 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 			return process_entity_mod(p, pkg.get_entity_mod(), out);
 		case NetPkgType::cam_set:
 			return cam_set(p, pkg.get_cam_set());
+		case NetPkgType::gamespeed_control:
+			gamespeed_control(pkg.get_gamespeed());
+			break;
 		default:
 			fprintf(stderr, "bad type: %u\n", pkg.type());
 			throw "invalid type";
@@ -43,6 +46,10 @@ bool Server::cam_set(const Peer &p, NetCamSet &cam) {
 	w.add_event(WorldEventType::peer_cam_move, EventCameraMove(ref, cam));
 
 	return true;
+}
+
+void Server::gamespeed_control(const NetGamespeedControl &control) {
+	w.add_event(WorldEventType::gamespeed_control, control);
 }
 
 bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint8_t> &out) {

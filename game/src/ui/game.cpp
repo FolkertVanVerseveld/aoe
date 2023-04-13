@@ -216,6 +216,9 @@ void UICache::show_multiplayer_game() {
 	if (e->keyctl.is_tapped(GameKey::toggle_chat) && !e->show_chat)
 		e->show_chat = true;
 
+	if (e->keyctl.is_tapped(GameKey::toggle_pause))
+		e->client->send_gamespeed_control(NetGamespeedControl(2.0, true));
+
 	// TODO fetch from player view
 	int food = 200, wood = 200, gold = 0, stone = 150;
 	std::string age(e->txt(StrId::age_stone));

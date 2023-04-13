@@ -101,6 +101,9 @@ public:
 	uint16_t get_gameticks();
 	void set_gameticks(unsigned n);
 
+	NetGamespeedControl get_gamespeed();
+	void set_gamespeed(double speed, bool paused);
+
 	NetPkgType type();
 
 	void ntoh();
@@ -155,6 +158,7 @@ enum class WorldEventType {
 	player_kill,
 	peer_cam_move,
 	gameover,
+	gamespeed_control,
 };
 
 class Server;
@@ -170,7 +174,7 @@ public:
 class WorldEvent final {
 public:
 	WorldEventType type;
-	std::variant<std::nullopt_t, IdPoolRef, Entity, EventCameraMove, EntityTask> data;
+	std::variant<std::nullopt_t, IdPoolRef, Entity, EventCameraMove, EntityTask, NetGamespeedControl> data;
 
 	template<class... Args> WorldEvent(WorldEventType type, Args&&... data) : type(type), data(data...) {}
 };
@@ -201,6 +205,7 @@ class World final {
 public:
 	ScenarioSettings scn;
 	std::atomic<double> logic_gamespeed;
+	std::atomic<bool> running;
 
 	World();
 
@@ -230,6 +235,8 @@ private:
 	void pump_events();
 	void push_events();
 	void cam_move(WorldEvent&);
+
+	void gamespeed_control(WorldEvent&);
 
 	void send_gameticks(unsigned);
 
@@ -286,6 +293,8 @@ private:
 	bool process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint8_t> &out);
 
 	bool cam_set(const Peer &p, NetCamSet &cam);
+
+	void gamespeed_control(const NetGamespeedControl &control);
 
 	void start_game();
 
@@ -370,6 +379,8 @@ public:
 	void claim_cpu(unsigned);
 
 	void cam_move(float x, float y, float w, float h);
+
+	void send_gamespeed_control(const NetGamespeedControl&);
 
 	void entity_move(IdPoolRef, float x, float y);
 	void entity_infer(IdPoolRef, IdPoolRef);

@@ -251,6 +251,15 @@ void NetPkg::ntoh() {
 
 			break;
 		}
+		case NetPkgType::gamespeed_control: {
+			need_payload(NetGamespeedControl::size);
+
+			uint32_t *dd = (uint32_t*)data.data();
+
+			dd[0] = ntohl(dd[0]);
+
+			break;
+		}
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -419,6 +428,11 @@ void NetPkg::hton() {
 			dw[0] = htons(dw[0]); // p.type
 			dw[1] = htons(dw[1]); // p.subimage
 
+			break;
+		}
+		case NetPkgType::gamespeed_control: {
+			uint32_t *dd = (uint32_t*)data.data();
+			dd[0] = htonl(dd[0]);
 			break;
 		}
 		default:
@@ -1192,6 +1206,38 @@ void NetPkg::set_gameticks(unsigned n) {
 	dw[0] = n;
 
 	set_hdr(NetPkgType::gameticks);
+}
+
+NetGamespeedControl NetPkg::get_gamespeed() {
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::gamespeed_control)
+		throw std::runtime_error("not a gamespeed control packet");
+
+	const uint32_t *dd = (const uint32_t*)data.data();
+
+	uint32_t v = dd[0];
+
+	double speed = std::clamp(v / NetGamespeedControl::multiplier, NetGamespeedControl::min_speed, NetGamespeedControl::max_speed);
+
+	const uint8_t *db = (const uint8_t*)&dd[1];
+
+	bool running = !!(db[0] & 1);
+
+	return NetGamespeedControl(speed, running);
+}
+
+void NetPkg::set_gamespeed(double speed, bool running) {
+	ZoneScoped;
+	PkgWriter out(*this, NetPkgType::gamespeed_control, NetGamespeedControl::size);
+
+	uint32_t v = (uint32_t)(std::clamp(speed, NetGamespeedControl::min_speed, NetGamespeedControl::max_speed) * NetGamespeedControl::multiplier);
+
+	uint32_t *dd = (uint32_t*)data.data();
+	dd[0] = v;
+
+	uint8_t *db = (uint8_t*)&dd[1];
+	db[0] = !!running;
 }
 
 void NetPkg::set_terrain_mod(const NetTerrainMod &tm) {

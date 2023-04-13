@@ -22,12 +22,14 @@ void Game::resize(const ScenarioSettings &scn) {
 }
 
 void Game::tick(unsigned n) {
+	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m);
 	ticks += n;
 	imgtick(n);
 }
 
 void Game::imgtick(unsigned n) {
+	ZoneScoped;
 	for (const Entity &e : entities) {
 		Entity &ent = const_cast<Entity&>(e);
 		if (!ent.imgtick(n)) {

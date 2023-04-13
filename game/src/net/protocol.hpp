@@ -20,6 +20,7 @@ enum class NetPkgType {
 	cam_set,
 	gameticks,
 	particle_mod,
+	gamespeed_control,
 };
 
 struct NetPkgHdr final {
@@ -162,6 +163,19 @@ public:
 	static constexpr size_t addsize = refsize + 2*4 + 2*2;
 
 	NetParticleMod(const Particle &p) : data(p) {}
+};
+
+class NetGamespeedControl final {
+public:
+	double value;
+	bool running;
+
+	static constexpr size_t size = 4 + 1;
+	static constexpr double multiplier = 1000.0;
+	static constexpr double min_speed = 0.0;
+	static constexpr double max_speed = 10.0;
+
+	NetGamespeedControl(double v, bool p) : value(v), running(p) {}
 };
 
 }

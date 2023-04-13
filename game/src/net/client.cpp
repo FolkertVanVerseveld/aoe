@@ -84,6 +84,7 @@ void Client::mainloop() {
 }
 
 void Client::gameticks(unsigned n) {
+	ZoneScoped;
 	g.tick(n);
 }
 
@@ -263,6 +264,12 @@ void Client::claim_cpu(unsigned idx) {
 void Client::cam_move(float x, float y, float w, float h) {
 	NetPkg pkg;
 	pkg.cam_set(x, y, w, h);
+	send(pkg);
+}
+
+void Client::send_gamespeed_control(const NetGamespeedControl &control) {
+	NetPkg pkg;
+	pkg.set_gamespeed(control.value, control.running);
 	send(pkg);
 }
 
