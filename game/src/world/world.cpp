@@ -12,7 +12,7 @@ Entity *WorldView::try_get(IdPoolRef r) {
 	return w.entities.try_get(r);
 }
 
-World::World() : m(), m_events(), t(), entities(), players(), events_in(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
+World::World() : m(), m_events(), t(), entities(), players(), events_in(), events_out(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -214,6 +214,37 @@ void World::push_events() {
 	}
 
 	dirty_entities.clear();
+
+	for (WorldEvent &ev : events_out) {
+		switch (ev.type) {
+		case WorldEventType::gamespeed_control:
+			push_gamespeed_control(ev);
+			break;
+		}
+	}
+
+	events_out.clear();
+}
+
+void World::push_gamespeed_control(WorldEvent &ev) {
+	NetGamespeedControl ctl = std::get<NetGamespeedControl>(ev.data);
+
+	switch (ctl.type) {
+	case NetGamespeedType::toggle_pause: {
+		NetPkg pkg;
+
+		if (running)
+			pkg.set_gamespeed(NetGamespeedType::unpause);
+		else
+			pkg.set_gamespeed(NetGamespeedType::pause);
+
+		s->broadcast(pkg);
+		break;
+	}
+	default:
+		printf("%s: gamespeed control type %u\n", __func__, (unsigned)ctl.type);
+		break;
+	}
 }
 
 void World::cam_move(WorldEvent &ev) {
@@ -228,8 +259,8 @@ void World::gamespeed_control(WorldEvent &ev) {
 
 	switch (ctl.type) {
 	case NetGamespeedType::toggle_pause:
-		// TODO should we notify clients on pause/unpause?
 		this->running = !this->running;
+		events_out.emplace_back(ev);
 		break;
 	case NetGamespeedType::increase:
 		// disallow changing gamespeed while paused

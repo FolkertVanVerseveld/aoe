@@ -197,7 +197,7 @@ class World final {
 	IdPool<Entity> entities;
 	std::set<IdPoolRef> dirty_entities;
 	std::vector<Player> players;
-	std::deque<WorldEvent> events_in;
+	std::deque<WorldEvent> events_in, events_out;
 	std::map<IdPoolRef, NetCamSet> views; // display area for each peer
 	Server *s;
 	bool gameover;
@@ -241,6 +241,7 @@ private:
 	void cam_move(WorldEvent&);
 
 	void gamespeed_control(WorldEvent&);
+	void push_gamespeed_control(WorldEvent&);
 
 	void send_gameticks(unsigned);
 
@@ -350,6 +351,7 @@ private:
 	void terrainmod(const NetTerrainMod&);
 	void entitymod(const NetEntityMod&);
 	void gameticks(unsigned n);
+	void gamespeed_control(const NetGamespeedControl&);
 public:
 	bool connected() const noexcept { return m_connected; }
 
@@ -384,7 +386,7 @@ public:
 
 	void cam_move(float x, float y, float w, float h);
 
-	void send_gamespeed_control(const NetGamespeedControl&);
+	void send_gamespeed_control(NetGamespeedType type);
 
 	void entity_move(IdPoolRef, float x, float y);
 	void entity_infer(IdPoolRef, IdPoolRef);

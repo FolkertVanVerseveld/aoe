@@ -17,6 +17,8 @@ enum class GameKey {
 	kill_entity,
 	toggle_chat,
 	toggle_pause,
+	gamespeed_increase,
+	gamespeed_decrease,
 	max,
 };
 

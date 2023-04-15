@@ -313,6 +313,8 @@ class Game final {
 	unsigned modflags, ticks;
 	friend GameView;
 public:
+	std::atomic<bool> running;
+
 	Game();
 
 	void tick(unsigned n);
