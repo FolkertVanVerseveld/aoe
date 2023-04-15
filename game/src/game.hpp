@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include <atomic>
 #include <string>
 #include <vector>
 #include <map>
