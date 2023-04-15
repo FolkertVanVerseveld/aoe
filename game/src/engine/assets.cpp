@@ -1,8 +1,8 @@
 #include "assets.hpp"
 
-#include "../legacy.hpp"
 #include "../engine.hpp"
 
+#include "../legacy/legacy.hpp"
 #include "../legacy/strings.hpp"
 
 #include <algorithm>

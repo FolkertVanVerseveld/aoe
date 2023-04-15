@@ -1,6 +1,6 @@
 #include "entity_info.hpp"
 
-#include "../legacy.hpp"
+#include "../legacy/legacy.hpp"
 
 namespace aoe {
 

@@ -1,4 +1,4 @@
-#include "../legacy.hpp"
+#include "legacy.hpp"
 
 #include <cassert>
 

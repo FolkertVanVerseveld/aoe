@@ -3,9 +3,9 @@
 #include "engine.hpp"
 
 // TODO reorder includes
-#include "legacy.hpp"
+#include "../legacy/legacy.hpp"
 #include "engine/audio.hpp"
-#include "sdl.hpp"
+#include "engine/sdl.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_sdl.h>
@@ -25,7 +25,7 @@
 #endif
 #endif
 
-#include "imgui_user.hpp"
+#include "ui/imgui_user.hpp"
 
 #include <cstdio>
 #include <cstdint>

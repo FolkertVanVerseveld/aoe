@@ -1,15 +1,15 @@
 #pragma once
 
-#include "imgui_user.hpp"
+#include "ui/imgui_user.hpp"
 
-#include "imfilebrowser.h"
+#include "ui/imfilebrowser.h"
 
 #include "idpool.hpp"
 #include "legacy/strings.hpp"
 #include "legacy/scenario.hpp"
 #include "engine/assets.hpp"
 
-#include "imgui_memory_editor.h"
+#include "ui/imgui_memory_editor.h"
 
 #include <SDL2/SDL_rect.h>
 

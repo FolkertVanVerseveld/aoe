@@ -1,7 +1,7 @@
 #pragma once
 
 #include <imgui.h>
-#include "imgui_memory_editor.h"
+#include "../ui/imgui_memory_editor.h"
 
 #include <minmax.hpp>
 

@@ -4,7 +4,7 @@
 
 #include "async.hpp"
 #include "engine/audio.hpp"
-#include "sdl.hpp"
+#include "engine/sdl.hpp"
 #include "game.hpp"
 #include "server.hpp"
 #include "ui.hpp"

@@ -6,7 +6,7 @@
 
 #include <idpool.hpp>
 
-#include "../legacy.hpp"
+#include "../legacy/legacy.hpp"
 
 #define GLCHK aoe::gfx::glchk(__FILE__, __func__, __LINE__)
 

@@ -5,7 +5,7 @@
 
 #include <tracy/Tracy.hpp>
 
-#include "legacy.hpp"
+#include "../legacy/legacy.hpp"
 
 namespace aoe {
 

@@ -13,7 +13,7 @@
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_surface.h>
 
-#include "legacy/strings.hpp"
+#include "strings.hpp"
 
 namespace aoe {
 

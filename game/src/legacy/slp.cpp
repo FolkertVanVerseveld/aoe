@@ -1,12 +1,12 @@
-#include "../legacy.hpp"
+#include "legacy.hpp"
 
 #include "../debug.hpp"
-#include "../string.hpp"
 
 #include "../engine/endian.h"
 
 #include <except.hpp>
 #include <minmax.hpp>
+#include <string.hpp>
 
 namespace aoe {
 

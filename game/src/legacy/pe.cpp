@@ -1,4 +1,4 @@
-#include "../legacy.hpp"
+#include "legacy.hpp"
 
 #include "../engine/endian.h"
 
@@ -253,8 +253,9 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Typ
 
 	// only fix the endian byte order of variables we care about
 	mz.e_magic = le16toh(mz.e_magic);
-	if (mz.e_magic != dos_magic)
-		throw std::runtime_error(std::string("PE: bad dos magic: expected ") + std::to_string(dos_magic) + ", got " + std::to_string(mz.e_magic));
+	uint16_t magic = le16toh(dos_magic);
+	if (mz.e_magic != magic)
+		throw std::runtime_error(std::string("PE: bad dos magic: expected ") + std::to_string(magic) + ", got " + std::to_string(mz.e_magic));
 
 	size_t start = mz.e_cparhdr * 16;
 
@@ -298,8 +299,9 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Typ
 	pe.f_opthdr = le16toh(pe.f_opthdr);
 	pe.f_nsect = le16toh(pe.f_nsect);
 
-	if (pe.f_magic != pe_magic)
-	throw std::runtime_error(std::string("PE: bad pe magic: expected ") + std::to_string(pe_magic) + " got " + std::to_string(pe.f_magic));
+	uint32_t pe_m = le32toh(pe_magic);
+	if (pe.f_magic != pe_m)
+		throw std::runtime_error(std::string("PE: bad pe magic: expected ") + std::to_string(pe_m) + " got " + std::to_string(pe.f_magic));
 
 	if (!pe.f_opthdr)
 		return;

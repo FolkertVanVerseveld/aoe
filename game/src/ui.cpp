@@ -1,6 +1,6 @@
 #include "engine.hpp"
 
-#include "sdl.hpp"
+#include "engine/sdl.hpp"
 
 #include <cassert>
 #include <cstdarg>

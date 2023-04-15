@@ -1,6 +1,6 @@
 #include "../server.hpp"
 
-#include "../legacy.hpp"
+#include "../legacy/legacy.hpp"
 
 #include <chrono>
 
