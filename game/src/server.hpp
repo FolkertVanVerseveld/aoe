@@ -102,7 +102,7 @@ public:
 	void set_gameticks(unsigned n);
 
 	NetGamespeedControl get_gamespeed();
-	void set_gamespeed(double speed, bool paused);
+	void set_gamespeed(NetGamespeedType type);
 
 	NetPkgType type();
 
@@ -206,6 +206,10 @@ public:
 	ScenarioSettings scn;
 	std::atomic<double> logic_gamespeed;
 	std::atomic<bool> running;
+
+	static constexpr double gamespeed_max = 3.0;
+	static constexpr double gamespeed_min = 0.5;
+	static constexpr double gamespeed_step = 0.5;
 
 	World();
 

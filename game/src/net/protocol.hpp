@@ -165,17 +165,23 @@ public:
 	NetParticleMod(const Particle &p) : data(p) {}
 };
 
+enum class NetGamespeedType {
+	// NOTE pause/unpause are reserved for server to client
+	pause,
+	unpause,
+
+	toggle_pause, // NOTE this type is only for client to server
+	increase,
+	decrease,
+};
+
 class NetGamespeedControl final {
 public:
-	double value;
-	bool running;
+	NetGamespeedType type;
 
-	static constexpr size_t size = 4 + 1;
-	static constexpr double multiplier = 1000.0;
-	static constexpr double min_speed = 0.0;
-	static constexpr double max_speed = 10.0;
+	static constexpr size_t size = 1;
 
-	NetGamespeedControl(double v, bool p) : value(v), running(p) {}
+	NetGamespeedControl(NetGamespeedType t) : type(t) {}
 };
 
 }

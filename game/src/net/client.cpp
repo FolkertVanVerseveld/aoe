@@ -269,7 +269,7 @@ void Client::cam_move(float x, float y, float w, float h) {
 
 void Client::send_gamespeed_control(const NetGamespeedControl &control) {
 	NetPkg pkg;
-	pkg.set_gamespeed(control.value, control.running);
+	pkg.set_gamespeed(control.type);
 	send(pkg);
 }
 

@@ -172,13 +172,15 @@ void World::pump_events() {
 		try {
 			switch (ev.type) {
 			case WorldEventType::entity_kill:
-				entity_kill(ev);
+				if (running)
+					entity_kill(ev);
 				break;
 			case WorldEventType::peer_cam_move:
 				cam_move(ev);
 				break;
 			case WorldEventType::entity_task:
-				entity_task(ev);
+				if (running)
+					entity_task(ev);
 				break;
 			case WorldEventType::gamespeed_control:
 				gamespeed_control(ev);
@@ -222,10 +224,24 @@ void World::cam_move(WorldEvent &ev) {
 
 void World::gamespeed_control(WorldEvent &ev) {
 	ZoneScoped;
-	NetGamespeedControl ctl(std::get< NetGamespeedControl>(ev.data));
+	NetGamespeedControl ctl(std::get<NetGamespeedControl>(ev.data));
 
-	this->logic_gamespeed = ctl.value;
-	this->running = ctl.running;
+	switch (ctl.type) {
+	case NetGamespeedType::toggle_pause:
+		// TODO should we notify clients on pause/unpause?
+		this->running = !this->running;
+		break;
+	case NetGamespeedType::increase:
+		// disallow changing gamespeed while paused
+		if (this->running)
+			this->logic_gamespeed = std::clamp(this->logic_gamespeed + World::gamespeed_step, World::gamespeed_min, World::gamespeed_max);
+		break;
+	case NetGamespeedType::decrease:
+		// disallow changing gamespeed while paused
+		if (this->running)
+			this->logic_gamespeed = std::clamp(this->logic_gamespeed - World::gamespeed_step, World::gamespeed_min, World::gamespeed_max);
+		break;
+	}
 }
 
 void World::entity_kill(WorldEvent &ev) {
@@ -494,12 +510,14 @@ void World::eventloop(Server &s) {
 
 		pump_events();
 
-		if (!gameover)
-			send_gameticks(steps);
+		if (running) {
+			if (!gameover)
+				send_gameticks(steps);
 
-		// do steps
-		for (; steps && !gameover; --steps)
-			tick();
+			// do steps
+			for (; steps && !gameover; --steps)
+				tick();
+		}
 
 		push_events();
 

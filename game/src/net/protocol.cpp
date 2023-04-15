@@ -140,6 +140,7 @@ void NetPkg::ntoh() {
 		}
 		case NetPkgType::start_game:
 		case NetPkgType::gameover:
+		case NetPkgType::gamespeed_control:
 			// no payload
 			break;
 		case NetPkgType::terrainmod: {
@@ -251,15 +252,6 @@ void NetPkg::ntoh() {
 
 			break;
 		}
-		case NetPkgType::gamespeed_control: {
-			need_payload(NetGamespeedControl::size);
-
-			uint32_t *dd = (uint32_t*)data.data();
-
-			dd[0] = ntohl(dd[0]);
-
-			break;
-		}
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -338,6 +330,7 @@ void NetPkg::hton() {
 		}
 		case NetPkgType::start_game:
 		case NetPkgType::gameover:
+		case NetPkgType::gamespeed_control:
 			// no payload
 			break;
 		case NetPkgType::terrainmod: {
@@ -428,11 +421,6 @@ void NetPkg::hton() {
 			dw[0] = htons(dw[0]); // p.type
 			dw[1] = htons(dw[1]); // p.subimage
 
-			break;
-		}
-		case NetPkgType::gamespeed_control: {
-			uint32_t *dd = (uint32_t*)data.data();
-			dd[0] = htonl(dd[0]);
 			break;
 		}
 		default:
@@ -1214,30 +1202,21 @@ NetGamespeedControl NetPkg::get_gamespeed() {
 	if ((NetPkgType)hdr.type != NetPkgType::gamespeed_control)
 		throw std::runtime_error("not a gamespeed control packet");
 
-	const uint32_t *dd = (const uint32_t*)data.data();
+	const uint8_t *db = (const uint8_t*)data.data();
+	NetGamespeedType type = (NetGamespeedType)db[0];
 
-	uint32_t v = dd[0];
+	if (db[0] > (uint8_t)NetGamespeedType::decrease)
+		throw std::runtime_error("invalid gamespeed control type");
 
-	double speed = std::clamp(v / NetGamespeedControl::multiplier, NetGamespeedControl::min_speed, NetGamespeedControl::max_speed);
-
-	const uint8_t *db = (const uint8_t*)&dd[1];
-
-	bool running = !!(db[0] & 1);
-
-	return NetGamespeedControl(speed, running);
+	return NetGamespeedControl(type);
 }
 
-void NetPkg::set_gamespeed(double speed, bool running) {
+void NetPkg::set_gamespeed(NetGamespeedType type) {
 	ZoneScoped;
 	PkgWriter out(*this, NetPkgType::gamespeed_control, NetGamespeedControl::size);
 
-	uint32_t v = (uint32_t)(std::clamp(speed, NetGamespeedControl::min_speed, NetGamespeedControl::max_speed) * NetGamespeedControl::multiplier);
-
-	uint32_t *dd = (uint32_t*)data.data();
-	dd[0] = v;
-
-	uint8_t *db = (uint8_t*)&dd[1];
-	db[0] = !!running;
+	uint8_t *db = (uint8_t*)data.data();
+	db[0] = (uint8_t)type;
 }
 
 void NetPkg::set_terrain_mod(const NetTerrainMod &tm) {

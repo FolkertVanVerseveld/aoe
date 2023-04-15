@@ -217,7 +217,7 @@ void UICache::show_multiplayer_game() {
 		e->show_chat = true;
 
 	if (e->keyctl.is_tapped(GameKey::toggle_pause))
-		e->client->send_gamespeed_control(NetGamespeedControl(2.0, true));
+		e->client->send_gamespeed_control(NetGamespeedControl(NetGamespeedType::toggle_pause));
 
 	// TODO fetch from player view
 	int food = 200, wood = 200, gold = 0, stone = 150;
