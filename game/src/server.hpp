@@ -101,6 +101,9 @@ public:
 	uint16_t get_gameticks();
 	void set_gameticks(unsigned n);
 
+	NetGamespeedControl get_gamespeed();
+	void set_gamespeed(NetGamespeedType type);
+
 	NetPkgType type();
 
 	void ntoh();
@@ -155,6 +158,7 @@ enum class WorldEventType {
 	player_kill,
 	peer_cam_move,
 	gameover,
+	gamespeed_control,
 };
 
 class Server;
@@ -170,7 +174,7 @@ public:
 class WorldEvent final {
 public:
 	WorldEventType type;
-	std::variant<std::nullopt_t, IdPoolRef, Entity, EventCameraMove, EntityTask> data;
+	std::variant<std::nullopt_t, IdPoolRef, Entity, EventCameraMove, EntityTask, NetGamespeedControl> data;
 
 	template<class... Args> WorldEvent(WorldEventType type, Args&&... data) : type(type), data(data...) {}
 };
@@ -193,7 +197,7 @@ class World final {
 	IdPool<Entity> entities;
 	std::set<IdPoolRef> dirty_entities;
 	std::vector<Player> players;
-	std::deque<WorldEvent> events_in;
+	std::deque<WorldEvent> events_in, events_out;
 	std::map<IdPoolRef, NetCamSet> views; // display area for each peer
 	Server *s;
 	bool gameover;
@@ -201,6 +205,11 @@ class World final {
 public:
 	ScenarioSettings scn;
 	std::atomic<double> logic_gamespeed;
+	std::atomic<bool> running;
+
+	static constexpr double gamespeed_max = 3.0;
+	static constexpr double gamespeed_min = 0.5;
+	static constexpr double gamespeed_step = 0.5;
 
 	World();
 
@@ -230,6 +239,9 @@ private:
 	void pump_events();
 	void push_events();
 	void cam_move(WorldEvent&);
+
+	void gamespeed_control(WorldEvent&);
+	void push_gamespeed_control(WorldEvent&);
 
 	void send_gameticks(unsigned);
 
@@ -287,6 +299,8 @@ private:
 
 	bool cam_set(const Peer &p, NetCamSet &cam);
 
+	void gamespeed_control(const NetGamespeedControl &control);
+
 	void start_game();
 
 	ClientInfo &get_ci(IdPoolRef);
@@ -337,6 +351,7 @@ private:
 	void terrainmod(const NetTerrainMod&);
 	void entitymod(const NetEntityMod&);
 	void gameticks(unsigned n);
+	void gamespeed_control(const NetGamespeedControl&);
 public:
 	bool connected() const noexcept { return m_connected; }
 
@@ -370,6 +385,8 @@ public:
 	void claim_cpu(unsigned);
 
 	void cam_move(float x, float y, float w, float h);
+
+	void send_gamespeed_control(NetGamespeedType type);
 
 	void entity_move(IdPoolRef, float x, float y);
 	void entity_infer(IdPoolRef, IdPoolRef);

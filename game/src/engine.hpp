@@ -103,7 +103,6 @@ class Engine final {
 
 	unsigned async_tasks;
 	std::atomic<bool> running;
-	std::atomic<float> logic_gamespeed;
 
 	bool scroll_to_bottom;
 

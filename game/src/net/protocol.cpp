@@ -140,6 +140,7 @@ void NetPkg::ntoh() {
 		}
 		case NetPkgType::start_game:
 		case NetPkgType::gameover:
+		case NetPkgType::gamespeed_control:
 			// no payload
 			break;
 		case NetPkgType::terrainmod: {
@@ -329,6 +330,7 @@ void NetPkg::hton() {
 		}
 		case NetPkgType::start_game:
 		case NetPkgType::gameover:
+		case NetPkgType::gamespeed_control:
 			// no payload
 			break;
 		case NetPkgType::terrainmod: {
@@ -1192,6 +1194,29 @@ void NetPkg::set_gameticks(unsigned n) {
 	dw[0] = n;
 
 	set_hdr(NetPkgType::gameticks);
+}
+
+NetGamespeedControl NetPkg::get_gamespeed() {
+	ntoh();
+
+	if ((NetPkgType)hdr.type != NetPkgType::gamespeed_control)
+		throw std::runtime_error("not a gamespeed control packet");
+
+	const uint8_t *db = (const uint8_t*)data.data();
+	NetGamespeedType type = (NetGamespeedType)db[0];
+
+	if (db[0] > (uint8_t)NetGamespeedType::decrease)
+		throw std::runtime_error("invalid gamespeed control type");
+
+	return NetGamespeedControl(type);
+}
+
+void NetPkg::set_gamespeed(NetGamespeedType type) {
+	ZoneScoped;
+	PkgWriter out(*this, NetPkgType::gamespeed_control, NetGamespeedControl::size);
+
+	uint8_t *db = (uint8_t*)data.data();
+	db[0] = (uint8_t)type;
 }
 
 void NetPkg::set_terrain_mod(const NetTerrainMod &tm) {

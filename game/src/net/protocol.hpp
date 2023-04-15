@@ -20,6 +20,7 @@ enum class NetPkgType {
 	cam_set,
 	gameticks,
 	particle_mod,
+	gamespeed_control,
 };
 
 struct NetPkgHdr final {
@@ -162,6 +163,25 @@ public:
 	static constexpr size_t addsize = refsize + 2*4 + 2*2;
 
 	NetParticleMod(const Particle &p) : data(p) {}
+};
+
+enum class NetGamespeedType {
+	// NOTE pause/unpause are reserved for server to client
+	pause,
+	unpause,
+
+	toggle_pause, // NOTE this type is only for client to server
+	increase,
+	decrease,
+};
+
+class NetGamespeedControl final {
+public:
+	NetGamespeedType type;
+
+	static constexpr size_t size = 1;
+
+	NetGamespeedControl(NetGamespeedType t) : type(t) {}
 };
 
 }

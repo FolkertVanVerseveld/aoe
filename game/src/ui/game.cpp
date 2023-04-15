@@ -216,6 +216,16 @@ void UICache::show_multiplayer_game() {
 	if (e->keyctl.is_tapped(GameKey::toggle_chat) && !e->show_chat)
 		e->show_chat = true;
 
+	// gamespeed control
+	if (e->keyctl.is_tapped(GameKey::toggle_pause))
+		e->client->send_gamespeed_control(NetGamespeedType::toggle_pause);
+
+	if (e->keyctl.is_tapped(GameKey::gamespeed_increase))
+		e->client->send_gamespeed_control(NetGamespeedType::increase);
+
+	if (e->keyctl.is_tapped(GameKey::gamespeed_decrease))
+		e->client->send_gamespeed_control(NetGamespeedType::decrease);
+
 	// TODO fetch from player view
 	int food = 200, wood = 200, gold = 0, stone = 150;
 	std::string age(e->txt(StrId::age_stone));
@@ -337,6 +347,14 @@ void UICache::show_multiplayer_game() {
 		FontGuard fg(e->fnt.fnt_copper2);
 
 		const char *txt = "Game Over";
+
+		ImVec2 sz(ImGui::CalcTextSize(txt));
+
+		lst->AddText(ImVec2((io.DisplaySize.x - sz.x) / 2, (io.DisplaySize.y - sz.y) / 2), IM_COL32_WHITE, txt);
+	} else if (!e->client->g.running) {
+		FontGuard fg(e->fnt.fnt_copper2);
+
+		const char *txt = "Game Paused";
 
 		ImVec2 sz(ImGui::CalcTextSize(txt));
 

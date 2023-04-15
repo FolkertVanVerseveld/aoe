@@ -11,6 +11,9 @@ KeyboardController::KeyboardController() : state((size_t)GameKey::max, false), s
 	keys[SDLK_DELETE] = GameKey::kill_entity;
 	keys[SDLK_RETURN] = GameKey::toggle_chat;
 	keys[SDLK_RETURN2] = GameKey::toggle_chat;
+	keys[SDLK_F3] = GameKey::toggle_pause;
+	keys[SDLK_KP_PLUS] = GameKey::gamespeed_increase;
+	keys[SDLK_KP_MINUS] = GameKey::gamespeed_decrease;
 }
 
 void KeyboardController::clear() {
