@@ -101,7 +101,7 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 	Assets &a = *e->assets.get();
 	const ImageSet &s_bld = a.anim_at(is_building(ent->type) ? io::DrsId::gif_building_icons : io::DrsId::gif_unit_icons);
 	// TODO fetch player color
-	const gfx::ImageRef &img = a.at(s_bld.try_at(ent->color, icon));
+	const gfx::ImageRef &img = a.at(s_bld.try_at(ent->playerid, icon));
 
 	// 8,679 -> 8,37
 	float x0 = menubar_left + 10 * scale, y0 = top + 37 * scale;

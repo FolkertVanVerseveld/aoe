@@ -8,15 +8,15 @@
 
 namespace aoe {
 
-EntityView::EntityView() : ref(invalid_ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
+EntityView::EntityView() : ref(invalid_ref), type(EntityType::town_center), playerid(0), x(0), y(0), angle(0), subimage(0), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
 
-EntityView::EntityView(const Entity &e) : ref(e.ref), type(e.type), color(e.color), x(e.x), y(e.y), angle(e.angle), subimage(e.subimage), state(e.state), xflip(e.xflip), stats(e.stats) {}
+EntityView::EntityView(const Entity &e) : ref(e.ref), type(e.type), playerid(e.playerid), x(e.x), y(e.y), angle(e.angle), subimage(e.subimage), state(e.state), xflip(e.xflip), stats(e.stats) {}
 
-Entity::Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), color(0), x(0), y(0), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
+Entity::Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), playerid(0), x(0), y(0), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
 
-Entity::Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle, EntityState state) : ref(ref), type(type), color(color), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state), xflip(false), stats(entity_info.at((unsigned)type)) {}
+Entity::Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle, EntityState state) : ref(ref), type(type), playerid(playerid), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state), xflip(false), stats(entity_info.at((unsigned)type)) {}
 
-Entity::Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), color(ev.color), x(ev.x), y(ev.y), angle(ev.angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(ev.subimage), state(ev.state), xflip(ev.xflip), stats(ev.stats) {}
+Entity::Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), playerid(ev.playerid), x(ev.x), y(ev.y), angle(ev.angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(ev.subimage), state(ev.state), xflip(ev.xflip), stats(ev.stats) {}
 
 bool Entity::die() noexcept {
 	if (state == EntityState::dying || state == EntityState::decaying)
@@ -92,8 +92,8 @@ bool Entity::attack(WorldView &wv) noexcept {
 		return set_state(EntityState::moving);
 	}
 
-	// stop attacking if dead or same color
-	if (!t->is_alive() || t->color == color) {
+	// stop attacking if dead or same player
+	if (!t->is_alive() || t->playerid == playerid) {
 		target_ref = invalid_ref;
 		return set_state(EntityState::alive);
 	}
@@ -191,7 +191,7 @@ bool Entity::task_attack(Entity &e) noexcept {
 		return false;
 
 	// TODO add buildings that can attack
-	if (!is_alive() || is_building(type) || is_resource(type) || !e.is_alive() || color == e.color)
+	if (!is_alive() || is_building(type) || is_resource(type) || !e.is_alive() || playerid == e.playerid)
 		return false;
 
 	this->target_ref = e.ref;

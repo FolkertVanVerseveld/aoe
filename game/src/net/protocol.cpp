@@ -93,11 +93,33 @@ void NetPkg::ntoh() {
 
 			dw[1] = ntohs(dw[1]);
 
+			uint32_t *dd;
+			uint64_t *dq;
+
 			switch (type) {
 			case NetPlayerControlType::set_player_name:
 			case NetPlayerControlType::set_civ:
 			case NetPlayerControlType::set_team:
+				need_payload(NetPlayerControl::set_pos_size);
 				dw[2] = ntohs(dw[2]);
+				break;
+			case NetPlayerControlType::set_score:
+				// technologies has been swapped already
+				need_payload(NetPlayerControl::set_score_size);
+
+				dd = (uint32_t*)&dw[2];
+
+				for (unsigned i = 0; i < 4; ++i)
+					dd[i] = ntohl(dd[i]); // military, economy, religion, technology
+
+				dq = (uint64_t*)&dd[4];
+				dq[0] = ntohll(dq[0]); // score
+
+				dw = (uint16_t*)&dq[0];
+
+				dw[0] = ntohs(dw[0]); // wonders
+				dw[1] = ntohs(dw[1]); // idx
+
 				break;
 			}
 
@@ -290,11 +312,31 @@ void NetPkg::hton() {
 			dw[0] = htons(dw[0]);
 			dw[1] = htons(dw[1]);
 
+			uint32_t *dd;
+			uint64_t *dq;
+
 			switch (type) {
 			case NetPlayerControlType::set_player_name:
 			case NetPlayerControlType::set_civ:
 			case NetPlayerControlType::set_team:
 				dw[2] = htons(dw[2]);
+				break;
+			case NetPlayerControlType::set_score:
+				// technologies has been swapped already
+
+				dd = (uint32_t*)&dw[2];
+
+				for (unsigned i = 0; i < 4; ++i)
+					dd[i] = htonl(dd[i]); // military, economy, religion, technology
+
+				dq = (uint64_t*)&dd[4];
+				dq[0] = htonll(dq[0]); // score
+
+				dw = (uint16_t*)&dq[1];
+
+				dw[0] = htons(dw[0]); // wonders
+				dw[1] = htons(dw[1]); // idx
+
 				break;
 			}
 
@@ -745,6 +787,42 @@ void NetPkg::claim_cpu_setting(uint16_t idx) {
 	set_hdr(NetPkgType::playermod);
 }
 
+void NetPkg::set_player_score(uint16_t idx, const PlayerAchievements &pa) {
+	PkgWriter out(*this, NetPkgType::playermod, NetPlayerControl::set_score_size);
+
+	uint16_t *dw = (uint16_t*)data.data();
+
+	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_score;
+	dw[1] = (uint16_t)pa.technologies;
+
+	uint32_t *dd = (uint32_t*)&dw[2];
+
+	dd[0] = pa.military_score;
+	dd[1] = pa.economy_score;
+	dd[2] = pa.religion_score;
+	dd[3] = pa.technology_score;
+
+	uint64_t *dq = (uint64_t*)&dd[4];
+	dq[0] = pa.score;
+
+	dw = (uint16_t*)&dq[1];
+	dw[0] = pa.wonders;
+	dw[1] = idx;
+
+	uint8_t *db = (uint8_t*)&dw[1];
+
+	db[0] = pa.age;
+
+	unsigned flags = 0;
+
+	if (pa.alive)             flags |= 1 << 0;
+	if (pa.most_technologies) flags |= 1 << 1;
+	if (pa.bronze_first)      flags |= 1 << 2;
+	if (pa.iron_first)        flags |= 1 << 2;
+
+	db[1] = flags;
+}
+
 NetPlayerControl NetPkg::get_player_control() {
 	ntoh();
 
@@ -752,7 +830,12 @@ NetPlayerControl NetPkg::get_player_control() {
 	if ((NetPkgType)hdr.type != NetPkgType::playermod)
 		throw std::runtime_error("not a player control packet");
 
-	const uint16_t *dw = (const uint16_t*)data.data();
+	const uint16_t *dw;
+	const uint32_t *dd;
+	const uint64_t *dq;
+	const uint8_t *db;
+
+	dw = (const uint16_t*)data.data();
 
 	NetPlayerControlType type = (NetPlayerControlType)dw[0];
 
@@ -775,6 +858,38 @@ NetPlayerControl NetPkg::get_player_control() {
 		case NetPlayerControlType::set_team: {
 			uint16_t idx = dw[1], pos = dw[2];
 			return NetPlayerControl(type, idx, pos);
+		}
+		case NetPlayerControlType::set_score: {
+			NetPlayerScore ps;
+
+			ps.technologies = dw[1];
+
+			dd = (const uint32_t*)&dw[2];
+
+			ps.military   = dd[0];
+			ps.economy    = dd[1];
+			ps.religion   = dd[2];
+			ps.technology = dd[3];
+
+			dq = (const uint64_t*)&dd[4];
+			ps.score = dq[0];
+
+			dw = (const uint16_t*)&dq[1];
+			ps.wonders = dw[0];
+			ps.playerid = dw[1];
+
+			db = (const uint8_t*)&dw[2];
+
+			ps.age = db[0];
+
+			unsigned flags = db[1];
+
+			ps.alive             = !!(flags & (1 << 0));
+			ps.most_technologies = !!(flags & (1 << 1));
+			ps.bronze_first      = !!(flags & (1 << 2));
+			ps.iron_first        = !!(flags & (1 << 3));
+
+			return NetPlayerControl(ps);
 		}
 		default:
 			throw std::runtime_error("bad player control type");
@@ -1000,7 +1115,7 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	dw = (uint16_t*)&dd[4];
 	int16_t *sw = (int16_t*)dw;
 	dw[0] = e.angle * UINT16_MAX / (2 * M_PI);
-	dw[1] = e.color;
+	dw[1] = e.playerid;
 	dw[2] = e.subimage;
 
 	uint8_t *db = (uint8_t*)&dw[3];
@@ -1103,7 +1218,7 @@ NetEntityMod NetPkg::get_entity_mod() {
 		dw = (const uint16_t*)&dd[4];
 		sw = (const int16_t*)dw;
 		ev.angle = dw[0] * (2 * M_PI) / UINT16_MAX;
-		ev.color = dw[1];
+		ev.playerid = dw[1];
 		ev.subimage = dw[2];
 
 		db = (const uint8_t*)&dw[3];

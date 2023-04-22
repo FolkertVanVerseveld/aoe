@@ -141,7 +141,7 @@ public:
 	IdPoolRef ref;
 	EntityType type; // TODO remove this and use stats.type
 
-	unsigned color; // TODO /color/playerid/ ?
+	unsigned playerid;
 	float x, y, angle;
 
 	// TODO add ui info
@@ -196,7 +196,7 @@ public:
 	IdPoolRef ref;
 	EntityType type;
 
-	unsigned color; // TODO /color/playerid/ ?
+	unsigned playerid;
 	float x, y, angle;
 
 	IdPoolRef target_ref; // if == invalid_ref, use target_x,target_y
@@ -210,7 +210,7 @@ public:
 	EntityStats stats;
 
 	Entity(IdPoolRef ref);
-	Entity(IdPoolRef ref, EntityType type, unsigned color, float x, float y, float angle=0, EntityState state=EntityState::alive);
+	Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle=0, EntityState state=EntityState::alive);
 
 	Entity(const EntityView &ev);
 
@@ -249,29 +249,59 @@ private:
 class PlayerAchievements final {
 public:
 	// too lazy to check if smaller types will fit, this should be fine.
-	int64_t kills, losses, razings;
+	uint32_t kills, losses, razings;
 	size_t military_size;
-	int64_t military_score;
+	uint32_t military_score;
 
-	int64_t food, wood, stone, gold, tribute;
+	uint64_t food, wood, stone, gold;
+	int64_t tribute;
 	size_t villager_count, unit_count;
 	size_t explored_tiles, explored_max;
-	int64_t economy_score;
+	int32_t economy_score;
 
-	int64_t conversions, converted;
-	int64_t temples, ruins, artifacts;
-	int64_t religion_score;
+	uint32_t conversions, converted;
+	uint32_t temples, ruins, artifacts;
+	uint32_t religion_score;
 
 	unsigned technologies;
+	bool most_technologies;
 	bool bronze_first, iron_first;
-	int64_t technology_score;
+	uint32_t technology_score;
 
-	int64_t wonders;
+	unsigned wonders;
+	unsigned char age;
 
 	bool alive;
 	int64_t score;
 
-	int64_t recompute(size_t max_military, size_t max_villagers, unsigned max_tech) noexcept;
+	int64_t recompute() noexcept;
+
+	// NOTE this does not guarantee equalness, but if it's false, it's always unequal!
+	friend bool operator==(const PlayerAchievements &lhs, const PlayerAchievements &rhs) {
+		if (lhs.score != rhs.score)
+			return false;
+
+		if (lhs.alive != rhs.alive)
+			return false;
+
+		if (lhs.military_score != rhs.military_score)
+			return false;
+
+		if (lhs.economy_score != rhs.economy_score)
+			return false;
+
+		if (lhs.religion_score != rhs.religion_score)
+			return false;
+
+		if (lhs.technology_score != rhs.technology_score)
+			return false;
+
+		return lhs.technologies == rhs.technologies && lhs.wonders == rhs.wonders;
+	}
+
+	friend bool operator!=(const PlayerAchievements &lhs, const PlayerAchievements &rhs) {
+		return !(lhs == rhs);
+	}
 };
 
 class PlayerView;
@@ -280,7 +310,9 @@ class Player final {
 public:
 	PlayerSetting init;
 	Resources res;
+private:
 	PlayerAchievements achievements;
+public:
 	uint64_t explored_max;
 	std::set<IdPoolRef> entities;
 	bool alive;
@@ -289,6 +321,12 @@ public:
 	Player(const PlayerSetting&, size_t explored_max);
 
 	PlayerView view() const noexcept;
+
+	PlayerAchievements get_score() noexcept;
+
+	void killed_unit();
+	void killed_building();
+	void lost_entity(IdPoolRef);
 };
 
 class PlayerView final {
@@ -303,7 +341,12 @@ public:
 };
 
 class GameView;
+struct NetPlayerScore;
 
+/**
+ * Client side game state. Some vars are duplicated from World,
+ * but may be slightly altered as the client has little control over their internal state.
+ */
 class Game final {
 	std::mutex m;
 	Terrain t;
@@ -324,6 +367,7 @@ public:
 	void terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
 
 	void set_players(const std::vector<PlayerSetting>&);
+	void set_player_score(unsigned idx, const NetPlayerScore&);
 
 	void player_died(unsigned);
 

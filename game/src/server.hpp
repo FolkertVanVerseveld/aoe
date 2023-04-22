@@ -68,6 +68,7 @@ public:
 	void set_player_team(uint16_t, uint16_t);
 	void set_player_name(uint16_t, const std::string&);
 	void set_player_died(uint16_t); // server to client
+	void set_player_score(uint16_t, const PlayerAchievements&); // server to client
 	NetPlayerControl get_player_control();
 
 	void set_incoming(IdPoolRef);
@@ -197,6 +198,7 @@ class World final {
 	IdPool<Entity> entities;
 	std::set<IdPoolRef> dirty_entities;
 	std::vector<Player> players;
+	std::vector<PlayerAchievements> player_achievements;
 	std::deque<WorldEvent> events_in, events_out;
 	std::map<IdPoolRef, NetCamSet> views; // display area for each peer
 	Server *s;
@@ -251,6 +253,9 @@ private:
 
 	void entity_kill(WorldEvent &ev);
 	void entity_task(WorldEvent &ev);
+
+	void save_scores();
+	void send_scores();
 };
 
 class Server final : public ServerSocketController {
