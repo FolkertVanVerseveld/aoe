@@ -123,6 +123,7 @@ private:
 	void playermod2(NetPlayerControlType, uint16_t, uint16_t);
 
 	unsigned read(const std::string &fmt, std::vector<std::variant<uint64_t, std::string>> &args, unsigned offset=0);
+	unsigned write(const std::string &fmt, const std::vector<std::variant<uint64_t, std::string>> &args, bool append);
 };
 
 enum class ClientInfoFlags {

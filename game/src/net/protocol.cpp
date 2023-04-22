@@ -28,182 +28,7 @@ public:
 	~PkgWriter() {
 		pkg.set_hdr(type);
 	}
-
-	unsigned write(const std::string &fmt, const std::vector<std::variant<uint64_t, std::string>> &args) {
-		unsigned mult = 0, size = 0, argpos = 0;
-
-		for (unsigned char ch : fmt) {
-			if (ch >= '0' && ch <= '9') {
-				if (mult > UINT_MAX / 10)
-					throw std::runtime_error("number overflow");
-
-				mult = 10 * mult + (ch - '0');
-				continue;
-			}
-
-			bool has_mult = true;
-
-			if (!mult) {
-				has_mult = false;
-				mult = 1;
-			}
-
-			switch (ch) {
-				case 'b': case 'B': { // int8/uint8
-					for (unsigned i = 0; i < mult; ++i, ++argpos)
-						pkg.data.emplace_back(std::get<uint64_t>(args.at(argpos)));
-
-					size += mult;
-					break;
-				}
-				case 'h': case 'H': { // int16/uint16
-					for (unsigned i = 0; i < mult; ++i, ++argpos) {
-						uint16_t v = std::get<uint64_t>(args.at(argpos));
-						pkg.data.emplace_back(v >> 8);
-						pkg.data.emplace_back(v & 0xff);
-					}
-
-					size += 2 * mult;
-					break;
-				}
-				case 'i': case 'I': { // int32/uint32
-					for (unsigned i = 0; i < mult; ++i, ++argpos) {
-						uint32_t v = std::get<uint64_t>(args.at(argpos));
-						pkg.data.emplace_back(v >> 24);
-						pkg.data.emplace_back(v >> 16);
-						pkg.data.emplace_back(v >> 8);
-						pkg.data.emplace_back(v & 0xff);
-					}
-
-					size += 4 * mult;
-					break;
-				}
-				case 's': { // std::string (size limited to uint16)
-					if (!has_mult)
-						throw std::runtime_error("string has no length");
-
-					std::string s(std::get<std::string>(args.at(argpos++)));
-					if (s.size() > UINT16_MAX)
-						throw std::runtime_error("string too large");
-
-					uint16_t sz = s.size();
-
-					pkg.data.emplace_back(sz >> 8);
-					pkg.data.emplace_back(sz & 0xff);
-
-					for (unsigned char ch : s)
-						pkg.data.emplace_back(ch);
-
-					size += 2 + sz;
-					break;
-				}
-				default:
-					throw std::runtime_error(std::string("bad character 0d") + std::to_string(ch) + " in format");
-			}
-		}
-
-		return size;
-	}
 };
-
-#if 0
-/** Same idea as in Python struct.calcsize, but always assumes no padding and network or host endian byte order. */
-static unsigned calcsize(const std::string &fmt) {
-	unsigned mult = 0, size = 0;
-
-	for (unsigned i = 0; i < fmt.size(); ++i) {
-		unsigned char ch = (unsigned char)(fmt[i] & 0xff);
-
-		if (ch >= '0' && ch <= '9') {
-			if (mult > UINT_MAX / 10)
-				throw std::runtime_error("number overflow");
-
-			mult = 10 * mult + (ch - '0');
-			continue;
-		}
-
-		bool has_mult = true;
-
-		if (!mult) {
-			has_mult = false;
-			mult = 1;
-		}
-
-		switch (ch) {
-		case 'b': // int8
-		case 'B': // uint8
-			size += mult;
-			break;
-		case 'h': // int16
-		case 'H': // uint16
-			size += mult * 2;
-			break;
-		case 'i': // int32
-		case 'I': // uint32
-			size += mult * 4;
-			break;
-		case 'l': // int64
-		case 'L': // uint64
-			size += mult * 8;
-			break;
-		case 's':
-			if (!has_mult)
-				throw std::runtime_error("no string length");
-			break;
-		default:
-			throw std::runtime_error(std::string("bad character 0d") + std::to_string(ch) + " in format");
-		}
-
-		mult = 0;
-	}
-
-	if (mult)
-		throw std::runtime_error("unexpected end of format: missing character after multiplier");
-
-	return size;
-}
-
-enum class PkgArgType {
-	byte,
-	word,
-	dword,
-	str,
-};
-
-struct PkgArg final {
-public:
-	std::variant<uint64_t, std::string> data;
-	PkgArgType type;
-
-	PkgArg(uint8_t  v) : data(v), type(PkgArgType::byte) {}
-	PkgArg(uint16_t v) : data(v), type(PkgArgType::word) {}
-	PkgArg(uint32_t v) : data(v), type(PkgArgType::dword) {}
-	PkgArg(const std::string &s) : data(s), type(PkgArgType::str) {}
-
-	void write(std::vector<uint8_t> &out) {
-		if (type == PkgArgType::byte)
-			return;
-
-		if (data.index()) {
-			return;
-		}
-
-		uint64_t v = std::get<uint64_t>(data);
-
-		switch (type) {
-		case PkgArgType::dword:
-			out.emplace_back(v >> 24);
-			out.emplace_back(v >> 16);
-			[[fallthrough]];
-		case PkgArgType::word:
-			out.emplace_back(v >> 8);
-			out.emplace_back(v & 0xff);
-			break;
-		default: assert("bad type"); break;
-		}
-	}
-};
-#endif
 
 void NetPkgHdr::ntoh() {
 	if (native_ordering)
@@ -261,9 +86,119 @@ unsigned NetPkg::read(const std::string &fmt, std::vector<std::variant<uint64_t,
 				size += 2 * mult;
 				break;
 			}
+			case 'i': case 'I': { // int32/uint32
+				for (unsigned i = 0; i < mult; ++i, offset += 4) {
+					uint32_t v = data.at(offset) << 24 | data.at(offset + 1) << 16
+						| data.at(offset + 2) << 8 | data.at(offset + 3);
+					dst.emplace_back((uint64_t)v);
+				}
+
+				size += 4 * mult;
+				break;
+			}
+			case 's': { // std::string (size limited to uint16)
+				if (!has_mult)
+					throw std::runtime_error("string has no length");
+
+				unsigned sz = std::min<unsigned>(data.at(offset) << 8 | data.at(offset + 1), mult);
+
+				std::string s;
+
+				for (unsigned i = 0; i < sz; ++i)
+					s += data.at(offset + 2 + i);
+
+				offset += 2 + sz;
+				size += 2 + sz;
+
+				dst.emplace_back(s);
+				break;
+			}
 			default:
 				throw std::runtime_error(std::string("bad character 0d") + std::to_string(ch) + " in format");
 		}
+
+		mult = 0;
+	}
+
+	return size;
+}
+
+unsigned NetPkg::write(const std::string &fmt, const std::vector<std::variant<uint64_t, std::string>> &args, bool append) {
+	unsigned mult = 0, size = 0, argpos = 0;
+
+	if (!append)
+		data.clear();
+
+	for (unsigned char ch : fmt) {
+		if (ch >= '0' && ch <= '9') {
+			if (mult > UINT_MAX / 10)
+				throw std::runtime_error("number overflow");
+
+			mult = 10 * mult + (ch - '0');
+			continue;
+		}
+
+		bool has_mult = true;
+
+		if (!mult) {
+			has_mult = false;
+			mult = 1;
+		}
+
+		switch (ch) {
+			case 'b': case 'B': { // int8/uint8
+				for (unsigned i = 0; i < mult; ++i, ++argpos)
+					data.emplace_back(std::get<uint64_t>(args.at(argpos)));
+
+				size += mult;
+				break;
+			}
+			case 'h': case 'H': { // int16/uint16
+				for (unsigned i = 0; i < mult; ++i, ++argpos) {
+					uint16_t v = std::get<uint64_t>(args.at(argpos));
+					data.emplace_back(v >> 8);
+					data.emplace_back(v & 0xff);
+				}
+
+				size += 2 * mult;
+				break;
+			}
+			case 'i': case 'I': { // int32/uint32
+				for (unsigned i = 0; i < mult; ++i, ++argpos) {
+					uint32_t v = std::get<uint64_t>(args.at(argpos));
+					data.emplace_back(v >> 24);
+					data.emplace_back(v >> 16);
+					data.emplace_back(v >> 8);
+					data.emplace_back(v & 0xff);
+				}
+
+				size += 4 * mult;
+				break;
+			}
+			case 's': { // std::string (size limited to uint16)
+				if (!has_mult)
+					throw std::runtime_error("string has no length");
+
+				std::string s(std::get<std::string>(args.at(argpos++)));
+				if (s.size() > UINT16_MAX)
+					throw std::runtime_error("string too large");
+
+				uint16_t sz = std::min<unsigned>(mult, s.size());
+
+				data.emplace_back(sz >> 8);
+				data.emplace_back(sz & 0xff);
+
+				for (unsigned i = 0; i < sz; ++i)
+					data.emplace_back(s[i]);
+
+				size += 2 + sz;
+				break;
+			}
+			default:
+				throw std::runtime_error(std::string("bad character 0d") + std::to_string(ch) + " in format");
+		}
+
+		mult = 0;
 	}
 
 	return size;
@@ -289,6 +224,7 @@ void NetPkg::ntoh() {
 			break;
 		}
 		case NetPkgType::chat_text: {
+#if 0
 			need_payload(2 * sizeof(uint32_t) + 1 * sizeof(uint16_t));
 
 			uint32_t *dd = (uint32_t*)data.data();
@@ -300,6 +236,7 @@ void NetPkg::ntoh() {
 
 			dw[0] = ntohs(dw[0]);
 			need_payload(2 * sizeof(uint32_t) + 1 * sizeof(uint16_t) + dw[0]);
+#endif
 			break;
 		}
 		case NetPkgType::playermod: {
@@ -487,6 +424,7 @@ void NetPkg::hton() {
 			break;
 		}
 		case NetPkgType::chat_text: {
+#if 0
 			uint32_t *dd = (uint32_t*)data.data();
 
 			dd[0] = htonl(dd[0]);
@@ -495,7 +433,7 @@ void NetPkg::hton() {
 			uint16_t *dw = (uint16_t*)&dd[2];
 
 			dw[0] = htons(dw[0]);
-
+#endif
 			break;
 		}
 		case NetPkgType::playermod: {
@@ -752,6 +690,11 @@ uint16_t NetPkg::protocol_version() {
 }
 
 void NetPkg::set_chat_text(IdPoolRef ref, const std::string &s) {
+#if 1
+	PkgWriter out(*this, NetPkgType::chat_text);
+
+	write("2I80s", { ref.first, ref.second, s }, false);
+#else
 	assert(s.size() <= max_payload - 2 * sizeof(uint32_t) - 1 * sizeof(uint16_t));
 
 	size_t n = s.size();
@@ -769,6 +712,7 @@ void NetPkg::set_chat_text(IdPoolRef ref, const std::string &s) {
 	memcpy(&dw[1], s.data(), n);
 
 	set_hdr(NetPkgType::chat_text);
+#endif
 }
 
 std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
@@ -777,6 +721,7 @@ std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
 	if ((NetPkgType)hdr.type != NetPkgType::chat_text)
 		throw std::runtime_error("not a chat text packet");
 
+#if 0
 	const uint32_t *dd = (const uint32_t*)data.data();
 
 	IdPoolRef ref{ dd[0], dd[1] };
@@ -789,6 +734,13 @@ std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
 	memcpy(s.data(), &dw[1], n);
 
 	return std::make_pair(ref, s);
+#else
+	std::vector<std::variant<uint64_t, std::string>> args;
+	read("2I80s", args);
+
+	IdPoolRef ref{ std::get<uint64_t>(args.at(0)), std::get<uint64_t>(args.at(1)) };
+	return std::make_pair(ref, std::get<std::string>(args.at(2)));
+#endif
 }
 
 std::string NetPkg::username() {
@@ -1402,18 +1354,8 @@ void NetPkg::set_gameticks(unsigned n) {
 	ZoneScoped;
 	assert(n <= UINT16_MAX);
 
-#if 0
-	data.resize(sizeof(uint16_t));
-
-	uint16_t *dw = (uint16_t*)data.data();
-	dw[0] = n;
-
-	set_hdr(NetPkgType::gameticks);
-#else
 	PkgWriter out(*this, NetPkgType::gameticks);
-
-	out.write("H", { n });
-#endif
+	write("H", { n }, false);
 }
 
 NetGamespeedControl NetPkg::get_gamespeed() {
