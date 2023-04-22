@@ -276,7 +276,7 @@ public:
 
 	bool active() const noexcept { return m_active; }
 
-	int mainloop(int id, uint16_t port, uint16_t protocol);
+	int mainloop(int id, uint16_t port, uint16_t protocol, bool testing=false);
 
 	bool process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out);
 

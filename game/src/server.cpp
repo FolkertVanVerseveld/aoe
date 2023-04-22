@@ -225,14 +225,16 @@ bool Server::process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> 
 	return process(p, pkg, out);
 }
 
-int Server::mainloop(int, uint16_t port, uint16_t protocol) {
+int Server::mainloop(int, uint16_t port, uint16_t protocol, bool testing) {
 	this->port = port;
 	this->protocol = protocol;
 
-	Assets &a = eng->gamedata();
+	if (!testing) {
+		Assets &a = eng->gamedata();
 
-	civs = a.old_lang.civs;
-	a.old_lang.collect_civs(civnames);
+		civs = a.old_lang.civs;
+		a.old_lang.collect_civs(civnames);
+	}
 
 	m_active = true;
 	int r = s.mainloop(port, 10, *this);
