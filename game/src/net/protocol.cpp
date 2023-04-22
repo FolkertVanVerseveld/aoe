@@ -223,22 +223,8 @@ void NetPkg::ntoh() {
 			dw[0] = ntohs(dw[0]);
 			break;
 		}
-		case NetPkgType::chat_text: {
-#if 0
-			need_payload(2 * sizeof(uint32_t) + 1 * sizeof(uint16_t));
-
-			uint32_t *dd = (uint32_t*)data.data();
-
-			dd[0] = ntohl(dd[0]);
-			dd[1] = ntohl(dd[1]);
-
-			uint16_t *dw = (uint16_t*)&dd[2];
-
-			dw[0] = ntohs(dw[0]);
-			need_payload(2 * sizeof(uint32_t) + 1 * sizeof(uint16_t) + dw[0]);
-#endif
+		case NetPkgType::chat_text:
 			break;
-		}
 		case NetPkgType::playermod: {
 			need_payload(NetPlayerControl::resize_size);
 
@@ -386,11 +372,9 @@ void NetPkg::ntoh() {
 
 			break;
 		}
-		case NetPkgType::gameticks: {
+		case NetPkgType::gameticks:
 			need_payload(sizeof(uint16_t));
-
 			break;
-		}
 		case NetPkgType::particle_mod: {
 			need_payload(NetParticleMod::addsize);
 
@@ -423,19 +407,8 @@ void NetPkg::hton() {
 			dw[0] = htons(dw[0]);
 			break;
 		}
-		case NetPkgType::chat_text: {
-#if 0
-			uint32_t *dd = (uint32_t*)data.data();
-
-			dd[0] = htonl(dd[0]);
-			dd[1] = htonl(dd[1]);
-
-			uint16_t *dw = (uint16_t*)&dd[2];
-
-			dw[0] = htons(dw[0]);
-#endif
+		case NetPkgType::chat_text:
 			break;
-		}
 		case NetPkgType::playermod: {
 			uint16_t *dw = (uint16_t*)data.data();
 
@@ -690,29 +663,8 @@ uint16_t NetPkg::protocol_version() {
 }
 
 void NetPkg::set_chat_text(IdPoolRef ref, const std::string &s) {
-#if 1
 	PkgWriter out(*this, NetPkgType::chat_text);
-
 	write("2I80s", { ref.first, ref.second, s }, false);
-#else
-	assert(s.size() <= max_payload - 2 * sizeof(uint32_t) - 1 * sizeof(uint16_t));
-
-	size_t n = s.size();
-	data.resize(2 * sizeof(uint32_t) + 1 * sizeof(uint16_t) + n);
-
-	uint32_t *dd = (uint32_t*)data.data();
-
-	dd[0] = ref.first;
-	dd[1] = ref.second;
-
-	uint16_t *dw = (uint16_t*)&dd[2];
-
-	dw[0] = (uint16_t)n;
-
-	memcpy(&dw[1], s.data(), n);
-
-	set_hdr(NetPkgType::chat_text);
-#endif
 }
 
 std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
@@ -721,26 +673,11 @@ std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
 	if ((NetPkgType)hdr.type != NetPkgType::chat_text)
 		throw std::runtime_error("not a chat text packet");
 
-#if 0
-	const uint32_t *dd = (const uint32_t*)data.data();
-
-	IdPoolRef ref{ dd[0], dd[1] };
-
-	const uint16_t *dw = (const uint16_t*)&dd[2];
-
-	uint16_t n = dw[0];
-
-	std::string s(n, ' ');
-	memcpy(s.data(), &dw[1], n);
-
-	return std::make_pair(ref, s);
-#else
 	std::vector<std::variant<uint64_t, std::string>> args;
 	read("2I80s", args);
 
 	IdPoolRef ref{ std::get<uint64_t>(args.at(0)), std::get<uint64_t>(args.at(1)) };
 	return std::make_pair(ref, std::get<std::string>(args.at(2)));
-#endif
 }
 
 std::string NetPkg::username() {
