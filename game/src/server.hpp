@@ -121,6 +121,8 @@ private:
 	void need_payload(size_t n);
 
 	void playermod2(NetPlayerControlType, uint16_t, uint16_t);
+
+	unsigned read(const std::string &fmt, std::vector<std::variant<uint64_t, std::string>> &args, unsigned offset=0);
 };
 
 enum class ClientInfoFlags {
