@@ -853,14 +853,8 @@ void NetPkg::set_player_resize(size_t size) {
 }
 
 void NetPkg::claim_player_setting(uint16_t idx) {
-	data.resize(NetPlayerControl::resize_size);
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_ref;
-	dw[1] = idx;
-
-	set_hdr(NetPkgType::playermod);
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H", {(unsigned)NetPlayerControlType::set_ref, idx}, false);
 }
 
 void NetPkg::set_player_died(uint16_t idx) {
@@ -937,7 +931,10 @@ NetPlayerControl NetPkg::get_player_control() {
 
 	NetPlayerControlType type = (NetPlayerControlType)dw[0];
 	std::vector<std::variant<uint64_t, std::string>> args;
-	unsigned pos = 2;
+	unsigned pos = 0;
+
+	pos += read("H", args, pos);
+	type = (NetPlayerControlType)std::get<uint64_t>(args.at(0));
 
 	printf("%s: type=%d\n", __func__, type);
 
@@ -950,9 +947,14 @@ NetPlayerControl NetPkg::get_player_control() {
 		case NetPlayerControlType::died:
 		case NetPlayerControlType::set_ref:
 		case NetPlayerControlType::set_cpu_ref:
-			printf("num=%d\n", dw[1]);
-			return NetPlayerControl(type, dw[1]);
+			args.clear();
+			pos += read("H", args, pos);
+			printf("num=%llu\n", std::get<uint64_t>(args.at(0)));
+			return NetPlayerControl(type, (uint16_t)std::get<uint64_t>(args.at(0)));
 		case NetPlayerControlType::set_player_name: {
+			args.clear();
+			pos += read("H40s", args, pos);
+			return NetPlayerControl(type, (uint16_t)std::get<uint64_t>(args.at(0)), std::get<std::string>(args.at(1)));
 			uint16_t idx = dw[1], n = dw[2];
 
 			std::string name(n, ' ');
@@ -1089,6 +1091,10 @@ void NetPkg::set_player_team(uint16_t idx, uint16_t team) {
 }
 
 void NetPkg::set_player_name(uint16_t idx, const std::string &s) {
+#if 1
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H40s", {(unsigned)NetPlayerControlType::set_player_name, idx, s}, false);
+#else
 	size_t minsize = NetPlayerControl::resize_size + sizeof(uint16_t);
 
 	data.resize(minsize + s.size());
@@ -1102,6 +1108,7 @@ void NetPkg::set_player_name(uint16_t idx, const std::string &s) {
 	memcpy(&dw[3], s.data(), s.size());
 
 	set_hdr(NetPkgType::playermod);
+#endif
 }
 
 void NetPkg::set_ref_username(IdPoolRef ref, const std::string &s) {
