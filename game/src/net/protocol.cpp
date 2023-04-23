@@ -226,6 +226,7 @@ void NetPkg::ntoh() {
 		case NetPkgType::chat_text:
 			break;
 		case NetPkgType::playermod: {
+#if 0
 			need_payload(NetPlayerControl::resize_size);
 
 			uint16_t *dw = (uint16_t*)data.data();
@@ -264,7 +265,7 @@ void NetPkg::ntoh() {
 
 				break;
 			}
-
+#endif
 			break;
 		}
 		case NetPkgType::peermod: {
@@ -432,6 +433,7 @@ void NetPkg::hton() {
 		case NetPkgType::chat_text:
 			break;
 		case NetPkgType::playermod: {
+#if 0
 			uint16_t *dw = (uint16_t*)data.data();
 
 			NetPlayerControlType type = (NetPlayerControlType)dw[0];
@@ -466,7 +468,7 @@ void NetPkg::hton() {
 
 				break;
 			}
-
+#endif
 			break;
 		}
 		case NetPkgType::peermod: {
@@ -846,14 +848,8 @@ void NetPkg::set_player_resize(size_t size) {
 	if (size > UINT16_MAX)
 		throw std::runtime_error("overflow player resize");
 
-	data.resize(NetPlayerControl::resize_size);
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::resize;
-	dw[1] = (uint16_t)size;
-
-	set_hdr(NetPkgType::playermod);
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H", {(unsigned)NetPlayerControlType::resize, size}, false);
 }
 
 void NetPkg::claim_player_setting(uint16_t idx) {
@@ -940,13 +936,21 @@ NetPlayerControl NetPkg::get_player_control() {
 	dw = (const uint16_t*)data.data();
 
 	NetPlayerControlType type = (NetPlayerControlType)dw[0];
+	std::vector<std::variant<uint64_t, std::string>> args;
+	unsigned pos = 2;
+
+	printf("%s: type=%d\n", __func__, type);
 
 	switch (type) {
 		case NetPlayerControlType::resize:
+			args.clear();
+			pos += read("H", args, pos);
+			return NetPlayerControl(type, std::get<uint64_t>(args.at(0)));
 		case NetPlayerControlType::erase:
 		case NetPlayerControlType::died:
 		case NetPlayerControlType::set_ref:
 		case NetPlayerControlType::set_cpu_ref:
+			printf("num=%d\n", dw[1]);
 			return NetPlayerControl(type, dw[1]);
 		case NetPlayerControlType::set_player_name: {
 			uint16_t idx = dw[1], n = dw[2];
