@@ -63,7 +63,7 @@ static void client_tests() {
 
 static void connect_test(bool close) {
 	Server s;
-	std::thread t1([&] { s.mainloop(1, default_port, 0); if (close) s.close(); });
+	std::thread t1([&] { s.mainloop(1, default_port, 0, true); if (close) s.close(); });
 
 	Client c;
 	c.start(default_host, default_port, false);
@@ -132,7 +132,7 @@ static void handshake(Client &c) {
 
 static void echo_test(bool close) {
 	Server s;
-	std::thread t1([&] { s.mainloop(1, default_port, 1); if (close) s.close(); });
+	std::thread t1([&] { s.mainloop(1, default_port, 1, true); if (close) s.close(); });
 
 	Client c;
 	c.start(default_host, default_port, false);
@@ -151,7 +151,7 @@ static void echo_test(bool close) {
 
 static void protocol_test() {
 	Server s;
-	std::thread t1([&] { s.mainloop(1, default_port, 1); s.close(); });
+	std::thread t1([&] { s.mainloop(1, default_port, 1, true); s.close(); });
 
 	Client c;
 	uint16_t prot;

@@ -122,6 +122,9 @@ private:
 	void need_payload(size_t n);
 
 	void playermod2(NetPlayerControlType, uint16_t, uint16_t);
+
+	unsigned read(const std::string &fmt, std::vector<std::variant<uint64_t, std::string>> &args, unsigned offset=0);
+	unsigned write(const std::string &fmt, const std::vector<std::variant<uint64_t, std::string>> &args, bool append);
 };
 
 enum class ClientInfoFlags {
@@ -281,7 +284,7 @@ public:
 
 	bool active() const noexcept { return m_active; }
 
-	int mainloop(int id, uint16_t port, uint16_t protocol);
+	int mainloop(int id, uint16_t port, uint16_t protocol, bool testing=false);
 
 	bool process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out);
 
