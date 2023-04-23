@@ -279,7 +279,7 @@ void Client::claim_player(unsigned idx) {
 
 void Client::claim_cpu(unsigned idx) {
 	NetPkg pkg;
-	pkg.claim_cpu_setting(idx);
+	pkg.set_cpu_player(idx);
 	send(pkg);
 }
 

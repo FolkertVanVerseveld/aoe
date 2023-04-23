@@ -62,8 +62,7 @@ public:
 
 	void set_player_resize(size_t);
 	void claim_player_setting(uint16_t); // client to server
-	void claim_cpu_setting(uint16_t); // client to server
-	void set_cpu_player(uint16_t); // server to client
+	void set_cpu_player(uint16_t); // both directions
 	void set_player_civ(uint16_t, uint16_t);
 	void set_player_team(uint16_t, uint16_t);
 	void set_player_name(uint16_t, const std::string&);

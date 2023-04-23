@@ -243,15 +243,17 @@ void World::push_events() {
 
 	events_out.clear();
 
-	// TODO check player achievements score
+	// check player achievements score
 	assert(player_achievements.empty() || player_achievements.size() == players.size());
 
 	// skip gaia
 	for (unsigned i = 1; i < players.size(); ++i) {
 		PlayerAchievements pa(players[i].get_score());
 
-		if (i >= player_achievements.size() || player_achievements[i] != pa) {
-			// TODO send player achievements to peers
+		if (i >= player_achievements.size() || player_achievements[i].score != pa.score) {
+			if (i >= player_achievements.size())
+				player_achievements.emplace_back(pa);
+
 			pkg.set_player_score(i, pa);
 			s->broadcast(pkg);
 		}

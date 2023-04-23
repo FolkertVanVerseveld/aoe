@@ -69,6 +69,7 @@ void Game::set_player_score(unsigned idx, const NetPlayerScore &ps) {
 
 	if (idx < players.size()) {
 		PlayerView &p = players[idx];
+		printf("%s: player %u: score=%llu, alive=%d\n", __func__, idx, p.score, !!ps.alive);
 		p.score = ps.score;
 		p.alive = ps.alive;
 	}
@@ -161,9 +162,13 @@ bool GameView::try_read(Game &g, bool reset) {
 
 	players = g.players;
 
-	for (unsigned i = 0; i < std::min(size, g.players.size()); ++i)
+	for (unsigned i = 0; i < std::min(size, g.players.size()); ++i) {
 		if (players_alive[i] != g.players[i].alive)
 			players_died.emplace_back(i);
+
+		players[i].alive = g.players[i].alive;
+		players[i].score = g.players[i].score;
+	}
 	// end todo
 
 	if (g.modflags & (unsigned)GameMod::entities) {

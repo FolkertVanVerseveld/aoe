@@ -30,14 +30,15 @@ int64_t PlayerAchievements::recompute() noexcept {
 	return score;
 }
 
-Player::Player(const PlayerSetting &ps, size_t explored_max) : init(ps), res(ps.res), achievements(), explored_max(explored_max), entities(), alive(true) {}
+Player::Player(const PlayerSetting &ps, size_t explored_max) : init(ps), res(ps.res), achievements(), explored_max(explored_max), entities(), alive(true) {
+	achievements.alive = alive;
+}
 
 PlayerView Player::view() const noexcept {
 	PlayerView v(init);
 
 	v.res = res;
 	v.score = achievements.score;
-	v.alive = alive;
 
 	return v;
 }

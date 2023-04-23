@@ -275,33 +275,6 @@ public:
 	int64_t score;
 
 	int64_t recompute() noexcept;
-
-	// NOTE this does not guarantee equalness, but if it's false, it's always unequal!
-	friend bool operator==(const PlayerAchievements &lhs, const PlayerAchievements &rhs) {
-		if (lhs.score != rhs.score)
-			return false;
-
-		if (lhs.alive != rhs.alive)
-			return false;
-
-		if (lhs.military_score != rhs.military_score)
-			return false;
-
-		if (lhs.economy_score != rhs.economy_score)
-			return false;
-
-		if (lhs.religion_score != rhs.religion_score)
-			return false;
-
-		if (lhs.technology_score != rhs.technology_score)
-			return false;
-
-		return lhs.technologies == rhs.technologies && lhs.wonders == rhs.wonders;
-	}
-
-	friend bool operator!=(const PlayerAchievements &lhs, const PlayerAchievements &rhs) {
-		return !(lhs == rhs);
-	}
 };
 
 class PlayerView;
