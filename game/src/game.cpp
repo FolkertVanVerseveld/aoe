@@ -2,6 +2,7 @@
 #include "server.hpp"
 
 #include "../engine.hpp"
+#include "../net/protocol.hpp"
 
 #include <tracy/Tracy.hpp>
 
@@ -59,6 +60,19 @@ void Game::set_players(const std::vector<PlayerSetting> &lst) {
 
 	for (const PlayerSetting &ps : lst)
 		players.emplace_back(ps);
+
+	modflags |= (unsigned)GameMod::players;
+}
+
+void Game::set_player_score(unsigned idx, const NetPlayerScore &ps) {
+	std::lock_guard<std::mutex> lk(m);
+
+	if (idx < players.size()) {
+		PlayerView &p = players[idx];
+		printf("%s: player %u: score=%llu, alive=%d\n", __func__, idx, p.score, !!ps.alive);
+		p.score = ps.score;
+		p.alive = ps.alive;
+	}
 
 	modflags |= (unsigned)GameMod::players;
 }
@@ -148,9 +162,13 @@ bool GameView::try_read(Game &g, bool reset) {
 
 	players = g.players;
 
-	for (unsigned i = 0; i < std::min(size, g.players.size()); ++i)
+	for (unsigned i = 0; i < std::min(size, g.players.size()); ++i) {
 		if (players_alive[i] != g.players[i].alive)
 			players_died.emplace_back(i);
+
+		players[i].alive = g.players[i].alive;
+		players[i].score = g.players[i].score;
+	}
 	// end todo
 
 	if (g.modflags & (unsigned)GameMod::entities) {

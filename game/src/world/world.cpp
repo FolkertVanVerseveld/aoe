@@ -12,7 +12,7 @@ Entity *WorldView::try_get(IdPoolRef r) {
 	return w.entities.try_get(r);
 }
 
-World::World() : m(), m_events(), t(), entities(), players(), events_in(), events_out(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
+World::World() : m(), m_events(), t(), entities(), players(), player_achievements(), events_in(), events_out(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -60,9 +60,9 @@ bool WorldView::try_convert(Entity &e, Entity &aggressor) {
 	for (Player &p : w.players)
 		p.entities.erase(e.ref);
 
-	unsigned player = aggressor.color;
+	unsigned player = aggressor.playerid;
 
-	e.color = player;
+	e.playerid = player;
 	w.players.at(player).entities.emplace(e.ref);
 
 	return true;
@@ -93,14 +93,22 @@ void World::tick_entities() {
 			if (!more) {
 				Entity *t = entities.try_get(ent.target_ref);
 				if (t) {
+					assert(t->is_alive());
 					//printf("TODO attack (%u,%u) to (%u,%u)\n", ent.ref.first, ent.ref.second, ent.target_ref.first, ent.target_ref.second);
 					dirty |= t->hit(wv, ent);
 					dirty_entities.emplace(t->ref);
 
 					// if t died just now, remove from player
 					if (!t->is_alive()) {
-						for (Player &p : players)
-							p.entities.erase(t->ref);
+						// TODO update player achievements
+						players[t->playerid].lost_entity(t->ref);
+
+						if (t->playerid != 0) { // ensure entity isn't owned by gaia
+							if (is_building(t->type))
+								players[ent.playerid].killed_building();
+							else
+								players[ent.playerid].killed_unit();
+						}
 					}
 				}
 			}
@@ -154,6 +162,8 @@ void World::stop() {
 	NetPkg pkg;
 	pkg.set_gameover();
 	s->broadcast(pkg);
+
+	send_scores();
 }
 
 void World::tick() {
@@ -161,6 +171,14 @@ void World::tick() {
 	std::lock_guard<std::mutex> lk(m);
 	tick_entities();
 	tick_players();
+}
+
+void World::save_scores() {
+	ZoneScoped;
+	player_achievements.clear();
+
+	for (Player &p : players)
+		player_achievements.emplace_back(p.get_score());
 }
 
 /** Process all events sent from peers to us. */
@@ -224,6 +242,31 @@ void World::push_events() {
 	}
 
 	events_out.clear();
+
+	// check player achievements score
+	assert(player_achievements.empty() || player_achievements.size() == players.size());
+
+	// skip gaia
+	for (unsigned i = 1; i < players.size(); ++i) {
+		PlayerAchievements pa(players[i].get_score());
+
+		if (i >= player_achievements.size() || player_achievements[i].score != pa.score) {
+			if (i >= player_achievements.size())
+				player_achievements.emplace_back(pa);
+
+			pkg.set_player_score(i, pa);
+			s->broadcast(pkg);
+		}
+	}
+}
+
+void World::send_scores() {
+	NetPkg pkg;
+
+	for (unsigned i = 1; i < players.size(); ++i) {
+		pkg.set_player_score(i, players[i].get_score());
+		s->broadcast(pkg);
+	}
 }
 
 void World::push_gamespeed_control(WorldEvent &ev) {
@@ -289,9 +332,7 @@ void World::entity_kill(WorldEvent &ev) {
 			// TODO
 		} else {
 			if (ent->die()) {
-				for (Player &p : players)
-					p.entities.erase(ref);
-
+				players[ent->playerid].lost_entity(ref);
 				dirty_entities.emplace(ent->ref);
 			}
 			return;
@@ -506,6 +547,8 @@ void World::startup() {
 	// start!
 	pkg.set_start_game();
 	s->broadcast(pkg);
+
+	send_scores();
 }
 
 void World::send_gameticks(unsigned n) {
@@ -544,6 +587,8 @@ void World::eventloop(Server &s) {
 		if (running) {
 			if (!gameover)
 				send_gameticks(steps);
+
+			save_scores();
 
 			// do steps
 			for (; steps && !gameover; --steps)

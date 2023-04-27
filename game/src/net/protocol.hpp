@@ -55,6 +55,7 @@ enum class NetPlayerControlType {
 	set_player_name,
 	set_civ,
 	set_team,
+	set_score,
 };
 
 enum class NetPeerControlType {
@@ -64,19 +65,39 @@ enum class NetPeerControlType {
 	set_player_idx,
 };
 
+struct NetPlayerScore final {
+	uint32_t military;
+	int32_t economy;
+	uint32_t religion;
+	uint32_t technology;
+	int64_t score;
+	uint16_t wonders;
+	uint16_t technologies;
+	uint16_t playerid;
+	uint8_t age;
+	bool alive;
+	bool most_technologies;
+	bool bronze_first;
+	bool iron_first;
+
+	static constexpr unsigned size = 4 * 4 + 8 + 3 * 2 + 1 + 1;
+};
+
 class NetPlayerControl final {
 public:
 	NetPlayerControlType type;
-	std::variant<std::nullopt_t, IdPoolRef, uint16_t, std::pair<uint16_t, std::string>, std::pair<uint16_t, uint16_t>> data;
+	std::variant<std::nullopt_t, IdPoolRef, uint16_t, std::pair<uint16_t, std::string>, std::pair<uint16_t, uint16_t>, NetPlayerScore> data;
 
 	static constexpr unsigned resize_size = 2 * sizeof(uint16_t);
 	static constexpr unsigned set_pos_size = 3 * sizeof(uint16_t);
+	static constexpr unsigned set_score_size = 2 + NetPlayerScore::size;
 
 	NetPlayerControl() : type(NetPlayerControlType::resize), data(std::nullopt) {}
 	NetPlayerControl(NetPlayerControlType type, uint16_t arg) : type(type), data(arg) {}
 	NetPlayerControl(NetPlayerControlType type, IdPoolRef ref) : type(type), data(ref) {}
 	NetPlayerControl(NetPlayerControlType type, uint16_t idx, const std::string &name) : type(type), data(std::make_pair(idx, name)) {}
 	NetPlayerControl(NetPlayerControlType type, uint16_t idx, uint16_t pos) : type(type), data(std::make_pair(idx, pos)) {}
+	NetPlayerControl(const NetPlayerScore &s) : type(NetPlayerControlType::set_score), data(s) {}
 };
 
 class NetPeerControl final {

@@ -43,7 +43,7 @@ void UICache::load_entities() {
 			}
 
 			const ImageSet &s_tcp = a.anim_at(bld_player);
-			IdPoolRef imgref = s_tcp.at(ent.color, 0);
+			IdPoolRef imgref = s_tcp.at(ent.playerid, 0);
 			const gfx::ImageRef &tcp = a.at(imgref);
 
 			x0 = tpos.x - tcp.hotspot_x;
@@ -188,7 +188,7 @@ void UICache::load_entities() {
 			}
 
 			const ImageSet &s_tc = a.anim_at(gif);
-			IdPoolRef imgref = s_tc.try_at(ent.color, ent.subimage);
+			IdPoolRef imgref = s_tc.try_at(ent.playerid, ent.subimage);
 			const gfx::ImageRef &tc = a.at(imgref);
 
 			float x0 = tpos.x - tc.hotspot_x;

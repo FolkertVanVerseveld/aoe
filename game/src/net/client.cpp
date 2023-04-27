@@ -194,6 +194,11 @@ void Client::playermod(const NetPlayerControl &ctl) {
 
 			break;
 		}
+		case NetPlayerControlType::set_score: {
+			auto p = std::get<NetPlayerScore>(ctl.data);
+			g.set_player_score(p.playerid, p);
+			break;
+		}
 		default:
 			fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)ctl.type);
 			break;
@@ -274,7 +279,7 @@ void Client::claim_player(unsigned idx) {
 
 void Client::claim_cpu(unsigned idx) {
 	NetPkg pkg;
-	pkg.claim_cpu_setting(idx);
+	pkg.set_cpu_player(idx);
 	send(pkg);
 }
 

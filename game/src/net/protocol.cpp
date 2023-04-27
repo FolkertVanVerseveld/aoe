@@ -96,6 +96,18 @@ unsigned NetPkg::read(const std::string &fmt, std::vector<std::variant<uint64_t,
 				size += 4 * mult;
 				break;
 			}
+			case 'l': case 'L': { // int64/uint64
+				for (unsigned i = 0; i < mult; ++i, offset += 8) {
+					uint64_t v = data.at(offset) << 56ull | data.at(offset + 1) << 48ull
+						| data.at(offset + 2) << 40ull | data.at(offset + 3) << 32ull
+						| data.at(offset + 4) << 24ull | data.at(offset + 5) << 16ull
+						| data.at(offset + 6) << 8ull | data.at(offset + 7);
+					dst.emplace_back(v);
+				}
+
+				size += 8 * mult;
+				break;
+			}
 			case 's': { // std::string (size limited to uint16)
 				if (!has_mult)
 					throw std::runtime_error("string has no length");
@@ -175,6 +187,22 @@ unsigned NetPkg::write(const std::string &fmt, const std::vector<std::variant<ui
 				size += 4 * mult;
 				break;
 			}
+			case 'l': case 'L': { // int64/uint64
+				for (unsigned i = 0; i < mult; ++i, ++argpos) {
+					uint64_t v = std::get<uint64_t>(args.at(argpos));
+					data.emplace_back(v >> 56ull);
+					data.emplace_back(v >> 48ull);
+					data.emplace_back(v >> 40ull);
+					data.emplace_back(v >> 32ull);
+					data.emplace_back(v >> 24ull);
+					data.emplace_back(v >> 16ull);
+					data.emplace_back(v >> 8ull);
+					data.emplace_back(v & 0xffull);
+				}
+
+				size += 8 * mult;
+				break;
+			}
 			case 's': { // std::string (size limited to uint16)
 				if (!has_mult)
 					throw std::runtime_error("string has no length");
@@ -225,26 +253,8 @@ void NetPkg::ntoh() {
 		}
 		case NetPkgType::chat_text:
 			break;
-		case NetPkgType::playermod: {
-			need_payload(NetPlayerControl::resize_size);
-
-			uint16_t *dw = (uint16_t*)data.data();
-
-			dw[0] = ntohs(dw[0]);
-			NetPlayerControlType type = (NetPlayerControlType)dw[0];
-
-			dw[1] = ntohs(dw[1]);
-
-			switch (type) {
-			case NetPlayerControlType::set_player_name:
-			case NetPlayerControlType::set_civ:
-			case NetPlayerControlType::set_team:
-				dw[2] = ntohs(dw[2]);
-				break;
-			}
-
+		case NetPkgType::playermod:
 			break;
-		}
 		case NetPkgType::peermod: {
 			size_t minsize = 2 * sizeof(uint32_t) + sizeof(uint16_t);
 			need_payload(minsize);
@@ -409,24 +419,8 @@ void NetPkg::hton() {
 		}
 		case NetPkgType::chat_text:
 			break;
-		case NetPkgType::playermod: {
-			uint16_t *dw = (uint16_t*)data.data();
-
-			NetPlayerControlType type = (NetPlayerControlType)dw[0];
-
-			dw[0] = htons(dw[0]);
-			dw[1] = htons(dw[1]);
-
-			switch (type) {
-			case NetPlayerControlType::set_player_name:
-			case NetPlayerControlType::set_civ:
-			case NetPlayerControlType::set_team:
-				dw[2] = htons(dw[2]);
-				break;
-			}
-
+		case NetPkgType::playermod:
 			break;
-		}
 		case NetPkgType::peermod: {
 			uint32_t *dd = (uint32_t*)data.data();
 
@@ -804,47 +798,34 @@ void NetPkg::set_player_resize(size_t size) {
 	if (size > UINT16_MAX)
 		throw std::runtime_error("overflow player resize");
 
-	data.resize(NetPlayerControl::resize_size);
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::resize;
-	dw[1] = (uint16_t)size;
-
-	set_hdr(NetPkgType::playermod);
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H", {(unsigned)NetPlayerControlType::resize, size}, false);
 }
 
 void NetPkg::claim_player_setting(uint16_t idx) {
-	data.resize(NetPlayerControl::resize_size);
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_ref;
-	dw[1] = idx;
-
-	set_hdr(NetPkgType::playermod);
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H", {(unsigned)NetPlayerControlType::set_ref, idx}, false);
 }
 
 void NetPkg::set_player_died(uint16_t idx) {
-	data.resize(NetPlayerControl::resize_size);
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::died;
-	dw[1] = idx;
-
-	set_hdr(NetPkgType::playermod);
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H", {(unsigned)NetPlayerControlType::died, idx}, false);
 }
 
-void NetPkg::claim_cpu_setting(uint16_t idx) {
-	data.resize(NetPlayerControl::resize_size);
+void NetPkg::set_player_score(uint16_t idx, const PlayerAchievements &pa) {
+	PkgWriter out(*this, NetPkgType::playermod);
 
-	uint16_t *dw = (uint16_t*)data.data();
+	unsigned flags = 0;
 
-	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_cpu_ref;
-	dw[1] = idx;
+	if (pa.alive) flags |= 1 << 0;
 
-	set_hdr(NetPkgType::playermod);
+	write("2HLB",
+		{
+			(unsigned)NetPlayerControlType::set_score,
+			idx,
+			pa.score,
+			flags,
+		}, false);
 }
 
 NetPlayerControl NetPkg::get_player_control() {
@@ -854,29 +835,42 @@ NetPlayerControl NetPkg::get_player_control() {
 	if ((NetPkgType)hdr.type != NetPkgType::playermod)
 		throw std::runtime_error("not a player control packet");
 
-	const uint16_t *dw = (const uint16_t*)data.data();
+	std::vector<std::variant<uint64_t, std::string>> args;
+	unsigned pos = 0;
 
-	NetPlayerControlType type = (NetPlayerControlType)dw[0];
+	pos += read("H", args, pos);
+	NetPlayerControlType type = (NetPlayerControlType)std::get<uint64_t>(args.at(0));
 
 	switch (type) {
 		case NetPlayerControlType::resize:
+			pos += read("H", args, pos);
+			return NetPlayerControl(type, (uint16_t)std::get<uint64_t>(args.at(1)));
 		case NetPlayerControlType::erase:
 		case NetPlayerControlType::died:
 		case NetPlayerControlType::set_ref:
 		case NetPlayerControlType::set_cpu_ref:
-			return NetPlayerControl(type, dw[1]);
-		case NetPlayerControlType::set_player_name: {
-			uint16_t idx = dw[1], n = dw[2];
-
-			std::string name(n, ' ');
-			memcpy(name.data(), &dw[3], n);
-
-			return NetPlayerControl(type, idx, name);
-		}
+			pos += read("H", args, pos);
+			return NetPlayerControl(type, (uint16_t)std::get<uint64_t>(args.at(1)));
+		case NetPlayerControlType::set_player_name:
+			pos += read("H40s", args, pos);
+			return NetPlayerControl(type, (uint16_t)std::get<uint64_t>(args.at(1)), std::get<std::string>(args.at(2)));
 		case NetPlayerControlType::set_civ:
-		case NetPlayerControlType::set_team: {
-			uint16_t idx = dw[1], pos = dw[2];
-			return NetPlayerControl(type, idx, pos);
+		case NetPlayerControlType::set_team:
+			pos += read("2H", args, pos);
+			return NetPlayerControl(type, (uint16_t)std::get<uint64_t>(args.at(1)), (uint16_t)std::get<uint64_t>(args.at(2)));
+		case NetPlayerControlType::set_score: {
+			NetPlayerScore ps{ 0 };
+			unsigned flags;
+
+			pos += read("HLB", args, pos);
+			ps.playerid = std::get<uint64_t>(args.at(1));
+			ps.score = std::get<uint64_t>(args.at(2));
+
+			flags = std::get<uint64_t>(args.at(3));
+
+			ps.alive = !!(flags & (1 << 0));
+
+			return NetPlayerControl(ps);
 		}
 		default:
 			throw std::runtime_error("bad player control type");
@@ -939,26 +933,13 @@ void NetPkg::set_claim_player(IdPoolRef ref, uint16_t idx) {
 }
 
 void NetPkg::set_cpu_player(uint16_t idx) {
-	data.resize(NetPlayerControl::resize_size);
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)(unsigned)NetPlayerControlType::set_cpu_ref;
-	dw[1] = (uint16_t)idx;
-
-	set_hdr(NetPkgType::playermod);
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H", {(unsigned)NetPlayerControlType::set_cpu_ref, idx}, false);
 }
 
 void NetPkg::playermod2(NetPlayerControlType type, uint16_t idx, uint16_t pos) {
-	data.resize(NetPlayerControl::set_pos_size);
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)(unsigned)type;
-	dw[1] = idx;
-	dw[2] = pos;
-
-	set_hdr(NetPkgType::playermod);
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("3H", {(unsigned)type, idx, pos}, false);
 }
 
 void NetPkg::set_player_civ(uint16_t idx, uint16_t civ) {
@@ -970,19 +951,8 @@ void NetPkg::set_player_team(uint16_t idx, uint16_t team) {
 }
 
 void NetPkg::set_player_name(uint16_t idx, const std::string &s) {
-	size_t minsize = NetPlayerControl::resize_size + sizeof(uint16_t);
-
-	data.resize(minsize + s.size());
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)NetPlayerControlType::set_player_name;
-	dw[1] = idx;
-	dw[2] = (uint16_t)s.size();
-
-	memcpy(&dw[3], s.data(), s.size());
-
-	set_hdr(NetPkgType::playermod);
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H40s", {(unsigned)NetPlayerControlType::set_player_name, idx, s}, false);
 }
 
 void NetPkg::set_ref_username(IdPoolRef ref, const std::string &s) {
@@ -1102,7 +1072,7 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	dw = (uint16_t*)&dd[4];
 	int16_t *sw = (int16_t*)dw;
 	dw[0] = e.angle * UINT16_MAX / (2 * M_PI);
-	dw[1] = e.color;
+	dw[1] = e.playerid;
 	dw[2] = e.subimage;
 
 	uint8_t *db = (uint8_t*)&dw[3];
@@ -1205,7 +1175,7 @@ NetEntityMod NetPkg::get_entity_mod() {
 		dw = (const uint16_t*)&dd[4];
 		sw = (const int16_t*)dw;
 		ev.angle = dw[0] * (2 * M_PI) / UINT16_MAX;
-		ev.color = dw[1];
+		ev.playerid = dw[1];
 		ev.subimage = dw[2];
 
 		db = (const uint8_t*)&dw[3];
