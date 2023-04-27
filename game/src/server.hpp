@@ -55,7 +55,7 @@ public:
 	std::string username();
 
 	void set_start_game();
-	void set_gameover();
+	void set_gameover(unsigned);
 
 	void set_scn_vars(const ScenarioSettings&);
 	ScenarioSettings get_scn_vars();
@@ -251,7 +251,7 @@ private:
 
 	bool single_team() const noexcept;
 
-	void stop();
+	void stop(unsigned);
 
 	void entity_kill(WorldEvent &ev);
 	void entity_task(WorldEvent &ev);

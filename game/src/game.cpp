@@ -14,7 +14,7 @@ enum class GameMod {
 	players = 1 << 2,
 };
 
-Game::Game() : m(), t(), players(), entities(), entities_killed(), modflags((unsigned)-1), ticks(0), running(false) {}
+Game::Game() : m(), t(), players(), entities(), entities_killed(), modflags((unsigned)-1), ticks(0), team_won(0), running(false) {}
 
 void Game::resize(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m);
@@ -28,6 +28,19 @@ void Game::tick(unsigned n) {
 	running = true;
 	ticks += n;
 	imgtick(n);
+}
+
+void Game::gameover(unsigned team) noexcept {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
+	running = false;
+	team_won = (int)team;
+}
+
+unsigned Game::winning_team() noexcept {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
+	return team_won;
 }
 
 void Game::imgtick(unsigned n) {

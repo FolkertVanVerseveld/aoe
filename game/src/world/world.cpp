@@ -141,7 +141,7 @@ void World::tick_players() {
 
 	std::set<unsigned> alive_teams;
 
-	// check surviving teams
+	// collect surviving teams
 	for (unsigned i = 1; i < players.size(); ++i) {
 		Player &p = players[i];
 		if (p.alive)
@@ -149,18 +149,18 @@ void World::tick_players() {
 	}
 
 	if (alive_teams.size() <= 1) {
-		// game has ended
-		stop();
+		// game has ended. if no teams remain, gaia 'wins'. otherwise: remaining team
+		stop(alive_teams.empty() ? 0 : *alive_teams.begin());
 		return;
 	}
 }
 
-void World::stop() {
+void World::stop(unsigned team) {
 	ZoneScoped;
 	gameover = true;
 
 	NetPkg pkg;
-	pkg.set_gameover();
+	pkg.set_gameover(team);
 	s->broadcast(pkg);
 
 	send_scores();

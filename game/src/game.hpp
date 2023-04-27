@@ -329,6 +329,7 @@ class Game final {
 	std::set<Entity> entities;
 	std::vector<EntityView> entities_killed;
 	unsigned modflags, ticks;
+	unsigned team_won;
 	friend GameView;
 public:
 	std::atomic<bool> running;
@@ -348,6 +349,9 @@ public:
 	void entity_add(const EntityView &ev);
 	bool entity_kill(IdPoolRef);
 	void entity_update(const EntityView &ev);
+
+	void gameover(unsigned team) noexcept;
+	unsigned winning_team() noexcept;
 private:
 	void imgtick(unsigned n);
 };

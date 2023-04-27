@@ -254,6 +254,8 @@ void NetPkg::ntoh() {
 		case NetPkgType::chat_text:
 			break;
 		case NetPkgType::playermod:
+		case NetPkgType::gameover:
+			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
 			size_t minsize = 2 * sizeof(uint32_t) + sizeof(uint16_t);
@@ -291,7 +293,6 @@ void NetPkg::ntoh() {
 			break;
 		}
 		case NetPkgType::start_game:
-		case NetPkgType::gameover:
 		case NetPkgType::gamespeed_control:
 			// no payload
 			break;
@@ -418,8 +419,9 @@ void NetPkg::hton() {
 			break;
 		}
 		case NetPkgType::chat_text:
-			break;
 		case NetPkgType::playermod:
+		case NetPkgType::gameover:
+			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
 			uint32_t *dd = (uint32_t*)data.data();
@@ -450,7 +452,6 @@ void NetPkg::hton() {
 			break;
 		}
 		case NetPkgType::start_game:
-		case NetPkgType::gameover:
 		case NetPkgType::gamespeed_control:
 			// no payload
 			break;
@@ -707,9 +708,9 @@ void NetPkg::set_start_game() {
 	set_hdr(NetPkgType::start_game);
 }
 
-void NetPkg::set_gameover() {
-	data.clear();
-	set_hdr(NetPkgType::gameover);
+void NetPkg::set_gameover(unsigned team) {
+	PkgWriter out(*this, NetPkgType::gameover);
+	write("H", { team }, false);
 }
 
 void NetPkg::cam_set(float x, float y, float w, float h) {
