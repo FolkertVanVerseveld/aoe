@@ -306,11 +306,12 @@ class PlayerView final {
 public:
 	PlayerSetting init;
 	Resources res;
+	uint32_t military;
 	int64_t score;
 	unsigned age;
 	bool alive;
 
-	PlayerView(const PlayerSetting &ps) : init(ps), res(ps.res), score(0), age(1), alive(true) {}
+	PlayerView(const PlayerSetting &ps) : init(ps), res(ps.res), military(0), score(0), age(1), alive(true) {}
 };
 
 class GameView;

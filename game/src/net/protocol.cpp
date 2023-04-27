@@ -819,10 +819,11 @@ void NetPkg::set_player_score(uint16_t idx, const PlayerAchievements &pa) {
 
 	if (pa.alive) flags |= 1 << 0;
 
-	write("2HLB",
+	write("2HILB",
 		{
 			(unsigned)NetPlayerControlType::set_score,
 			idx,
+			pa.military_score,
 			pa.score,
 			flags,
 		}, false);
@@ -862,11 +863,12 @@ NetPlayerControl NetPkg::get_player_control() {
 			NetPlayerScore ps{ 0 };
 			unsigned flags;
 
-			pos += read("HLB", args, pos);
+			pos += read("HILB", args, pos);
 			ps.playerid = std::get<uint64_t>(args.at(1));
-			ps.score = std::get<uint64_t>(args.at(2));
+			ps.military = std::get<uint64_t>(args.at(2));
+			ps.score = std::get<uint64_t>(args.at(3));
 
-			flags = std::get<uint64_t>(args.at(3));
+			flags = std::get<uint64_t>(args.at(4));
 
 			ps.alive = !!(flags & (1 << 0));
 

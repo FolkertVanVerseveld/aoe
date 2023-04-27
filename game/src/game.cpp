@@ -69,8 +69,9 @@ void Game::set_player_score(unsigned idx, const NetPlayerScore &ps) {
 
 	if (idx < players.size()) {
 		PlayerView &p = players[idx];
-		printf("%s: player %u: score=%llu, alive=%d\n", __func__, idx, p.score, !!ps.alive);
+
 		p.score = ps.score;
+		p.military = ps.military;
 		p.alive = ps.alive;
 	}
 
@@ -167,6 +168,7 @@ bool GameView::try_read(Game &g, bool reset) {
 			players_died.emplace_back(i);
 
 		players[i].alive = g.players[i].alive;
+		players[i].military = g.players[i].military;
 		players[i].score = g.players[i].score;
 	}
 	// end todo
