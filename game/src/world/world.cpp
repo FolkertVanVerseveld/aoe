@@ -110,6 +110,8 @@ void World::tick_entities() {
 								players[ent.playerid].killed_unit();
 						}
 					}
+
+					// TODO conversion is not detected!
 				}
 			}
 			break;
@@ -158,6 +160,11 @@ void World::tick_players() {
 void World::stop(unsigned team) {
 	ZoneScoped;
 	gameover = true;
+
+	if (team)
+		printf("gameover. winner: team %u\n", team);
+	else
+		puts("gameover. no winner");
 
 	NetPkg pkg;
 	pkg.set_gameover(team);
