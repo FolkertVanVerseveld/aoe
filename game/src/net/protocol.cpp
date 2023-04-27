@@ -97,11 +97,11 @@ unsigned NetPkg::read(const std::string &fmt, std::vector<std::variant<uint64_t,
 				break;
 			}
 			case 'l': case 'L': { // int64/uint64
-				for (unsigned i = 0; i < mult; ++i, offset += 4) {
-					uint64_t v = data.at(offset) << 56 | data.at(offset + 1) << 48
-						| data.at(offset + 2) << 40 | data.at(offset + 3) << 32
-						| data.at(offset + 4) << 24 | data.at(offset + 5) << 16
-						| data.at(offset + 6) << 8 | data.at(offset + 7);
+				for (unsigned i = 0; i < mult; ++i, offset += 8) {
+					uint64_t v = data.at(offset) << 56ull | data.at(offset + 1) << 48ull
+						| data.at(offset + 2) << 40ull | data.at(offset + 3) << 32ull
+						| data.at(offset + 4) << 24ull | data.at(offset + 5) << 16ull
+						| data.at(offset + 6) << 8ull | data.at(offset + 7);
 					dst.emplace_back(v);
 				}
 
@@ -190,14 +190,14 @@ unsigned NetPkg::write(const std::string &fmt, const std::vector<std::variant<ui
 			case 'l': case 'L': { // int64/uint64
 				for (unsigned i = 0; i < mult; ++i, ++argpos) {
 					uint64_t v = std::get<uint64_t>(args.at(argpos));
-					data.emplace_back(v >> 56);
-					data.emplace_back(v >> 48);
-					data.emplace_back(v >> 40);
-					data.emplace_back(v >> 32);
-					data.emplace_back(v >> 24);
-					data.emplace_back(v >> 16);
-					data.emplace_back(v >> 8);
-					data.emplace_back(v & 0xff);
+					data.emplace_back(v >> 56ull);
+					data.emplace_back(v >> 48ull);
+					data.emplace_back(v >> 40ull);
+					data.emplace_back(v >> 32ull);
+					data.emplace_back(v >> 24ull);
+					data.emplace_back(v >> 16ull);
+					data.emplace_back(v >> 8ull);
+					data.emplace_back(v & 0xffull);
 				}
 
 				size += 8 * mult;
