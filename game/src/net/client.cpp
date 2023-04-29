@@ -4,7 +4,7 @@
 
 namespace aoe {
 
-Client::Client() : s(), port(0), m_connected(false), starting(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1), gameover(false) {}
+Client::Client() : s(), port(0), m_connected(false), starting(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1), playerindex(0), gameover(false) {}
 
 Client::~Client() {
 	stop();
@@ -439,6 +439,9 @@ void Client::peermod(const NetPeerControl &ctl) {
 
 			if (pos - 1 < scn.players.size())
 				scn.players[pos - 1].ai = false;
+
+			if (ref == me)
+				playerindex = pos;
 
 			modflags |= (unsigned)ClientModFlags::scn;
 			break;

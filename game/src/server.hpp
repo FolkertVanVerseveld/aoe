@@ -56,6 +56,7 @@ public:
 
 	void set_start_game();
 	void set_gameover(unsigned);
+	unsigned get_gameover();
 
 	void set_scn_vars(const ScenarioSettings&);
 	ScenarioSettings get_scn_vars();
@@ -335,6 +336,7 @@ class Client final {
 	IdPoolRef me;
 	ScenarioSettings scn;
 	unsigned modflags;
+	unsigned playerindex;
 	std::atomic<bool> gameover;
 	friend Debug;
 	friend ClientView;

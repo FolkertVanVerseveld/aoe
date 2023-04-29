@@ -713,6 +713,15 @@ void NetPkg::set_gameover(unsigned team) {
 	write("H", { team }, false);
 }
 
+unsigned NetPkg::get_gameover() {
+	std::vector<std::variant<uint64_t, std::string>> args;
+	unsigned pos = 0;
+
+	read("H", args, pos);
+
+	return (unsigned)std::get<uint64_t>(args.at(0));
+}
+
 void NetPkg::cam_set(float x, float y, float w, float h) {
 	data.resize(NetCamSet::size);
 
