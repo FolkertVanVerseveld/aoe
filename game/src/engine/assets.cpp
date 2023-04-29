@@ -146,7 +146,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		slp = drs_ui.open_slp(DrsId::img_editor);
 		img_dialog_editor.load(pal.get(), slp, 0, 0);
 
-#define load_gif(id) id.load(drs_ui, pal.get(), DrsId:: ##id)
+#define load_gif(id) id.load(drs_ui, pal.get(), DrsId::##id)
 		load_gif(gif_building_icons);
 		load_gif(gif_unit_icons);
 		load_gif(gif_hpbar);

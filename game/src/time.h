@@ -9,13 +9,21 @@
 // Sleep is in ms, sleep in secs
 #define sleep(s) Sleep(s*1000)
 
+#ifndef CLOCK_MONOTONIC
 #define CLOCK_MONOTONIC 0
+#endif
 
 // START code taken from https://stackoverflow.com/questions/5404277/porting-clock-gettime-to-windows
 // windows version of posix clock_gettime. NOTE clock type is ignored
+#if defined(__GNUC__) || defined(__GNUG__)
+#define exp7           10000000ull     //1E+7     //C-file part
+#define exp9         1000000000ull     //1E+9
+#define w2ux 116444736000000000ull     //1.jan1601 to 1.jan1970
+#else
 #define exp7           10000000i64     //1E+7     //C-file part
 #define exp9         1000000000i64     //1E+9
 #define w2ux 116444736000000000i64     //1.jan1601 to 1.jan1970
+#endif
 
 #if __cplusplus
 extern "C" {
