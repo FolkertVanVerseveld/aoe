@@ -34,13 +34,19 @@ void Game::gameover(unsigned team) noexcept {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m);
 	running = false;
-	team_won = (int)team;
+	team_won = team;
 }
 
 unsigned Game::winning_team() noexcept {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m);
 	return team_won;
+}
+
+PlayerView Game::pv(unsigned idx) {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
+	return players.at(idx);
 }
 
 void Game::imgtick(unsigned n) {

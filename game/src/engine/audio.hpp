@@ -65,6 +65,7 @@ enum class SfxId {
 	bld_die3,
 	player_resign,
 	gameover_defeat,
+	gameover_victory,
 	villager_random,
 	villager1,
 	villager2,

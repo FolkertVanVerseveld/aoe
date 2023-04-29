@@ -352,6 +352,8 @@ public:
 
 	void gameover(unsigned team) noexcept;
 	unsigned winning_team() noexcept;
+
+	PlayerView pv(unsigned);
 private:
 	void imgtick(unsigned n);
 };

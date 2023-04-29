@@ -246,7 +246,8 @@ void Engine::display_ui() {
 			draw_background_border();
 			break;
 		case MenuState::defeat:
-			show_defeat();
+		case MenuState::victory:
+			show_gameover();
 			draw_background_border();
 			break;
 		case MenuState::editor_menu:
@@ -530,6 +531,9 @@ void Engine::set_background(MenuState s) {
 	case MenuState::defeat:
 		id = io::DrsId::bkg_defeat;
 		break;
+	case MenuState::victory:
+		id = io::DrsId::bkg_victory;
+		break;
 	case MenuState::editor_menu:
 		id = io::DrsId::bkg_editor_menu;
 		break;
@@ -599,6 +603,9 @@ void Engine::idle() {
 			break;
 		case MenuState::defeat:
 			sfx.play_music(MusicId::fail);
+			break;
+		case MenuState::victory:
+			sfx.play_music(MusicId::success);
 			break;
 		}
 	}

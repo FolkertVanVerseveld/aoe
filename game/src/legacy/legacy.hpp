@@ -250,6 +250,7 @@ enum class DrsId {
 	sfx_priest_attack2 = 5051,
 
 	sfx_player_resign = 50306,
+	sfx_gameover_victory = 50320,
 	sfx_gameover_defeat = 50321,
 };
 

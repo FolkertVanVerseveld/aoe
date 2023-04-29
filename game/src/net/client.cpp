@@ -4,7 +4,7 @@
 
 namespace aoe {
 
-Client::Client() : s(), port(0), m_connected(false), starting(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1), playerindex(0), gameover(false) {}
+Client::Client() : s(), port(0), m_connected(false), starting(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1), playerindex(0), team_me(0), victory(false), gameover(false) {}
 
 Client::~Client() {
 	stop();
@@ -38,9 +38,20 @@ void Client::mainloop() {
 					break;
 				}
 				case NetPkgType::gameover: {
-					gameover = true;
+					std::lock_guard<std::mutex> lk(m);
+					g.gameover(pkg.get_gameover());
+					//printf("gameover. team %u wins\n", pkg.get_gameover());
 					EngineView ev;
-					ev.play_sfx(SfxId::gameover_defeat);
+
+					unsigned me_team = g.pv(playerindex).init.team;
+					victory = me_team == g.winning_team();
+					gameover = true;
+
+					if (victory)
+						ev.play_sfx(SfxId::gameover_victory); // TODO /defeat/victory/
+					else
+						ev.play_sfx(SfxId::gameover_defeat);
+
 					break;
 				}
 				case NetPkgType::set_scn_vars:

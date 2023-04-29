@@ -17,6 +17,7 @@ bool ClientView::try_read(Client &c) {
 		me = c.me;
 
 	gameover = c.gameover;
+	victory = c.victory;
 
 	c.modflags = 0;
 

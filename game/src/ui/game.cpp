@@ -277,7 +277,7 @@ void UICache::show_multiplayer_game() {
 			e->show_achievements = !e->show_achievements;
 
 		if (ImGui::MenuItem("Quit")) {
-			e->cancel_multiplayer_host(MenuState::defeat);
+			e->cancel_multiplayer_host(e->cv.victory ? MenuState::victory : MenuState::defeat);
 			ImGui::CloseCurrentPopup();
 		}
 
@@ -346,7 +346,7 @@ void UICache::show_multiplayer_game() {
 	if (e->cv.gameover) {
 		FontGuard fg(e->fnt.fnt_copper2);
 
-		const char *txt = "Game Over";
+		const char *txt = e->cv.victory ? "Victory" : "Game Over";
 
 		ImVec2 sz(ImGui::CalcTextSize(txt));
 

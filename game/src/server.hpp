@@ -336,7 +336,8 @@ class Client final {
 	IdPoolRef me;
 	ScenarioSettings scn;
 	unsigned modflags;
-	unsigned playerindex;
+	unsigned playerindex, team_me;
+	bool victory;
 	std::atomic<bool> gameover;
 	friend Debug;
 	friend ClientView;
@@ -408,7 +409,7 @@ class ClientView final {
 public:
 	IdPoolRef me;
 	ScenarioSettings scn;
-	bool gameover;
+	bool gameover, victory;
 
 	ClientView();
 

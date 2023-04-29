@@ -317,6 +317,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 #define sfx(id) eng.sfx.load_sfx(SfxId:: id, drs_ui.open_wav(DrsId:: sfx_ ## id))
 	eng.sfx.load_sfx(SfxId::sfx_chat, drs_ui.open_wav(DrsId::sfx_chat));
 	sfx(player_resign);
+	sfx(gameover_victory);
 	sfx(gameover_defeat);
 #undef sfx
 }

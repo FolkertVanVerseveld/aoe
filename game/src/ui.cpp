@@ -976,7 +976,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 	}
 }
 
-void Engine::show_defeat() {
+void Engine::show_gameover() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(vp->WorkPos);
@@ -1233,6 +1233,9 @@ void Engine::draw_background_border() {
 		break;
 	case MenuState::defeat:
 		col = a.bkg_cols.at(io::DrsId::bkg_defeat);
+		break;
+	case MenuState::victory:
+		col = a.bkg_cols.at(io::DrsId::bkg_victory);
 		break;
 	case MenuState::editor_menu:
 	case MenuState::editor_scenario:
