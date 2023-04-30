@@ -79,7 +79,7 @@ unsigned NetPkg::read(const std::string &fmt, std::vector<std::variant<uint64_t,
 			}
 			case 'h': case 'H': { // int16/uint16
 				for (unsigned i = 0; i < mult; ++i, offset += 2) {
-					uint16_t v = data.at(offset) << 8 | data.at(offset + 1);
+					uint16_t v = (uint16_t)data.at(offset) << 8 | (uint16_t)data.at(offset + 1);
 					dst.emplace_back((uint64_t)v);
 				}
 
@@ -88,8 +88,8 @@ unsigned NetPkg::read(const std::string &fmt, std::vector<std::variant<uint64_t,
 			}
 			case 'i': case 'I': { // int32/uint32
 				for (unsigned i = 0; i < mult; ++i, offset += 4) {
-					uint32_t v = data.at(offset) << 24 | data.at(offset + 1) << 16
-						| data.at(offset + 2) << 8 | data.at(offset + 3);
+					uint32_t v = (uint32_t)data.at(offset) << 24 | (uint32_t)data.at(offset + 1) << 16
+						| (uint32_t)data.at(offset + 2) << 8 | (uint32_t)data.at(offset + 3);
 					dst.emplace_back((uint64_t)v);
 				}
 
@@ -98,10 +98,10 @@ unsigned NetPkg::read(const std::string &fmt, std::vector<std::variant<uint64_t,
 			}
 			case 'l': case 'L': { // int64/uint64
 				for (unsigned i = 0; i < mult; ++i, offset += 8) {
-					uint64_t v = data.at(offset) << 56ull | data.at(offset + 1) << 48ull
-						| data.at(offset + 2) << 40ull | data.at(offset + 3) << 32ull
-						| data.at(offset + 4) << 24ull | data.at(offset + 5) << 16ull
-						| data.at(offset + 6) << 8ull | data.at(offset + 7);
+					uint64_t v = (uint64_t)data.at(offset) << 56ull | (uint64_t)data.at(offset + 1) << 48ull
+						| (uint64_t)data.at(offset + 2) << 40ull | (uint64_t)data.at(offset + 3) << 32ull
+						| (uint64_t)data.at(offset + 4) << 24ull | (uint64_t)data.at(offset + 5) << 16ull
+						| (uint64_t)data.at(offset + 6) << 8ull | (uint64_t)data.at(offset + 7);
 					dst.emplace_back(v);
 				}
 
