@@ -94,13 +94,12 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 	unsigned icon = info.icon;
 	const char *name = info.name.c_str();
 
-	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 8 * scale), IM_COL32_WHITE, "Egyptian");
+	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 8 * scale), IM_COL32_WHITE, "Egyptian"); // TODO add civ
 	// 664 -> 22
 	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 22 * scale), IM_COL32_WHITE, name);
 
 	Assets &a = *e->assets.get();
 	const ImageSet &s_bld = a.anim_at(is_building(ent->type) ? io::DrsId::gif_building_icons : io::DrsId::gif_unit_icons);
-	// TODO fetch player color
 	const gfx::ImageRef &img = a.at(s_bld.try_at(ent->playerid, icon));
 
 	// 8,679 -> 8,37
@@ -109,7 +108,6 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 
 	// HP
 	// 8, 733 -> 8,91
-	// TODO fetch hp from entity
 	unsigned hp = 0;
 	unsigned subimage = std::clamp(25u * (ent->stats.maxhp - ent->stats.hp) / ent->stats.maxhp, 0u, 25u);
 
@@ -124,6 +122,33 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 
 	snprintf(buf, sizeof buf, "%u/%u", ent->stats.hp, ent->stats.maxhp);
 	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 102 * scale), IM_COL32_WHITE, buf);
+
+	if (is_building(info.type)) {
+		const ImageSet &s_units = a.anim_at(io::DrsId::gif_unit_icons);
+
+		switch (info.type) {
+			case EntityType::town_center: {
+				const EntityInfo &i_vil = entity_info.at((unsigned)EntityType::villager);
+				const gfx::ImageRef &img_vil = a.at(s_units.try_at(ent->playerid, i_vil.icon));
+
+				x0 = menubar_left + 140 * scale;
+				y0 = top + 10 * scale;
+
+				bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img_vil.bnds.w * scale, y0 + img_vil.bnds.h * scale), ImVec2(img_vil.s0, img_vil.t0), ImVec2(img_vil.s1, img_vil.t1));
+				break;
+			}
+			case EntityType::barracks: {
+				const EntityInfo &i_melee = entity_info.at((unsigned)EntityType::melee1);
+				const gfx::ImageRef &img_melee = a.at(s_units.try_at(ent->playerid, i_melee.icon));
+
+				x0 = menubar_left + 140 * scale;
+				y0 = top + 10 * scale;
+
+				bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img_melee.bnds.w * scale, y0 + img_melee.bnds.h * scale), ImVec2(img_melee.s0, img_melee.t0), ImVec2(img_melee.s1, img_melee.t1));
+				break;
+			}
+		}
+	}
 }
 
 }
