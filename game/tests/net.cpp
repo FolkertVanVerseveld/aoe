@@ -618,7 +618,7 @@ static void ssock_mainloop_send() {
 			fprintf(stderr, "ssock_mainloop_send.%s: mainloop failed\n", __func__);
 	});
 	TcpSocket dummy;
-	char *msg = "Hello, k thx goodbye.";
+	const char *msg = "Hello, k thx goodbye.";
 	dummy.connect(default_host, default_port);
 	dummy.send_fully(msg, (int)strlen(msg) + 1);
 	dummy.close();
@@ -634,7 +634,7 @@ static void ssock_mainloop_echo() {
 			fprintf(stderr, "ssock_mainloop_echo.%s: mainloop failed\n", __func__);
 	});
 	TcpSocket dummy;
-	char *msg = "Hello, k thx goodbye.";
+	const char *msg = "Hello, k thx goodbye.";
 	dummy.connect(default_host, default_port);
 	dummy.send_fully(msg, (int)strlen(msg) + 1);
 	std::vector<char> buf(strlen(msg) + 1, '\0');

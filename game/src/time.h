@@ -23,7 +23,6 @@
 #define exp7           10000000i64     //1E+7     //C-file part
 #define exp9         1000000000i64     //1E+9
 #define w2ux 116444736000000000i64     //1.jan1601 to 1.jan1970
-#endif
 
 #if __cplusplus
 extern "C" {
@@ -54,6 +53,15 @@ static int clock_gettime(int dummy, struct timespec *spec)
 	return 0;
 }
 // END code taken from https://stackoverflow.com/questions/5404277/porting-clock-gettime-to-windows
+#endif
+
+#if __cplusplus
+}
+#endif
+#endif
+
+#if __cplusplus
+extern "C" {
 #endif
 
 #pragma warning(push)

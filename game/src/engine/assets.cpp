@@ -186,7 +186,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		bld_barracks.load(drs_graphics, pal.get(), DrsId::bld_barracks);
 
-#define load_gif(id) id.load(drs_graphics, pal.get(), DrsId:: ##id)
+#define load_gif(id) id.load(drs_graphics, pal.get(), DrsId::id)
 		// TODO shadow images are incorrectly parsed as dynamic, unknown command FE
 		load_gif(gif_bird1);
 		//load_gif(gif_bird1_shadow);
@@ -243,7 +243,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		drs_ids[DrsId::img_editor] = p.add_img(0, 0, img_dialog_editor.surface.get());
 
-#define gif(id) add_gifs(p, id, DrsId:: ##id)
+#define gif(id) add_gifs(p, id, DrsId::id)
 		add_gifs(p, gif_cursors, DrsId::gif_cursors);
 		add_gifs(p, gif_menu_btn_small0, DrsId::gif_menu_btn_small0);
 		add_gifs(p, gif_menu_btn_medium0, DrsId::gif_menu_btn_medium0);
