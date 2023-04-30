@@ -12,8 +12,6 @@
 
 #include <tracy/Tracy.hpp>
 
-int ::rand(void);
-
 namespace aoe {
 
 namespace gfx {
@@ -77,9 +75,11 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 
 		mask.emplace_back(e.left_space, e.left_space + line_size);
 
+#if 0
 		// fill row with garbage so any funny bytes will be visible immediately
 		for (int x = e.left_space, w = x + line_size, p = surface->pitch; x < w; ++x)
 			pixels[y * p + x] = rand();
+#endif
 
 		for (int i = e.left_space, x = i, w = x + line_size, p = surface->pitch; i <= w; ++i, ++cmdpos) {
 			unsigned char bc = cmd.at(cmdpos);

@@ -344,7 +344,7 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Typ
 	in.seekg(sec_start);
 
 	sections.resize(pe.f_nsect);
-	in.read((char*)sections.data(), sections.size() * sizeof sechdr);
+	in.read((char*)sections.data(), sections.size() * sizeof(struct sechdr));
 }
 
 bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
@@ -376,7 +376,7 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 	std::vector<rsrcditem> l1(le32toh(rsrc.r_nid));
 	long long item_pos = rsrc_pos + sizeof rsrc;
 
-	read((char*)l1.data(), item_pos + le32toh(rsrc.r_nname) * sizeof rsrcditem, l1.size() * sizeof rsrcditem);
+	read((char*)l1.data(), item_pos + le32toh(rsrc.r_nname) * sizeof(struct rsrcditem), l1.size() * sizeof(struct rsrcditem));
 
 	// find type directory
 	uint32_t t_id = l1.size();
@@ -404,7 +404,7 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 
 	std::vector<rsrcditem> l2(le32toh(dirtbl.r_nid));
 
-	read((char*)l2.data(), dir_pos + sizeof dirtbl + le32toh(dirtbl.r_nname) * sizeof rsrcditem, l2.size() * sizeof rsrcditem);
+	read((char*)l2.data(), dir_pos + sizeof dirtbl + le32toh(dirtbl.r_nname) * sizeof(struct rsrcditem), l2.size() * sizeof(struct rsrcditem));
 
 	// find name directory
 	unsigned dirid = le32toh(dirtbl.r_nid);
@@ -434,7 +434,7 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 
 	std::vector<rsrcditem> l3(le32toh(langtbl.r_nid));
 
-	read((char*)l3.data(), lang_pos + sizeof langtbl + le32toh(langtbl.r_nname) * sizeof rsrcditem, l3.size() * sizeof rsrcditem);
+	read((char*)l3.data(), lang_pos + sizeof langtbl + le32toh(langtbl.r_nname) * sizeof(struct rsrcditem), l3.size() * sizeof(struct rsrcditem));
 
 	// find language directory
 	uint32_t langid = le32toh(langtbl.r_nid);
