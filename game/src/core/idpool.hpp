@@ -7,8 +7,6 @@
 #include <stdexcept>
 #include <string>
 
-namespace aoe {
-
 // https://www.boost.org/doc/libs/1_37_0/doc/html/hash/reference.html#boost.hash_combine
 template <class T>
 inline void hash_combine(std::size_t &seed, const T &v)
@@ -106,5 +104,3 @@ public:
 		// XXX should we also set mod to zero?
 	}
 };
-
-}
