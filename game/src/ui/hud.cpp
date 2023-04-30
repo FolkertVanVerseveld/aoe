@@ -3,6 +3,7 @@
 #include "../engine.hpp"
 #include "../world/entity_info.hpp"
 
+#include <cmath>
 #include <minmax.hpp>
 
 #include <tracy/Tracy.hpp>
