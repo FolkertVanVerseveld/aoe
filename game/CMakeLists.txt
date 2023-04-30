@@ -20,6 +20,7 @@ if(UNIX)
 else()
 	find_package(SDL2_image REQUIRED)
 	find_package(SDL2_mixer REQUIRED)
+	set(WIN_LIB "ws2_32")
 endif()
 find_package(OpenGL REQUIRED)
 
@@ -38,5 +39,5 @@ include_directories("src/external/" "src/core/" "../imgui/" "../imgui/backends" 
 add_executable(empires "main.cpp" ${AOE_SRC} ${IMGUI_SRC} ${PROFILE_SOURCES})
 #add_executable(testempires ${AOE_TEST} ${AOE_SRC} ${IMGUI_SRC} ${PROFILE_SOURCES})
 
-target_link_libraries(empires ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENAL_LIBRARY} ${SDL2_MIXER_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ws2_32)
+target_link_libraries(empires ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENAL_LIBRARY} ${SDL2_MIXER_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${WIN_LIB})
 #target_link_libraries(testempires ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENAL_LIBRARY} ${SDL2_MIXER_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ws2_32 Iphlpapi)
