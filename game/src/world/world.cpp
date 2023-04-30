@@ -2,6 +2,7 @@
 
 #include "../legacy/legacy.hpp"
 
+#include <cmath>
 #include <chrono>
 
 #include <tracy/Tracy.hpp>

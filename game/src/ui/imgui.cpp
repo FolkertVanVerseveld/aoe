@@ -191,7 +191,7 @@ void TextWrappedV(const char *fmt, int halign, va_list args)
 void TextWrapped(const char *fmt, int halign, ...)
 {
 	va_list args;
-	va_start(args, fmt);
+	va_start(args, halign);
 	TextWrappedV(fmt, halign, args);
 	va_end(args);
 }
