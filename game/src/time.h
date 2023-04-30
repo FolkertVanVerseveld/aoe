@@ -52,11 +52,11 @@ static int clock_gettime(int dummy, struct timespec *spec)
 	if (!(spec->tv_nsec < exp9)) { spec->tv_sec++; spec->tv_nsec -= exp9; }
 	return 0;
 }
-// END code taken from https://stackoverflow.com/questions/5404277/porting-clock-gettime-to-windows
-#endif
 
 #if __cplusplus
 }
+#endif
+// END code taken from https://stackoverflow.com/questions/5404277/porting-clock-gettime-to-windows
 #endif
 #endif
 
