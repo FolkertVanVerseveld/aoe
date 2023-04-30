@@ -874,11 +874,11 @@ NetPlayerControl NetPkg::get_player_control() {
 			unsigned flags;
 
 			pos += read("HILB", args, pos);
-			ps.playerid = std::get<uint64_t>(args.at(1));
-			ps.military = std::get<uint64_t>(args.at(2));
-			ps.score = std::get<uint64_t>(args.at(3));
+			ps.playerid = (uint16_t)std::get<uint64_t>(args.at(1));
+			ps.military = (uint32_t)std::get<uint64_t>(args.at(2));
+			ps.score = (int64_t)std::get<uint64_t>(args.at(3));
 
-			flags = std::get<uint64_t>(args.at(4));
+			flags = (uint8_t)std::get<uint64_t>(args.at(4));
 
 			ps.alive = !!(flags & (1 << 0));
 
