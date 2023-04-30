@@ -3,6 +3,7 @@
 #include <cassert>
 #include <stdexcept>
 #include <string>
+#include <cmath>
 
 namespace aoe {
 
@@ -98,10 +99,10 @@ unsigned NetPkg::read(const std::string &fmt, std::vector<std::variant<uint64_t,
 			}
 			case 'l': case 'L': { // int64/uint64
 				for (unsigned i = 0; i < mult; ++i, offset += 8) {
-					uint64_t v = data.at(offset) << 56ull | data.at(offset + 1) << 48ull
-						| data.at(offset + 2) << 40ull | data.at(offset + 3) << 32ull
-						| data.at(offset + 4) << 24ull | data.at(offset + 5) << 16ull
-						| data.at(offset + 6) << 8ull | data.at(offset + 7);
+					uint64_t v = (uint64_t)data.at(offset) << 56ull | (uint64_t)data.at(offset + 1) << 48ull
+						| (uint64_t)data.at(offset + 2) << 40ull | (uint64_t)data.at(offset + 3) << 32ull
+						| (uint64_t)data.at(offset + 4) << 24ull | (uint64_t)data.at(offset + 5) << 16ull
+						| (uint64_t)data.at(offset + 6) << 8ull | (uint64_t)data.at(offset + 7);
 					dst.emplace_back(v);
 				}
 
@@ -819,14 +820,14 @@ void NetPkg::set_player_score(uint16_t idx, const PlayerAchievements &pa) {
 
 	if (pa.alive) flags |= 1 << 0;
 
-	write("2HILB",
-		{
-			(unsigned)NetPlayerControlType::set_score,
-			idx,
-			pa.military_score,
-			pa.score,
-			flags,
-		}, false);
+	std::vector<std::variant<uint64_t, std::string>> args;
+	args.emplace_back((unsigned)NetPlayerControlType::set_score);
+	args.emplace_back(idx);
+	args.emplace_back(pa.military_score);
+	args.emplace_back(pa.score);
+	args.emplace_back(flags);
+
+	write("2HILB", args, false);
 }
 
 NetPlayerControl NetPkg::get_player_control() {
