@@ -74,6 +74,10 @@ void UICache::user_interact_entities() {
 	}
 }
 
+void  UICache::image(const gfx::ImageRef &ref, float x, float y, float scale) {
+	bkg->AddImage(e->tex1, ImVec2(x, y), ImVec2(x + ref.bnds.w * scale, y + ref.bnds.h * scale), ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
+}
+
 void UICache::show_hud_selection(float menubar_left, float top, float menubar_h) {
 	ZoneScoped;
 	if (selected.empty())
@@ -126,25 +130,26 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 	if (is_building(info.type)) {
 		const ImageSet &s_units = a.anim_at(io::DrsId::gif_unit_icons);
 
+		x0 = menubar_left + 140 * scale;
+		y0 = top + 10 * scale;
+
+		BackgroundColors col = a.bkg_cols.at(io::DrsId::bkg_editor_menu);
+
 		switch (info.type) {
 			case EntityType::town_center: {
 				const EntityInfo &i_vil = entity_info.at((unsigned)EntityType::villager);
 				const gfx::ImageRef &img_vil = a.at(s_units.try_at(ent->playerid, i_vil.icon));
 
-				x0 = menubar_left + 140 * scale;
-				y0 = top + 10 * scale;
-
-				bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img_vil.bnds.w * scale, y0 + img_vil.bnds.h * scale), ImVec2(img_vil.s0, img_vil.t0), ImVec2(img_vil.s1, img_vil.t1));
+				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_vil.bnds.w + 4, img_vil.bnds.h + 4, scale))
+					puts("train 1");
+				image(img_vil, x0, y0, scale);
 				break;
 			}
 			case EntityType::barracks: {
 				const EntityInfo &i_melee = entity_info.at((unsigned)EntityType::melee1);
 				const gfx::ImageRef &img_melee = a.at(s_units.try_at(ent->playerid, i_melee.icon));
 
-				x0 = menubar_left + 140 * scale;
-				y0 = top + 10 * scale;
-
-				bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x0 + img_melee.bnds.w * scale, y0 + img_melee.bnds.h * scale), ImVec2(img_melee.s0, img_melee.t0), ImVec2(img_melee.s1, img_melee.t1));
+				image(img_melee, x0, y0, scale);
 				break;
 			}
 		}

@@ -740,9 +740,8 @@ void UICache::mouse_left_process() {
 
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 
-	if (gmb_top.w > 1 && gmb_bottom.w > 1)
-		if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_top) || point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom))
-			return;
+	if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_top) || point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom))
+		return;
 
 	collect(this->selected, io.MousePos.x, io.MousePos.y);
 

@@ -416,4 +416,23 @@ public:
 	bool try_read(Client&);
 };
 
+/*
+ * since i've made the mistake multiple times to forget to call set_hdr, we can use this wrapper to take care of that.
+ * also, eventually i would like to just += to add stuff. bit similar to struct.pack in python...
+ */
+class PkgWriter final {
+public:
+	NetPkg &pkg;
+	const NetPkgType type;
+
+	PkgWriter(NetPkg &pkg, NetPkgType t, size_t n = 0) : pkg(pkg), type(t) {
+		if (n)
+			pkg.data.resize(n);
+	}
+
+	~PkgWriter() {
+		pkg.set_hdr(type);
+	}
+};
+
 }

@@ -256,6 +256,8 @@ private:
 	bool frame_btn(const BackgroundColors &col, const char *lbl, float x, float y, float w, float h, float scale, bool invert=false);
 
 	void collect(std::vector<IdPoolRef> &refs, float mx, float my, bool clear=true);
+
+	void image(const gfx::ImageRef &ref, float x, float y, float scale);
 };
 
 }
