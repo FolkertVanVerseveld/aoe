@@ -243,13 +243,17 @@ enum class DrsId {
 	sfx_villager_attack1 = 5138,
 	sfx_villager_attack2 = 5139,
 	sfx_villager_attack3 = 5140,
+	sfx_villager_spawn = 5166,
 	sfx_wood_worker_attack = 5048,
+
+	sfx_melee_spawn = 5144,
 
 	sfx_priest = 5165,
 	sfx_priest_attack1 = 5050,
 	sfx_priest_attack2 = 5051,
 
 	sfx_player_resign = 50306,
+	sfx_gameover_victory = 50320,
 	sfx_gameover_defeat = 50321,
 };
 

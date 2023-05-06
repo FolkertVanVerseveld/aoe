@@ -85,32 +85,32 @@ public:
 	int send(const void *ptr, int len, unsigned tries=1);
 
 	template<typename T> int send(const T *ptr, int len, unsigned tries=5) {
-		int out = send((const void*)ptr, len * sizeof * ptr, tries);
-		if (out % sizeof * ptr)
+		int out = send((const void*)ptr, len * sizeof *ptr, tries);
+		if (out % sizeof *ptr)
 			throw std::runtime_error("wsa: send failed: incomplete object sent");
-		return out / sizeof * ptr;
+		return out / sizeof *ptr;
 	}
 
 	void send_fully(const void *ptr, int len);
 
 	template<typename T> void send_fully(const T *ptr, int len) {
-		send_fully((void*)ptr, len * sizeof * ptr);
+		send_fully((void*)ptr, len * sizeof *ptr);
 	}
 
 	int try_recv(void *dst, int len, unsigned tries) noexcept;
 	int recv(void *dst, int len, unsigned tries=1);
 
 	template<typename T> int recv(T *ptr, int len, unsigned tries=5) {
-		int in = recv((void*)ptr, len * sizeof * ptr, tries);
-		if (in % sizeof * ptr)
+		int in = recv((void*)ptr, len * sizeof *ptr, tries);
+		if (in % sizeof *ptr)
 			throw std::runtime_error("wsa: recv failed: incomplete object received");
-		return in / sizeof * ptr;
+		return in / sizeof *ptr;
 	}
 
 	void recv_fully(void *dst, int len);
 
 	template<typename T> void recv_fully(T *ptr, int len) {
-		recv_fully((void*)ptr, len * sizeof * ptr);
+		recv_fully((void*)ptr, len * sizeof *ptr);
 	}
 
 	/** Change non-blocking mode. If true, recv_fully and send_fully become undefined! */

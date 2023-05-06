@@ -33,6 +33,7 @@ enum class MenuState {
 	multiplayer_settings,
 	multiplayer_game,
 	defeat,
+	victory,
 	editor_menu,
 	editor_scenario,
 };
@@ -184,7 +185,7 @@ private:
 	void display_ui_tasks();
 	void show_init();
 	void show_start();
-	void show_defeat();
+	void show_gameover();
 
 	void multiplayer_set_localhost();
 	void show_multiplayer_menu();

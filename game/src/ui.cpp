@@ -24,7 +24,7 @@ UICache::UICache() : civs(), e(nullptr), entities(), selected(), display_area()
 	, bkg(nullptr), btnsel()
 	, t_imgs()
 	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
-	, scn(), scn_edit(), mem() {}
+	, scn(), scn_edit(), mem(), gmb_top(), gmb_bottom() {}
 
 void str(const char *s, TextHalign ha, bool wrap) {
 	ImGui::TextUnformatted(s, (int)ha, wrap);
@@ -569,70 +569,6 @@ void Engine::show_multiplayer_host() {
 	}
 }
 
-void UICache::show_mph_tbl(ui::Frame &f) {
-	Table t;
-
-	unsigned idx = 0;
-	ScenarioSettings &scn = e->cv.scn;
-
-	auto it = scn.owners.find(e->cv.me);
-	if (it != scn.owners.end())
-		idx = it->second;
-
-	if (t.begin("PlayerTable", 3)) {
-		t.row(-1, {"Name", "Civ", "Team"});
-
-		unsigned del = scn.players.size();
-		unsigned from = 0, to = 0;
-
-		for (unsigned i = 1; i < scn.players.size(); ++i) {
-			Row r(3, i);
-			PlayerSetting &p = scn.players[i];
-
-			if (e->multiplayer_ready) {
-				f.str(p.name);
-				r.next();
-
-				f.str(civs.at(p.civ));
-				r.next();
-
-				f.str(std::to_string(p.team));
-				r.next();
-				continue;
-			}
-
-			if (i == idx) {
-				if (f.btn("X"))
-					e->client->claim_player(0);
-
-				f.sl();
-
-				if (r.text("##0", p.name, ImGuiInputTextFlags_EnterReturnsTrue))
-					e->client->send_set_player_name(i, p.name);
-			} else {
-				if (f.btn("Claim"))
-					e->client->claim_player(i);
-
-				f.sl();
-
-				if (!p.ai && e->server.get() != nullptr && f.btn("Set CPU"))
-					e->client->claim_cpu(i);
-
-				r.next();
-			}
-
-			if (f.combo("##1", p.civ, civs))
-				e->client->send_set_player_civ(i, p.civ);
-			r.next();
-
-			p.team = std::max(1u, p.team);
-			if (f.scalar("##2", p.team, 1))
-				e->client->send_set_player_team(i, p.team);
-			r.next();
-		}
-	}
-}
-
 void UICache::show_editor_menu() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -790,6 +726,11 @@ void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, boo
 	}
 }
 
+static constexpr bool point_in_rect(float x, float y, const SDL_Rect &rect)
+{
+	return x >= rect.x && y >= rect.y && x < rect.x + rect.w && y < rect.y + rect.h;
+}
+
 void UICache::mouse_left_process() {
 	ZoneScoped;
 
@@ -798,6 +739,9 @@ void UICache::mouse_left_process() {
 		return;
 
 	ImGuiViewport *vp = ImGui::GetMainViewport();
+
+	if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_top) || point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom))
+		return;
 
 	collect(this->selected, io.MousePos.x, io.MousePos.y);
 
@@ -1040,7 +984,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 	}
 }
 
-void Engine::show_defeat() {
+void Engine::show_gameover() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(vp->WorkPos);
@@ -1297,6 +1241,9 @@ void Engine::draw_background_border() {
 		break;
 	case MenuState::defeat:
 		col = a.bkg_cols.at(io::DrsId::bkg_defeat);
+		break;
+	case MenuState::victory:
+		col = a.bkg_cols.at(io::DrsId::bkg_victory);
 		break;
 	case MenuState::editor_menu:
 	case MenuState::editor_scenario:

@@ -120,6 +120,7 @@ enum class EntityTaskType {
 	move,
 	infer, // use context to determine task
 	attack,
+	train_unit,
 };
 
 static bool constexpr is_building(EntityType t) {
@@ -160,9 +161,14 @@ public:
 	EntityTaskType type;
 	IdPoolRef ref1, ref2;
 	uint32_t x, y;
+	unsigned info_type, info_value;
 
-	EntityTask(IdPoolRef ref, uint32_t x, uint32_t y) : type(EntityTaskType::move), ref1(ref), ref2(invalid_ref), x(x), y(y) {}
-	EntityTask(EntityTaskType type, IdPoolRef ref1, IdPoolRef ref2) : type(type), ref1(ref1), ref2(ref2), x(0), y(0) {}
+	// TODO use floating point number x,y
+	// move to area
+	EntityTask(IdPoolRef ref, uint32_t x, uint32_t y);
+	EntityTask(EntityTaskType type, IdPoolRef ref1, IdPoolRef ref2);
+	// train unit
+	EntityTask(IdPoolRef ref, EntityType t);
 };
 
 class WorldView;
@@ -171,6 +177,7 @@ enum class ParticleType {
 	moveto,
 };
 
+// TODO stub
 class Particle final {
 public:
 	IdPoolRef ref;
@@ -230,6 +237,8 @@ public:
 
 	bool task_move(float x, float y) noexcept;
 	bool task_attack(Entity&) noexcept;
+	/** ensure specified type can be trained at this entity. */
+	bool task_train_unit(EntityType) noexcept;
 
 	std::optional<SfxId> sfxtick() noexcept;
 
@@ -327,8 +336,10 @@ class Game final {
 	std::vector<PlayerView> players;
 	// no IdPool as we have no control over IdPoolRefs: the server does
 	std::set<Entity> entities;
+	std::set<IdPoolRef> entities_spawned;
 	std::vector<EntityView> entities_killed;
 	unsigned modflags, ticks;
+	unsigned team_won;
 	friend GameView;
 public:
 	std::atomic<bool> running;
@@ -346,8 +357,14 @@ public:
 	void player_died(unsigned);
 
 	void entity_add(const EntityView &ev);
+	void entity_spawn(const EntityView &ev);
 	bool entity_kill(IdPoolRef);
 	void entity_update(const EntityView &ev);
+
+	void gameover(unsigned team) noexcept;
+	unsigned winning_team() noexcept;
+
+	PlayerView pv(unsigned);
 private:
 	void imgtick(unsigned n);
 };
@@ -356,6 +373,7 @@ class GameView final {
 public:
 	Terrain t;
 	std::set<Entity> entities; // TODO use std::variant or Entity uniqueptr
+	std::set<IdPoolRef> entities_spawned;
 	std::vector<EntityView> entities_killed;
 	std::vector<PlayerView> players;
 	std::vector<unsigned> players_died;

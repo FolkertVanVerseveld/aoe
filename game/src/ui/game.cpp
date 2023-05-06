@@ -232,6 +232,11 @@ void UICache::show_multiplayer_game() {
 
 	lst->AddImage(e->tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_left + menubar_w, vp->WorkPos.y + menubar_h), ImVec2(rtop.s0, rtop.t0), ImVec2(rtop.s1, rtop.t1));
 
+	gmb_top.x = menubar_left;
+	gmb_top.w = menubar_w;
+	gmb_top.y = vp->WorkPos.y;
+	gmb_top.h = menubar_h;
+
 	char buf[16];
 	snprintf(buf, sizeof buf, "%d", food);
 	buf[(sizeof buf) - 1] = '\0';
@@ -277,7 +282,7 @@ void UICache::show_multiplayer_game() {
 			e->show_achievements = !e->show_achievements;
 
 		if (ImGui::MenuItem("Quit")) {
-			e->cancel_multiplayer_host(MenuState::defeat);
+			e->cancel_multiplayer_host(e->cv.victory ? MenuState::victory : MenuState::defeat);
 			ImGui::CloseCurrentPopup();
 		}
 
@@ -334,6 +339,10 @@ void UICache::show_multiplayer_game() {
 
 	lst->AddImage(e->tex1, ImVec2(menubar_left, top), ImVec2(menubar_left + menubar_w, top + menubar_h), ImVec2(rbottom.s0, rbottom.t0), ImVec2(rbottom.s1, rbottom.t1));
 
+	gmb_bottom.x = menubar_left;
+	gmb_bottom.w = menubar_w;
+	gmb_bottom.y = top;
+	gmb_bottom.h = menubar_h;
 
 	show_hud_selection(menubar_left, top, menubar_h);
 
@@ -346,7 +355,7 @@ void UICache::show_multiplayer_game() {
 	if (e->cv.gameover) {
 		FontGuard fg(e->fnt.fnt_copper2);
 
-		const char *txt = "Game Over";
+		const char *txt = e->cv.victory ? "Victory" : "Game Over";
 
 		ImVec2 sz(ImGui::CalcTextSize(txt));
 

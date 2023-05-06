@@ -12,7 +12,7 @@ Entity *WorldView::try_get(IdPoolRef r) {
 	return w.entities.try_get(r);
 }
 
-World::World() : m(), m_events(), t(), entities(), players(), player_achievements(), events_in(), events_out(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
+World::World() : m(), m_events(), t(), entities(), dirty_entities(), spawned_entities(), players(), player_achievements(), events_in(), events_out(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -110,6 +110,8 @@ void World::tick_entities() {
 								players[ent.playerid].killed_unit();
 						}
 					}
+
+					// TODO conversion is not detected!
 				}
 			}
 			break;
@@ -141,7 +143,7 @@ void World::tick_players() {
 
 	std::set<unsigned> alive_teams;
 
-	// check surviving teams
+	// collect surviving teams
 	for (unsigned i = 1; i < players.size(); ++i) {
 		Player &p = players[i];
 		if (p.alive)
@@ -149,18 +151,23 @@ void World::tick_players() {
 	}
 
 	if (alive_teams.size() <= 1) {
-		// game has ended
-		stop();
+		// game has ended. if no teams remain, gaia 'wins'. otherwise: remaining team
+		stop(alive_teams.empty() ? 0 : *alive_teams.begin());
 		return;
 	}
 }
 
-void World::stop() {
+void World::stop(unsigned team) {
 	ZoneScoped;
 	gameover = true;
 
+	if (team)
+		printf("gameover. winner: team %u\n", team);
+	else
+		puts("gameover. no winner");
+
 	NetPkg pkg;
-	pkg.set_gameover();
+	pkg.set_gameover(team);
 	s->broadcast(pkg);
 
 	send_scores();
@@ -222,6 +229,7 @@ void World::push_events() {
 
 	NetPkg pkg;
 
+	// TODO extract to push_XXX
 	for (IdPoolRef ref : dirty_entities) {
 		Entity *ent = entities.try_get(ref);
 		if (!ent)
@@ -232,6 +240,17 @@ void World::push_events() {
 	}
 
 	dirty_entities.clear();
+
+	for (IdPoolRef ref : spawned_entities) {
+		Entity *ent = entities.try_get(ref);
+		if (!ent)
+			continue;
+
+		pkg.set_entity_spawn(*ent);
+		s->broadcast(pkg);
+	}
+
+	spawned_entities.clear();
 
 	for (WorldEvent &ev : events_out) {
 		switch (ev.type) {
@@ -375,6 +394,18 @@ void World::entity_task(WorldEvent &ev) {
 				dirty_entities.emplace(ent->ref);
 			break;
 		}
+		case EntityTaskType::train_unit: {
+			assert(task.info_type == (unsigned)EntityIconType::unit);
+			EntityType train = (EntityType)task.info_value;
+			if (ent->task_train_unit(train)) {
+				// TODO add to build queue stuff
+				spawn_unit(train, ent->playerid, ent->x + 2, ent->y + 2, fmodf(rand(), 360));
+			}
+			break;
+		}
+		default:
+			fprintf(stderr, "%s: unknown entity task type %u\n", __func__, (unsigned)task.type);
+			break;
 	}
 }
 
@@ -464,7 +495,7 @@ void World::add_building(EntityType t, unsigned player, int x, int y) {
 
 void World::add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state) {
 	ZoneScoped;
-	assert(!is_building(t) && player < MAX_PLAYERS);
+	assert(!is_building(t) && !is_resource(t) && player < MAX_PLAYERS);
 	auto p = entities.emplace(t, player, x, y, angle, state);
 	assert(p.second);
 	players.at(player).entities.emplace(p.first->first);
@@ -475,6 +506,18 @@ void World::add_resource(EntityType t, float x, float y) {
 	assert(is_resource(t));
 	// TODO add resource values
 	entities.emplace(t, 0, x, y, 0, EntityState::alive);
+}
+
+void World::spawn_unit(EntityType t, unsigned player, float x, float y, float angle) {
+	ZoneScoped;
+	assert(!is_building(t) && !is_resource(t) && player < MAX_PLAYERS);
+
+	auto p = entities.emplace(t, player, x, y, angle, EntityState::alive);
+	assert(p.second);
+
+	IdPoolRef ref = p.first->first;
+	players.at(player).entities.emplace(ref);
+	spawned_entities.emplace(ref);
 }
 
 void World::create_entities() {

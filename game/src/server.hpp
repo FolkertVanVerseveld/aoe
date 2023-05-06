@@ -55,7 +55,8 @@ public:
 	std::string username();
 
 	void set_start_game();
-	void set_gameover();
+	void set_gameover(unsigned);
+	unsigned get_gameover();
 
 	void set_scn_vars(const ScenarioSettings&);
 	ScenarioSettings get_scn_vars();
@@ -96,6 +97,7 @@ public:
 	void set_entity_kill(IdPoolRef);
 	void entity_move(IdPoolRef, float x, float y);
 	void entity_task(IdPoolRef, IdPoolRef, EntityTaskType type=EntityTaskType::infer);
+	void entity_train(IdPoolRef, EntityType);
 	NetEntityMod get_entity_mod();
 
 	uint16_t get_gameticks();
@@ -198,7 +200,7 @@ class World final {
 	std::mutex m, m_events;
 	Terrain t;
 	IdPool<Entity> entities;
-	std::set<IdPoolRef> dirty_entities;
+	std::set<IdPoolRef> dirty_entities, spawned_entities;
 	std::vector<Player> players;
 	std::vector<PlayerAchievements> player_achievements;
 	std::deque<WorldEvent> events_in, events_out;
@@ -237,6 +239,8 @@ private:
 	void add_unit(EntityType t, unsigned player, float x, float y, float angle=0, EntityState state=EntityState::alive);
 	void add_resource(EntityType t, float x, float y);
 
+	void spawn_unit(EntityType t, unsigned player, float x, float y, float angle);
+
 	void tick();
 	void tick_entities();
 	void tick_players();
@@ -251,7 +255,7 @@ private:
 
 	bool single_team() const noexcept;
 
-	void stop();
+	void stop(unsigned);
 
 	void entity_kill(WorldEvent &ev);
 	void entity_task(WorldEvent &ev);
@@ -335,6 +339,8 @@ class Client final {
 	IdPoolRef me;
 	ScenarioSettings scn;
 	unsigned modflags;
+	unsigned playerindex, team_me;
+	bool victory;
 	std::atomic<bool> gameover;
 	friend Debug;
 	friend ClientView;
@@ -397,6 +403,7 @@ public:
 
 	void entity_move(IdPoolRef, float x, float y);
 	void entity_infer(IdPoolRef, IdPoolRef);
+	void entity_train(IdPoolRef, EntityType);
 
 	/** Try to destroy entity. */
 	void entity_kill(IdPoolRef);
@@ -406,11 +413,30 @@ class ClientView final {
 public:
 	IdPoolRef me;
 	ScenarioSettings scn;
-	bool gameover;
+	bool gameover, victory;
 
 	ClientView();
 
 	bool try_read(Client&);
+};
+
+/*
+ * since i've made the mistake multiple times to forget to call set_hdr, we can use this wrapper to take care of that.
+ * also, eventually i would like to just += to add stuff. bit similar to struct.pack in python...
+ */
+class PkgWriter final {
+public:
+	NetPkg &pkg;
+	const NetPkgType type;
+
+	PkgWriter(NetPkg &pkg, NetPkgType t, size_t n = 0) : pkg(pkg), type(t) {
+		if (n)
+			pkg.data.resize(n);
+	}
+
+	~PkgWriter() {
+		pkg.set_hdr(type);
+	}
 };
 
 }

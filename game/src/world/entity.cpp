@@ -224,6 +224,20 @@ bool Entity::task_attack(Entity &e) noexcept {
 	return true;
 }
 
+bool Entity::task_train_unit(EntityType type) noexcept {
+	if (!is_alive() || !is_building(this->type) || is_resource(type))
+		return false;
+
+	switch (this->type) {
+		case EntityType::town_center:
+			return type == EntityType::villager;
+		case EntityType::barracks:
+			return type == EntityType::melee1;
+	}
+
+	return false;
+}
+
 std::optional<SfxId> Entity::sfxtick() noexcept {
 	switch (type) {
 	case EntityType::villager:

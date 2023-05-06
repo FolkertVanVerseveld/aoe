@@ -14,7 +14,7 @@ enum class GameMod {
 	players = 1 << 2,
 };
 
-Game::Game() : m(), t(), players(), entities(), entities_killed(), modflags((unsigned)-1), ticks(0), running(false) {}
+Game::Game() : m(), t(), players(), entities(), entities_spawned(), entities_killed(), modflags((unsigned)-1), ticks(0), team_won(0), running(false) {}
 
 void Game::resize(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m);
@@ -28,6 +28,25 @@ void Game::tick(unsigned n) {
 	running = true;
 	ticks += n;
 	imgtick(n);
+}
+
+void Game::gameover(unsigned team) noexcept {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
+	running = false;
+	team_won = team;
+}
+
+unsigned Game::winning_team() noexcept {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
+	return team_won;
+}
+
+PlayerView Game::pv(unsigned idx) {
+	ZoneScoped;
+	std::lock_guard<std::mutex> lk(m);
+	return players.at(idx);
 }
 
 void Game::imgtick(unsigned n) {
@@ -92,6 +111,14 @@ void Game::entity_add(const EntityView &ev) {
 	modflags |= (unsigned)GameMod::entities;
 }
 
+void Game::entity_spawn(const EntityView &ev) {
+	std::lock_guard<std::mutex> lk(m);
+
+	entities.emplace(ev);
+	entities_spawned.emplace(ev.ref);
+	modflags |= (unsigned)GameMod::entities;
+}
+
 void Game::entity_update(const EntityView &ev) {
 	EntityView v(ev);
 	std::lock_guard<std::mutex> lk(m);
@@ -141,7 +168,7 @@ bool Game::entity_kill(IdPoolRef ref) {
 	return true;
 }
 
-GameView::GameView() : t(), entities(), entities_killed() {}
+GameView::GameView() : t(), entities(), entities_spawned(), entities_killed() {}
 
 bool GameView::try_read(Game &g, bool reset) {
 	std::unique_lock lk(g.m, std::defer_lock);
@@ -175,10 +202,13 @@ bool GameView::try_read(Game &g, bool reset) {
 
 	if (g.modflags & (unsigned)GameMod::entities) {
 		entities = g.entities;
+		entities_spawned = g.entities_spawned;
 		entities_killed = g.entities_killed;
 
-		if (reset)
+		if (reset) {
+			g.entities_spawned.clear();
 			g.entities_killed.clear();
+		}
 	}
 
 	if (reset)

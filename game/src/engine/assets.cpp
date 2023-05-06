@@ -317,6 +317,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 #define sfx(id) eng.sfx.load_sfx(SfxId:: id, drs_ui.open_wav(DrsId:: sfx_ ## id))
 	eng.sfx.load_sfx(SfxId::sfx_chat, drs_ui.open_wav(DrsId::sfx_chat));
 	sfx(player_resign);
+	sfx(gameover_victory);
 	sfx(gameover_defeat);
 #undef sfx
 }
@@ -381,7 +382,10 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	sfx(villager_attack1);
 	sfx(villager_attack2);
 	sfx(villager_attack3);
+	sfx(villager_spawn);
 	sfx(wood_worker_attack);
+
+	sfx(melee_spawn);
 
 	sfx(priest);
 	sfx(priest_attack1);

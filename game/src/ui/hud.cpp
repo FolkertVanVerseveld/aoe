@@ -37,10 +37,31 @@ void UICache::idle_game() {
 
 	bkg = ImGui::GetBackgroundDrawList();
 
-	auto &killed = e->gv.entities_killed;
+	auto &spawned = e->gv.entities_spawned;
 
-	if (killed.empty())
-		return;
+	for (IdPoolRef ref : spawned) {
+		auto it = e->gv.entities.find(ref);
+		if (it == e->gv.entities.end())
+			continue;
+
+		const Entity &ent = *it;
+
+		switch (ent.type) {
+		case EntityType::villager:
+			e->sfx.play_sfx(SfxId::villager_spawn);
+			break;
+		case EntityType::melee1:
+			e->sfx.play_sfx(SfxId::melee_spawn);
+			break;
+		default:
+			fprintf(stderr, "%s: unknown spawn sfx for entity %u\n", __func__, (unsigned)ent.type);
+			break;
+		}
+	}
+
+	spawned.clear();
+
+	auto &killed = e->gv.entities_killed;
 
 	for (const EntityView &ev : killed) {
 		// TODO filter if out of camera range
@@ -74,6 +95,10 @@ void UICache::user_interact_entities() {
 	}
 }
 
+void  UICache::image(const gfx::ImageRef &ref, float x, float y, float scale) {
+	bkg->AddImage(e->tex1, ImVec2(x, y), ImVec2(x + ref.bnds.w * scale, y + ref.bnds.h * scale), ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
+}
+
 void UICache::show_hud_selection(float menubar_left, float top, float menubar_h) {
 	ZoneScoped;
 	if (selected.empty())
@@ -94,13 +119,12 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 	unsigned icon = info.icon;
 	const char *name = info.name.c_str();
 
-	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 8 * scale), IM_COL32_WHITE, "Egyptian");
+	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 8 * scale), IM_COL32_WHITE, "Egyptian"); // TODO add civ
 	// 664 -> 22
 	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 22 * scale), IM_COL32_WHITE, name);
 
 	Assets &a = *e->assets.get();
 	const ImageSet &s_bld = a.anim_at(is_building(ent->type) ? io::DrsId::gif_building_icons : io::DrsId::gif_unit_icons);
-	// TODO fetch player color
 	const gfx::ImageRef &img = a.at(s_bld.try_at(ent->playerid, icon));
 
 	// 8,679 -> 8,37
@@ -109,7 +133,6 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 
 	// HP
 	// 8, 733 -> 8,91
-	// TODO fetch hp from entity
 	unsigned hp = 0;
 	unsigned subimage = std::clamp(25u * (ent->stats.maxhp - ent->stats.hp) / ent->stats.maxhp, 0u, 25u);
 
@@ -124,6 +147,39 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 
 	snprintf(buf, sizeof buf, "%u/%u", ent->stats.hp, ent->stats.maxhp);
 	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 102 * scale), IM_COL32_WHITE, buf);
+
+	if (is_building(info.type)) {
+		const ImageSet &s_units = a.anim_at(io::DrsId::gif_unit_icons);
+
+		x0 = menubar_left + 140 * scale;
+		y0 = top + 10 * scale;
+
+		BackgroundColors col = a.bkg_cols.at(io::DrsId::bkg_editor_menu);
+
+		switch (info.type) {
+			case EntityType::town_center: {
+				const EntityInfo &i_vil = entity_info.at((unsigned)EntityType::villager);
+				const gfx::ImageRef &img_vil = a.at(s_units.try_at(ent->playerid, i_vil.icon));
+
+				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_vil.bnds.w * scale + 4, img_vil.bnds.h * scale + 4, 1))
+					e->client->entity_train(ent->ref, EntityType::villager);
+
+				image(img_vil, x0, y0, scale);
+				break;
+			}
+			case EntityType::barracks: {
+				// TODO determine image based on age
+				const EntityInfo &i_melee = entity_info.at((unsigned)EntityType::melee1);
+				const gfx::ImageRef &img_melee = a.at(s_units.try_at(ent->playerid, i_melee.icon));
+
+				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_melee.bnds.w * scale + 4, img_melee.bnds.h * scale + 4, 1))
+					e->client->entity_train(ent->ref, EntityType::melee1);
+
+				image(img_melee, x0, y0, scale);
+				break;
+			}
+		}
+	}
 }
 
 }

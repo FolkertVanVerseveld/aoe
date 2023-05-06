@@ -219,6 +219,7 @@ class UICache final {
 	io::Scenario scn;
 	ScenarioEditor scn_edit;
 	MemoryEditor mem;
+	SDL_Rect gmb_top, gmb_bottom; // game menu bars
 public:
 	UICache();
 
@@ -255,6 +256,8 @@ private:
 	bool frame_btn(const BackgroundColors &col, const char *lbl, float x, float y, float w, float h, float scale, bool invert=false);
 
 	void collect(std::vector<IdPoolRef> &refs, float mx, float my, bool clear=true);
+
+	void image(const gfx::ImageRef &ref, float x, float y, float scale);
 };
 
 }
