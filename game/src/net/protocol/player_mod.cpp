@@ -92,4 +92,27 @@ NetPlayerControl NetPkg::get_player_control() {
 	}
 }
 
+void NetPkg::set_cpu_player(uint16_t idx) {
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H", { (unsigned)NetPlayerControlType::set_cpu_ref, idx }, false);
+}
+
+void NetPkg::playermod2(NetPlayerControlType type, uint16_t idx, uint16_t pos) {
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("3H", { (unsigned)type, idx, pos }, false);
+}
+
+void NetPkg::set_player_civ(uint16_t idx, uint16_t civ) {
+	playermod2(NetPlayerControlType::set_civ, idx, civ);
+}
+
+void NetPkg::set_player_team(uint16_t idx, uint16_t team) {
+	playermod2(NetPlayerControlType::set_team, idx, team);
+}
+
+void NetPkg::set_player_name(uint16_t idx, const std::string &s) {
+	PkgWriter out(*this, NetPkgType::playermod);
+	write("2H40s", { (unsigned)NetPlayerControlType::set_player_name, idx, s }, false);
+}
+
 }
