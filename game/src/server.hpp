@@ -97,6 +97,7 @@ public:
 	void set_entity_kill(IdPoolRef);
 	void entity_move(IdPoolRef, float x, float y);
 	void entity_task(IdPoolRef, IdPoolRef, EntityTaskType type=EntityTaskType::infer);
+	void entity_train(IdPoolRef, EntityType);
 	NetEntityMod get_entity_mod();
 
 	uint16_t get_gameticks();
@@ -199,7 +200,7 @@ class World final {
 	std::mutex m, m_events;
 	Terrain t;
 	IdPool<Entity> entities;
-	std::set<IdPoolRef> dirty_entities;
+	std::set<IdPoolRef> dirty_entities, spawned_entities;
 	std::vector<Player> players;
 	std::vector<PlayerAchievements> player_achievements;
 	std::deque<WorldEvent> events_in, events_out;
@@ -237,6 +238,8 @@ private:
 	void add_building(EntityType t, unsigned player, int x, int y);
 	void add_unit(EntityType t, unsigned player, float x, float y, float angle=0, EntityState state=EntityState::alive);
 	void add_resource(EntityType t, float x, float y);
+
+	void spawn_unit(EntityType t, unsigned player, float x, float y, float angle);
 
 	void tick();
 	void tick_entities();
@@ -400,6 +403,7 @@ public:
 
 	void entity_move(IdPoolRef, float x, float y);
 	void entity_infer(IdPoolRef, IdPoolRef);
+	void entity_train(IdPoolRef, EntityType);
 
 	/** Try to destroy entity. */
 	void entity_kill(IdPoolRef);

@@ -140,6 +140,12 @@ void Client::send_set_player_team(unsigned idx, unsigned team) {
 	send(pkg);
 }
 
+void Client::entity_train(IdPoolRef src, EntityType type) {
+	NetPkg pkg;
+	pkg.entity_train(src, type);
+	send(pkg);
+}
+
 void Client::playermod(const NetPlayerControl &ctl) {
 	std::lock_guard<std::mutex> lk(m);
 
@@ -230,6 +236,9 @@ void Client::entitymod(const NetEntityMod &em) {
 		break;
 	case NetEntityControlType::update:
 		g.entity_update(std::get<EntityView>(em.data));
+		break;
+	case NetEntityControlType::spawn:
+		g.entity_spawn(std::get<EntityView>(em.data));
 		break;
 	default:
 		fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)em.type);

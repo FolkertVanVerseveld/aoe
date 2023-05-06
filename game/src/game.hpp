@@ -237,6 +237,8 @@ public:
 
 	bool task_move(float x, float y) noexcept;
 	bool task_attack(Entity&) noexcept;
+	/** ensure specified type can be trained at this entity. */
+	bool task_train_unit(EntityType) noexcept;
 
 	std::optional<SfxId> sfxtick() noexcept;
 
@@ -334,6 +336,7 @@ class Game final {
 	std::vector<PlayerView> players;
 	// no IdPool as we have no control over IdPoolRefs: the server does
 	std::set<Entity> entities;
+	std::set<IdPoolRef> entities_spawned;
 	std::vector<EntityView> entities_killed;
 	unsigned modflags, ticks;
 	unsigned team_won;
@@ -354,6 +357,7 @@ public:
 	void player_died(unsigned);
 
 	void entity_add(const EntityView &ev);
+	void entity_spawn(const EntityView &ev);
 	bool entity_kill(IdPoolRef);
 	void entity_update(const EntityView &ev);
 
@@ -369,6 +373,7 @@ class GameView final {
 public:
 	Terrain t;
 	std::set<Entity> entities; // TODO use std::variant or Entity uniqueptr
+	std::set<IdPoolRef> entities_spawned;
 	std::vector<EntityView> entities_killed;
 	std::vector<PlayerView> players;
 	std::vector<unsigned> players_died;

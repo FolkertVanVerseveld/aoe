@@ -382,7 +382,10 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	sfx(villager_attack1);
 	sfx(villager_attack2);
 	sfx(villager_attack3);
+	sfx(villager_spawn);
 	sfx(wood_worker_attack);
+
+	sfx(melee_spawn);
 
 	sfx(priest);
 	sfx(priest_attack1);

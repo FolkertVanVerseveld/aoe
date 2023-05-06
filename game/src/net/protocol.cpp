@@ -113,6 +113,8 @@ void NetPkg::ntoh() {
 			break;
 		}
 		case NetPkgType::entity_mod: {
+			// TODO remove
+#if 0
 			need_payload(NetEntityMod::minsize);
 			uint16_t *dw = (uint16_t*)data.data();
 			uint32_t *dd;
@@ -165,6 +167,7 @@ void NetPkg::ntoh() {
 			default:
 				throw std::runtime_error("bad entity control type");
 			}
+#endif
 			break;
 		}
 		case NetPkgType::cam_set: {
@@ -266,6 +269,8 @@ void NetPkg::hton() {
 			break;
 		}
 		case NetPkgType::entity_mod: {
+			// TODO remove
+#if 0
 			uint16_t *dw = (uint16_t*)data.data();
 			uint32_t *dd;
 
@@ -312,6 +317,7 @@ void NetPkg::hton() {
 			default:
 				throw std::runtime_error("bad entity control type");
 			}
+#endif
 			break;
 		}
 		case NetPkgType::cam_set: {

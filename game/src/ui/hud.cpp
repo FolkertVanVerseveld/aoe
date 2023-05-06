@@ -37,10 +37,31 @@ void UICache::idle_game() {
 
 	bkg = ImGui::GetBackgroundDrawList();
 
-	auto &killed = e->gv.entities_killed;
+	auto &spawned = e->gv.entities_spawned;
 
-	if (killed.empty())
-		return;
+	for (IdPoolRef ref : spawned) {
+		auto it = e->gv.entities.find(ref);
+		if (it == e->gv.entities.end())
+			continue;
+
+		const Entity &ent = *it;
+
+		switch (ent.type) {
+		case EntityType::villager:
+			e->sfx.play_sfx(SfxId::villager_spawn);
+			break;
+		case EntityType::melee1:
+			e->sfx.play_sfx(SfxId::melee_spawn);
+			break;
+		default:
+			fprintf(stderr, "%s: unknown spawn sfx for entity %u\n", __func__, (unsigned)ent.type);
+			break;
+		}
+	}
+
+	spawned.clear();
+
+	auto &killed = e->gv.entities_killed;
 
 	for (const EntityView &ev : killed) {
 		// TODO filter if out of camera range
@@ -140,14 +161,19 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 				const EntityInfo &i_vil = entity_info.at((unsigned)EntityType::villager);
 				const gfx::ImageRef &img_vil = a.at(s_units.try_at(ent->playerid, i_vil.icon));
 
-				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_vil.bnds.w + 4, img_vil.bnds.h + 4, scale))
-					puts("train 1");
+				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_vil.bnds.w * scale + 4, img_vil.bnds.h * scale + 4, 1))
+					e->client->entity_train(ent->ref, EntityType::villager);
+
 				image(img_vil, x0, y0, scale);
 				break;
 			}
 			case EntityType::barracks: {
+				// TODO determine image based on age
 				const EntityInfo &i_melee = entity_info.at((unsigned)EntityType::melee1);
 				const gfx::ImageRef &img_melee = a.at(s_units.try_at(ent->playerid, i_melee.icon));
+
+				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_melee.bnds.w * scale + 4, img_melee.bnds.h * scale + 4, 1))
+					e->client->entity_train(ent->ref, EntityType::melee1);
 
 				image(img_melee, x0, y0, scale);
 				break;

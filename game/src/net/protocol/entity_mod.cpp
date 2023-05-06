@@ -147,6 +147,24 @@ void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
 	dd[2] = r2.first; dd[3] = r2.second;
 }
 
+void NetPkg::entity_train(IdPoolRef src, EntityType type) {
+	ZoneScoped;
+	refcheck(src);
+
+	PkgWriter out(*this, NetPkgType::entity_mod);
+
+	write("2H2IH",
+		std::initializer_list<std::variant<uint64_t, std::string>>
+		{
+			// TODO remove htons hack when all entity mod messages are converted
+			htons((unsigned)NetEntityControlType::task),
+			htons((unsigned)EntityTaskType::train_unit),
+
+			src.first, src.second,
+			(unsigned)type, // TODO add more info to message when technologies are supported
+		}, false);
+}
+
 NetEntityMod NetPkg::get_entity_mod() {
 	ZoneScoped;
 	ntoh();
@@ -161,6 +179,10 @@ NetEntityMod NetPkg::get_entity_mod() {
 	const int8_t *sb;
 
 	NetEntityControlType type = (NetEntityControlType)dw[0];
+	unsigned pos = 0;
+
+	// TODO convert message to read/write netrw stuff
+	pos += 4;
 
 	switch (type) {
 	case NetEntityControlType::add:
@@ -212,15 +234,35 @@ NetEntityMod NetPkg::get_entity_mod() {
 
 		ref1.first = dd[0]; ref1.second = dd[1];
 
-		if (type == EntityTaskType::move) {
-			uint32_t x, y;
-			x = dd[2]; y = dd[3];
-			return NetEntityMod(EntityTask(ref1, x, y));
+		switch (type) {
+			case EntityTaskType::move: {
+				uint32_t x, y;
+				x = dd[2]; y = dd[3];
+				return NetEntityMod(EntityTask(ref1, x, y));
+			}
+			case EntityTaskType::attack:
+			case EntityTaskType::infer: {
+				IdPoolRef ref2;
+				ref2.first = dd[2]; ref2.second = dd[3];
+				return NetEntityMod(EntityTask(type, ref1, ref2));
+			}
+			case EntityTaskType::train_unit: {
+				std::vector<std::variant<uint64_t, std::string>> args;
+				pos += read("2IH", args, pos);
+
+				IdPoolRef src;
+				src.first = (uint32_t)std::get<uint64_t>(args.at(0));
+				src.second = (uint32_t)std::get<uint64_t>(args.at(1));
+
+				EntityType train = (EntityType)(uint16_t)std::get<uint64_t>(args.at(2));
+
+				return NetEntityMod(EntityTask(src, train));
+			}
+			default:
+				break;
 		}
 
-		IdPoolRef ref2;
-		ref2.first = dd[2]; ref2.second = dd[3];
-		return NetEntityMod(EntityTask(type, ref1, ref2));
+		throw std::runtime_error("unknown entity task type");
 	}
 	default:
 		throw std::runtime_error("unknown entity control packet");
