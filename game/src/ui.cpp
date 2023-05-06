@@ -24,7 +24,7 @@ UICache::UICache() : civs(), e(nullptr), entities(), selected(), display_area()
 	, bkg(nullptr), btnsel()
 	, t_imgs()
 	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
-	, scn(), scn_edit(), mem() {}
+	, scn(), scn_edit(), mem(), gmb_top(), gmb_bottom() {}
 
 void str(const char *s, TextHalign ha, bool wrap) {
 	ImGui::TextUnformatted(s, (int)ha, wrap);
@@ -726,6 +726,11 @@ void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, boo
 	}
 }
 
+static constexpr bool point_in_rect(float x, float y, const SDL_Rect &rect)
+{
+	return x >= rect.x && y >= rect.y && x < rect.x + rect.w && y < rect.y + rect.h;
+}
+
 void UICache::mouse_left_process() {
 	ZoneScoped;
 
@@ -734,6 +739,10 @@ void UICache::mouse_left_process() {
 		return;
 
 	ImGuiViewport *vp = ImGui::GetMainViewport();
+
+	if (gmb_top.w > 1 && gmb_bottom.w > 1)
+		if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_top) || point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom))
+			return;
 
 	collect(this->selected, io.MousePos.x, io.MousePos.y);
 

@@ -219,6 +219,7 @@ class UICache final {
 	io::Scenario scn;
 	ScenarioEditor scn_edit;
 	MemoryEditor mem;
+	SDL_Rect gmb_top, gmb_bottom; // game menu bars
 public:
 	UICache();
 
