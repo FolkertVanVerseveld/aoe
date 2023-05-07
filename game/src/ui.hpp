@@ -53,7 +53,7 @@ public:
 	/** Like str but with a background color. */
 	void str2(const std::string&, TextHalign ha=TextHalign::left, const ImVec4 &bg=ImVec4(0, 0, 0, 1), bool wrap=true);
 	void str2(const char*, TextHalign ha=TextHalign::left, const ImVec4 &bg=ImVec4(0, 0, 0, 1), bool wrap=true);
-	void txt2(StrId, TextHalign ha=TextHalign::left, const ImVec4 &bg = ImVec4(0, 0, 0, 1));
+	void txt2(StrId, TextHalign ha=TextHalign::left, const ImVec4 &bg=ImVec4(0, 0, 0, 1));
 
 	void str(const std::string&);
 	void str(const char*);
@@ -207,6 +207,7 @@ class UICache final {
 	std::vector<std::string> civs;
 	Engine *e;
 	std::vector<VisualEntity> entities;
+	std::vector<VisualEntity> particles; // recycle for 'visual particle'
 	std::vector<IdPoolRef> selected;
 	std::vector<VisualTile> display_area;
 	float left, top, scale;
@@ -245,6 +246,7 @@ private:
 	/** Show user selected entities. */
 	void show_selections();
 	void show_entities();
+	void show_particles();
 
 	void load_entities();
 

@@ -9,12 +9,16 @@
 namespace aoe {
 
 enum class GameMod {
-	terrain = 1 << 0,
-	entities = 1 << 1,
-	players = 1 << 2,
+	terrain   = 1 << 0,
+	entities  = 1 << 1,
+	players   = 1 << 2,
+	particles = 1 << 3,
 };
 
-Game::Game() : m(), t(), players(), entities(), entities_spawned(), entities_killed(), modflags((unsigned)-1), ticks(0), team_won(0), running(false) {}
+Game::Game()
+	: m(), t(), players(), entities(), entities_spawned(), entities_killed()
+	, particles(), particles_spawned()
+	, modflags((unsigned)-1), ticks(0), team_won(0), running(false) {}
 
 void Game::resize(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m);
@@ -63,6 +67,20 @@ void Game::imgtick(unsigned n) {
 	}
 
 	modflags |= (unsigned)GameMod::entities;
+
+	bool changed = !particles.empty();
+
+	for (auto it = particles.begin(); it != particles.end();) {
+		Particle &part = const_cast<Particle&>(*it);
+
+		if (!part.imgtick(n))
+			it = particles.erase(it);
+		else
+			++it;
+	}
+
+	if (changed)
+		modflags |= (unsigned)GameMod::particles;
 }
 
 void Game::terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h) {
@@ -119,6 +137,14 @@ void Game::entity_spawn(const EntityView &ev) {
 	modflags |= (unsigned)GameMod::entities;
 }
 
+void Game::particle_spawn(const Particle &p) {
+	std::lock_guard<std::mutex> lk(m);
+
+	particles.emplace(p);
+	particles_spawned.emplace(p.ref);
+	modflags |= (unsigned)GameMod::particles;
+}
+
 void Game::entity_update(const EntityView &ev) {
 	EntityView v(ev);
 	std::lock_guard<std::mutex> lk(m);
@@ -168,7 +194,10 @@ bool Game::entity_kill(IdPoolRef ref) {
 	return true;
 }
 
-GameView::GameView() : t(), entities(), entities_spawned(), entities_killed() {}
+GameView::GameView()
+	: t(), entities(), entities_spawned(), entities_killed()
+	, particles(), particles_spawned()
+	, players(), players_died() {}
 
 bool GameView::try_read(Game &g, bool reset) {
 	std::unique_lock lk(g.m, std::defer_lock);
@@ -209,6 +238,14 @@ bool GameView::try_read(Game &g, bool reset) {
 			g.entities_spawned.clear();
 			g.entities_killed.clear();
 		}
+	}
+
+	if (g.modflags & (unsigned)GameMod::particles) {
+		particles = g.particles;
+		particles_spawned = g.particles_spawned;
+
+		if (reset)
+			g.particles_spawned.clear();
 	}
 
 	if (reset)

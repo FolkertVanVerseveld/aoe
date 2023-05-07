@@ -15,6 +15,7 @@
 #include <idpool.hpp>
 
 #include "world/entity_info.hpp"
+#include "world/particle.hpp"
 
 namespace aoe {
 
@@ -173,31 +174,6 @@ public:
 
 class WorldView;
 
-enum class ParticleType {
-	moveto,
-};
-
-// TODO stub
-class Particle final {
-public:
-	IdPoolRef ref;
-	ParticleType type;
-
-	float x, y;
-
-	unsigned subimage;
-
-	Particle(IdPoolRef ref);
-	Particle(IdPoolRef ref, ParticleType type, float x, float y);
-
-	/* Animate and return whether there's more images. Returning false means the animation has ended and the particle shall be destroyed. */
-	bool imgtick(unsigned n) noexcept;
-
-	friend bool operator<(const Particle &lhs, const Particle &rhs) noexcept {
-		return lhs.ref < rhs.ref;
-	}
-};
-
 class Entity final {
 public:
 	IdPoolRef ref;
@@ -338,6 +314,9 @@ class Game final {
 	std::set<Entity> entities;
 	std::set<IdPoolRef> entities_spawned;
 	std::vector<EntityView> entities_killed;
+	// no IdPool as we have no control over IdPoolRefs: the server does
+	std::set<Particle> particles;
+	std::set<IdPoolRef> particles_spawned;
 	unsigned modflags, ticks;
 	unsigned team_won;
 	friend GameView;
@@ -361,6 +340,8 @@ public:
 	bool entity_kill(IdPoolRef);
 	void entity_update(const EntityView &ev);
 
+	void particle_spawn(const Particle &p);
+
 	void gameover(unsigned team) noexcept;
 	unsigned winning_team() noexcept;
 
@@ -372,9 +353,11 @@ private:
 class GameView final {
 public:
 	Terrain t;
-	std::set<Entity> entities; // TODO use std::variant or Entity uniqueptr
+	std::set<Entity> entities;
 	std::set<IdPoolRef> entities_spawned;
 	std::vector<EntityView> entities_killed;
+	std::set<Particle> particles;
+	std::set<IdPoolRef> particles_spawned;
 	std::vector<PlayerView> players;
 	std::vector<unsigned> players_died;
 
