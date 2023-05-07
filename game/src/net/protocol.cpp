@@ -49,6 +49,7 @@ void NetPkg::ntoh() {
 			break;
 		case NetPkgType::playermod:
 		case NetPkgType::gameover:
+		case NetPkgType::particle_mod:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -183,20 +184,6 @@ void NetPkg::ntoh() {
 		case NetPkgType::gameticks:
 			need_payload(sizeof(uint16_t));
 			break;
-		case NetPkgType::particle_mod: {
-			need_payload(NetParticleMod::addsize);
-
-			uint32_t *dd = (uint32_t*)data.data();
-
-			dd[0] = ntohl(dd[0]); dd[1] = ntohl(dd[1]); // p.ref
-
-			uint16_t *dw = (uint16_t*)&dd[2];
-
-			dw[0] = ntohs(dw[0]); // p.type
-			dw[1] = ntohs(dw[1]); // p.subimage
-
-			break;
-		}
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -218,6 +205,7 @@ void NetPkg::hton() {
 		case NetPkgType::chat_text:
 		case NetPkgType::playermod:
 		case NetPkgType::gameover:
+		case NetPkgType::particle_mod:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -330,18 +318,6 @@ void NetPkg::hton() {
 		}
 		case NetPkgType::gameticks:
 			break;
-		case NetPkgType::particle_mod: {
-			uint32_t *dd = (uint32_t*)data.data();
-
-			dd[0] = htonl(dd[0]); dd[1] = htonl(dd[1]); // p.ref
-
-			uint16_t *dw = (uint16_t*)&dd[2];
-
-			dw[0] = htons(dw[0]); // p.type
-			dw[1] = htons(dw[1]); // p.subimage
-
-			break;
-		}
 		default:
 			throw std::runtime_error("bad type");
 	}

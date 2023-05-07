@@ -78,8 +78,11 @@ void Client::mainloop() {
 				case NetPkgType::gamespeed_control:
 					gamespeed_control(pkg.get_gamespeed());
 					break;
+				case NetPkgType::particle_mod:
+					particlemod(pkg);
+					break;
 				default:
-					printf("%s: type=%X\n", __func__, pkg.type());
+					printf("%s: unknown type %u\n", __func__, pkg.type());
 					break;
 			}
 		}

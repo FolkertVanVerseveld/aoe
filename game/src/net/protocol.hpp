@@ -181,8 +181,6 @@ public:
 	2 type
 	2 subimage
 	*/
-	static constexpr size_t addsize = refsize + 2*4 + 2*2;
-
 	NetParticleMod(const Particle &p) : data(p) {}
 };
 

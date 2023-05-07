@@ -12,7 +12,10 @@ Entity *WorldView::try_get(IdPoolRef r) {
 	return w.entities.try_get(r);
 }
 
-World::World() : m(), m_events(), t(), entities(), dirty_entities(), spawned_entities(), players(), player_achievements(), events_in(), events_out(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
+World::World()
+	: m(), m_events(), t(), entities(), dirty_entities(), spawned_entities()
+	, particles(), spawned_particles()
+	, players(), player_achievements(), events_in(), events_out(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -122,6 +125,20 @@ void World::tick_entities() {
 	}
 }
 
+/** Iterate all particles and remove those whose animation has ended. */
+void World::tick_particles() {
+	ZoneScoped;
+
+	for (auto it = particles.begin(); it != particles.end();) {
+		Particle &p = it->second;
+		if (!p.imgtick(1))
+			// no need to tell clients as they should already be able to detect this
+			it = particles.erase(it);
+		else
+			++it;
+	}
+}
+
 void World::tick_players() {
 	ZoneScoped;
 
@@ -129,6 +146,7 @@ void World::tick_players() {
 	for (unsigned i = 1; i < players.size(); ++i) {
 		Player &p = players[i];
 
+		// players may have additional rules to resign, but this always applies
 		if (!p.alive || !p.entities.empty())
 			continue;
 
@@ -177,6 +195,7 @@ void World::tick() {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m);
 	tick_entities();
+	tick_particles();
 	tick_players();
 }
 
@@ -229,7 +248,26 @@ void World::push_events() {
 
 	NetPkg pkg;
 
-	// TODO extract to push_XXX
+	push_entities();
+	push_particles();
+
+	for (WorldEvent &ev : events_out) {
+		switch (ev.type) {
+		case WorldEventType::gamespeed_control:
+			push_gamespeed_control(ev);
+			break;
+		}
+	}
+
+	events_out.clear();
+
+	push_scores();
+}
+
+void World::push_entities() {
+	ZoneScoped;
+	NetPkg pkg;
+
 	for (IdPoolRef ref : dirty_entities) {
 		Entity *ent = entities.try_get(ref);
 		if (!ent)
@@ -251,16 +289,27 @@ void World::push_events() {
 	}
 
 	spawned_entities.clear();
+}
 
-	for (WorldEvent &ev : events_out) {
-		switch (ev.type) {
-		case WorldEventType::gamespeed_control:
-			push_gamespeed_control(ev);
-			break;
-		}
+void World::push_particles() {
+	ZoneScoped;
+	NetPkg pkg;
+
+	for (IdPoolRef ref : spawned_particles) {
+		Particle *p = particles.try_get(ref);
+		if (!p)
+			continue;
+
+		pkg.particle_spawn(*p);
+		s->broadcast(pkg);
 	}
 
-	events_out.clear();
+	spawned_particles.clear();
+}
+
+void World::push_scores() {
+	ZoneScoped;
+	NetPkg pkg;
 
 	// check player achievements score
 	assert(player_achievements.empty() || player_achievements.size() == players.size());
@@ -381,8 +430,10 @@ void World::entity_task(WorldEvent &ev) {
 
 	switch (task.type) {
 		case EntityTaskType::move:
-			if (ent->task_move(task.x, task.y))
+			if (ent->task_move(task.x, task.y)) {
 				dirty_entities.emplace(ent->ref);
+				spawn_particle(ParticleType::moveto, task.x, task.y);
+			}
 			break;
 		case EntityTaskType::infer: {
 			// TODO determine task type. for now always assume attack
@@ -518,6 +569,17 @@ void World::spawn_unit(EntityType t, unsigned player, float x, float y, float an
 	IdPoolRef ref = p.first->first;
 	players.at(player).entities.emplace(ref);
 	spawned_entities.emplace(ref);
+}
+
+void World::spawn_particle(ParticleType t, float x, float y)
+{
+	ZoneScoped;
+
+	auto p = particles.emplace(t, x, y, 0);
+	assert(p.second);
+
+	IdPoolRef ref = p.first->first;
+	spawned_particles.emplace(ref);
 }
 
 void World::create_entities() {

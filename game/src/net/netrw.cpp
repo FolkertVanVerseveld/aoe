@@ -5,7 +5,7 @@
 
 namespace aoe {
 
-unsigned NetPkg::read(const std::string &fmt, std::vector<std::variant<uint64_t, std::string>> &dst, unsigned offset) {
+unsigned NetPkg::read(const std::string &fmt, netargs &dst, unsigned offset) {
 	unsigned mult = 0, size = 0;
 
 	for (unsigned char ch : fmt) {
@@ -90,7 +90,7 @@ unsigned NetPkg::read(const std::string &fmt, std::vector<std::variant<uint64_t,
 	return size;
 }
 
-unsigned NetPkg::write(const std::string &fmt, const std::vector<std::variant<uint64_t, std::string>> &args, bool append) {
+unsigned NetPkg::write(const std::string &fmt, const netargs &args, bool append) {
 	unsigned mult = 0, size = 0, argpos = 0;
 
 	if (!append)
@@ -185,6 +185,18 @@ unsigned NetPkg::write(const std::string &fmt, const std::vector<std::variant<ui
 	}
 
 	return size;
+}
+
+int8_t NetPkg::i8(unsigned pos) const {
+	return (int8_t)std::get<uint64_t>(args.at(pos));
+}
+
+uint16_t NetPkg::u16(unsigned pos) const {
+	return (uint16_t)std::get<uint64_t>(args.at(pos));
+}
+
+uint32_t NetPkg::u32(unsigned pos) const {
+	return (uint32_t)std::get<uint64_t>(args.at(pos));
 }
 
 }

@@ -9,6 +9,7 @@
 #include <mutex>
 #include <deque>
 #include <vector>
+#include <cstdint>
 #include <thread>
 #include <variant>
 #include <optional>
@@ -23,110 +24,11 @@
 #endif
 
 #include "net/protocol.hpp"
+#include "net/netpkg.hpp"
 
 namespace aoe {
 
 static_assert(sizeof(int) >= sizeof(int32_t));
-
-class PkgWriter;
-
-class NetPkg final {
-public:
-	NetPkgHdr hdr;
-	std::vector<uint8_t> data;
-
-	static constexpr unsigned max_payload = tcp4_max_size - NetPkgHdr::size;
-	static constexpr unsigned ressize = 4 * sizeof(int32_t);
-
-	friend PkgWriter;
-
-	NetPkg() : hdr(0, 0, false), data() {}
-	NetPkg(uint16_t type, uint16_t payload) : hdr(type, payload), data() {}
-	/** munch as much data we need and check if valid. throws if invalid or not enough data. */
-	NetPkg(std::deque<uint8_t> &q);
-
-	void set_protocol(uint16_t version);
-	uint16_t protocol_version();
-
-	void set_chat_text(IdPoolRef, const std::string&);
-	std::pair<IdPoolRef, std::string> chat_text();
-
-	void set_username(const std::string&);
-	std::string username();
-
-	void set_start_game();
-	void set_gameover(unsigned);
-	unsigned get_gameover();
-
-	void set_scn_vars(const ScenarioSettings&);
-	ScenarioSettings get_scn_vars();
-
-	void set_player_resize(size_t);
-	void claim_player_setting(uint16_t); // client to server
-	void set_cpu_player(uint16_t); // both directions
-	void set_player_civ(uint16_t, uint16_t);
-	void set_player_team(uint16_t, uint16_t);
-	void set_player_name(uint16_t, const std::string&);
-	void set_player_died(uint16_t); // server to client
-	void set_player_score(uint16_t, const PlayerAchievements&); // server to client
-	NetPlayerControl get_player_control();
-
-	void set_incoming(IdPoolRef);
-	void set_dropped(IdPoolRef);
-	void set_ref_username(IdPoolRef, const std::string&);
-	void set_claim_player(IdPoolRef, uint16_t); // server to client
-	NetPeerControl get_peer_control();
-
-	void cam_set(float x, float y, float w, float h);
-	NetCamSet get_cam_set();
-
-	void set_terrain_mod(const NetTerrainMod&);
-	NetTerrainMod get_terrain_mod();
-
-	// TODO repurpose to playerview?
-	void set_resources(const Resources&);
-	Resources get_resources();
-
-	// add is used to create entity without sfx
-	void set_entity_add(const Entity&);
-	void set_entity_add(const EntityView&);
-	// spawn entity and make all sounds and particles needed for it
-	void set_entity_spawn(const Entity&);
-	void set_entity_spawn(const EntityView&);
-	void set_entity_update(const Entity&);
-	void set_entity_kill(IdPoolRef);
-	void entity_move(IdPoolRef, float x, float y);
-	void entity_task(IdPoolRef, IdPoolRef, EntityTaskType type=EntityTaskType::infer);
-	void entity_train(IdPoolRef, EntityType);
-	NetEntityMod get_entity_mod();
-
-	uint16_t get_gameticks();
-	void set_gameticks(unsigned n);
-
-	NetGamespeedControl get_gamespeed();
-	void set_gamespeed(NetGamespeedType type);
-
-	NetPkgType type();
-
-	void ntoh();
-	void hton();
-
-	void write(std::deque<uint8_t> &q);
-	void write(std::vector<uint8_t> &q);
-
-	size_t size() const noexcept {
-		return NetPkgHdr::size + data.size();
-	}
-private:
-	void entity_add(const EntityView&, NetEntityControlType);
-	void set_hdr(NetPkgType type);
-	void need_payload(size_t n);
-
-	void playermod2(NetPlayerControlType, uint16_t, uint16_t);
-
-	unsigned read(const std::string &fmt, std::vector<std::variant<uint64_t, std::string>> &args, unsigned offset=0);
-	unsigned write(const std::string &fmt, const std::vector<std::variant<uint64_t, std::string>> &args, bool append);
-};
 
 enum class ClientInfoFlags {
 	ready = 1 << 0,
@@ -201,6 +103,8 @@ class World final {
 	Terrain t;
 	IdPool<Entity> entities;
 	std::set<IdPoolRef> dirty_entities, spawned_entities;
+	IdPool<Particle> particles;
+	std::set<IdPoolRef> spawned_particles;
 	std::vector<Player> players;
 	std::vector<PlayerAchievements> player_achievements;
 	std::deque<WorldEvent> events_in, events_out;
@@ -240,12 +144,19 @@ private:
 	void add_resource(EntityType t, float x, float y);
 
 	void spawn_unit(EntityType t, unsigned player, float x, float y, float angle);
+	void spawn_particle(ParticleType t, float x, float y);
 
 	void tick();
 	void tick_entities();
+	void tick_particles();
 	void tick_players();
 	void pump_events();
 	void push_events();
+
+	void push_entities();
+	void push_particles();
+	void push_scores();
+
 	void cam_move(WorldEvent&);
 
 	void gamespeed_control(WorldEvent&);
@@ -363,6 +274,7 @@ private:
 	void peermod(const NetPeerControl&);
 	void terrainmod(const NetTerrainMod&);
 	void entitymod(const NetEntityMod&);
+	void particlemod(NetPkg&);
 	void gameticks(unsigned n);
 	void gamespeed_control(const NetGamespeedControl&);
 public:
@@ -422,14 +334,13 @@ public:
 
 /*
  * since i've made the mistake multiple times to forget to call set_hdr, we can use this wrapper to take care of that.
- * also, eventually i would like to just += to add stuff. bit similar to struct.pack in python...
  */
 class PkgWriter final {
 public:
 	NetPkg &pkg;
 	const NetPkgType type;
 
-	PkgWriter(NetPkg &pkg, NetPkgType t, size_t n = 0) : pkg(pkg), type(t) {
+	PkgWriter(NetPkg &pkg, NetPkgType t, size_t n=0) : pkg(pkg), type(t) {
 		if (n)
 			pkg.data.resize(n);
 	}

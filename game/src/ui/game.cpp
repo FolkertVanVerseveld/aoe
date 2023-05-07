@@ -68,6 +68,44 @@ void UICache::show_world() {
 
 	show_entities();
 	show_selections();
+	show_particles();
+}
+
+void UICache::show_particles() {
+	ZoneScoped;
+	particles.clear();
+
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	Assets &a = *e->assets.get();
+
+	for (const Particle &p : e->gv.particles) {
+		// TODO support more particles
+		assert(p.type == ParticleType::moveto);
+
+		float x = p.x, y = p.y;
+		int ix = (int)x, iy = (int)y;
+		uint8_t h = e->gv.t.h_at(ix, iy);
+		ImVec2 tpos(e->tilepos(x + 1, y, left, top, h));
+
+		io::DrsId gif = io::DrsId::gif_moveto;
+
+		const ImageSet &s_gif = a.anim_at(gif);
+		IdPoolRef imgref = s_gif.try_at(p.subimage);
+		const gfx::ImageRef &tc = a.at(imgref);
+
+		float x0 = tpos.x - tc.hotspot_x;
+		float y0 = tpos.y - tc.hotspot_y;
+
+		particles.emplace_back(p.ref, tc.ref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y, false);
+	}
+
+	std::sort(particles.begin(), particles.end(), [](const VisualEntity &lhs, const VisualEntity &rhs) { return lhs.z < rhs.z; });
+
+	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+
+	for (VisualEntity &v : particles) {
+		lst->AddImage(e->tex1, ImVec2((int)v.x, (int)v.y), ImVec2(int(v.x + v.w), int(v.y + v.h)), ImVec2(v.s0, v.t0), ImVec2(v.s1, v.t1));
+	}
 }
 
 bool UICache::menu_btn(ImTextureID tex, const Assets &a, const char *lbl, float x, float scale, bool small) {

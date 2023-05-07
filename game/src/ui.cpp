@@ -19,7 +19,8 @@ namespace aoe {
 
 namespace ui {
 
-UICache::UICache() : civs(), e(nullptr), entities(), selected(), display_area()
+UICache::UICache()
+	: civs(), e(nullptr), entities(), particles(), selected(), display_area()
 	, left(0), top(0), scale(1)
 	, bkg(nullptr), btnsel()
 	, t_imgs()
@@ -117,7 +118,7 @@ bool Frame::btn(const char *s, TextHalign ha, const ImVec2 &sz) {
 
 bool Frame::xbtn(const char *s, TextHalign ha, const ImVec2 &sz) {
 	ImGui::BeginDisabled();
-	bool b = ImGui::Button(s, (int)ha, sz);
+	bool b = btn(s, ha, sz);
 	ImGui::EndDisabled();
 	return b;
 }
