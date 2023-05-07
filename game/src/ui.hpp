@@ -9,7 +9,7 @@
 #include "legacy/scenario.hpp"
 #include "engine/assets.hpp"
 
-#include "ui/imgui_memory_editor.h"
+#include "external/imgui_memory_editor.h"
 
 #include <SDL2/SDL_rect.h>
 
