@@ -8,7 +8,7 @@ Particle::Particle(IdPoolRef ref, ParticleType type, float x, float y, unsigned 
 
 bool Particle::imgtick(unsigned n) noexcept {
 	unsigned end = 8u - 1u;
-	subimage = std::clamp(subimage + n, 0u, end);
+	subimage = std::clamp<float>(subimage + n * 0.25, 0u, end);
 	return subimage < end;
 }
 

@@ -32,7 +32,7 @@ enum class EntityIconType {
 struct EntityImgInfo final {
 	EntityType type;
 	// ii = Image of Impact
-	unsigned alive, dying, ii_dying, decaying, ii_decaying;
+	unsigned alive, dying, ii_dying, decaying;
 	unsigned attack, ii_attack, attack_follow, moving;
 };
 

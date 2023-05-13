@@ -659,9 +659,8 @@ void UICache::game_mouse_process() {
 	mouse_right_process();
 }
 
-void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, bool clear) {
-	if (clear)
-		dst.clear();
+void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, bool filter) {
+	dst.clear();
 
 	// click
 	std::vector<std::pair<float, size_t>> selected;
@@ -719,11 +718,17 @@ void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, boo
 
 	//printf("selected: %llu\n", (unsigned long long)selected.size());
 
-	dst.clear();
-
+	// store entities and filter invalid and dead ones
 	for (auto kv : selected) {
 		VisualEntity &v = entities[kv.second];
-		dst.emplace_back(v.ref);
+
+		if (filter) {
+			Entity *ent = e->gv.try_get(v.ref);
+			if (ent  && ent->is_alive())
+				dst.emplace_back(v.ref);
+		} else {
+			dst.emplace_back(v.ref);
+		}
 	}
 }
 
@@ -749,7 +754,6 @@ void UICache::mouse_left_process() {
 	if (this->selected.empty())
 		return;
 
-	// TODO inspect selected types
 	IdPoolRef ref = *this->selected.begin();
 	Entity *ent = e->gv.try_get(ref);
 

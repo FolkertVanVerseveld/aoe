@@ -9,12 +9,12 @@ using namespace io;
 const std::vector<EntityImgInfo> entity_img_info {
 	// alive, dying, decaying, attack, attack_follow, moving
 	// alive, dying, ii_dying, decaying, ii_decaying, attack, ii_attack, attack_follow, moving
-	{EntityType::bird1, 12, 12, 0, 12, 0, 12, 0, 12, 12},
-	{EntityType::villager, 6, 10, 10-1, 6, 6-1, 15, 15-1, 15, 15},
-	{EntityType::worker_wood1, 6, 10, 10-1, 6, 6-1, 11, 11-1, 15, 15},
-	{EntityType::worker_wood2, 6, 10, 10-1, 6, 6-1, 11, 11-1, 15, 15},
-	{EntityType::melee1, 6, 10, 10-1, 6, 6-1, 15, 15-1, 15, 15},
-	{EntityType::priest, 10, 10, 10-1, 6, 6-1, 10, 10-1, 15, 15},
+	{EntityType::bird1, 12, 12, 0, 12, 12, 0, 12, 12},
+	{EntityType::villager, 6, 10, 10-1, 6, 15, 15-1, 15, 15},
+	{EntityType::worker_wood1, 6, 10, 10-1, 6, 11, 11-1, 15, 15},
+	{EntityType::worker_wood2, 6, 10, 10-1, 6, 11, 11-1, 15, 15},
+	{EntityType::melee1, 6, 10, 10-1, 6, 15, 15-1, 15, 15},
+	{EntityType::priest, 10, 10, 10-1, 6, 10, 10-1, 15, 15},
 };
 
 const std::vector<EntityInfo> entity_info {

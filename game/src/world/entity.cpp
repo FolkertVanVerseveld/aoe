@@ -319,7 +319,7 @@ bool Entity::imgtick(unsigned n) noexcept {
 			break;
 		case EntityState::decaying:
 			mult = img.decaying;
-			more = (unsigned)fmodf(subimage, mult) != img.ii_decaying;
+			more = fmodf(subimage, mult) < mult - 0.5;
 			subimage = std::min<float>(fmodf(subimage, mult) + n * 0.002, mult - 1) + face * mult;
 			break;
 		case EntityState::attack:
