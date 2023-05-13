@@ -173,6 +173,18 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 	return true;
 }
 
+bool Entity::task_cancel() noexcept {
+	if (!is_alive())
+		return false;
+
+	bool b = try_state(EntityState::alive);
+
+	if (b)
+		this->target_ref = invalid_ref;
+
+	return b;
+}
+
 bool Entity::task_move(float x, float y) noexcept {
 	if (!is_alive() || is_building(type) || is_resource(type))
 		return false;

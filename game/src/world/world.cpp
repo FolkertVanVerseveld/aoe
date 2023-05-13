@@ -86,23 +86,34 @@ void World::tick_entities() {
 		bool more = ent.imgtick(1);
 
 		switch (ent.state) {
-		case EntityState::dying:
-			if (!more) {
-				ent.decay();
-				dirty = true;
-			}
-			break;
-		case EntityState::attack:
-			if (!more) {
+			case EntityState::dying:
+				if (!more) {
+					ent.decay();
+					dirty = true;
+				}
+				break;
+			case EntityState::attack: {
 				Entity *t = entities.try_get(ent.target_ref);
-				if (t) {
-					assert(t->is_alive());
+				if (!t || !t->is_alive()) {
+					ent.task_cancel();
+					dirty = true;
+					break;
+				}
+
+				if (!more) {
+					// prevent killing the entity twice. yes i've debug tested this can happen
+					bool was_alive = t->is_alive();
 					//printf("TODO attack (%u,%u) to (%u,%u)\n", ent.ref.first, ent.ref.second, ent.target_ref.first, ent.target_ref.second);
-					dirty |= t->hit(wv, ent);
-					dirty_entities.emplace(t->ref);
+					if (was_alive) {
+						dirty |= t->hit(wv, ent);
+						dirty_entities.emplace(t->ref);
+					} else {
+						ent.task_cancel();
+						dirty = true;
+					}
 
 					// if t died just now, remove from player
-					if (!t->is_alive()) {
+					if (!t->is_alive() && was_alive) {
 						// TODO update player achievements
 						players[t->playerid].lost_entity(t->ref);
 
@@ -116,8 +127,8 @@ void World::tick_entities() {
 
 					// TODO conversion is not detected!
 				}
+				break;
 			}
-			break;
 		}
 
 		if (dirty)

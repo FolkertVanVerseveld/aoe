@@ -211,6 +211,8 @@ public:
 		return state != EntityState::dying && state != EntityState::decaying;
 	}
 
+	bool task_cancel() noexcept;
+
 	bool task_move(float x, float y) noexcept;
 	bool task_attack(Entity&) noexcept;
 	/** ensure specified type can be trained at this entity. */
