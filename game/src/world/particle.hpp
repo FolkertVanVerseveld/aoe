@@ -13,7 +13,7 @@ public:
 
 	float x, y;
 
-	unsigned subimage;
+	float subimage;
 
 	Particle(IdPoolRef ref, ParticleType type, float x, float y, unsigned subimage);
 

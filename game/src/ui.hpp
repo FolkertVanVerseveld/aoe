@@ -257,7 +257,7 @@ private:
 	bool menu_btn(ImTextureID tex, const Assets &a, const char *lbl, float x, float scale, bool small);
 	bool frame_btn(const BackgroundColors &col, const char *lbl, float x, float y, float w, float h, float scale, bool invert=false);
 
-	void collect(std::vector<IdPoolRef> &refs, float mx, float my, bool clear=true);
+	void collect(std::vector<IdPoolRef> &refs, float mx, float my, bool filter=true);
 
 	void image(const gfx::ImageRef &ref, float x, float y, float scale);
 };
