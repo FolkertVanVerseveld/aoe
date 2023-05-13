@@ -37,6 +37,22 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 
 	refcheck(e.ref);
 
+#if 1
+	PkgWriter out(*this, NetPkgType::entity_mod);
+
+	write("2H4IHHHBbbBHH", std::initializer_list<netarg>{
+		htons((uint16_t)type), (uint16_t)e.type,
+		e.ref.first, e.ref.second, e.x, e.y,
+		e.angle * UINT16_MAX / (2 * M_PI),
+		e.playerid, e.subimage,
+		(uint8_t)e.state,
+		(int8_t)(INT8_MAX * fmodf(e.x, 1)),
+		(int8_t)(INT8_MAX * fmodf(e.y, 1)),
+		e.stats.attack,
+		e.stats.hp,
+		e.stats.maxhp,
+	}, false);
+#else
 	data.resize(NetEntityMod::addsize);
 
 	/*
@@ -90,6 +106,7 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	dw[6] = e.stats.maxhp;
 
 	set_hdr(NetPkgType::entity_mod);
+#endif
 }
 
 void NetPkg::set_entity_kill(IdPoolRef ref) {
@@ -168,6 +185,31 @@ NetEntityMod NetPkg::get_entity_mod() {
 	case NetEntityControlType::update: {
 		EntityView ev;
 
+#if 1
+		args.clear();
+
+		pos += read("H4IHHHBbbBHH", args, pos);
+
+		ev.type = (EntityType)u16(0);
+		ev.ref.first = u32(1); ev.ref.second = u32(2);
+		ev.x = u32(3); ev.y = u32(4);
+
+		ev.angle = u16(5) * (2 * M_PI) / UINT16_MAX;
+		ev.playerid = u16(6);
+		ev.subimage = u16(7);
+
+		ev.state = (EntityState)u8(8);
+		int8_t dx = i8(9), dy = i8(10);
+
+		if (dx || dy) {
+			ev.x += dx / (float)INT8_MAX;
+			ev.y += dy / (float)INT8_MAX;
+		}
+
+		ev.stats.attack = u8(11);
+		ev.stats.hp     = u16(12);
+		ev.stats.maxhp  = u16(13);
+#else
 		ev.type = (EntityType)dw[1];
 
 		dd = (const uint32_t*)&dw[2];
@@ -193,6 +235,7 @@ NetEntityMod NetPkg::get_entity_mod() {
 		ev.stats.hp = dw[5];
 		ev.stats.maxhp = dw[6];
 
+#endif
 		return NetEntityMod(ev, type);
 	}
 	case NetEntityControlType::kill: {

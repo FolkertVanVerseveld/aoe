@@ -191,6 +191,10 @@ int8_t NetPkg::i8(unsigned pos) const {
 	return (int8_t)std::get<uint64_t>(args.at(pos));
 }
 
+uint8_t NetPkg::u8(unsigned pos) const {
+	return (uint8_t)std::get<uint64_t>(args.at(pos));
+}
+
 uint16_t NetPkg::u16(unsigned pos) const {
 	return (uint16_t)std::get<uint64_t>(args.at(pos));
 }

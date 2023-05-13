@@ -116,6 +116,7 @@ private:
 	unsigned write(const std::string &fmt, const netargs &args, bool append);
 
 	int8_t i8(unsigned pos) const;
+	uint8_t u8(unsigned pos) const;
 	uint16_t u16(unsigned pos) const;
 	uint32_t u32(unsigned pos) const;
 };
