@@ -118,19 +118,14 @@ void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
 	assert(type != EntityTaskType::move);
 	refcheck(r1);
 	refcheck(r2);
+	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	PkgWriter out(*this, NetPkgType::entity_mod, NetEntityMod::tasksize);
-
-	uint16_t *dw = (uint16_t*)data.data();
-	uint32_t *dd;
-
-	dw[0] = (uint16_t)NetEntityControlType::task;
-	dw[1] = (uint16_t)type;
-
-	dd = (uint32_t*)&dw[2];
-
-	dd[0] = r1.first; dd[1] = r1.second;
-	dd[2] = r2.first; dd[3] = r2.second;
+	write("2H4I", std::initializer_list<netarg>{
+		htons((uint16_t)NetEntityControlType::task),
+		htons((uint16_t)type),
+		r1.first, r1.second,
+		r2.first, r2.second,
+	}, false);
 }
 
 void NetPkg::entity_train(IdPoolRef src, EntityType type) {
@@ -211,32 +206,24 @@ NetEntityMod NetPkg::get_entity_mod() {
 		return NetEntityMod(ref);
 	}
 	case NetEntityControlType::task: {
-		IdPoolRef ref1;
+		args.clear();
 
 		EntityTaskType type = (EntityTaskType)dw[1];
 		pos += 2;
-		dd = (uint32_t*)&dw[2];
-
-		ref1.first = dd[0]; ref1.second = dd[1];
 
 		switch (type) {
 			case EntityTaskType::move: {
-				args.clear();
 				pos += read("4I", args, pos);
 
-				ref1.first = u32(0);
-				ref1.second = u32(1);
-
-				return NetEntityMod(EntityTask(ref1, u32(2), u32(3)));
+				return NetEntityMod(EntityTask(IdPoolRef(u32(0), u32(1)), u32(2), u32(3)));
 			}
 			case EntityTaskType::attack:
 			case EntityTaskType::infer: {
-				IdPoolRef ref2;
-				ref2.first = dd[2]; ref2.second = dd[3];
-				return NetEntityMod(EntityTask(type, ref1, ref2));
+				pos += read("4I", args, pos);
+
+				return NetEntityMod(EntityTask(type, IdPoolRef(u32(0), u32(1)), IdPoolRef(u32(2), u32(3))));
 			}
 			case EntityTaskType::train_unit: {
-				args.clear();
 				pos += read("2IH", args, pos);
 
 				IdPoolRef src;
