@@ -109,7 +109,7 @@ void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
 
 	write("2H4I", std::initializer_list<netarg>{
 		htons((uint16_t)NetEntityControlType::task),
-		htons((uint16_t)EntityTaskType::move),
+		(uint16_t)EntityTaskType::move,
 		ref.first, ref.second, x, y
 	}, false);
 }
@@ -122,7 +122,7 @@ void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
 
 	write("2H4I", std::initializer_list<netarg>{
 		htons((uint16_t)NetEntityControlType::task),
-		htons((uint16_t)type),
+		(uint16_t)type,
 		r1.first, r1.second,
 		r2.first, r2.second,
 	}, false);
@@ -136,7 +136,7 @@ void NetPkg::entity_train(IdPoolRef src, EntityType type) {
 	write("2H2IH", std::initializer_list<netarg> {
 		// TODO remove htons hack when all entity mod messages are converted
 		htons((unsigned)NetEntityControlType::task),
-		htons((unsigned)EntityTaskType::train_unit),
+		(uint16_t)EntityTaskType::train_unit,
 
 		src.first, src.second,
 		(unsigned)type, // TODO add more info to message when technologies are supported
@@ -207,30 +207,29 @@ NetEntityMod NetPkg::get_entity_mod() {
 	}
 	case NetEntityControlType::task: {
 		args.clear();
-
-		EntityTaskType type = (EntityTaskType)dw[1];
-		pos += 2;
+		pos += read("H", args, pos);
+		EntityTaskType type = (EntityTaskType)u16(0);
 
 		switch (type) {
 			case EntityTaskType::move: {
 				pos += read("4I", args, pos);
 
-				return NetEntityMod(EntityTask(IdPoolRef(u32(0), u32(1)), u32(2), u32(3)));
+				return NetEntityMod(EntityTask(IdPoolRef(u32(1), u32(2)), u32(3), u32(4)));
 			}
 			case EntityTaskType::attack:
 			case EntityTaskType::infer: {
 				pos += read("4I", args, pos);
 
-				return NetEntityMod(EntityTask(type, IdPoolRef(u32(0), u32(1)), IdPoolRef(u32(2), u32(3))));
+				return NetEntityMod(EntityTask(type, IdPoolRef(u32(1), u32(2)), IdPoolRef(u32(3), u32(4))));
 			}
 			case EntityTaskType::train_unit: {
 				pos += read("2IH", args, pos);
 
 				IdPoolRef src;
-				src.first = u32(0);
-				src.second = u32(1);
+				src.first  = u32(1);
+				src.second = u32(2);
 
-				EntityType train = (EntityType)u16(2);
+				EntityType train = (EntityType)u16(3);
 
 				return NetEntityMod(EntityTask(src, train));
 			}
