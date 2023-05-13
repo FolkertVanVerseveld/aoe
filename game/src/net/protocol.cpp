@@ -50,6 +50,7 @@ void NetPkg::ntoh() {
 		case NetPkgType::playermod:
 		case NetPkgType::gameover:
 		case NetPkgType::particle_mod:
+		case NetPkgType::entity_mod:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -113,64 +114,6 @@ void NetPkg::ntoh() {
 
 			break;
 		}
-		case NetPkgType::entity_mod: {
-			// TODO remove
-#if 0
-			need_payload(NetEntityMod::minsize);
-			uint16_t *dw = (uint16_t*)data.data();
-			uint32_t *dd;
-
-			dw[0] = ntohs(dw[0]); // type
-
-			switch ((NetEntityControlType)dw[0]) {
-			case NetEntityControlType::add:
-			case NetEntityControlType::spawn:
-			case NetEntityControlType::update:
-				need_payload(NetEntityMod::addsize);
-				dw[1] = ntohs(dw[1]); // e.type
-
-				dd = (uint32_t*)&dw[2];
-
-				// e.ref
-				dd[0] = ntohl(dd[0]);
-				dd[1] = ntohl(dd[1]);
-
-				dd[2] = ntohl(dd[2]); // e.x
-				dd[3] = ntohl(dd[3]); // e.y
-
-				dw = (uint16_t*)&dd[4];
-				dw[0] = ntohs(dw[0]); // e.angle
-				dw[1] = ntohs(dw[1]); // e.color
-				dw[2] = ntohs(dw[2]); // e.subimage
-
-				// e.state
-				// e.dx
-				// e.dy
-				// e.reserved
-
-				dw[5] = ntohs(dw[5]); // e.stats.hp
-				dw[6] = ntohs(dw[6]); // e.stats.maxhp
-				break;
-			case NetEntityControlType::kill:
-				need_payload(NetEntityMod::killsize);
-				dd = (uint32_t*)&dw[1];
-				dd[0] = ntohl(dd[0]); dd[1] = ntohl(dd[1]);
-				break;
-			case NetEntityControlType::task:
-				need_payload(NetEntityMod::tasksize);
-				dw[1] = ntohs(dw[1]); // type
-
-				dd = (uint32_t*)&dw[2];
-
-				for (unsigned i = 0; i < 4; ++i) // e.ref, (e.ref2 OR e.x,e.y)
-					dd[i] = ntohl(dd[i]);
-				break;
-			default:
-				throw std::runtime_error("bad entity control type");
-			}
-#endif
-			break;
-		}
 		case NetPkgType::cam_set: {
 			need_payload(NetCamSet::size);
 
@@ -206,6 +149,7 @@ void NetPkg::hton() {
 		case NetPkgType::playermod:
 		case NetPkgType::gameover:
 		case NetPkgType::particle_mod:
+		case NetPkgType::entity_mod:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -254,58 +198,6 @@ void NetPkg::hton() {
 			for (unsigned i = 0; i < 4; ++i)
 				dd[i] = htonl(dd[i]);
 
-			break;
-		}
-		case NetPkgType::entity_mod: {
-			// TODO remove
-#if 0
-			uint16_t *dw = (uint16_t*)data.data();
-			uint32_t *dd;
-
-			NetEntityControlType type = (NetEntityControlType)dw[0];
-			dw[0] = htons(dw[0]);
-
-			switch (type) {
-			case NetEntityControlType::add:
-			case NetEntityControlType::spawn:
-			case NetEntityControlType::update:
-				// size: addsize
-				dw[1] = htons(dw[1]); // e.type
-
-				dd = (uint32_t*)&dw[2];
-
-				dd[0] = htonl(dd[0]); dd[1] = htonl(dd[1]); // e.ref
-				dd[2] = htonl(dd[2]); // e.x
-				dd[3] = htonl(dd[3]); // e.y
-
-				dw = (uint16_t*)&dd[4];
-				dw[0] = htons(dw[0]); // e.angle
-				dw[1] = htons(dw[1]); // e.color
-				dw[2] = htons(dw[2]); // e.subimage
-
-				// e.state
-				// e.dx
-				// e.dy
-				// [reserved]
-				dw[5] = htons(dw[5]); // e.stats.hp
-				dw[6] = htons(dw[6]); // e.stats.maxhp
-				break;
-			case NetEntityControlType::kill:
-				dd = (uint32_t*)&dw[1];
-				dd[0] = htonl(dd[0]); dd[1] = htonl(dd[1]);
-				break;
-			case NetEntityControlType::task:
-				dw[1] = htons(dw[1]); // type
-
-				dd = (uint32_t*)&dw[2];
-
-				for (unsigned i = 0; i < 4; ++i) // e.ref, (e.ref2 OR e.x,e.y)
-					dd[i] = htonl(dd[i]);
-				break;
-			default:
-				throw std::runtime_error("bad entity control type");
-			}
-#endif
 			break;
 		}
 		case NetPkgType::cam_set: {

@@ -36,12 +36,10 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	static_assert(sizeof(float) <= sizeof(uint32_t));
 
 	refcheck(e.ref);
-
-#if 1
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
 	write("2H4IHHHBbbBHH", std::initializer_list<netarg>{
-		htons((uint16_t)type), (uint16_t)e.type,
+		(uint16_t)type, (uint16_t)e.type,
 		e.ref.first, e.ref.second, e.x, e.y,
 		e.angle * UINT16_MAX / (2 * M_PI),
 		e.playerid, e.subimage,
@@ -52,61 +50,6 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 		e.stats.hp,
 		e.stats.maxhp,
 	}, false);
-#else
-	data.resize(NetEntityMod::addsize);
-
-	/*
-	layout:
-	b # sz  name
-	2 1 u16 type
-	2 1 u16 e.type
-	8 2 u32 e.ref
-	4 1 u32 e.x
-	4 1 u32 e.y
-	2 1 u16 e.angle
-	2 1 u16 e.color
-	2 1 u16 e.subimage
-	1 1 u8  e.state
-	1 1 s8  e.dx
-	1 1 s8  e.dy
-	1 1 u8  e.stats.attack
-	2 1 u16 e.stats.hp
-	2 1 u16 e.stats.maxhp
-	*/
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)type;
-	dw[1] = (uint16_t)e.type;
-
-	uint32_t *dd = (uint32_t*)&dw[2];
-
-	dd[0] = e.ref.first;
-	dd[1] = e.ref.second;
-
-	dd[2] = (uint32_t)e.x;
-	dd[3] = (uint32_t)e.y;
-
-	dw = (uint16_t*)&dd[4];
-	int16_t *sw = (int16_t*)dw;
-	dw[0] = e.angle * UINT16_MAX / (2 * M_PI);
-	dw[1] = e.playerid;
-	dw[2] = e.subimage;
-
-	uint8_t *db = (uint8_t*)&dw[3];
-	int8_t *sb = (int8_t*)db;
-
-	db[0] = (uint8_t)e.state;
-	sb[1] = (int8_t)(INT8_MAX * fmodf(e.x, 1));
-	sb[2] = (int8_t)(INT8_MAX * fmodf(e.y, 1));
-	assert(e.stats.attack <= UINT8_MAX);
-	db[3] = e.stats.attack;
-
-	dw[5] = e.stats.hp;
-	dw[6] = e.stats.maxhp;
-
-	set_hdr(NetPkgType::entity_mod);
-#endif
 }
 
 void NetPkg::set_entity_kill(IdPoolRef ref) {
@@ -115,7 +58,7 @@ void NetPkg::set_entity_kill(IdPoolRef ref) {
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
 	write("H2I", std::initializer_list<netarg> {
-		htons((uint16_t)NetEntityControlType::kill),
+		(uint16_t)NetEntityControlType::kill,
 		ref.first, ref.second,
 	}, false);
 }
@@ -125,7 +68,7 @@ void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
 	write("2H4I", std::initializer_list<netarg>{
-		htons((uint16_t)NetEntityControlType::task),
+		(uint16_t)NetEntityControlType::task,
 		(uint16_t)EntityTaskType::move,
 		ref.first, ref.second, x, y
 	}, false);
@@ -138,7 +81,7 @@ void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
 	write("2H4I", std::initializer_list<netarg>{
-		htons((uint16_t)NetEntityControlType::task),
+		(uint16_t)NetEntityControlType::task,
 		(uint16_t)type,
 		r1.first, r1.second,
 		r2.first, r2.second,
@@ -152,7 +95,7 @@ void NetPkg::entity_train(IdPoolRef src, EntityType type) {
 
 	write("2H2IH", std::initializer_list<netarg> {
 		// TODO remove htons hack when all entity mod messages are converted
-		htons((unsigned)NetEntityControlType::task),
+		(unsigned)NetEntityControlType::task,
 		(uint16_t)EntityTaskType::train_unit,
 
 		src.first, src.second,
@@ -167,25 +110,15 @@ NetEntityMod NetPkg::get_entity_mod() {
 	if ((NetPkgType)hdr.type != NetPkgType::entity_mod)
 		throw std::runtime_error("not an entity control packet");
 
-	const uint16_t *dw = (const uint16_t*)data.data();
-	const int16_t *sw;
-	const uint32_t *dd;
-	const uint8_t *db;
-	const int8_t *sb;
-
-	NetEntityControlType type = (NetEntityControlType)dw[0];
-	unsigned pos = 0;
-
-	// TODO convert message to read/write netrw stuff
-	pos += 2;
+	args.clear();
+	unsigned pos = read("H", args);
+	NetEntityControlType type = (NetEntityControlType)u16(0);
 
 	switch (type) {
 	case NetEntityControlType::add:
 	case NetEntityControlType::spawn:
 	case NetEntityControlType::update: {
 		EntityView ev;
-
-#if 1
 		args.clear();
 
 		pos += read("H4IHHHBbbBHH", args, pos);
@@ -209,33 +142,7 @@ NetEntityMod NetPkg::get_entity_mod() {
 		ev.stats.attack = u8(11);
 		ev.stats.hp     = u16(12);
 		ev.stats.maxhp  = u16(13);
-#else
-		ev.type = (EntityType)dw[1];
 
-		dd = (const uint32_t*)&dw[2];
-		ev.ref.first = dd[0]; ev.ref.second = dd[1];
-		ev.x = dd[2]; ev.y = dd[3];
-
-		dw = (const uint16_t*)&dd[4];
-		sw = (const int16_t*)dw;
-		ev.angle = dw[0] * (2 * M_PI) / UINT16_MAX;
-		ev.playerid = dw[1];
-		ev.subimage = dw[2];
-
-		db = (const uint8_t*)&dw[3];
-		sb = (const int8_t*)db;
-		ev.state = (EntityState)db[0];
-		if (sb[1] || sb[2]) {
-			ev.x += sb[1] / (float)INT8_MAX;
-			ev.y += sb[2] / (float)INT8_MAX;
-		}
-
-		ev.stats.attack = db[3];
-
-		ev.stats.hp = dw[5];
-		ev.stats.maxhp = dw[6];
-
-#endif
 		return NetEntityMod(ev, type);
 	}
 	case NetEntityControlType::kill: {
