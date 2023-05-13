@@ -310,32 +310,32 @@ bool Entity::imgtick(unsigned n) noexcept {
 		switch (state) {
 		case EntityState::alive:
 			mult = img.alive;
-			subimage = (subimage + n) % mult + face * mult;
+			subimage = fmodf(subimage + n, mult) + face * mult;
 			break;
 		case EntityState::dying:
 			mult = img.dying;
-			more = subimage % mult != img.ii_dying;
-			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
+			more = (unsigned)fmodf(subimage, mult) != img.ii_dying;
+			subimage = std::min<float>(fmodf(subimage, mult) + n, mult - 1) + face * mult;
 			break;
 		case EntityState::decaying:
 			mult = img.decaying;
-			more = subimage % mult != img.ii_decaying;
-			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
+			more = (unsigned)fmodf(subimage, mult) != img.ii_decaying;
+			subimage = std::min<float>(fmodf(subimage, mult) + n, mult - 1) + face * mult;
 			break;
 		case EntityState::attack:
 			mult = img.attack;
-			more = subimage % mult != img.ii_attack;
-			subimage = (subimage + n) % mult + face * mult;
+			more = (unsigned)fmodf(subimage, mult) != img.ii_attack;
+			subimage = fmodf(subimage + n, mult) + face * mult;
 			break;
 		case EntityState::attack_follow:
 			mult = img.attack_follow;
-			more = subimage % mult != img.attack_follow;
-			subimage = (subimage + n) % mult + face * mult;
+			more = (unsigned)fmodf(subimage, mult) != img.attack_follow;
+			subimage = fmodf(subimage + n, mult) + face * mult;
 			break;
 		case EntityState::moving:
 			mult = img.moving;
-			more = subimage % mult != img.moving;
-			subimage = (subimage + n) % mult + face * mult;
+			more = fmodf(subimage, mult) != img.moving;
+			subimage = fmodf(subimage + n, mult) + face * mult;
 			break;
 		}
 	}

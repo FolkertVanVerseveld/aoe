@@ -186,7 +186,7 @@ public:
 	float target_x, target_y;
 
 	// TODO add more params
-	unsigned subimage;
+	float subimage;
 	EntityState state;
 	bool xflip;
 
