@@ -109,8 +109,9 @@ bool Entity::attack(WorldView &wv) noexcept {
 }
 
 bool Entity::tick(WorldView &wv) noexcept {
+	// check we haven't become undead
 	if (!stats.hp)
-		return false;
+		return die();
 
 	switch (state) {
 	case EntityState::moving: return move();

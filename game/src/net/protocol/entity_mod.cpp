@@ -94,9 +94,7 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 
 void NetPkg::set_entity_kill(IdPoolRef ref) {
 	static_assert(sizeof(RefCounter) <= sizeof(uint32_t));
-
 	refcheck(ref);
-
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
 	write("H2I", std::initializer_list<netarg> {
@@ -107,19 +105,13 @@ void NetPkg::set_entity_kill(IdPoolRef ref) {
 
 void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
 	refcheck(ref);
+	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	PkgWriter out(*this, NetPkgType::entity_mod, NetEntityMod::tasksize);
-
-	uint16_t *dw = (uint16_t*)data.data();
-	uint32_t *dd;
-
-	dw[0] = (uint16_t)NetEntityControlType::task;
-	dw[1] = (uint16_t)EntityTaskType::move;
-
-	dd = (uint32_t*)&dw[2];
-
-	dd[0] = ref.first; dd[1] = ref.second;
-	dd[2] = (uint32_t)x; dd[3] = (uint32_t)y;
+	write("2H4I", std::initializer_list<netarg>{
+		htons((uint16_t)NetEntityControlType::task),
+		htons((uint16_t)EntityTaskType::move),
+		ref.first, ref.second, x, y
+	}, false);
 }
 
 void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
@@ -144,19 +136,16 @@ void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
 void NetPkg::entity_train(IdPoolRef src, EntityType type) {
 	ZoneScoped;
 	refcheck(src);
-
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H2IH",
-		std::initializer_list<std::variant<uint64_t, std::string>>
-		{
-			// TODO remove htons hack when all entity mod messages are converted
-			htons((unsigned)NetEntityControlType::task),
-			htons((unsigned)EntityTaskType::train_unit),
+	write("2H2IH", std::initializer_list<netarg> {
+		// TODO remove htons hack when all entity mod messages are converted
+		htons((unsigned)NetEntityControlType::task),
+		htons((unsigned)EntityTaskType::train_unit),
 
-			src.first, src.second,
-			(unsigned)type, // TODO add more info to message when technologies are supported
-		}, false);
+		src.first, src.second,
+		(unsigned)type, // TODO add more info to message when technologies are supported
+	}, false);
 }
 
 NetEntityMod NetPkg::get_entity_mod() {
@@ -232,9 +221,13 @@ NetEntityMod NetPkg::get_entity_mod() {
 
 		switch (type) {
 			case EntityTaskType::move: {
-				uint32_t x, y;
-				x = dd[2]; y = dd[3];
-				return NetEntityMod(EntityTask(ref1, x, y));
+				args.clear();
+				pos += read("4I", args, pos);
+
+				ref1.first = u32(0);
+				ref1.second = u32(1);
+
+				return NetEntityMod(EntityTask(ref1, u32(2), u32(3)));
 			}
 			case EntityTaskType::attack:
 			case EntityTaskType::infer: {
@@ -243,14 +236,14 @@ NetEntityMod NetPkg::get_entity_mod() {
 				return NetEntityMod(EntityTask(type, ref1, ref2));
 			}
 			case EntityTaskType::train_unit: {
-				std::vector<std::variant<uint64_t, std::string>> args;
+				args.clear();
 				pos += read("2IH", args, pos);
 
 				IdPoolRef src;
-				src.first = (uint32_t)std::get<uint64_t>(args.at(0));
-				src.second = (uint32_t)std::get<uint64_t>(args.at(1));
+				src.first = u32(0);
+				src.second = u32(1);
 
-				EntityType train = (EntityType)(uint16_t)std::get<uint64_t>(args.at(2));
+				EntityType train = (EntityType)u16(2);
 
 				return NetEntityMod(EntityTask(src, train));
 			}
