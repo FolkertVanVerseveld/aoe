@@ -29,6 +29,13 @@ enum class EntityIconType {
 	resource,
 };
 
+struct EntityImgInfo final {
+	EntityType type;
+	// ii = Image of Impact
+	unsigned alive, dying, ii_dying, decaying, ii_decaying;
+	unsigned attack, ii_attack, attack_follow, moving;
+};
+
 struct EntityInfo final {
 	EntityType type;
 	float size;
@@ -49,5 +56,6 @@ struct EntityStats final {
 };
 
 extern const std::vector<EntityInfo> entity_info;
+extern const std::vector<EntityImgInfo> entity_img_info;
 
 }

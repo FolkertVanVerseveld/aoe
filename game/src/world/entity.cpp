@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "../server.hpp"
+#include "entity_info.hpp"
 
 namespace aoe {
 
@@ -303,67 +304,45 @@ bool Entity::imgtick(unsigned n) noexcept {
 	unsigned face = faces[uface];
 	xflip = uface < 3;
 
-	switch (type) {
-	case EntityType::worker_wood1:
-	case EntityType::worker_wood2:
+	if (type >= entity_img_info[0].type && type <= entity_img_info.back().type) {
+		const EntityImgInfo &img = entity_img_info.at((unsigned)type - (unsigned)entity_img_info[0].type);
+
 		switch (state) {
+		case EntityState::alive:
+			mult = img.alive;
+			subimage = (subimage + n) % mult + face * mult;
+			break;
 		case EntityState::dying:
-			mult = 10;
-			more = subimage % mult < mult - 1;
+			mult = img.dying;
+			more = subimage % mult != img.ii_dying;
 			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
 			break;
 		case EntityState::decaying:
-			mult = 6;
-			more = subimage % mult < mult - 1;
+			mult = img.decaying;
+			more = subimage % mult != img.ii_decaying;
 			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
 			break;
 		case EntityState::attack:
-			mult = 11;
-			more = subimage % mult != mult - 1; // image of impact
+			mult = img.attack;
+			more = subimage % mult != img.ii_attack;
+			subimage = (subimage + n) % mult + face * mult;
+			break;
+		case EntityState::attack_follow:
+			mult = img.attack_follow;
+			more = subimage % mult != img.attack_follow;
 			subimage = (subimage + n) % mult + face * mult;
 			break;
 		case EntityState::moving:
-		case EntityState::attack_follow:
-			mult = 15;
-			subimage = (subimage + n) % mult + face * mult;
-			break;
-		default:
-			mult = 6;
+			mult = img.moving;
+			more = subimage % mult != img.moving;
 			subimage = (subimage + n) % mult + face * mult;
 			break;
 		}
-		break;
-	case EntityType::villager:
-	case EntityType::melee1:
-		switch (state) {
-		case EntityState::dying:
-			mult = 10;
-			more = subimage % mult < mult - 1;
-			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
-			break;
-		case EntityState::decaying:
-			mult = 6;
-			more = subimage % mult < mult - 1;
-			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
-			break;
-		case EntityState::attack:
-			mult = 15;
-			more = subimage % mult != 9; // image of impact
-			subimage = (subimage + n) % mult + face * mult;
-			break;
-		case EntityState::moving:
-		case EntityState::attack_follow:
-			mult = 15;
-			subimage = (subimage + n) % mult + face * mult;
-			break;
-		default:
-			mult = 6;
-			subimage = (subimage + n) % mult + face * mult;
-			break;
-		}
-		break;
-	case EntityType::bird1: {
+	}
+
 #if 0
+	switch (type) {
+	case EntityType::bird1: {
 		// TODO birds have more angles
 		// TODO still buggy
 		const std::array<unsigned, 16> faces{ 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, 0 };
@@ -378,42 +357,10 @@ bool Entity::imgtick(unsigned n) noexcept {
 
 		mult = 12;
 		subimage = (subimage + n) % mult + face * mult;
-#else
-		face = 0;
-		mult = 12;
-		subimage = (subimage + n) % mult + face * mult;
+		break;
+	}
+	}
 #endif
-		break;
-	}
-	case EntityType::priest:
-		switch (state) {
-		case EntityState::decaying:
-			mult = 6;
-			more = subimage % mult < mult - 1;
-			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
-			break;
-		case EntityState::dying:
-			mult = 10;
-			more = subimage % mult < mult - 1;
-			subimage = std::min(subimage % mult + n, mult - 1) + face * mult;
-			break;
-		case EntityState::attack:
-			mult = 10;
-			more = subimage % mult < mult - 1; // image of impact
-			subimage = (subimage + n) % mult + face * mult;
-			break;
-		case EntityState::alive:
-			mult = 10;
-			subimage = (subimage + n) % mult + face * mult;
-			break;
-		case EntityState::moving:
-		case EntityState::attack_follow:
-			mult = 15;
-			subimage = (subimage + n) % mult + face * mult;
-			break;
-		}
-		break;
-	}
 
 	return more;
 }
