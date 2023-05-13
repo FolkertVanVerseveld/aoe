@@ -588,7 +588,7 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 				auto out = outs.first;
 
 				keep_alive = ctl->process_packet(*this, p, it->second, out->second, processed);
-			} catch (const std::runtime_error &e) {
+			} catch (const std::exception &e) {
 				fprintf(stderr, "%s: failed to process for (%s,%s): %s\n", __func__, p.host.c_str(), p.server.c_str(), e.what());
 			}
 

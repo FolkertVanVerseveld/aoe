@@ -97,18 +97,12 @@ void NetPkg::set_entity_kill(IdPoolRef ref) {
 
 	refcheck(ref);
 
-	// TODO byte misalignment. this will cause bus errors on archs that don't support unaligned fetching
-	data.resize(NetEntityMod::killsize);
+	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	uint16_t *dw = (uint16_t*)data.data();
-	uint32_t *dd;
-
-	dw[0] = (uint16_t)NetEntityControlType::kill;
-
-	dd = (uint32_t*)&dw[1];
-	dd[0] = ref.first; dd[1] = ref.second;
-
-	set_hdr(NetPkgType::entity_mod);
+	write("H2I", std::initializer_list<netarg> {
+		htons((uint16_t)NetEntityControlType::kill),
+		ref.first, ref.second,
+	}, false);
 }
 
 void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
@@ -182,7 +176,7 @@ NetEntityMod NetPkg::get_entity_mod() {
 	unsigned pos = 0;
 
 	// TODO convert message to read/write netrw stuff
-	pos += 4;
+	pos += 2;
 
 	switch (type) {
 	case NetEntityControlType::add:
@@ -219,10 +213,11 @@ NetEntityMod NetPkg::get_entity_mod() {
 	}
 	case NetEntityControlType::kill: {
 		IdPoolRef ref;
+		args.clear();
 
-		dd = (uint32_t*)&dw[1];
-
-		ref.first = dd[0]; ref.second = dd[1];
+		pos += read("2I", args, pos);
+		ref.first  = u32(0);
+		ref.second = u32(1);
 
 		return NetEntityMod(ref);
 	}
@@ -230,6 +225,7 @@ NetEntityMod NetPkg::get_entity_mod() {
 		IdPoolRef ref1;
 
 		EntityTaskType type = (EntityTaskType)dw[1];
+		pos += 2;
 		dd = (uint32_t*)&dw[2];
 
 		ref1.first = dd[0]; ref1.second = dd[1];
