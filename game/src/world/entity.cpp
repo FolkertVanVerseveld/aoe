@@ -310,7 +310,7 @@ bool Entity::imgtick(unsigned n) noexcept {
 		switch (state) {
 		case EntityState::alive:
 			mult = img.alive;
-			subimage = fmodf(subimage + n, mult) + face * mult;
+			subimage = fmodf(subimage + n * 0.1, mult) + face * mult;
 			break;
 		case EntityState::dying:
 			mult = img.dying;
@@ -320,7 +320,7 @@ bool Entity::imgtick(unsigned n) noexcept {
 		case EntityState::decaying:
 			mult = img.decaying;
 			more = (unsigned)fmodf(subimage, mult) != img.ii_decaying;
-			subimage = std::min<float>(fmodf(subimage, mult) + n, mult - 1) + face * mult;
+			subimage = std::min<float>(fmodf(subimage, mult) + n * 0.002, mult - 1) + face * mult;
 			break;
 		case EntityState::attack:
 			mult = img.attack;
@@ -329,12 +329,10 @@ bool Entity::imgtick(unsigned n) noexcept {
 			break;
 		case EntityState::attack_follow:
 			mult = img.attack_follow;
-			more = (unsigned)fmodf(subimage, mult) != img.attack_follow;
 			subimage = fmodf(subimage + n, mult) + face * mult;
 			break;
 		case EntityState::moving:
 			mult = img.moving;
-			more = fmodf(subimage, mult) != img.moving;
 			subimage = fmodf(subimage + n, mult) + face * mult;
 			break;
 		}
