@@ -148,7 +148,7 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 	snprintf(buf, sizeof buf, "%u/%u", ent->stats.hp, ent->stats.maxhp);
 	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 102 * scale), IM_COL32_WHITE, buf);
 
-	if (is_building(info.type)) {
+	if (e->cv.playerindex == ent->playerid && is_building(info.type)) {
 		const ImageSet &s_units = a.anim_at(io::DrsId::gif_unit_icons);
 
 		x0 = menubar_left + 140 * scale;

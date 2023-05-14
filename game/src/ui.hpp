@@ -206,7 +206,7 @@ struct VisualTile final {
 class UICache final {
 	std::vector<std::string> civs;
 	Engine *e;
-	std::vector<VisualEntity> entities;
+	std::vector<VisualEntity> entities, entities_deceased;
 	std::vector<VisualEntity> particles; // recycle for 'visual particle'
 	std::vector<IdPoolRef> selected;
 	std::vector<VisualTile> display_area;

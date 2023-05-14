@@ -15,7 +15,8 @@ Entity *WorldView::try_get(IdPoolRef r) {
 World::World()
 	: m(), m_events(), t(), entities(), dirty_entities(), spawned_entities()
 	, particles(), spawned_particles()
-	, players(), player_achievements(), events_in(), events_out(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
+	, players(), player_achievements(), events_in(), events_out(), views()
+	, resources_out(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -71,10 +72,16 @@ bool WorldView::try_convert(Entity &e, Entity &aggressor) {
 	return true;
 }
 
+void WorldView::collect(unsigned player, const Resources &res) {
+	w.players.at(player).res += res;
+	w.resources_out.emplace(player);
+}
+
 void World::tick_entities() {
 	ZoneScoped;
 
 	WorldView wv(*this);
+	died_entities.clear();
 
 	for (auto &kv : entities) {
 		Entity &ent = kv.second;
@@ -82,8 +89,12 @@ void World::tick_entities() {
 		if (is_building(ent.type))
 			continue;
 
+		bool alive = ent.is_alive();
 		bool dirty = ent.tick(wv), tdirty = false;
 		bool more = ent.imgtick(1);
+
+		if (alive && !ent.is_alive())
+			died_entities.emplace(ent.ref);
 
 		switch (ent.state) {
 			case EntityState::dying:
@@ -107,17 +118,20 @@ void World::tick_entities() {
 					if (was_alive) {
 						dirty |= t->hit(wv, ent);
 						dirty_entities.emplace(t->ref);
-					} else {
+					}
+
+					auto it = died_entities.find(t->ref);
+					// if t died just now
+					if (!t->is_alive()) {
+						died_entities.emplace(t->ref);
 						ent.task_cancel();
 						dirty = true;
 					}
 
 					// if t died just now, remove from player
 					if (!t->is_alive() && was_alive) {
-						// TODO update player achievements
-						players[t->playerid].lost_entity(t->ref);
-
-						if (t->playerid != 0) { // ensure entity isn't owned by gaia
+						// update score but ensure entity isn't owned by gaia
+						if (t->playerid != 0) {
 							if (is_building(t->type))
 								players[ent.playerid].killed_building();
 							else
@@ -133,6 +147,12 @@ void World::tick_entities() {
 
 		if (dirty)
 			dirty_entities.emplace(ent.ref);
+	}
+
+	// now iterate all died entities
+	for (IdPoolRef ref : died_entities) {
+		Entity &ent = entities.at(ref);
+		players[ent.playerid].lost_entity(ref);
 	}
 }
 
@@ -273,6 +293,7 @@ void World::push_events() {
 	events_out.clear();
 
 	push_scores();
+	push_resources();
 }
 
 void World::push_entities() {
@@ -339,12 +360,36 @@ void World::push_scores() {
 	}
 }
 
+void World::push_resources() {
+	ZoneScoped;
+	NetPkg pkg;
+
+	for (unsigned idx : resources_out) {
+		Player &p = players.at(idx);
+		pkg.set_resources(p.res);
+		send_player(idx, pkg);
+	}
+
+	resources_out.clear();
+}
+
 void World::send_scores() {
 	NetPkg pkg;
 
 	for (unsigned i = 1; i < players.size(); ++i) {
 		pkg.set_player_score(i, players[i].get_score());
 		s->broadcast(pkg);
+	}
+}
+
+void World::send_resources() {
+	NetPkg pkg;
+
+	for (unsigned i = 1; i < players.size(); ++i) {
+		Player &p = players[i];
+
+		pkg.set_resources(p.res);
+		send_player(i, pkg);
 	}
 }
 
@@ -439,6 +484,16 @@ void World::entity_task(WorldEvent &ev) {
 	if (!ent)
 		return;
 
+	// check if the event has been created by a peer. if true, check permissions
+	auto idx = ref2idx(ev.src);
+	if (idx.has_value()) {
+		// check permissions
+		unsigned playerid = idx.value();
+
+		if (ent->playerid != playerid)
+			return; // permission denied
+	}
+
 	switch (task.type) {
 		case EntityTaskType::move:
 			if (ent->task_move(task.x, task.y)) {
@@ -459,7 +514,24 @@ void World::entity_task(WorldEvent &ev) {
 		case EntityTaskType::train_unit: {
 			assert(task.info_type == (unsigned)EntityIconType::unit);
 			EntityType train = (EntityType)task.info_value;
-			if (ent->task_train_unit(train)) {
+
+			// TODO extract resources cost from entity info
+			Resources cost(0, 50, 0, 0);
+			bool can_train = true;
+
+			if (idx.has_value()) {
+				unsigned playerid = idx.value();
+				Player &p = players.at(playerid);
+				can_train = p.res.can_afford(cost) && ent->task_train_unit(train);
+				if (can_train) {
+					resources_out.emplace(playerid);
+					p.res -= cost;
+				}
+			} else {
+				can_train = ent->task_train_unit(train);
+			}
+
+			if (can_train) {
 				// TODO add to build queue stuff
 				spawn_unit(train, ent->playerid, ent->x + 2, ent->y + 2, fmodf(rand(), 360));
 			}
@@ -480,6 +552,19 @@ bool World::single_team() const noexcept {
 			return false;
 
 	return true;
+}
+
+void World::send_player(unsigned i, NetPkg &pkg) {
+	ZoneScoped;
+
+	for (auto kv : scn.owners) {
+		if (kv.second != i)
+			continue;
+
+		const Peer *p = s->try_peer(kv.first);
+		if (p)
+			s->send(*p, pkg);
+	}
 }
 
 void World::create_players() {
@@ -555,6 +640,10 @@ void World::add_building(EntityType t, unsigned player, int x, int y) {
 	players.at(player).entities.emplace(p.first->first);
 }
 
+void World::add_unit(EntityType t, unsigned player, float x, float y) {
+	add_unit(t, player, x, y, fmodf(rand(), 360));
+}
+
 void World::add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state) {
 	ZoneScoped;
 	assert(!is_building(t) && !is_resource(t) && player < MAX_PLAYERS);
@@ -568,6 +657,10 @@ void World::add_resource(EntityType t, float x, float y) {
 	assert(is_resource(t));
 	// TODO add resource values
 	entities.emplace(t, 0, x, y, 0, EntityState::alive);
+}
+
+void World::spawn_unit(EntityType t, unsigned player, float x, float y) {
+	spawn_unit(t, player, x, y, fmodf(rand(), 360));
 }
 
 void World::spawn_unit(EntityType t, unsigned player, float x, float y, float angle) {
@@ -661,6 +754,7 @@ void World::startup() {
 	pkg.set_start_game();
 	s->broadcast(pkg);
 
+	send_resources();
 	send_scores();
 }
 
@@ -672,6 +766,14 @@ void World::send_gameticks(unsigned n) {
 	NetPkg pkg;
 	pkg.set_gameticks(n);
 	s->broadcast(pkg);
+}
+
+std::optional<unsigned> World::ref2idx(IdPoolRef ref) const noexcept {
+	for (auto kv : scn.owners)
+		if (kv.first == ref)
+			return kv.second;
+
+	return std::nullopt;
 }
 
 void World::eventloop(Server &s) {

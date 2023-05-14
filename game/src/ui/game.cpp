@@ -265,7 +265,9 @@ void UICache::show_multiplayer_game() {
 		e->client->send_gamespeed_control(NetGamespeedType::decrease);
 
 	// TODO fetch from player view
-	int food = 200, wood = 200, gold = 0, stone = 150;
+	PlayerView &p = e->gv.players.at(e->cv.playerindex);
+
+	// TODO use p.res.age
 	std::string age(e->txt(StrId::age_stone));
 
 	lst->AddImage(e->tex1, ImVec2(menubar_left, vp->WorkPos.y), ImVec2(menubar_left + menubar_w, vp->WorkPos.y + menubar_h), ImVec2(rtop.s0, rtop.t0), ImVec2(rtop.s1, rtop.t1));
@@ -276,24 +278,24 @@ void UICache::show_multiplayer_game() {
 	gmb_top.h = menubar_h;
 
 	char buf[16];
-	snprintf(buf, sizeof buf, "%d", food);
+	snprintf(buf, sizeof buf, "%d", p.res.wood);
 	buf[(sizeof buf) - 1] = '\0';
 
 	float y = vp->WorkPos.y + 2 * scale;
 
 	str2(ImVec2(menubar_left + 32 * scale, y), buf);
 
-	snprintf(buf, sizeof buf, "%d", wood);
+	snprintf(buf, sizeof buf, "%d", p.res.food);
 	buf[(sizeof buf) - 1] = '\0';
 
 	str2(ImVec2(menubar_left + 99 * scale, y), buf);
 
-	snprintf(buf, sizeof buf, "%d", gold);
+	snprintf(buf, sizeof buf, "%d", p.res.gold);
 	buf[(sizeof buf) - 1] = '\0';
 
 	str2(ImVec2(menubar_left + 166 * scale, y), buf);
 
-	snprintf(buf, sizeof buf, "%d", stone);
+	snprintf(buf, sizeof buf, "%d", p.res.stone);
 	buf[(sizeof buf) - 1] = '\0';
 
 	str2(ImVec2(menubar_left + 234 * scale, y), buf);

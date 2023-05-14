@@ -80,10 +80,11 @@ public:
 
 class WorldEvent final {
 public:
+	IdPoolRef src; /** ref to peer that created this event. invalid_ref if from the server itself. */
 	WorldEventType type;
 	std::variant<std::nullopt_t, IdPoolRef, Entity, EventCameraMove, EntityTask, NetGamespeedControl> data;
 
-	template<class... Args> WorldEvent(WorldEventType type, Args&&... data) : type(type), data(data...) {}
+	template<class... Args> WorldEvent(IdPoolRef src, WorldEventType type, Args&&... data) : src(src), type(type), data(data...) {}
 };
 
 class World;
@@ -96,19 +97,21 @@ public:
 
 	Entity *try_get(IdPoolRef);
 	bool try_convert(Entity&, Entity &aggressor);
+	void collect(unsigned player, const Resources &res);
 };
 
 class World final {
 	std::mutex m, m_events;
 	Terrain t;
 	IdPool<Entity> entities;
-	std::set<IdPoolRef> dirty_entities, spawned_entities;
+	std::set<IdPoolRef> dirty_entities, spawned_entities, died_entities;
 	IdPool<Particle> particles;
 	std::set<IdPoolRef> spawned_particles;
 	std::vector<Player> players;
 	std::vector<PlayerAchievements> player_achievements;
 	std::deque<WorldEvent> events_in, events_out;
 	std::map<IdPoolRef, NetCamSet> views; // display area for each peer
+	std::set<unsigned> resources_out;
 	Server *s;
 	bool gameover;
 	friend WorldView;
@@ -129,9 +132,9 @@ public:
 
 	void eventloop(Server &s);
 
-	template<class... Args> void add_event(WorldEventType type, Args&&... data) {
+	template<class... Args> void add_event(IdPoolRef src, WorldEventType type, Args&&... data) {
 		std::lock_guard<std::mutex> lk(m_events);
-		events_in.emplace_back(type, data...);
+		events_in.emplace_back(src, type, data...);
 	}
 private:
 	void startup();
@@ -140,9 +143,11 @@ private:
 	void create_entities();
 
 	void add_building(EntityType t, unsigned player, int x, int y);
-	void add_unit(EntityType t, unsigned player, float x, float y, float angle=0, EntityState state=EntityState::alive);
+	void add_unit(EntityType t, unsigned player, float x, float y);
+	void add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state=EntityState::alive);
 	void add_resource(EntityType t, float x, float y);
 
+	void spawn_unit(EntityType t, unsigned player, float x, float y);
 	void spawn_unit(EntityType t, unsigned player, float x, float y, float angle);
 	void spawn_particle(ParticleType t, float x, float y);
 
@@ -156,6 +161,7 @@ private:
 	void push_entities();
 	void push_particles();
 	void push_scores();
+	void push_resources();
 
 	void cam_move(WorldEvent&);
 
@@ -173,6 +179,12 @@ private:
 
 	void save_scores();
 	void send_scores();
+
+	void send_resources();
+
+	void send_player(unsigned i, NetPkg &pkg);
+
+	std::optional<unsigned> ref2idx(IdPoolRef) const noexcept;
 };
 
 class Server final : public ServerSocketController {
@@ -221,15 +233,18 @@ private:
 
 	bool cam_set(const Peer &p, NetCamSet &cam);
 
-	void gamespeed_control(const NetGamespeedControl &control);
+	void gamespeed_control(const Peer &p, const NetGamespeedControl &control);
 
 	void start_game();
 
+	const Peer *try_peer(IdPoolRef);
 	ClientInfo &get_ci(IdPoolRef);
 
 	void broadcast(NetPkg &pkg, bool include_host=true);
 	void broadcast(NetPkg &pkg, const Peer &exclude);
 	void send(const Peer &p, NetPkg &pkg);
+
+	IdPoolRef peer2ref(const Peer&);
 };
 
 class ClientView;
@@ -275,6 +290,7 @@ private:
 	void terrainmod(const NetTerrainMod&);
 	void entitymod(const NetEntityMod&);
 	void particlemod(NetPkg&);
+	void resource_ctl(NetPkg&);
 	void gameticks(unsigned n);
 	void gamespeed_control(const NetGamespeedControl&);
 public:
@@ -326,6 +342,7 @@ public:
 	IdPoolRef me;
 	ScenarioSettings scn;
 	bool gameover, victory;
+	unsigned playerindex;
 
 	ClientView();
 

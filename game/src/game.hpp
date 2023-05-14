@@ -16,17 +16,11 @@
 
 #include "world/entity_info.hpp"
 #include "world/particle.hpp"
+#include "world/resources.hpp"
 
 namespace aoe {
 
 static constexpr unsigned max_players = UINT8_MAX + 1u;
-
-struct Resources final {
-	int food, wood, gold, stone;
-
-	Resources() : food(0), wood(0), gold(0), stone(0) {}
-	Resources(int f, int w, int g, int s) : food(f), wood(w), gold(g), stone(s) {}
-};
 
 class PlayerSetting final {
 public:
@@ -231,6 +225,8 @@ private:
 
 	/* Compute facing angle and return euclidean distance. */
 	float lookat(float x, float y) noexcept;
+
+	void set_type(EntityType type);
 };
 
 class PlayerAchievements final {
@@ -276,7 +272,6 @@ public:
 	uint64_t explored_max;
 	std::set<IdPoolRef> entities;
 	bool alive;
-	// TODO add team
 
 	Player(const PlayerSetting&, size_t explored_max);
 
@@ -334,6 +329,7 @@ public:
 
 	void set_players(const std::vector<PlayerSetting>&);
 	void set_player_score(unsigned idx, const NetPlayerScore&);
+	void set_player_resources(unsigned idx, const Resources &res);
 
 	void player_died(unsigned);
 

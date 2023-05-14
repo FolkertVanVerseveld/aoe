@@ -115,6 +115,15 @@ void Game::set_player_score(unsigned idx, const NetPlayerScore &ps) {
 	modflags |= (unsigned)GameMod::players;
 }
 
+void Game::set_player_resources(unsigned idx, const Resources &res) {
+	std::lock_guard<std::mutex> lk(m);
+
+	PlayerView &p = players.at(idx);
+	p.res = res;
+
+	modflags |= (unsigned)GameMod::players;
+}
+
 void Game::player_died(unsigned pos) {
 	std::lock_guard<std::mutex> lk(m);
 
@@ -226,6 +235,7 @@ bool GameView::try_read(Game &g, bool reset) {
 		players[i].alive = g.players[i].alive;
 		players[i].military = g.players[i].military;
 		players[i].score = g.players[i].score;
+		players[i].res = g.players[i].res;
 	}
 	// end todo
 
