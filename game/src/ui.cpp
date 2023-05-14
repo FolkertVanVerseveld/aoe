@@ -907,14 +907,21 @@ void UICache::show_selections() {
 void UICache::show_entities() {
 	ZoneScoped;
 	entities.clear();
+	entities_deceased.clear();
 
 	load_entities();
 
 	game_mouse_process();
 
+	std::sort(entities_deceased.begin(), entities_deceased.end(), [](const VisualEntity &lhs, const VisualEntity &rhs){ return lhs.z < rhs.z; });
 	std::sort(entities.begin(), entities.end(), [](const VisualEntity &lhs, const VisualEntity &rhs){ return lhs.z < rhs.z; });
 	
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+
+	// push deceased entities first to make sure they are always below any other entities
+	for (VisualEntity &v : entities_deceased) {
+		lst->AddImage(e->tex1, ImVec2((int)v.x, (int)v.y), ImVec2(int(v.x + v.w), int(v.y + v.h)), ImVec2(v.s0, v.t0), ImVec2(v.s1, v.t1));
+	}
 
 	for (VisualEntity &v : entities) {
 		lst->AddImage(e->tex1, ImVec2((int)v.x, (int)v.y), ImVec2(int(v.x + v.w), int(v.y + v.h)), ImVec2(v.s0, v.t0), ImVec2(v.s1, v.t1));

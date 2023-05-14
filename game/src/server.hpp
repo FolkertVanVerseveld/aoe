@@ -110,6 +110,7 @@ class World final {
 	std::vector<PlayerAchievements> player_achievements;
 	std::deque<WorldEvent> events_in, events_out;
 	std::map<IdPoolRef, NetCamSet> views; // display area for each peer
+	std::set<unsigned> resources_out;
 	Server *s;
 	bool gameover;
 	friend WorldView;
@@ -141,9 +142,11 @@ private:
 	void create_entities();
 
 	void add_building(EntityType t, unsigned player, int x, int y);
-	void add_unit(EntityType t, unsigned player, float x, float y, float angle=0, EntityState state=EntityState::alive);
+	void add_unit(EntityType t, unsigned player, float x, float y);
+	void add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state=EntityState::alive);
 	void add_resource(EntityType t, float x, float y);
 
+	void spawn_unit(EntityType t, unsigned player, float x, float y);
 	void spawn_unit(EntityType t, unsigned player, float x, float y, float angle);
 	void spawn_particle(ParticleType t, float x, float y);
 
@@ -157,6 +160,7 @@ private:
 	void push_entities();
 	void push_particles();
 	void push_scores();
+	void push_resources();
 
 	void cam_move(WorldEvent&);
 

@@ -15,7 +15,8 @@ Entity *WorldView::try_get(IdPoolRef r) {
 World::World()
 	: m(), m_events(), t(), entities(), dirty_entities(), spawned_entities()
 	, particles(), spawned_particles()
-	, players(), player_achievements(), events_in(), events_out(), views(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
+	, players(), player_achievements(), events_in(), events_out(), views()
+	, resources_out(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
 
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
@@ -287,6 +288,7 @@ void World::push_events() {
 	events_out.clear();
 
 	push_scores();
+	push_resources();
 }
 
 void World::push_entities() {
@@ -351,6 +353,19 @@ void World::push_scores() {
 			s->broadcast(pkg);
 		}
 	}
+}
+
+void World::push_resources() {
+	ZoneScoped;
+	NetPkg pkg;
+
+	for (unsigned idx : resources_out) {
+		Player &p = players.at(idx);
+		pkg.set_resources(p.res);
+		send_player(idx, pkg);
+	}
+
+	resources_out.clear();
 }
 
 void World::send_scores() {
@@ -496,9 +511,22 @@ void World::entity_task(WorldEvent &ev) {
 			EntityType train = (EntityType)task.info_value;
 
 			// TODO extract resources cost from entity info
-			Resources cost(50, 0, 0, 0);
+			Resources cost(0, 50, 0, 0);
+			bool can_train = true;
 
-			if (ent->task_train_unit(train)) {
+			if (idx.has_value()) {
+				unsigned playerid = idx.value();
+				Player &p = players.at(playerid);
+				can_train = p.res.can_afford(cost) && ent->task_train_unit(train);
+				if (can_train) {
+					resources_out.emplace(playerid);
+					p.res -= cost;
+				}
+			} else {
+				can_train = ent->task_train_unit(train);
+			}
+
+			if (can_train) {
 				// TODO add to build queue stuff
 				spawn_unit(train, ent->playerid, ent->x + 2, ent->y + 2, fmodf(rand(), 360));
 			}
@@ -607,6 +635,10 @@ void World::add_building(EntityType t, unsigned player, int x, int y) {
 	players.at(player).entities.emplace(p.first->first);
 }
 
+void World::add_unit(EntityType t, unsigned player, float x, float y) {
+	add_unit(t, player, x, y, fmodf(rand(), 360));
+}
+
 void World::add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state) {
 	ZoneScoped;
 	assert(!is_building(t) && !is_resource(t) && player < MAX_PLAYERS);
@@ -620,6 +652,10 @@ void World::add_resource(EntityType t, float x, float y) {
 	assert(is_resource(t));
 	// TODO add resource values
 	entities.emplace(t, 0, x, y, 0, EntityState::alive);
+}
+
+void World::spawn_unit(EntityType t, unsigned player, float x, float y) {
+	spawn_unit(t, player, x, y, fmodf(rand(), 360));
 }
 
 void World::spawn_unit(EntityType t, unsigned player, float x, float y, float angle) {
