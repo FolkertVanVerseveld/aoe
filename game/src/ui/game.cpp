@@ -278,14 +278,14 @@ void UICache::show_multiplayer_game() {
 	gmb_top.h = menubar_h;
 
 	char buf[16];
-	snprintf(buf, sizeof buf, "%d", p.res.food);
+	snprintf(buf, sizeof buf, "%d", p.res.wood);
 	buf[(sizeof buf) - 1] = '\0';
 
 	float y = vp->WorkPos.y + 2 * scale;
 
 	str2(ImVec2(menubar_left + 32 * scale, y), buf);
 
-	snprintf(buf, sizeof buf, "%d", p.res.wood);
+	snprintf(buf, sizeof buf, "%d", p.res.food);
 	buf[(sizeof buf) - 1] = '\0';
 
 	str2(ImVec2(menubar_left + 99 * scale, y), buf);

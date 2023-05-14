@@ -123,6 +123,13 @@ bool Entity::tick(WorldView &wv) noexcept {
 	return false;
 }
 
+void Entity::set_type(EntityType type) {
+	stats = entity_info.at((unsigned)type);
+	unsigned hp = this->stats.hp;
+	this->stats = stats;
+	this->stats.hp = std::clamp(hp, 0u, this->stats.maxhp);
+}
+
 bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 	unsigned atk = aggressor.stats.attack;
 
@@ -140,8 +147,7 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 		if (stats.hp < atk) {
 			if (is_resource(type)) {
 				if (aggressor.type != EntityType::worker_wood1) {
-					type = EntityType::dead_tree1;
-					stats = entity_info.at((unsigned)type);
+					set_type(EntityType::dead_tree1);
 					return set_state(EntityState::decaying);
 				}
 
@@ -150,7 +156,7 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 				case EntityType::desert_tree2:
 				case EntityType::desert_tree3:
 				case EntityType::desert_tree4:
-					aggressor.type = EntityType::worker_wood2;
+					aggressor.set_type(EntityType::worker_wood2);
 
 					type = EntityType::dead_tree1;
 					stats = entity_info.at((unsigned)type);
@@ -159,6 +165,18 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 			}
 
 			return die();
+		}
+
+		if (is_resource(type)) {
+			switch (type) {
+			case EntityType::berries:
+				wv.collect(aggressor.playerid, Resources(0, 1, 0, 0));
+				break;
+			case EntityType::dead_tree1:
+			case EntityType::dead_tree2:
+				wv.collect(aggressor.playerid, Resources(1, 0, 0, 0));
+				break;
+			}
 		}
 
 		stats.hp = std::max(stats.hp - atk, 0u);

@@ -225,6 +225,8 @@ private:
 
 	/* Compute facing angle and return euclidean distance. */
 	float lookat(float x, float y) noexcept;
+
+	void set_type(EntityType type);
 };
 
 class PlayerAchievements final {

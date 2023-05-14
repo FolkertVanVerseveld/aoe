@@ -12,7 +12,7 @@ void NetPkg::set_resources(const Resources &res) {
 	PkgWriter out(*this, NetPkgType::resmod);
 
 	write("4I", std::initializer_list<netarg>{
-		res.food, res.wood, res.gold, res.stone
+		res.wood, res.food, res.gold, res.stone
 	}, false);
 }
 
@@ -27,8 +27,8 @@ Resources NetPkg::get_resources() {
 	read("4I", args);
 	Resources res;
 
-	res.food  = u32(0);
-	res.wood  = u32(1);
+	res.wood  = u32(0);
+	res.food  = u32(1);
 	res.gold  = u32(2);
 	res.stone = u32(3);
 

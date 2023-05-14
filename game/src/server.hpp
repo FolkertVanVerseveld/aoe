@@ -97,6 +97,7 @@ public:
 
 	Entity *try_get(IdPoolRef);
 	bool try_convert(Entity&, Entity &aggressor);
+	void collect(unsigned player, const Resources &res);
 };
 
 class World final {

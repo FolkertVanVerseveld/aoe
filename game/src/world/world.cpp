@@ -72,6 +72,11 @@ bool WorldView::try_convert(Entity &e, Entity &aggressor) {
 	return true;
 }
 
+void WorldView::collect(unsigned player, const Resources &res) {
+	w.players.at(player).res += res;
+	w.resources_out.emplace(player);
+}
+
 void World::tick_entities() {
 	ZoneScoped;
 
