@@ -75,6 +75,7 @@ void World::tick_entities() {
 	ZoneScoped;
 
 	WorldView wv(*this);
+	died_entities.clear();
 
 	for (auto &kv : entities) {
 		Entity &ent = kv.second;
@@ -82,8 +83,12 @@ void World::tick_entities() {
 		if (is_building(ent.type))
 			continue;
 
+		bool alive = ent.is_alive();
 		bool dirty = ent.tick(wv), tdirty = false;
 		bool more = ent.imgtick(1);
+
+		if (alive && !ent.is_alive())
+			died_entities.emplace(ent.ref);
 
 		switch (ent.state) {
 			case EntityState::dying:
@@ -107,17 +112,20 @@ void World::tick_entities() {
 					if (was_alive) {
 						dirty |= t->hit(wv, ent);
 						dirty_entities.emplace(t->ref);
-					} else {
+					}
+
+					auto it = died_entities.find(t->ref);
+					// if t died just now
+					if (!t->is_alive()) {
+						died_entities.emplace(t->ref);
 						ent.task_cancel();
 						dirty = true;
 					}
 
 					// if t died just now, remove from player
 					if (!t->is_alive() && was_alive) {
-						// TODO update player achievements
-						players[t->playerid].lost_entity(t->ref);
-
-						if (t->playerid != 0) { // ensure entity isn't owned by gaia
+						// update score but ensure entity isn't owned by gaia
+						if (t->playerid != 0) {
 							if (is_building(t->type))
 								players[ent.playerid].killed_building();
 							else
@@ -133,6 +141,12 @@ void World::tick_entities() {
 
 		if (dirty)
 			dirty_entities.emplace(ent.ref);
+	}
+
+	// now iterate all died entities
+	for (IdPoolRef ref : died_entities) {
+		Entity &ent = entities.at(ref);
+		players[ent.playerid].lost_entity(ref);
 	}
 }
 

@@ -103,7 +103,7 @@ class World final {
 	std::mutex m, m_events;
 	Terrain t;
 	IdPool<Entity> entities;
-	std::set<IdPoolRef> dirty_entities, spawned_entities;
+	std::set<IdPoolRef> dirty_entities, spawned_entities, died_entities;
 	IdPool<Particle> particles;
 	std::set<IdPoolRef> spawned_particles;
 	std::vector<Player> players;
