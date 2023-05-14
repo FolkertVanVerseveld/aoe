@@ -80,10 +80,11 @@ public:
 
 class WorldEvent final {
 public:
+	IdPoolRef src; /** ref to peer that created this event. invalid_ref if from the server itself. */
 	WorldEventType type;
 	std::variant<std::nullopt_t, IdPoolRef, Entity, EventCameraMove, EntityTask, NetGamespeedControl> data;
 
-	template<class... Args> WorldEvent(WorldEventType type, Args&&... data) : type(type), data(data...) {}
+	template<class... Args> WorldEvent(IdPoolRef src, WorldEventType type, Args&&... data) : src(src), type(type), data(data...) {}
 };
 
 class World;
@@ -129,9 +130,9 @@ public:
 
 	void eventloop(Server &s);
 
-	template<class... Args> void add_event(WorldEventType type, Args&&... data) {
+	template<class... Args> void add_event(IdPoolRef src, WorldEventType type, Args&&... data) {
 		std::lock_guard<std::mutex> lk(m_events);
-		events_in.emplace_back(type, data...);
+		events_in.emplace_back(src, type, data...);
 	}
 private:
 	void startup();
@@ -177,6 +178,8 @@ private:
 	void send_resources();
 
 	void send_player(unsigned i, NetPkg &pkg);
+
+	std::optional<unsigned> ref2idx(IdPoolRef) const noexcept;
 };
 
 class Server final : public ServerSocketController {
@@ -225,7 +228,7 @@ private:
 
 	bool cam_set(const Peer &p, NetCamSet &cam);
 
-	void gamespeed_control(const NetGamespeedControl &control);
+	void gamespeed_control(const Peer &p, const NetGamespeedControl &control);
 
 	void start_game();
 
@@ -235,6 +238,8 @@ private:
 	void broadcast(NetPkg &pkg, bool include_host=true);
 	void broadcast(NetPkg &pkg, const Peer &exclude);
 	void send(const Peer &p, NetPkg &pkg);
+
+	IdPoolRef peer2ref(const Peer&);
 };
 
 class ClientView;

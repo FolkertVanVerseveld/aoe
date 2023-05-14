@@ -450,6 +450,16 @@ void World::entity_task(WorldEvent &ev) {
 	if (!ent)
 		return;
 
+	// check if the event has been created by a peer. if true, check permissions
+	auto idx = ref2idx(ev.src);
+	if (idx.has_value()) {
+		// check permissions
+		unsigned playerid = idx.value();
+
+		if (ent->playerid != playerid)
+			return; // permission denied
+	}
+
 	switch (task.type) {
 		case EntityTaskType::move:
 			if (ent->task_move(task.x, task.y)) {
@@ -701,6 +711,14 @@ void World::send_gameticks(unsigned n) {
 	NetPkg pkg;
 	pkg.set_gameticks(n);
 	s->broadcast(pkg);
+}
+
+std::optional<unsigned> World::ref2idx(IdPoolRef ref) const noexcept {
+	for (auto kv : scn.owners)
+		if (kv.first == ref)
+			return kv.second;
+
+	return std::nullopt;
 }
 
 void World::eventloop(Server &s) {

@@ -43,7 +43,7 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 		case NetPkgType::cam_set:
 			return cam_set(p, pkg.get_cam_set());
 		case NetPkgType::gamespeed_control:
-			gamespeed_control(pkg.get_gamespeed());
+			gamespeed_control(p, pkg.get_gamespeed());
 			break;
 		default:
 			fprintf(stderr, "bad type: %u\n", pkg.type());
@@ -53,15 +53,20 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 	return true;
 }
 
+IdPoolRef Server::peer2ref(const Peer &p) {
+	return peers.at(p).ref;
+}
+
 bool Server::cam_set(const Peer &p, NetCamSet &cam) {
-	IdPoolRef ref = peers.at(p).ref;
-	w.add_event(WorldEventType::peer_cam_move, EventCameraMove(ref, cam));
+	IdPoolRef ref = peer2ref(p);
+	w.add_event(ref, WorldEventType::peer_cam_move, EventCameraMove(ref, cam));
 
 	return true;
 }
 
-void Server::gamespeed_control(const NetGamespeedControl &control) {
-	w.add_event(WorldEventType::gamespeed_control, control);
+void Server::gamespeed_control(const Peer &p, const NetGamespeedControl &control) {
+	IdPoolRef ref = peer2ref(p);
+	w.add_event(ref, WorldEventType::gamespeed_control, control);
 }
 
 bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint8_t> &out) {
@@ -70,16 +75,18 @@ bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint
 	if (!m_running)
 		return false; // desync, kick
 
+	IdPoolRef ref = peer2ref(p);
+
 	switch (em.type) {
 	case NetEntityControlType::kill: {
 		IdPoolRef ref = std::get<IdPoolRef>(em.data);
-		w.add_event(WorldEventType::entity_kill, ref);
+		w.add_event(ref, WorldEventType::entity_kill, ref);
 
 		return true;
 	}
 	case NetEntityControlType::task: {
 		EntityTask task = std::get<EntityTask>(em.data);
-		w.add_event(WorldEventType::entity_task, task);
+		w.add_event(ref, WorldEventType::entity_task, task);
 
 		return true;
 	}
