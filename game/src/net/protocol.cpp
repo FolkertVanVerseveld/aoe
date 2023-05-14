@@ -51,6 +51,7 @@ void NetPkg::ntoh() {
 		case NetPkgType::gameover:
 		case NetPkgType::particle_mod:
 		case NetPkgType::entity_mod:
+		case NetPkgType::resmod:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -104,16 +105,6 @@ void NetPkg::ntoh() {
 
 			break;
 		}
-		case NetPkgType::resmod: {
-			need_payload(NetPkg::ressize);
-
-			int32_t *dd = (int32_t*)data.data();
-
-			for (unsigned i = 0; i < 4; ++i)
-				dd[i] = ntohl(dd[i]);
-
-			break;
-		}
 		case NetPkgType::cam_set: {
 			need_payload(NetCamSet::size);
 
@@ -150,6 +141,7 @@ void NetPkg::hton() {
 		case NetPkgType::gameover:
 		case NetPkgType::particle_mod:
 		case NetPkgType::entity_mod:
+		case NetPkgType::resmod:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -189,14 +181,6 @@ void NetPkg::hton() {
 
 			for (unsigned i = 0; i < 4; ++i)
 				dw[i] = htons(dw[i]);
-
-			break;
-		}
-		case NetPkgType::resmod: {
-			int32_t *dd = (int32_t*)data.data();
-
-			for (unsigned i = 0; i < 4; ++i)
-				dd[i] = htonl(dd[i]);
 
 			break;
 		}
@@ -336,10 +320,10 @@ std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
 	if ((NetPkgType)hdr.type != NetPkgType::chat_text)
 		throw std::runtime_error("not a chat text packet");
 
-	std::vector<std::variant<uint64_t, std::string>> args;
+	args.clear();
 	read("2I80s", args);
 
-	IdPoolRef ref{ std::get<uint64_t>(args.at(0)), std::get<uint64_t>(args.at(1)) };
+	IdPoolRef ref{ u32(0), u32(1) };
 	return std::make_pair(ref, std::get<std::string>(args.at(2)));
 }
 
@@ -641,40 +625,6 @@ void NetPkg::set_gamespeed(NetGamespeedType type) {
 
 	uint8_t *db = (uint8_t*)data.data();
 	db[0] = (uint8_t)type;
-}
-
-void NetPkg::set_resources(const Resources &res) {
-	ZoneScoped;
-
-	data.resize(NetPkg::ressize);
-
-	int32_t *dd = (int32_t*)data.data();
-
-	dd[0] = res.food;
-	dd[1] = res.wood;
-	dd[2] = res.gold;
-	dd[3] = res.stone;
-
-	set_hdr(NetPkgType::resmod);
-}
-
-Resources NetPkg::get_resources() {
-	ZoneScoped;
-	ntoh();
-
-	if ((NetPkgType)hdr.type != NetPkgType::resmod || data.size() != NetPkg::ressize)
-		throw std::runtime_error("not a resources control packet");
-
-	const int32_t *dd = (const int32_t*)data.data();
-
-	Resources res;
-
-	res.food = dd[0];
-	res.wood = dd[1];
-	res.gold = dd[2];
-	res.stone = dd[3];
-
-	return res;
 }
 
 NetPkgType NetPkg::type() {

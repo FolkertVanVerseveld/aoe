@@ -21,7 +21,6 @@ public:
 	netargs args;
 
 	static constexpr unsigned max_payload = tcp4_max_size - NetPkgHdr::size;
-	static constexpr unsigned ressize = 4 * sizeof(int32_t);
 
 	friend PkgWriter;
 

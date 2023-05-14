@@ -2,7 +2,7 @@
 
 namespace aoe {
 
-ClientView::ClientView() : me(invalid_ref), scn(), gameover(false) {}
+ClientView::ClientView() : me(invalid_ref), scn(), gameover(false), playerindex(0) {}
 
 bool ClientView::try_read(Client &c) {
 	std::unique_lock lk(c.m, std::defer_lock);
@@ -18,6 +18,7 @@ bool ClientView::try_read(Client &c) {
 
 	gameover = c.gameover;
 	victory = c.victory;
+	playerindex = c.playerindex;
 
 	c.modflags = 0;
 

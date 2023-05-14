@@ -173,6 +173,10 @@ private:
 
 	void save_scores();
 	void send_scores();
+
+	void send_resources();
+
+	void send_player(unsigned i, NetPkg &pkg);
 };
 
 class Server final : public ServerSocketController {
@@ -225,6 +229,7 @@ private:
 
 	void start_game();
 
+	const Peer *try_peer(IdPoolRef);
 	ClientInfo &get_ci(IdPoolRef);
 
 	void broadcast(NetPkg &pkg, bool include_host=true);
@@ -275,6 +280,7 @@ private:
 	void terrainmod(const NetTerrainMod&);
 	void entitymod(const NetEntityMod&);
 	void particlemod(NetPkg&);
+	void resource_ctl(NetPkg&);
 	void gameticks(unsigned n);
 	void gamespeed_control(const NetGamespeedControl&);
 public:
@@ -326,6 +332,7 @@ public:
 	IdPoolRef me;
 	ScenarioSettings scn;
 	bool gameover, victory;
+	unsigned playerindex;
 
 	ClientView();
 

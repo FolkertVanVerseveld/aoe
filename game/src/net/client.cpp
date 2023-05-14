@@ -81,6 +81,9 @@ void Client::mainloop() {
 				case NetPkgType::particle_mod:
 					particlemod(pkg);
 					break;
+				case NetPkgType::resmod:
+					resource_ctl(pkg);
+					break;
 				default:
 					printf("%s: unknown type %u\n", __func__, pkg.type());
 					break;

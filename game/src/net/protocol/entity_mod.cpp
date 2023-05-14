@@ -94,7 +94,6 @@ void NetPkg::entity_train(IdPoolRef src, EntityType type) {
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
 	write("2H2IH", std::initializer_list<netarg> {
-		// TODO remove htons hack when all entity mod messages are converted
 		(unsigned)NetEntityControlType::task,
 		(uint16_t)EntityTaskType::train_unit,
 

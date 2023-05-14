@@ -348,6 +348,17 @@ void World::send_scores() {
 	}
 }
 
+void World::send_resources() {
+	NetPkg pkg;
+
+	for (unsigned i = 1; i < players.size(); ++i) {
+		Player &p = players[i];
+
+		pkg.set_resources(p.res);
+		send_player(i, pkg);
+	}
+}
+
 void World::push_gamespeed_control(WorldEvent &ev) {
 	NetGamespeedControl ctl = std::get<NetGamespeedControl>(ev.data);
 
@@ -459,6 +470,10 @@ void World::entity_task(WorldEvent &ev) {
 		case EntityTaskType::train_unit: {
 			assert(task.info_type == (unsigned)EntityIconType::unit);
 			EntityType train = (EntityType)task.info_value;
+
+			// TODO extract resources cost from entity info
+			Resources cost(50, 0, 0, 0);
+
 			if (ent->task_train_unit(train)) {
 				// TODO add to build queue stuff
 				spawn_unit(train, ent->playerid, ent->x + 2, ent->y + 2, fmodf(rand(), 360));
@@ -480,6 +495,19 @@ bool World::single_team() const noexcept {
 			return false;
 
 	return true;
+}
+
+void World::send_player(unsigned i, NetPkg &pkg) {
+	ZoneScoped;
+
+	for (auto kv : scn.owners) {
+		if (kv.second != i)
+			continue;
+
+		const Peer *p = s->try_peer(kv.first);
+		if (p)
+			s->send(*p, pkg);
+	}
 }
 
 void World::create_players() {
@@ -661,6 +689,7 @@ void World::startup() {
 	pkg.set_start_game();
 	s->broadcast(pkg);
 
+	send_resources();
 	send_scores();
 }
 

@@ -2,7 +2,19 @@
 
 namespace aoe {
 
+const Peer *Server::try_peer(IdPoolRef ref) {
+	std::lock_guard<std::mutex> lk(m_peers);
+	Peer p(refs.at(ref).sock, "", "", false);
+
+	auto it = peers.find(p);
+	if (it == peers.end())
+		return nullptr;
+
+	return &it->first;
+}
+
 ClientInfo &Server::get_ci(IdPoolRef ref) {
+	std::lock_guard<std::mutex> lk(m_peers);
 	Peer p(refs.at(ref).sock, "", "", false);
 	return peers.at(p);
 }
