@@ -367,6 +367,12 @@ bool Entity::imgtick(unsigned n) noexcept {
 			subimage = fmodf(subimage + n, mult) + face * mult;
 			break;
 		}
+	} else if (is_building(type) && is_alive()) {
+		mult = 20;
+		more = true;
+		float hper = (float)stats.hp / stats.maxhp;
+		if (hper <= 0.75f)
+			subimage = fmodf(subimage + n, mult);
 	}
 
 #if 0

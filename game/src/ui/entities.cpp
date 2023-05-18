@@ -21,15 +21,9 @@ void UICache::load_entities() {
 		if (ent.is_alive())
 			continue;
 
+		// TODO use particle rather than dead building entity
 		if (is_building(ent.type)) {
-			io::DrsId bld_base = io::DrsId::bld_town_center;
-			io::DrsId bld_player = io::DrsId::bld_town_center_player;
-
-			switch (ent.type) {
-			case EntityType::barracks:
-				bld_base = bld_player = io::DrsId::bld_barracks;
-				break;
-			}
+			io::DrsId bld_base = io::DrsId::bld_debris;
 
 			int x = ent.x, y = ent.y;
 			uint8_t h = e->gv.t.h_at(x, y);
@@ -37,25 +31,12 @@ void UICache::load_entities() {
 			ImVec2 tpos(e->tilepos(ent.x + 1, ent.y, left, top, h));
 			float x0, y0;
 
-			if (bld_player != bld_base) {
-				const ImageSet &s_tc = a.anim_at(bld_base);
-				IdPoolRef imgref = s_tc.imgs[0];
-				const gfx::ImageRef &tc = a.at(imgref);
-
-				x0 = tpos.x - tc.hotspot_x;
-				y0 = tpos.y - tc.hotspot_y;
-
-				entities_deceased.emplace_back(ent.ref, imgref, x0, y0, tc.bnds.w, tc.bnds.h, tc.s0, tc.t0, tc.s1, tc.t1, tpos.y, ent.xflip);
-			}
-
-			const ImageSet &s_tcp = a.anim_at(bld_player);
-			IdPoolRef imgref = s_tcp.at(ent.playerid, 0);
-			const gfx::ImageRef &tcp = a.at(imgref);
+			const gfx::ImageRef &tcp = a.at(bld_base);
 
 			x0 = tpos.x - tcp.hotspot_x;
 			y0 = tpos.y - tcp.hotspot_y;
 
-			entities_deceased.emplace_back(ent.ref, imgref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f, ent.xflip);
+			entities_deceased.emplace_back(ent.ref, tcp.ref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f, ent.xflip);
 		} else if (is_resource(ent.type)) {
 			float x = ent.x, y = ent.y;
 			int ix = (int)x, iy = (int)y;
@@ -248,6 +229,26 @@ void UICache::load_entities() {
 			y0 = tpos.y - tcp.hotspot_y;
 
 			entities.emplace_back(ent.ref, imgref, x0, y0, tcp.bnds.w, tcp.bnds.h, tcp.s0, tcp.t0, tcp.s1, tcp.t1, tpos.y + 0.1f, ent.xflip);
+
+			// if building is damaged, add fire
+			float hper = (float)ent.stats.hp / ent.stats.maxhp;
+
+			if (hper <= 0.75f) {
+				io::DrsId fid = io::DrsId::gif_bld_fire3;
+
+				if (hper <= 0.25f)
+					fid = io::DrsId::gif_bld_fire1;
+				else if (hper <= 0.5f)
+					fid = io::DrsId::gif_bld_fire2;
+
+				const ImageSet &s_fire = a.anim_at(fid);
+				const gfx::ImageRef &fimg = a.at(s_fire.try_at(ent.subimage));
+
+				x0 = tpos.x - fimg.hotspot_x;
+				y0 = tpos.y - fimg.hotspot_y;
+
+				entities.emplace_back(ent.ref, fimg.ref, x0, y0, fimg.bnds.w, fimg.bnds.h, fimg.s0, fimg.t0, fimg.s1, fimg.t1, tpos.y + 0.1f, false);
+			}
 		} else if (is_resource(ent.type)) {
 			float x = ent.x, y = ent.y;
 			int ix = (int)x, iy = (int)y;
