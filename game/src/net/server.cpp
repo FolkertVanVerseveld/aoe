@@ -75,18 +75,22 @@ bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint
 	if (!m_running)
 		return false; // desync, kick
 
-	IdPoolRef ref = peer2ref(p);
+	IdPoolRef src = peer2ref(p);
+
+	// reject entity control if peer is invalid
+	if (src == invalid_ref && !p.is_host)
+		return true;
 
 	switch (em.type) {
 	case NetEntityControlType::kill: {
 		IdPoolRef ref = std::get<IdPoolRef>(em.data);
-		w.add_event(ref, WorldEventType::entity_kill, ref);
+		w.add_event(src, WorldEventType::entity_kill, ref);
 
 		return true;
 	}
 	case NetEntityControlType::task: {
 		EntityTask task = std::get<EntityTask>(em.data);
-		w.add_event(ref, WorldEventType::entity_task, task);
+		w.add_event(src, WorldEventType::entity_task, task);
 
 		return true;
 	}
