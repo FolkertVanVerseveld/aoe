@@ -40,12 +40,18 @@ void Client::mainloop() {
 				case NetPkgType::gameover: {
 					std::lock_guard<std::mutex> lk(m);
 					g.gameover(pkg.get_gameover());
-					//printf("gameover. team %u wins\n", pkg.get_gameover());
-					EngineView ev;
 
-					unsigned me_team = g.pv(playerindex).init.team;
-					victory = me_team == g.winning_team();
+					auto maybe_pv = g.try_pv(playerindex);
+					if (maybe_pv.has_value()) {
+						unsigned me_team = maybe_pv.value().init.team;
+						victory = me_team == g.winning_team();
+					} else {
+						fprintf(stderr, "%s: unable to determine winning team: playerindex=%u\n", __func__, playerindex);
+						victory = false;
+					}
 					gameover = true;
+
+					EngineView ev;
 
 					if (victory)
 						ev.play_sfx(SfxId::gameover_victory); // TODO /defeat/victory/
