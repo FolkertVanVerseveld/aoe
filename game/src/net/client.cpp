@@ -54,7 +54,7 @@ void Client::mainloop() {
 					EngineView ev;
 
 					if (victory)
-						ev.play_sfx(SfxId::gameover_victory); // TODO /defeat/victory/
+						ev.play_sfx(SfxId::gameover_victory);
 					else
 						ev.play_sfx(SfxId::gameover_defeat);
 
