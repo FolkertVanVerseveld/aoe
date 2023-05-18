@@ -79,15 +79,22 @@ void UICache::show_particles() {
 	Assets &a = *e->assets.get();
 
 	for (const Particle &p : e->gv.particles) {
-		// TODO support more particles
-		assert(p.type == ParticleType::moveto);
-
 		float x = p.x, y = p.y;
 		int ix = (int)x, iy = (int)y;
 		uint8_t h = e->gv.t.h_at(ix, iy);
 		ImVec2 tpos(e->tilepos(x + 1, y, left, top, h));
 
 		io::DrsId gif = io::DrsId::gif_moveto;
+
+		switch (p.type) {
+		case ParticleType::explode1: gif = io::DrsId::gif_explode1; break;
+		case ParticleType::explode2: gif = io::DrsId::gif_explode2; break;
+		case ParticleType::moveto:
+			break;
+		default:
+			assert("bad type");
+			break;
+		}
 
 		const ImageSet &s_gif = a.anim_at(gif);
 		IdPoolRef imgref = s_gif.try_at(p.subimage);

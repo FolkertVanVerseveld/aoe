@@ -4,6 +4,8 @@ namespace aoe {
 
 enum class ParticleType {
 	moveto,
+	explode1,
+	explode2,
 };
 
 class Particle final {

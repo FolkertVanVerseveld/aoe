@@ -123,6 +123,9 @@ void World::tick_entities() {
 					auto it = died_entities.find(t->ref);
 					// if t died just now
 					if (!t->is_alive()) {
+						if (is_building(t->type))
+							spawn_particle(ParticleType::explode2, t->x, t->y);
+
 						died_entities.emplace(t->ref);
 						ent.task_cancel();
 						dirty = true;
@@ -498,6 +501,7 @@ void World::entity_task(WorldEvent &ev) {
 		case EntityTaskType::move:
 			if (ent->task_move(task.x, task.y)) {
 				dirty_entities.emplace(ent->ref);
+				// TODO keep track which player initiated this so we know which peers to send it to
 				spawn_particle(ParticleType::moveto, task.x, task.y);
 			}
 			break;

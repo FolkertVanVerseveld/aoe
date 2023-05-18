@@ -131,7 +131,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	}
 
 	Animation gif_menu_btn_small0, gif_menu_btn_medium0, gif_menubar0, gif_building_icons, gif_unit_icons, gif_hpbar;
-	Animation gif_moveto;
+	Animation gif_moveto, gif_explode1, gif_explode2;
 	Image img_dialog0, img_dialog_editor;
 	auto pal = drs_ui.open_pal(DrsId::pal_default);
 	{
@@ -231,6 +231,9 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_priest_die);
 		load_gif(gif_priest_decay);
 
+		load_gif(gif_explode1);
+		load_gif(gif_explode2);
+
 		img_berries.load(pal.get(), drs_graphics.open_slp(DrsId::ent_berries), 0);
 		img_desert_tree1.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree1), 0);
 		img_desert_tree2.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree2), 0);
@@ -306,6 +309,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, gif_priest_decay, DrsId::gif_priest_decay);
 
 		gif(gif_moveto);
+		gif(gif_explode1);
+		gif(gif_explode2);
 #undef gif
 
 
