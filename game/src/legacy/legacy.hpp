@@ -200,6 +200,11 @@ enum class DrsId {
 	bld_town_center = 280,
 	bld_town_center_player = 230,
 	bld_barracks = 254,
+	bld_debris = 155,
+
+	gif_bld_fire1 = 2,
+	gif_bld_fire2 = 3,
+	gif_bld_fire3 = 4,
 
 	ent_berries = 240,
 	ent_desert_tree1 = 463,

@@ -168,6 +168,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	}
 
 	Animation bld_town_center, bld_town_center_player, bld_barracks, bld_barracks_player;
+	Animation gif_bld_fire1, gif_bld_fire2, gif_bld_fire3;
 	Animation gif_bird1, gif_bird1_shadow, gif_bird1_glide, gif_bird1_glide_shadow;
 	Animation gif_bird2, gif_bird2_shadow, gif_bird2_glide, gif_bird2_glide_shadow;
 	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
@@ -175,6 +176,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_melee1_stand, gif_melee1_move, gif_melee1_attack, gif_melee1_die, gif_melee1_decay;
 	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
 	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4, img_dead_tree1, img_dead_tree2, img_decay_tree;
+	Image img_bld_debris;
+
 	info.next("Loading game entities data");
 	{
 		ZoneScopedN("Loading game entities data");
@@ -187,6 +190,10 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		bld_barracks.load(drs_graphics, pal.get(), DrsId::bld_barracks);
 
 #define load_gif(id) id.load(drs_graphics, pal.get(), DrsId:: ##id)
+		load_gif(gif_bld_fire1);
+		load_gif(gif_bld_fire2);
+		load_gif(gif_bld_fire3);
+
 		// TODO shadow images are incorrectly parsed as dynamic, unknown command FE
 		load_gif(gif_bird1);
 		//load_gif(gif_bird1_shadow);
@@ -229,6 +236,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		img_desert_tree2.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree2), 0);
 		img_desert_tree3.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree3), 0);
 		img_desert_tree4.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree4), 0);
+		img_bld_debris.load(pal.get(), drs_graphics.open_slp(DrsId::bld_debris), 0);
 #undef load_gif
 #define load_img(id) img_ ##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_ ##id), 0)
 		load_img(dead_tree1);
@@ -261,6 +269,10 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, bld_town_center_player, DrsId::bld_town_center_player);
 
 		add_gifs(p, bld_barracks, DrsId::bld_barracks);
+
+		gif(gif_bld_fire1);
+		gif(gif_bld_fire2);
+		gif(gif_bld_fire3);
 
 		add_gifs(p, gif_bird1, DrsId::gif_bird1);
 		add_gifs(p, gif_bird1_glide, DrsId::gif_bird1_glide);
@@ -298,6 +310,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 
 		drs_ids[DrsId::img_dialog0] = p.add_img(0, 0, img_dialog0.surface.get());
+		drs_ids[DrsId::bld_debris] = p.add_img(img_bld_debris.hotspot_x, img_bld_debris.hotspot_y, img_bld_debris.surface.get(), img_bld_debris.mask);
 #define img(id) drs_ids[DrsId::ent_ ##id] = p.add_img(img_ ##id .hotspot_x, img_ ##id .hotspot_y, img_ ##id .surface.get(), img_ ##id .mask)
 		img(berries);
 		img(desert_tree1);
