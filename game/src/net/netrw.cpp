@@ -199,6 +199,10 @@ uint16_t NetPkg::u16(unsigned pos) const {
 	return (uint16_t)std::get<uint64_t>(args.at(pos));
 }
 
+int32_t NetPkg::i32(unsigned pos) const {
+	return (int32_t)std::get<uint64_t>(args.at(pos));
+}
+
 uint32_t NetPkg::u32(unsigned pos) const {
 	return (uint32_t)std::get<uint64_t>(args.at(pos));
 }

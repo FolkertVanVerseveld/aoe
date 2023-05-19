@@ -52,6 +52,8 @@ void NetPkg::ntoh() {
 		case NetPkgType::particle_mod:
 		case NetPkgType::entity_mod:
 		case NetPkgType::resmod:
+		case NetPkgType::gameticks:
+		case NetPkgType::cam_set:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -105,19 +107,6 @@ void NetPkg::ntoh() {
 
 			break;
 		}
-		case NetPkgType::cam_set: {
-			need_payload(NetCamSet::size);
-
-			int32_t *dd = (int32_t*)data.data();
-
-			for (unsigned i = 0; i < 4; ++i)
-				dd[i] = ntohl(dd[i]);
-
-			break;
-		}
-		case NetPkgType::gameticks:
-			need_payload(sizeof(uint16_t));
-			break;
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -142,6 +131,8 @@ void NetPkg::hton() {
 		case NetPkgType::particle_mod:
 		case NetPkgType::entity_mod:
 		case NetPkgType::resmod:
+		case NetPkgType::cam_set:
+		case NetPkgType::gameticks:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -173,8 +164,10 @@ void NetPkg::hton() {
 			break;
 		}
 		case NetPkgType::start_game:
-		case NetPkgType::gamespeed_control:
 			// no payload
+			break;
+		case NetPkgType::gamespeed_control:
+			// 1 byte, don't do anything
 			break;
 		case NetPkgType::terrainmod: {
 			uint16_t *dw = (uint16_t*)data.data();
@@ -184,16 +177,6 @@ void NetPkg::hton() {
 
 			break;
 		}
-		case NetPkgType::cam_set: {
-			int32_t *dd = (int32_t*)data.data();
-
-			for (unsigned i = 0; i < 4; ++i)
-				dd[i] = htonl(dd[i]);
-
-			break;
-		}
-		case NetPkgType::gameticks:
-			break;
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -311,7 +294,7 @@ uint16_t NetPkg::protocol_version() {
 
 void NetPkg::set_chat_text(IdPoolRef ref, const std::string &s) {
 	PkgWriter out(*this, NetPkgType::chat_text);
-	write("2I80s", { ref.first, ref.second, s }, false);
+	write("2I80s", pkgargs{ ref.first, ref.second, s }, false);
 }
 
 std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
@@ -366,23 +349,9 @@ void NetPkg::set_gameover(unsigned team) {
 }
 
 unsigned NetPkg::get_gameover() {
-	std::vector<std::variant<uint64_t, std::string>> args;
-	unsigned pos = 0;
-
-	read("H", args, pos);
-
-	return (unsigned)std::get<uint64_t>(args.at(0));
-}
-
-void NetPkg::cam_set(float x, float y, float w, float h) {
-	data.resize(NetCamSet::size);
-
-	int32_t *dd = (int32_t*)data.data();
-
-	dd[0] = (int32_t)x; dd[1] = (int32_t)y;
-	dd[2] = (int32_t)w; dd[3] = (int32_t)h;
-
-	set_hdr(NetPkgType::cam_set);
+	args.clear();
+	read("H", args);
+	return u16(0);
 }
 
 void NetPkg::set_scn_vars(const ScenarioSettings &scn) {
@@ -562,69 +531,6 @@ NetPeerControl NetPkg::get_peer_control() {
 		default:
 			return NetPeerControl(ref, (NetPeerControlType)dw[0]);
 	}
-}
-
-NetCamSet NetPkg::get_cam_set() {
-	ZoneScoped;
-	ntoh();
-
-	if ((NetPkgType)hdr.type != NetPkgType::cam_set)
-		throw std::runtime_error("not a camera set packet");
-
-	NetCamSet s;
-
-	const int32_t *dd = (const int32_t*)data.data();
-
-	s.x = dd[0];
-	s.y = dd[1];
-	s.w = dd[2];
-	s.h = dd[3];
-
-	return s;
-}
-
-uint16_t NetPkg::get_gameticks() {
-	ZoneScoped;
-	ntoh();
-
-	if ((NetPkgType)hdr.type != NetPkgType::gameticks)
-		throw std::runtime_error("not a gameticks packet");
-
-	std::vector<std::variant<uint64_t, std::string>> args;
-	read("H", args);
-
-	return (uint16_t)std::get<uint64_t>(args.at(0));
-}
-
-void NetPkg::set_gameticks(unsigned n) {
-	ZoneScoped;
-	assert(n <= UINT16_MAX);
-
-	PkgWriter out(*this, NetPkgType::gameticks);
-	write("H", { n }, false);
-}
-
-NetGamespeedControl NetPkg::get_gamespeed() {
-	ntoh();
-
-	if ((NetPkgType)hdr.type != NetPkgType::gamespeed_control)
-		throw std::runtime_error("not a gamespeed control packet");
-
-	const uint8_t *db = (const uint8_t*)data.data();
-	NetGamespeedType type = (NetGamespeedType)db[0];
-
-	if (db[0] > (uint8_t)NetGamespeedType::decrease)
-		throw std::runtime_error("invalid gamespeed control type");
-
-	return NetGamespeedControl(type);
-}
-
-void NetPkg::set_gamespeed(NetGamespeedType type) {
-	ZoneScoped;
-	PkgWriter out(*this, NetPkgType::gamespeed_control, NetGamespeedControl::size);
-
-	uint8_t *db = (uint8_t*)data.data();
-	db[0] = (uint8_t)type;
 }
 
 NetPkgType NetPkg::type() {

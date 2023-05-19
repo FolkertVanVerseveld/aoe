@@ -4,6 +4,7 @@
 #include <vector>
 #include <utility>
 #include <cstdint>
+#include <initializer_list>
 
 #include <idpool.hpp>
 
@@ -13,6 +14,7 @@ class PkgWriter;
 
 typedef std::variant<uint64_t, std::string> netarg;
 typedef std::vector<netarg> netargs;
+typedef std::initializer_list<netarg> pkgargs;
 
 class NetPkg final {
 public:
@@ -117,6 +119,7 @@ private:
 	int8_t i8(unsigned pos) const;
 	uint8_t u8(unsigned pos) const;
 	uint16_t u16(unsigned pos) const;
+	int32_t i32(unsigned pos) const;
 	uint32_t u32(unsigned pos) const;
 };
 
