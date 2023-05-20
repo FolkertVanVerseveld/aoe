@@ -454,21 +454,9 @@ void World::entity_kill(WorldEvent &ev) {
 	// entity_die is like it does its proper dying animation (opt. with particles)
 	// entity_kill is like when it has to be removed completely (e.g. decaying ended, resource depleted)
 	Entity *ent = entities.try_get(ref);
-	if (!ent)
+	// verify entity and check permissions
+	if (!ent || !controls_player(ev.src, ent->playerid))
 		return;
-
-	// check if the event has been created by a peer. if true, check permissions
-	auto idx = ref2idx(ev.src);
-	if (idx.has_value()) {
-		// check permissions
-		unsigned playerid = idx.value();
-
-		if (ent->playerid != playerid)
-			return; // permission denied
-	} else if (ev.src != invalid_ref) {
-		// peer is not the host, permission denied
-		return;
-	}
 
 	if (!is_building(ent->type)) {
 		if (is_resource(ent->type)) {
@@ -494,27 +482,32 @@ void World::entity_kill(WorldEvent &ev) {
 	}
 }
 
+bool World::controls_player(IdPoolRef src, unsigned pid) {
+	// check if the event has been created by a peer. if true, check permissions
+	auto idx = ref2idx(src);
+	if (idx.has_value()) {
+		// check permissions
+		unsigned playerid = idx.value();
+
+		if (pid != playerid)
+			return false; // permission denied
+	} else if (src != invalid_ref) {
+		// peer is not the host, permission denied
+		return false;
+	}
+
+	return true;
+}
+
 void World::entity_task(WorldEvent &ev) {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m);
 	EntityTask task = std::get<EntityTask>(ev.data);
 
 	Entity *ent = entities.try_get(task.ref1);
-	if (!ent)
+	// verify entity and check permissions
+	if (!ent || !controls_player(ev.src, ent->playerid))
 		return;
-
-	// check if the event has been created by a peer. if true, check permissions
-	auto idx = ref2idx(ev.src);
-	if (idx.has_value()) {
-		// check permissions
-		unsigned playerid = idx.value();
-
-		if (ent->playerid != playerid)
-			return; // permission denied
-	} else if (ev.src != invalid_ref) {
-		// peer is not the host, permission denied
-		return;
-	}
 
 	switch (task.type) {
 		case EntityTaskType::move:
@@ -541,6 +534,7 @@ void World::entity_task(WorldEvent &ev) {
 			// TODO extract resources cost from entity info
 			Resources cost(0, 50, 0, 0);
 			bool can_train = true;
+			auto idx = ref2idx(ev.src);
 
 			if (idx.has_value()) {
 				unsigned playerid = idx.value();

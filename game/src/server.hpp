@@ -177,6 +177,8 @@ private:
 	void entity_kill(WorldEvent &ev);
 	void entity_task(WorldEvent &ev);
 
+	bool controls_player(IdPoolRef src, unsigned pid);
+
 	void save_scores();
 	void send_scores();
 
