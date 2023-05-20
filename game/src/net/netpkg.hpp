@@ -113,6 +113,9 @@ private:
 
 	void playermod2(NetPlayerControlType, uint16_t, uint16_t);
 
+	void chktype(NetPkgType type);
+
+	unsigned read(NetPkgType, const std::string &fmt);
 	unsigned read(const std::string &fmt, netargs &args, unsigned offset=0);
 	unsigned write(const std::string &fmt, const netargs &args, bool append);
 
@@ -121,6 +124,8 @@ private:
 	uint16_t u16(unsigned pos) const;
 	int32_t i32(unsigned pos) const;
 	uint32_t u32(unsigned pos) const;
+	uint64_t u64(unsigned pos) const;
+	std::string str(unsigned pos) const;
 };
 
 }

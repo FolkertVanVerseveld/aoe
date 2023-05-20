@@ -14,15 +14,9 @@ void NetPkg::cam_set(float x, float y, float w, float h) {
 
 NetCamSet NetPkg::get_cam_set() {
 	ZoneScoped;
-	ntoh();
-
-	if ((NetPkgType)hdr.type != NetPkgType::cam_set)
-		throw std::runtime_error("not a camera set packet");
+	read(NetPkgType::cam_set, "4I");
 
 	NetCamSet s;
-	args.clear();
-	read("4I", args);
-
 	s.x = i32(0);
 	s.y = i32(1);
 	s.w = i32(2);

@@ -36,7 +36,6 @@ void NetPkg::ntoh() {
 		return;
 
 	switch ((NetPkgType)ntohs(hdr.type)) {
-		case NetPkgType::set_protocol:
 		case NetPkgType::set_username: {
 			need_payload(1 * sizeof(uint16_t));
 
@@ -46,7 +45,7 @@ void NetPkg::ntoh() {
 			break;
 		}
 		case NetPkgType::chat_text:
-			break;
+		case NetPkgType::set_protocol:
 		case NetPkgType::playermod:
 		case NetPkgType::gameover:
 		case NetPkgType::particle_mod:
@@ -119,12 +118,12 @@ void NetPkg::hton() {
 		return;
 
 	switch ((NetPkgType)hdr.type) {
-		case NetPkgType::set_protocol:
 		case NetPkgType::set_username: {
 			uint16_t *dw = (uint16_t*)data.data();
 			dw[0] = htons(dw[0]);
 			break;
 		}
+		case NetPkgType::set_protocol:
 		case NetPkgType::chat_text:
 		case NetPkgType::playermod:
 		case NetPkgType::gameover:
@@ -273,25 +272,6 @@ void NetPkg::set_hdr(NetPkgType type) {
 	hdr.payload = (uint16_t)data.size();
 }
 
-void NetPkg::set_protocol(uint16_t version) {
-	data.resize(2);
-
-	uint16_t *dw = (uint16_t*)data.data();
-	*dw = version;
-
-	set_hdr(NetPkgType::set_protocol);
-}
-
-uint16_t NetPkg::protocol_version() {
-	ntoh();
-
-	if ((NetPkgType)hdr.type != NetPkgType::set_protocol || data.size() != 2)
-		throw std::runtime_error("not a protocol network packet");
-
-	const uint16_t *dw = (const uint16_t*)data.data();
-	return *dw;
-}
-
 void NetPkg::set_chat_text(IdPoolRef ref, const std::string &s) {
 	PkgWriter out(*this, NetPkgType::chat_text);
 	write("2I80s", pkgargs{ ref.first, ref.second, s }, false);
@@ -307,7 +287,7 @@ std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
 	read("2I80s", args);
 
 	IdPoolRef ref{ u32(0), u32(1) };
-	return std::make_pair(ref, std::get<std::string>(args.at(2)));
+	return std::make_pair(ref, str(2));
 }
 
 std::string NetPkg::username() {
@@ -341,17 +321,6 @@ void NetPkg::set_username(const std::string &s) {
 void NetPkg::set_start_game() {
 	data.clear();
 	set_hdr(NetPkgType::start_game);
-}
-
-void NetPkg::set_gameover(unsigned team) {
-	PkgWriter out(*this, NetPkgType::gameover);
-	write("H", { team }, false);
-}
-
-unsigned NetPkg::get_gameover() {
-	args.clear();
-	read("H", args);
-	return u16(0);
 }
 
 void NetPkg::set_scn_vars(const ScenarioSettings &scn) {
