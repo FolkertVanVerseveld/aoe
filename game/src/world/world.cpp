@@ -492,6 +492,9 @@ void World::entity_task(WorldEvent &ev) {
 
 		if (ent->playerid != playerid)
 			return; // permission denied
+	} else if (ev.src != invalid_ref) {
+		// peer is not the host, permission denied
+		return;
 	}
 
 	switch (task.type) {
