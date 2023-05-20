@@ -454,7 +454,23 @@ void World::entity_kill(WorldEvent &ev) {
 	// entity_die is like it does its proper dying animation (opt. with particles)
 	// entity_kill is like when it has to be removed completely (e.g. decaying ended, resource depleted)
 	Entity *ent = entities.try_get(ref);
-	if (ent && !is_building(ent->type)) {
+	if (!ent)
+		return;
+
+	// check if the event has been created by a peer. if true, check permissions
+	auto idx = ref2idx(ev.src);
+	if (idx.has_value()) {
+		// check permissions
+		unsigned playerid = idx.value();
+
+		if (ent->playerid != playerid)
+			return; // permission denied
+	} else if (ev.src != invalid_ref) {
+		// peer is not the host, permission denied
+		return;
+	}
+
+	if (!is_building(ent->type)) {
 		if (is_resource(ent->type)) {
 			// TODO
 		} else {
