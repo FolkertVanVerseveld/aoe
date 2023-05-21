@@ -2,9 +2,10 @@
 
 #include "ui/imgui_user.hpp"
 
-#include "ui/imfilebrowser.h"
+#include "external/imfilebrowser.h"
 
-#include "idpool.hpp"
+#include <idpool.hpp>
+
 #include "legacy/strings.hpp"
 #include "legacy/scenario.hpp"
 #include "engine/assets.hpp"

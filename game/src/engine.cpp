@@ -57,6 +57,10 @@ ScenarioSettings::ScenarioSettings()
 	players.emplace_back("Gaia", true, 0, 0, Resources());
 }
 
+void ScenarioSettings::remove(IdPoolRef ref) {
+	owners.erase(ref);
+}
+
 Engine::Engine()
 	: net(), show_demo(false), show_debug(false), font_scaling(true)
 	, connection_mode(0), connection_port(32768), connection_host("")

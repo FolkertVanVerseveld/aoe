@@ -38,7 +38,7 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	refcheck(e.ref);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H4IHHHBbbBHH", std::initializer_list<netarg>{
+	write("2H4IHHHBbbBHH", pkgargs{
 		(uint16_t)type, (uint16_t)e.type,
 		e.ref.first, e.ref.second, e.x, e.y,
 		e.angle * UINT16_MAX / (2 * M_PI),
@@ -57,7 +57,7 @@ void NetPkg::set_entity_kill(IdPoolRef ref) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("H2I", std::initializer_list<netarg> {
+	write("H2I", pkgargs{
 		(uint16_t)NetEntityControlType::kill,
 		ref.first, ref.second,
 	}, false);
@@ -67,7 +67,7 @@ void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H4I", std::initializer_list<netarg>{
+	write("2H4I", pkgargs{
 		(uint16_t)NetEntityControlType::task,
 		(uint16_t)EntityTaskType::move,
 		ref.first, ref.second, x, y
@@ -80,7 +80,7 @@ void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
 	refcheck(r2);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H4I", std::initializer_list<netarg>{
+	write("2H4I", pkgargs{
 		(uint16_t)NetEntityControlType::task,
 		(uint16_t)type,
 		r1.first, r1.second,
@@ -93,7 +93,7 @@ void NetPkg::entity_train(IdPoolRef src, EntityType type) {
 	refcheck(src);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H2IH", std::initializer_list<netarg> {
+	write("2H2IH", pkgargs{
 		(unsigned)NetEntityControlType::task,
 		(uint16_t)EntityTaskType::train_unit,
 
@@ -104,13 +104,7 @@ void NetPkg::entity_train(IdPoolRef src, EntityType type) {
 
 NetEntityMod NetPkg::get_entity_mod() {
 	ZoneScoped;
-	ntoh();
-
-	if ((NetPkgType)hdr.type != NetPkgType::entity_mod)
-		throw std::runtime_error("not an entity control packet");
-
-	args.clear();
-	unsigned pos = read("H", args);
+	unsigned pos = read(NetPkgType::entity_mod, "H");
 	NetEntityControlType type = (NetEntityControlType)u16(0);
 
 	switch (type) {

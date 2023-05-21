@@ -4,6 +4,7 @@
 #include <vector>
 #include <utility>
 #include <cstdint>
+#include <initializer_list>
 
 #include <idpool.hpp>
 
@@ -13,6 +14,7 @@ class PkgWriter;
 
 typedef std::variant<uint64_t, std::string> netarg;
 typedef std::vector<netarg> netargs;
+typedef std::initializer_list<netarg> pkgargs;
 
 class NetPkg final {
 public:
@@ -111,13 +113,19 @@ private:
 
 	void playermod2(NetPlayerControlType, uint16_t, uint16_t);
 
+	void chktype(NetPkgType type);
+
+	unsigned read(NetPkgType, const std::string &fmt);
 	unsigned read(const std::string &fmt, netargs &args, unsigned offset=0);
-	unsigned write(const std::string &fmt, const netargs &args, bool append);
+	unsigned write(const std::string &fmt, const netargs &args, bool append=true);
 
 	int8_t i8(unsigned pos) const;
 	uint8_t u8(unsigned pos) const;
 	uint16_t u16(unsigned pos) const;
+	int32_t i32(unsigned pos) const;
 	uint32_t u32(unsigned pos) const;
+	uint64_t u64(unsigned pos) const;
+	std::string str(unsigned pos) const;
 };
 
 }

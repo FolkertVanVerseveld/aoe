@@ -5,6 +5,40 @@
 
 namespace aoe {
 
+void NetPkg::chktype(NetPkgType type) {
+	ntoh();
+
+	if ((NetPkgType)hdr.type == type)
+		return;
+
+	switch (type) {
+	case NetPkgType::set_protocol:
+		throw std::runtime_error("not a protocol network packet");
+	case NetPkgType::entity_mod:
+		throw std::runtime_error("not an entityu control packet");
+	case NetPkgType::cam_set:
+		throw std::runtime_error("not a camera set packet");
+	case NetPkgType::set_username:
+		throw std::runtime_error("not a username packet");
+	case NetPkgType::chat_text:
+		throw std::runtime_error("not a chat text packet");
+	case NetPkgType::set_scn_vars:
+		throw std::runtime_error("not a scenario settings variables packet");
+	case NetPkgType::terrainmod:
+		throw std::runtime_error("not a terrain control packet");
+	case NetPkgType::peermod:
+		throw std::runtime_error("not a peer control packet");
+	default:
+		throw std::runtime_error("invalid network packet type");
+	}
+}
+
+unsigned NetPkg::read(NetPkgType type, const std::string &fmt) {
+	chktype(type);
+	args.clear();
+	return read(fmt, args, 0);
+}
+
 unsigned NetPkg::read(const std::string &fmt, netargs &dst, unsigned offset) {
 	unsigned mult = 0, size = 0;
 
@@ -199,8 +233,20 @@ uint16_t NetPkg::u16(unsigned pos) const {
 	return (uint16_t)std::get<uint64_t>(args.at(pos));
 }
 
+int32_t NetPkg::i32(unsigned pos) const {
+	return (int32_t)std::get<uint64_t>(args.at(pos));
+}
+
 uint32_t NetPkg::u32(unsigned pos) const {
 	return (uint32_t)std::get<uint64_t>(args.at(pos));
+}
+
+uint64_t NetPkg::u64(unsigned pos) const {
+	return std::get<uint64_t>(args.at(pos));
+}
+
+std::string NetPkg::str(unsigned pos) const {
+	return std::get<std::string>(args.at(pos));
 }
 
 }
