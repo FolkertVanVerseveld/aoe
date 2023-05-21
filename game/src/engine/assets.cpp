@@ -294,6 +294,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		gif(gif_worker_wood_attack1);
 		gif(gif_worker_wood_attack2);
 		gif(gif_worker_wood_die);
+		gif(gif_worker_wood_decay);
 		gif(gif_worker_wood_move);
 
 		add_gifs(p, gif_melee1_stand, DrsId::gif_melee1_stand);

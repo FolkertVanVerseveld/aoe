@@ -46,6 +46,8 @@ void NetPkg::ntoh() {
 		case NetPkgType::resmod:
 		case NetPkgType::gameticks:
 		case NetPkgType::cam_set:
+		case NetPkgType::set_scn_vars:
+		case NetPkgType::terrainmod:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -73,32 +75,10 @@ void NetPkg::ntoh() {
 			}
 			break;
 		}
-		case NetPkgType::set_scn_vars: {
-			need_payload(10 * sizeof(uint32_t) + 1);
-
-			uint32_t *dd = (uint32_t*)data.data();
-
-			for (unsigned i = 0; i < 10; ++i)
-				dd[i] = ntohl(dd[i]);
-
-			break;
-		}
 		case NetPkgType::start_game:
 		case NetPkgType::gamespeed_control:
 			// no payload
 			break;
-		case NetPkgType::terrainmod: {
-			need_payload(NetTerrainMod::possize);
-			uint16_t *dw = (uint16_t*)data.data();
-
-			for (unsigned i = 0; i < 4; ++i)
-				dw[i] = ntohs(dw[i]);
-
-			size_t tsize = dw[2] * dw[3];
-			need_payload(NetTerrainMod::possize + tsize * 2);
-
-			break;
-		}
 		default:
 			throw std::runtime_error("bad type");
 	}
@@ -121,6 +101,8 @@ void NetPkg::hton() {
 		case NetPkgType::resmod:
 		case NetPkgType::cam_set:
 		case NetPkgType::gameticks:
+		case NetPkgType::set_scn_vars:
+		case NetPkgType::terrainmod:
 			// bytes are converted implicitly
 			break;
 		case NetPkgType::peermod: {
@@ -143,28 +125,12 @@ void NetPkg::hton() {
 			}
 			break;
 		}
-		case NetPkgType::set_scn_vars: {
-			uint32_t *dd = (uint32_t*)data.data();
-
-			for (unsigned i = 0; i < 10; ++i)
-				dd[i] = htonl(dd[i]);
-
-			break;
-		}
 		case NetPkgType::start_game:
 			// no payload
 			break;
 		case NetPkgType::gamespeed_control:
 			// 1 byte, don't do anything
 			break;
-		case NetPkgType::terrainmod: {
-			uint16_t *dw = (uint16_t*)data.data();
-
-			for (unsigned i = 0; i < 4; ++i)
-				dw[i] = htons(dw[i]);
-
-			break;
-		}
 		default:
 			throw std::runtime_error("bad type");
 	}

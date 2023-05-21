@@ -24,6 +24,8 @@ void NetPkg::chktype(NetPkgType type) {
 		throw std::runtime_error("not a chat text packet");
 	case NetPkgType::set_scn_vars:
 		throw std::runtime_error("not a scenario settings variables packet");
+	case NetPkgType::terrainmod:
+		throw std::runtime_error("not a terrain control packet");
 	default:
 		throw std::runtime_error("invalid network packet type");
 	}

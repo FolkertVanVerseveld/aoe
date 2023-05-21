@@ -117,7 +117,7 @@ private:
 
 	unsigned read(NetPkgType, const std::string &fmt);
 	unsigned read(const std::string &fmt, netargs &args, unsigned offset=0);
-	unsigned write(const std::string &fmt, const netargs &args, bool append);
+	unsigned write(const std::string &fmt, const netargs &args, bool append=true);
 
 	int8_t i8(unsigned pos) const;
 	uint8_t u8(unsigned pos) const;
