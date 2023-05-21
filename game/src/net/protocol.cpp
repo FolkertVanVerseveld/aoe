@@ -36,14 +36,7 @@ void NetPkg::ntoh() {
 		return;
 
 	switch ((NetPkgType)ntohs(hdr.type)) {
-		case NetPkgType::set_username: {
-			need_payload(1 * sizeof(uint16_t));
-
-			uint16_t *dw = (uint16_t*)data.data();
-
-			dw[0] = ntohs(dw[0]);
-			break;
-		}
+		case NetPkgType::set_username:
 		case NetPkgType::chat_text:
 		case NetPkgType::set_protocol:
 		case NetPkgType::playermod:
@@ -118,11 +111,7 @@ void NetPkg::hton() {
 		return;
 
 	switch ((NetPkgType)hdr.type) {
-		case NetPkgType::set_username: {
-			uint16_t *dw = (uint16_t*)data.data();
-			dw[0] = htons(dw[0]);
-			break;
-		}
+		case NetPkgType::set_username:
 		case NetPkgType::set_protocol:
 		case NetPkgType::chat_text:
 		case NetPkgType::playermod:
@@ -270,52 +259,6 @@ void NetPkg::set_hdr(NetPkgType type) {
 		throw std::runtime_error("payload overflow");
 
 	hdr.payload = (uint16_t)data.size();
-}
-
-void NetPkg::set_chat_text(IdPoolRef ref, const std::string &s) {
-	PkgWriter out(*this, NetPkgType::chat_text);
-	write("2I80s", pkgargs{ ref.first, ref.second, s }, false);
-}
-
-std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
-	ntoh();
-
-	if ((NetPkgType)hdr.type != NetPkgType::chat_text)
-		throw std::runtime_error("not a chat text packet");
-
-	args.clear();
-	read("2I80s", args);
-
-	IdPoolRef ref{ u32(0), u32(1) };
-	return std::make_pair(ref, str(2));
-}
-
-std::string NetPkg::username() {
-	ntoh();
-
-	if ((NetPkgType)hdr.type != NetPkgType::set_username)
-		throw std::runtime_error("not a username packet");
-
-	const uint16_t *dw = (const uint16_t*)data.data();
-
-	uint16_t n = dw[0];
-
-	std::string s(n, ' ');
-	memcpy(s.data(), &dw[1], n);
-
-	return s;
-}
-
-void NetPkg::set_username(const std::string &s) {
-	size_t n = s.size();
-	data.resize(2u + n);
-
-	uint16_t *dw = (uint16_t*)data.data();
-
-	dw[0] = (uint16_t)n;
-	memcpy(&dw[1], s.data(), n);
-
-	set_hdr(NetPkgType::set_username);
 }
 
 void NetPkg::set_start_game() {

@@ -18,6 +18,10 @@ void NetPkg::chktype(NetPkgType type) {
 		throw std::runtime_error("not an entityu control packet");
 	case NetPkgType::cam_set:
 		throw std::runtime_error("not a camera set packet");
+	case NetPkgType::set_username:
+		throw std::runtime_error("not a username packet");
+	case NetPkgType::chat_text:
+		throw std::runtime_error("not a chat text packet");
 	default:
 		throw std::runtime_error("invalid network packet type");
 	}
