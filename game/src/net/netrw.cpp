@@ -22,6 +22,8 @@ void NetPkg::chktype(NetPkgType type) {
 		throw std::runtime_error("not a username packet");
 	case NetPkgType::chat_text:
 		throw std::runtime_error("not a chat text packet");
+	case NetPkgType::set_scn_vars:
+		throw std::runtime_error("not a scenario settings variables packet");
 	default:
 		throw std::runtime_error("invalid network packet type");
 	}
