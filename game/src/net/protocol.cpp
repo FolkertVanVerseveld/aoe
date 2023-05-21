@@ -35,62 +35,12 @@ void NetPkg::ntoh() {
 	if (hdr.native_ordering)
 		return;
 
-	switch ((NetPkgType)ntohs(hdr.type)) {
-		case NetPkgType::set_username:
-		case NetPkgType::chat_text:
-		case NetPkgType::set_protocol:
-		case NetPkgType::playermod:
-		case NetPkgType::gameover:
-		case NetPkgType::particle_mod:
-		case NetPkgType::entity_mod:
-		case NetPkgType::resmod:
-		case NetPkgType::gameticks:
-		case NetPkgType::cam_set:
-		case NetPkgType::set_scn_vars:
-		case NetPkgType::terrainmod:
-		case NetPkgType::peermod:
-			// bytes are converted implicitly
-			break;
-		case NetPkgType::start_game:
-		case NetPkgType::gamespeed_control:
-			// no payload
-			break;
-		default:
-			throw std::runtime_error("bad type");
-	}
-
 	hdr.ntoh();
 }
 
 void NetPkg::hton() {
 	if (!hdr.native_ordering)
 		return;
-
-	switch ((NetPkgType)hdr.type) {
-		case NetPkgType::set_username:
-		case NetPkgType::set_protocol:
-		case NetPkgType::chat_text:
-		case NetPkgType::playermod:
-		case NetPkgType::gameover:
-		case NetPkgType::particle_mod:
-		case NetPkgType::entity_mod:
-		case NetPkgType::resmod:
-		case NetPkgType::cam_set:
-		case NetPkgType::gameticks:
-		case NetPkgType::set_scn_vars:
-		case NetPkgType::terrainmod:
-		case NetPkgType::peermod:
-			// bytes are converted implicitly
-			break;
-		case NetPkgType::start_game:
-			// no payload
-			break;
-		case NetPkgType::gamespeed_control:
-			// 1 byte, don't do anything
-			break;
-		default:
-			throw std::runtime_error("bad type");
-	}
 
 	hdr.hton();
 }
@@ -187,28 +137,6 @@ void NetPkg::set_hdr(NetPkgType type) {
 void NetPkg::set_start_game() {
 	data.clear();
 	set_hdr(NetPkgType::start_game);
-}
-
-NetPeerControl NetPkg::get_peer_control() {
-	ZoneScoped;
-	unsigned pos = read(NetPkgType::peermod, "2IH");
-
-	const uint32_t *dd = (const uint32_t*)data.data();
-	const uint16_t *dw = (const uint16_t*)&dd[2];
-
-	IdPoolRef ref{ u32(0), u32(1) };
-	NetPeerControlType type = (NetPeerControlType)u16(2);
-
-	switch (type) {
-		case NetPeerControlType::set_username:
-			pos += read("40s", args, pos);
-			return NetPeerControl(ref, str(3));
-		case NetPeerControlType::set_player_idx:
-			pos += read("H", args, pos);
-			return NetPeerControl(ref, type, u16(3));
-		default:
-			return NetPeerControl(ref, type);
-	}
 }
 
 NetPkgType NetPkg::type() {

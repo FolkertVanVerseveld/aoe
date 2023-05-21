@@ -46,4 +46,23 @@ void NetPkg::set_ref_username(IdPoolRef ref, const std::string &s) {
 	}, false);
 }
 
+NetPeerControl NetPkg::get_peer_control() {
+	ZoneScoped;
+	unsigned pos = read(NetPkgType::peermod, "2IH");
+
+	IdPoolRef ref{ u32(0), u32(1) };
+	NetPeerControlType type = (NetPeerControlType)u16(2);
+
+	switch (type) {
+	case NetPeerControlType::set_username:
+		pos += read("40s", args, pos);
+		return NetPeerControl(ref, str(3));
+	case NetPeerControlType::set_player_idx:
+		pos += read("H", args, pos);
+		return NetPeerControl(ref, type, u16(3));
+	default:
+		return NetPeerControl(ref, type);
+	}
+}
+
 }
