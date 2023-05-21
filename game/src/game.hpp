@@ -56,6 +56,8 @@ public:
 	Resources res;
 
 	ScenarioSettings();
+
+	void remove(IdPoolRef);
 };
 
 enum class TerrainTile {

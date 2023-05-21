@@ -26,6 +26,8 @@ void NetPkg::chktype(NetPkgType type) {
 		throw std::runtime_error("not a scenario settings variables packet");
 	case NetPkgType::terrainmod:
 		throw std::runtime_error("not a terrain control packet");
+	case NetPkgType::peermod:
+		throw std::runtime_error("not a peer control packet");
 	default:
 		throw std::runtime_error("invalid network packet type");
 	}

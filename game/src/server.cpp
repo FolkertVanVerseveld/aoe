@@ -71,6 +71,9 @@ void Server::dropped(ServerSocket &s, const Peer &p) {
 	pkg.set_dropped(ci.ref);
 	broadcast(pkg);
 
+	// prevent dangling owners
+	w.scn.remove(ci.ref);
+
 	pkg.set_chat_text(invalid_ref, name + " left");
 	broadcast(pkg);
 }
