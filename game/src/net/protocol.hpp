@@ -51,7 +51,6 @@ enum class NetPlayerControlType {
 	erase,
 	died,
 	set_ref,
-	set_cpu_ref,
 	set_player_name,
 	set_civ,
 	set_team,

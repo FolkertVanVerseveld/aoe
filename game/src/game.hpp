@@ -25,13 +25,12 @@ static constexpr unsigned max_players = UINT8_MAX + 1u;
 class PlayerSetting final {
 public:
 	std::string name;
-	bool ai;
 	int civ;
 	unsigned team;
 	Resources res;
 
-	PlayerSetting() : name(), ai(false), civ(0), team(1), res() {}
-	PlayerSetting(const std::string &name, bool ai, int civ, unsigned team, Resources res) : name(name), ai(ai), civ(civ), team(team), res(res) {}
+	PlayerSetting() : name(), civ(0), team(1), res() {}
+	PlayerSetting(const std::string &name, int civ, unsigned team, Resources res) : name(name), civ(civ), team(team), res(res) {}
 	PlayerSetting(const PlayerSetting&) = default;
 };
 

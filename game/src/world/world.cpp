@@ -591,7 +591,6 @@ void World::create_players() {
 
 	// force Gaia as special player
 	PlayerSetting &gaia = scn.players.at(0);
-	gaia.ai = true;
 	gaia.team = 0;
 
 	bool one_team = single_team();

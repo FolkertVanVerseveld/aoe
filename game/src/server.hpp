@@ -325,7 +325,6 @@ public:
 	void send_username(const std::string&);
 
 	void claim_player(unsigned);
-	void claim_cpu(unsigned);
 
 	void cam_move(float x, float y, float w, float h);
 

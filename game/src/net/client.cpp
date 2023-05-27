@@ -172,21 +172,6 @@ void Client::playermod(const NetPlayerControl &ctl) {
 			g.player_died(pos);
 			break;
 		}
-		case NetPlayerControlType::set_cpu_ref: {
-			unsigned pos = std::get<uint16_t>(ctl.data);
-
-			if (pos < scn.players.size())
-				scn.players[pos].ai = true;
-
-			// remove any refs
-			for (auto it = scn.owners.begin(); it != scn.owners.end();) {
-				if (it->second == pos)
-					it = scn.owners.erase(it);
-				else
-					++it;
-			}
-			break;
-		}
 		case NetPlayerControlType::set_player_name: {
 			auto p = std::get<std::pair<uint16_t, std::string>>(ctl.data);
 
@@ -300,12 +285,6 @@ void Client::send_username(const std::string &s) {
 void Client::claim_player(unsigned idx) {
 	NetPkg pkg;
 	pkg.claim_player_setting(idx);
-	send(pkg);
-}
-
-void Client::claim_cpu(unsigned idx) {
-	NetPkg pkg;
-	pkg.set_cpu_player(idx);
 	send(pkg);
 }
 
@@ -462,9 +441,6 @@ void Client::peermod(const NetPeerControl &ctl) {
 
 			unsigned pos = std::get<uint16_t>(ctl.data);
 			scn.owners[ref] = pos;
-
-			if (pos - 1 < scn.players.size())
-				scn.players[pos - 1].ai = false;
 
 			if (ref == me)
 				playerindex = pos;

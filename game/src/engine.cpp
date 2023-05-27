@@ -54,7 +54,7 @@ ScenarioSettings::ScenarioSettings()
 	, age(1), seed(1), villagers(3)
 	, res(200, 200, 0, 0)
 {
-	players.emplace_back("Gaia", true, 0, 0, Resources());
+	players.emplace_back("Gaia", 0, 0, Resources());
 }
 
 void ScenarioSettings::remove(IdPoolRef ref) {
