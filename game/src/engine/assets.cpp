@@ -180,9 +180,11 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_bird2, gif_bird2_shadow, gif_bird2_glide, gif_bird2_glide_shadow;
 	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
 	Animation gif_worker_wood_stand, gif_worker_wood_move, gif_worker_wood_attack1, gif_worker_wood_attack2, gif_worker_wood_die, gif_worker_wood_decay;
+	Animation gif_worker_miner_stand, gif_worker_miner_move, gif_worker_miner_attack, gif_worker_miner_die, gif_worker_miner_decay;
 	Animation gif_melee1_stand, gif_melee1_move, gif_melee1_attack, gif_melee1_die, gif_melee1_decay;
 	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
 	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4, img_dead_tree1, img_dead_tree2, img_decay_tree;
+	Animation gif_gold, gif_stone;
 	Image img_bld_debris;
 
 	info.next("Loading game entities data");
@@ -226,6 +228,12 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_worker_wood_die);
 		load_gif(gif_worker_wood_decay);
 
+		load_gif(gif_worker_miner_stand);
+		load_gif(gif_worker_miner_move);
+		load_gif(gif_worker_miner_attack);
+		load_gif(gif_worker_miner_die);
+		load_gif(gif_worker_miner_decay);
+
 		load_gif(gif_melee1_stand);
 		load_gif(gif_melee1_move);
 		load_gif(gif_melee1_attack);
@@ -241,7 +249,13 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_explode1);
 		load_gif(gif_explode2);
 
-		img_berries.load(pal.get(), drs_graphics.open_slp(DrsId::ent_berries), 0);
+#define load_ent(id) img_##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_##id), 0)
+		load_ent(berries);
+#undef load_ent
+
+		load_gif(gif_gold);
+		load_gif(gif_stone);
+
 		img_desert_tree1.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree1), 0);
 		img_desert_tree2.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree2), 0);
 		img_desert_tree3.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree3), 0);
@@ -306,7 +320,12 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		gif(gif_worker_wood_attack2);
 		gif(gif_worker_wood_die);
 		gif(gif_worker_wood_decay);
-		gif(gif_worker_wood_move);
+
+		gif(gif_worker_miner_stand);
+		gif(gif_worker_miner_move);
+		gif(gif_worker_miner_attack);
+		gif(gif_worker_miner_die);
+		gif(gif_worker_miner_decay);
 
 		add_gifs(p, gif_melee1_stand, DrsId::gif_melee1_stand);
 		add_gifs(p, gif_melee1_move, DrsId::gif_melee1_move);
@@ -323,13 +342,15 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		gif(gif_moveto);
 		gif(gif_explode1);
 		gif(gif_explode2);
-#undef gif
-
 
 		drs_ids[DrsId::img_dialog0] = p.add_img(0, 0, img_dialog0.surface.get());
 		drs_ids[DrsId::bld_debris] = p.add_img(img_bld_debris.hotspot_x, img_bld_debris.hotspot_y, img_bld_debris.surface.get(), img_bld_debris.mask);
 #define img(id) drs_ids[DrsId::ent_ ##id] = p.add_img(img_ ##id .hotspot_x, img_ ##id .hotspot_y, img_ ##id .surface.get(), img_ ##id .mask)
 		img(berries);
+
+		gif(gif_gold);
+		gif(gif_stone);
+
 		img(desert_tree1);
 		img(desert_tree2);
 		img(desert_tree3);
@@ -338,6 +359,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		img(dead_tree2);
 		img(decay_tree);
 #undef img
+#undef gif
 
 		// pack images
 		GLint size = std::min(5120, eng.gl().max_texture_size);
@@ -413,7 +435,8 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	sfx(villager_attack2);
 	sfx(villager_attack3);
 	sfx(villager_spawn);
-	sfx(wood_worker_attack);
+	sfx(worker_wood_attack);
+	sfx(worker_miner_attack);
 
 	sfx(melee_spawn);
 

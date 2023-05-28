@@ -144,7 +144,27 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 
 		break;
 	default:
-		if (stats.hp < atk) {
+		if (is_resource(type)) {
+			atk = std::min(stats.hp, atk);
+
+			switch (type) {
+			case EntityType::berries:
+				wv.collect(aggressor.playerid, Resources(0, atk, 0, 0));
+				break;
+			case EntityType::gold:
+				wv.collect(aggressor.playerid, Resources(0, 0, atk, 0));
+				break;
+			case EntityType::stone:
+				wv.collect(aggressor.playerid, Resources(0, 0, 0, atk));
+				break;
+			case EntityType::dead_tree1:
+			case EntityType::dead_tree2:
+				wv.collect(aggressor.playerid, Resources(atk, 0, 0, 0));
+				break;
+			}
+		}
+
+		if (stats.hp <= atk) {
 			if (is_resource(type)) {
 				if (aggressor.type != EntityType::worker_wood1) {
 					set_type(EntityType::dead_tree1);
@@ -165,18 +185,6 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 			}
 
 			return die();
-		}
-
-		if (is_resource(type)) {
-			switch (type) {
-			case EntityType::berries:
-				wv.collect(aggressor.playerid, Resources(0, 1, 0, 0));
-				break;
-			case EntityType::dead_tree1:
-			case EntityType::dead_tree2:
-				wv.collect(aggressor.playerid, Resources(1, 0, 0, 0));
-				break;
-			}
 		}
 
 		stats.hp = std::max(stats.hp - atk, 0u);
@@ -244,6 +252,12 @@ bool Entity::task_attack(Entity &e) noexcept {
 
 		if (is_resource(e.type)) {
 			switch (e.type) {
+			case EntityType::gold:
+				type = EntityType::worker_gold;
+				break;
+			case EntityType::stone:
+				type = EntityType::worker_stone;
+				break;
 			default:
 				type = EntityType::worker_wood1;
 				break;
@@ -282,7 +296,13 @@ std::optional<SfxId> Entity::sfxtick() noexcept {
 	case EntityType::worker_wood1:
 	case EntityType::worker_wood2:
 		if (state == EntityState::attack)
-			return SfxId::wood_worker_attack;
+			return SfxId::worker_wood_attack;
+
+		break;
+	case EntityType::worker_gold:
+	case EntityType::worker_stone:
+		if (state == EntityState::attack)
+			return SfxId::worker_miner_attack;
 
 		break;
 	case EntityType::priest:

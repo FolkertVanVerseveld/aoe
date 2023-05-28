@@ -707,25 +707,30 @@ void World::create_entities() {
 
 	entities.clear();
 	for (unsigned i = 1; i < players.size(); ++i) {
-		add_building(EntityType::town_center, i, 2, 1 + 3 * i);
-		add_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 3 * i);
+		add_building(EntityType::town_center, i, 3, 1 + 3 * i);
+		add_building(EntityType::barracks, i, 3 + 2 * 3, 1 + 3 * i);
 
-		add_unit(EntityType::villager, i, 5, 1 + 3 * i);
-		add_unit(EntityType::villager, i, 5, 2 + 3 * i);
-		add_unit(EntityType::villager, i, 6, 1 + 3 * i);// , 0, EntityState::attack);
+		add_unit(EntityType::villager, i, 6, 1 + 3 * i);
 		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
+		add_unit(EntityType::villager, i, 7, 1 + 3 * i);// , 0, EntityState::attack);
+		add_unit(EntityType::villager, i, 7, 2 + 3 * i);
 
-		add_unit(EntityType::melee1, i, 2 + 3 * 3, 1 + 3 * i);
-		add_unit(EntityType::melee1, i, 2 + 3 * 3, 2 + 3 * i);
+		add_unit(EntityType::melee1, i, 3 + 3 * 3, 1 + 3 * i);
+		add_unit(EntityType::melee1, i, 3 + 3 * 3, 2 + 3 * i);
 	}
 
-	add_unit(EntityType::priest, 0, 2.5, 1);
 	add_unit(EntityType::priest, 0, 3.5, 1);
+	add_unit(EntityType::priest, 0, 4.5, 1);
 
 	add_resource(EntityType::berries, 0, 0);
 	add_resource(EntityType::berries, 0, 1);
 	add_resource(EntityType::berries, 1, 0);
 	add_resource(EntityType::berries, 1, 1);
+
+	add_resource(EntityType::gold, 0, 2);
+	add_resource(EntityType::gold, 1, 2);
+	add_resource(EntityType::stone, 0, 3);
+	add_resource(EntityType::stone, 1, 3);
 
 	add_resource(EntityType::desert_tree1, 2, 0);
 	add_resource(EntityType::desert_tree2, 3, 0);

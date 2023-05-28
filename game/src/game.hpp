@@ -142,7 +142,7 @@ static bool constexpr is_resource(EntityType t) {
 }
 
 static bool constexpr is_worker(EntityType t) {
-	return t >= EntityType::villager && t <= EntityType::worker_wood2;
+	return t >= EntityType::villager && t <= EntityType::worker_stone;
 }
 
 class Entity;

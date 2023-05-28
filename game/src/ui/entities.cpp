@@ -132,6 +132,27 @@ void UICache::load_entities() {
 					break;
 				}
 				break;
+			case EntityType::worker_gold:
+			case EntityType::worker_stone:
+				switch (ent.state) {
+				case EntityState::dying:
+					gif = io::DrsId::gif_worker_miner_die;
+					break;
+				case EntityState::decaying:
+					gif = io::DrsId::gif_worker_miner_decay;
+					break;
+				case EntityState::attack:
+					gif = io::DrsId::gif_worker_miner_attack;
+					break;
+				case EntityState::attack_follow:
+				case EntityState::moving:
+					gif = io::DrsId::gif_worker_miner_move;
+					break;
+				default:
+					gif = io::DrsId::gif_worker_miner_stand;
+					break;
+				}
+				break;
 			case EntityType::melee1:
 				switch (ent.state) {
 				case EntityState::dying:
@@ -341,6 +362,27 @@ void UICache::load_entities() {
 					break;
 				default:
 					gif = io::DrsId::gif_worker_wood_stand;
+					break;
+				}
+				break;
+			case EntityType::worker_gold:
+			case EntityType::worker_stone:
+				switch (ent.state) {
+				case EntityState::dying:
+					gif = io::DrsId::gif_worker_miner_die;
+					break;
+				case EntityState::decaying:
+					gif = io::DrsId::gif_worker_miner_decay;
+					break;
+				case EntityState::attack:
+					gif = io::DrsId::gif_worker_miner_attack;
+					break;
+				case EntityState::attack_follow:
+				case EntityState::moving:
+					gif = io::DrsId::gif_worker_miner_move;
+					break;
+				default:
+					gif = io::DrsId::gif_worker_miner_stand;
 					break;
 				}
 				break;
