@@ -10,13 +10,6 @@ void UICache::show_terrain() {
 	Assets &a = *e->assets.get();
 	ImGuiIO &io = ImGui::GetIO();
 
-	const gfx::ImageRef &t0 = a.at(t_imgs[0].imgs[0]);
-	const gfx::ImageRef &t1 = a.at(t_imgs[1].imgs[0]);
-	const gfx::ImageRef &t2 = a.at(t_imgs[2].imgs[0]);
-	const gfx::ImageRef &t3 = a.at(t_imgs[3].imgs[0]);
-
-	const gfx::ImageRef tt[] = { t0, t1, t2, t3 };
-
 	GameView &gv = e->gv;
 
 	display_area.clear();
@@ -25,16 +18,14 @@ void UICache::show_terrain() {
 		for (int x = 0; x < gv.t.w; ++x) {
 			ImU32 col = IM_COL32_WHITE;
 
-			uint8_t id = gv.t.id_at(x, y);
+			uint8_t id = gv.t.tile_at(x, y);
 			uint8_t h = gv.t.h_at(x, y);
 			if (!id) {
 				// draw black tile
 				col = IM_COL32_BLACK;
 			}
 
-			id %= 4;
-
-			const gfx::ImageRef &img = tt[id];
+			const gfx::ImageRef &img = imgtile(id);
 
 			ImVec2 tpos(e->tilepos(x, y, left, top, h));
 

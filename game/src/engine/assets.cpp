@@ -154,10 +154,17 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 #undef load_gif
 	}
 
+	Animation trn_water_desert, trn_grass_desert, trn_water_overlay;
 	Animation trn_desert, trn_grass, trn_water, trn_deepwater;
 	info.next("Loading terrain data");
 	{
 		ZoneScopedN("Loading terrain data");
+
+		DRS drs_border(path + "/data/Border.drs");
+
+		trn_water_desert.load(drs_border, pal.get(), DrsId::trn_water_desert);
+		trn_grass_desert.load(drs_border, pal.get(), DrsId::trn_grass_desert);
+		trn_water_overlay.load(drs_border, pal.get(), DrsId::trn_water_overlay);
 
 		DRS drs_terrain(path + "/data/Terrain.drs");
 
@@ -262,6 +269,10 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		gif(gif_building_icons);
 		gif(gif_unit_icons);
 		gif(gif_hpbar);
+
+		add_gifs(p, trn_water_desert, DrsId::trn_water_desert);
+		add_gifs(p, trn_grass_desert, DrsId::trn_grass_desert);
+		add_gifs(p, trn_water_overlay, DrsId::trn_water_overlay);
 
 		add_gifs(p, trn_desert, DrsId::trn_desert);
 		add_gifs(p, trn_grass, DrsId::trn_grass);

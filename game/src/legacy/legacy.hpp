@@ -147,6 +147,10 @@ enum class DrsId {
 	trn_water = 15002,
 	trn_deepwater = 15003,
 
+	trn_water_desert = 20000,
+	trn_grass_desert = 20001,
+	trn_water_overlay = 20006,
+
 	pal_default = 50500,
 
 	img_dialog0 = 50210,

@@ -12,6 +12,8 @@
 
 #include "../engine/audio.hpp"
 
+#include "world/terrain.hpp"
+
 #include <idpool.hpp>
 
 #include "world/entity_info.hpp"
@@ -95,7 +97,19 @@ public:
 
 	void generate();
 
-	uint8_t id_at(unsigned x, unsigned y);
+	static constexpr uint8_t tile_id(TileType type, unsigned subimage) noexcept {
+		return ((unsigned)type & 0x7) | (subimage << 3);
+	}
+
+	static constexpr TileType tile_type(uint8_t id) noexcept {
+		return (TileType)(id & 0x7);
+	}
+
+	static constexpr unsigned tile_img(uint8_t id) noexcept {
+		return id >> 3;
+	}
+
+	uint8_t tile_at(unsigned x, unsigned y);
 	int8_t h_at(unsigned x, unsigned y);
 
 	void fetch(std::vector<uint8_t> &tiles, std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned &w, unsigned &h);
