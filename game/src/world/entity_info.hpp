@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 
+#include "../legacy/legacy.hpp"
+
 namespace aoe {
 
 enum class EntityType {
@@ -38,6 +40,7 @@ struct EntityImgInfo final {
 	// ii = Image of Impact
 	unsigned alive, dying, ii_dying, decaying;
 	unsigned attack, ii_attack, attack_follow, moving;
+	io::DrsId slp_die, slp_decay, slp_attack, slp_attack_follow, slp_moving, slp_alive;
 };
 
 struct EntityInfo final {
@@ -45,7 +48,7 @@ struct EntityInfo final {
 	float size;
 	unsigned hp;
 	unsigned atk;
-	unsigned icon;
+	unsigned icon; // unsigned as it can have different types
 	std::string name;
 
 	// TODO add upgrade function that copies everything except hp

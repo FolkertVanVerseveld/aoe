@@ -284,6 +284,10 @@ bool Entity::task_train_unit(EntityType type) noexcept {
 	return false;
 }
 
+const EntityImgInfo &Entity::img_info() const {
+	return entity_img_info.at((unsigned)type - (unsigned)entity_img_info[0].type);
+}
+
 std::optional<SfxId> Entity::sfxtick() noexcept {
 	switch (type) {
 	case EntityType::villager:
@@ -356,7 +360,7 @@ bool Entity::imgtick(unsigned n) noexcept {
 	xflip = uface < 3;
 
 	if (type >= entity_img_info[0].type && type <= entity_img_info.back().type) {
-		const EntityImgInfo &img = entity_img_info.at((unsigned)type - (unsigned)entity_img_info[0].type);
+		const EntityImgInfo &img = img_info();
 
 		switch (state) {
 		case EntityState::alive:

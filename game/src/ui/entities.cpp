@@ -18,7 +18,7 @@ void UICache::load_entities() {
 	// TODO refactor this so we don't have to copy paste both for loops
 
 	for (const Entity &ent : e->gv.entities) {
-		if (ent.is_alive())
+		if (ent.state != EntityState::decaying)
 			continue;
 
 		// TODO use particle rather than dead building entity
@@ -83,116 +83,15 @@ void UICache::load_entities() {
 			ImVec2 tpos(e->tilepos(x + 1, y, left, top, h));
 
 			io::DrsId gif = io::DrsId::gif_bird1;
+			const EntityImgInfo &info = ent.img_info();
 
-			// TODO use lookup table and refactor into function
-			switch (ent.type) {
-			case EntityType::bird1:
-				break;
-			case EntityType::villager:
-				switch (ent.state) {
-				case EntityState::dying:
-					gif = io::DrsId::gif_villager_die1;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_villager_decay;
-					break;
-				case EntityState::attack:
-					gif = io::DrsId::gif_villager_attack;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_villager_move;
-					break;
-				default:
-					gif = io::DrsId::gif_villager_stand;
-					break;
-				}
-				break;
-			case EntityType::worker_wood1:
-			case EntityType::worker_wood2:
-				switch (ent.state) {
-				case EntityState::dying:
-					gif = io::DrsId::gif_worker_wood_die;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_worker_wood_decay;
-					break;
-				case EntityState::attack:
-					if (ent.type == EntityType::worker_wood1)
-						gif = io::DrsId::gif_worker_wood_attack1;
-					else
-						gif = io::DrsId::gif_worker_wood_attack2;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_worker_wood_move;
-					break;
-				default:
-					gif = io::DrsId::gif_worker_wood_stand;
-					break;
-				}
-				break;
-			case EntityType::worker_gold:
-			case EntityType::worker_stone:
-				switch (ent.state) {
-				case EntityState::dying:
-					gif = io::DrsId::gif_worker_miner_die;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_worker_miner_decay;
-					break;
-				case EntityState::attack:
-					gif = io::DrsId::gif_worker_miner_attack;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_worker_miner_move;
-					break;
-				default:
-					gif = io::DrsId::gif_worker_miner_stand;
-					break;
-				}
-				break;
-			case EntityType::melee1:
-				switch (ent.state) {
-				case EntityState::dying:
-					gif = io::DrsId::gif_melee1_die;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_melee1_decay;
-					break;
-				case EntityState::attack:
-					gif = io::DrsId::gif_melee1_attack;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_melee1_move;
-					break;
-				default:
-					gif = io::DrsId::gif_melee1_stand;
-					break;
-				}
-				break;
-			case EntityType::priest:
-				switch (ent.state) {
-				case EntityState::attack:
-					gif = io::DrsId::gif_priest_attack;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_priest_move;
-					break;
-				case EntityState::dying:
-					gif = io::DrsId::gif_priest_die;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_priest_decay;
-					break;
-				default:
-					gif = io::DrsId::gif_priest_stand;
-					break;
-				}
-				break;
+			switch (ent.state) {
+			case EntityState::dying:         gif = info.slp_die;           break;
+			case EntityState::decaying:      gif = info.slp_decay;         break;
+			case EntityState::attack:        gif = info.slp_attack;        break;
+			case EntityState::attack_follow: gif = info.slp_attack_follow; break;
+			case EntityState::moving:        gif = info.slp_moving;        break;
+			default:                         gif = info.slp_alive;         break;
 			}
 
 			const ImageSet &s_tc = a.anim_at(gif);
@@ -212,7 +111,7 @@ void UICache::load_entities() {
 	}
 
 	for (const Entity &ent : e->gv.entities) {
-		if (!ent.is_alive())
+		if (ent.state == EntityState::decaying)
 			continue;
 
 		if (is_building(ent.type)) {
@@ -316,116 +215,15 @@ void UICache::load_entities() {
 			ImVec2 tpos(e->tilepos(x + 1, y, left, top, h));
 
 			io::DrsId gif = io::DrsId::gif_bird1;
+			const EntityImgInfo &info = ent.img_info();
 
-			// TODO use lookup table and refactor into function
-			switch (ent.type) {
-			case EntityType::bird1:
-				break;
-			case EntityType::villager:
-				switch (ent.state) {
-				case EntityState::dying:
-					gif = io::DrsId::gif_villager_die1;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_villager_decay;
-					break;
-				case EntityState::attack:
-					gif = io::DrsId::gif_villager_attack;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_villager_move;
-					break;
-				default:
-					gif = io::DrsId::gif_villager_stand;
-					break;
-				}
-				break;
-			case EntityType::worker_wood1:
-			case EntityType::worker_wood2:
-				switch (ent.state) {
-				case EntityState::dying:
-					gif = io::DrsId::gif_worker_wood_die;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_worker_wood_decay;
-					break;
-				case EntityState::attack:
-					if (ent.type == EntityType::worker_wood1)
-						gif = io::DrsId::gif_worker_wood_attack1;
-					else
-						gif = io::DrsId::gif_worker_wood_attack2;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_worker_wood_move;
-					break;
-				default:
-					gif = io::DrsId::gif_worker_wood_stand;
-					break;
-				}
-				break;
-			case EntityType::worker_gold:
-			case EntityType::worker_stone:
-				switch (ent.state) {
-				case EntityState::dying:
-					gif = io::DrsId::gif_worker_miner_die;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_worker_miner_decay;
-					break;
-				case EntityState::attack:
-					gif = io::DrsId::gif_worker_miner_attack;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_worker_miner_move;
-					break;
-				default:
-					gif = io::DrsId::gif_worker_miner_stand;
-					break;
-				}
-				break;
-			case EntityType::melee1:
-				switch (ent.state) {
-				case EntityState::dying:
-					gif = io::DrsId::gif_melee1_die;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_melee1_decay;
-					break;
-				case EntityState::attack:
-					gif = io::DrsId::gif_melee1_attack;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_melee1_move;
-					break;
-				default:
-					gif = io::DrsId::gif_melee1_stand;
-					break;
-				}
-				break;
-			case EntityType::priest:
-				switch (ent.state) {
-				case EntityState::attack:
-					gif = io::DrsId::gif_priest_attack;
-					break;
-				case EntityState::attack_follow:
-				case EntityState::moving:
-					gif = io::DrsId::gif_priest_move;
-					break;
-				case EntityState::dying:
-					gif = io::DrsId::gif_priest_die;
-					break;
-				case EntityState::decaying:
-					gif = io::DrsId::gif_priest_decay;
-					break;
-				default:
-					gif = io::DrsId::gif_priest_stand;
-					break;
-				}
-				break;
+			switch (ent.state) {
+			case EntityState::dying:         gif = info.slp_die;           break;
+			case EntityState::decaying:      gif = info.slp_decay;         break;
+			case EntityState::attack:        gif = info.slp_attack;        break;
+			case EntityState::attack_follow: gif = info.slp_attack_follow; break;
+			case EntityState::moving:        gif = info.slp_moving;        break;
+			default:                         gif = info.slp_alive;         break;
 			}
 
 			const ImageSet &s_tc = a.anim_at(gif);
