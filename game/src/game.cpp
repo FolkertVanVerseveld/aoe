@@ -175,6 +175,10 @@ void Game::entity_update(const EntityView &ev) {
 	}
 
 	switch (ev.state) {
+	case EntityState::decaying:
+		if (!is_building(ev.type))
+			break;
+		/* FALLTHROUGH */
 	case EntityState::dying:
 		if (statechange)
 			entities_killed.emplace_back(v);

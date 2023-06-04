@@ -35,6 +35,11 @@ enum class EntityIconType {
 	resource,
 };
 
+struct EntityBldInfo final {
+	EntityType type;
+	io::DrsId slp_base, slp_player, slp_die;
+};
+
 struct EntityImgInfo final {
 	EntityType type;
 	// ii = Image of Impact
@@ -64,5 +69,6 @@ struct EntityStats final {
 
 extern const std::vector<EntityInfo> entity_info;
 extern const std::vector<EntityImgInfo> entity_img_info;
+extern const std::vector<EntityBldInfo> entity_bld_info;
 
 }

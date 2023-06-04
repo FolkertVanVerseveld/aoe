@@ -20,11 +20,12 @@ Entity::Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float
 Entity::Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), playerid(ev.playerid), x(ev.x), y(ev.y), angle(ev.angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(ev.subimage), state(ev.state), xflip(ev.xflip), stats(ev.stats) {}
 
 bool Entity::die() noexcept {
-	if (state == EntityState::dying || state == EntityState::decaying)
+	if (!is_alive())
 		return false;
 
 	stats.hp = 0;
-	set_state(EntityState::dying);
+	// prevent endless dying buildings
+	set_state(is_building(type) ? EntityState::decaying : EntityState::dying);
 
 	return true;
 }
@@ -282,6 +283,11 @@ bool Entity::task_train_unit(EntityType type) noexcept {
 	}
 
 	return false;
+}
+
+const EntityBldInfo &Entity::bld_info() const {
+	assert(is_building(type));
+	return entity_bld_info.at((unsigned)type - (unsigned)entity_bld_info[0].type);
 }
 
 const EntityImgInfo &Entity::img_info() const {

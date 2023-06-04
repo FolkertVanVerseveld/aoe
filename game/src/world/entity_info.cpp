@@ -4,6 +4,11 @@ namespace aoe {
 
 using namespace io;
 
+const std::vector<EntityBldInfo> entity_bld_info {
+	{EntityType::town_center, DrsId::bld_town_center, DrsId::bld_town_center_player, DrsId::bld_debris},
+	{EntityType::barracks, DrsId::bld_barracks, DrsId::bld_barracks, DrsId::bld_debris},
+};
+
 const std::vector<EntityImgInfo> entity_img_info {
 	// alive, dying, decaying, attack, attack_follow, moving
 	// alive, dying, ii_dying, decaying, ii_decaying, attack, ii_attack, attack_follow, moving

@@ -228,6 +228,7 @@ public:
 	bool task_train_unit(EntityType) noexcept;
 
 	std::optional<SfxId> sfxtick() noexcept;
+	const EntityBldInfo &bld_info() const;
 	const EntityImgInfo &img_info() const;
 
 	bool imgtick(unsigned n) noexcept;

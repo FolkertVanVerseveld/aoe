@@ -419,13 +419,13 @@ void Engine::start_server(uint16_t port) {
 				bool good;
 
 				TskGuard(UI_TaskInfo &info) : good(false) {
-					std::lock_guard<std::mutex> lock(m_eng);
+					lock lk(m_eng);
 					if (eng)
 						eng->stop_server_now(info.get_ref());
 				}
 
 				~TskGuard() {
-					std::lock_guard<std::mutex> lock(m_eng);
+					lock lk(m_eng);
 					if (!eng)
 						return;
 
@@ -439,12 +439,13 @@ void Engine::start_server(uint16_t port) {
 			} guard(info);
 
 			{
-				std::lock_guard<std::mutex> lk(m);
+				lock lk(m);
 				// there should be either no server or an inactive one
 				assert(!server || !server->active());
 				server.reset(new Server);
 			}
 
+			reserve_threads(1);
 			tp.push([this](int id, uint16_t port) {
 				server->mainloop(id, port, 1);
 			}, port);

@@ -28,6 +28,8 @@
 
 namespace aoe {
 
+typedef std::lock_guard<std::mutex> lock; // easier to read
+
 static_assert(sizeof(int) >= sizeof(int32_t));
 
 enum class ClientInfoFlags {
