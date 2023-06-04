@@ -142,7 +142,7 @@ static bool constexpr is_resource(EntityType t) {
 }
 
 static bool constexpr is_worker(EntityType t) {
-	return t >= EntityType::villager && t <= EntityType::worker_stone;
+	return t >= EntityType::villager && t <= EntityType::worker_berries;
 }
 
 class Entity;
@@ -243,7 +243,7 @@ private:
 	/* Compute facing angle and return euclidean distance. */
 	float lookat(float x, float y) noexcept;
 
-	void set_type(EntityType type);
+	void set_type(EntityType type, bool resethp=false);
 };
 
 class PlayerAchievements final {

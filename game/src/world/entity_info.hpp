@@ -16,6 +16,7 @@ enum class EntityType {
 	worker_wood2,
 	worker_gold,
 	worker_stone,
+	worker_berries,
 	melee1,
 	priest,
 	berries,

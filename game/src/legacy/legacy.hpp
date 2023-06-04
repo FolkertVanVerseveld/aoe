@@ -191,6 +191,8 @@ enum class DrsId {
 	gif_worker_miner_die = 339,
 	gif_worker_miner_decay = 400,
 
+	gif_worker_berries_attack = 632,
+
 	gif_melee1_stand = 425,
 	gif_melee1_move = 664,
 	gif_melee1_attack = 212,
@@ -265,6 +267,7 @@ enum class DrsId {
 	sfx_villager_spawn = 5166,
 	sfx_worker_wood_attack = 5048,
 	sfx_worker_miner_attack = 5159,
+	sfx_worker_berries_attack = 5085,
 
 	sfx_melee_spawn = 5144,
 

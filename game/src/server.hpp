@@ -106,7 +106,7 @@ class World final {
 	std::mutex m, m_events;
 	Terrain t;
 	IdPool<Entity> entities;
-	std::set<IdPoolRef> dirty_entities, spawned_entities, died_entities;
+	std::set<IdPoolRef> dirty_entities, spawned_entities, died_entities, killed_entities;
 	IdPool<Particle> particles;
 	std::set<IdPoolRef> spawned_particles;
 	std::vector<Player> players;
@@ -178,6 +178,8 @@ private:
 
 	void entity_kill(WorldEvent &ev);
 	void entity_task(WorldEvent &ev);
+
+	void nuke_ref(IdPoolRef);
 
 	bool controls_player(IdPoolRef src, unsigned pid);
 

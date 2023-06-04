@@ -82,6 +82,7 @@ void World::tick_entities() {
 
 	WorldView wv(*this);
 	died_entities.clear();
+	killed_entities.clear();
 
 	for (auto &kv : entities) {
 		Entity &ent = kv.second;
@@ -133,8 +134,11 @@ void World::tick_entities() {
 
 					// if t died just now, remove from player
 					if (!t->is_alive() && was_alive) {
-						// update score but ensure entity isn't owned by gaia
-						if (t->playerid != 0) {
+						if (is_resource(t->type)) {
+							killed_entities.emplace(t->ref);
+							ent.task_cancel();
+							dirty = true;
+						} else if (t->playerid != 0) { // update score but ensure entity isn't owned by gaia
 							if (is_building(t->type))
 								players[ent.playerid].killed_building();
 							else
@@ -157,6 +161,10 @@ void World::tick_entities() {
 		Entity &ent = entities.at(ref);
 		players[ent.playerid].lost_entity(ref);
 	}
+
+	// now iterate all killed entities
+	for (IdPoolRef ref : killed_entities)
+		nuke_ref(ref);
 }
 
 /** Iterate all particles and remove those whose animation has ended. */
@@ -460,7 +468,7 @@ void World::entity_kill(WorldEvent &ev) {
 
 	if (!is_building(ent->type)) {
 		if (is_resource(ent->type)) {
-			// TODO
+			// TODO do we want to support this?
 		} else {
 			if (ent->die()) {
 				players[ent->playerid].lost_entity(ref);
@@ -470,19 +478,26 @@ void World::entity_kill(WorldEvent &ev) {
 		}
 	}
 
-	// TODO add client info that sent kill command
-	// TODO check if player is allowed to kill this entity
-	if (entities.try_invalidate(ref)) {
-		for (Player &p : players)
-			p.entities.erase(ref);
+	nuke_ref(ref);
+}
 
-		NetPkg pkg;
-		pkg.set_entity_kill(ref);
-		s->broadcast(pkg);
-	}
+/** Completely remove entity with no death animation, no particles or anything. Resources are always nuked. */
+void World::nuke_ref(IdPoolRef ref) {
+	ZoneScoped;
+	if (!entities.try_invalidate(ref))
+		return;
+
+	for (Player &p : players)
+		p.entities.erase(ref);
+
+	// TODO add client info that sent kill command?
+	NetPkg pkg;
+	pkg.set_entity_kill(ref);
+	s->broadcast(pkg);
 }
 
 bool World::controls_player(IdPoolRef src, unsigned pid) {
+	ZoneScoped;
 	// check if the event has been created by a peer. if true, check permissions
 	auto idx = ref2idx(src);
 	if (idx.has_value()) {

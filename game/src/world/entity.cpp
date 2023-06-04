@@ -124,15 +124,23 @@ bool Entity::tick(WorldView &wv) noexcept {
 	return false;
 }
 
-void Entity::set_type(EntityType type) {
+void Entity::set_type(EntityType type, bool resethp) {
 	stats = entity_info.at((unsigned)type);
-	unsigned hp = this->stats.hp;
-	this->stats = stats;
-	this->stats.hp = std::clamp(hp, 0u, this->stats.maxhp);
+
+	if (resethp) {
+		this->stats = stats;
+	} else {
+		unsigned hp = this->stats.hp;
+
+		this->stats = stats;
+		this->stats.hp = std::clamp(hp, 0u, this->stats.maxhp);
+	}
+
+	this->type = type;
 }
 
 bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
-	unsigned atk = aggressor.stats.attack;
+	unsigned atk = std::min(stats.hp, aggressor.stats.attack);
 
 	switch (aggressor.type) {
 	case EntityType::priest:
@@ -146,8 +154,6 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 		break;
 	default:
 		if (is_resource(type)) {
-			atk = std::min(stats.hp, atk);
-
 			switch (type) {
 			case EntityType::berries:
 				wv.collect(aggressor.playerid, Resources(0, atk, 0, 0));
@@ -169,7 +175,7 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 			if (is_resource(type)) {
 				if (aggressor.type != EntityType::worker_wood1) {
 					set_type(EntityType::dead_tree1);
-					return set_state(EntityState::decaying);
+					return die();
 				}
 
 				switch (type) {
@@ -178,9 +184,8 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 				case EntityType::desert_tree3:
 				case EntityType::desert_tree4:
 					aggressor.set_type(EntityType::worker_wood2);
+					set_type(EntityType::dead_tree1, true);
 
-					type = EntityType::dead_tree1;
-					stats = entity_info.at((unsigned)type);
 					return set_state(EntityState::alive);
 				}
 			}
@@ -244,26 +249,34 @@ bool Entity::task_attack(Entity &e) noexcept {
 
 	// villagers will change type when interacting with (non-)resources
 	if (is_worker(type)) {
-		type = EntityType::villager;
-
-		// TODO update stats
-		unsigned hp = stats.hp;
-		stats = entity_info.at((unsigned)type);
-		stats.hp = std::clamp(hp, 0u, stats.maxhp);
+		EntityType newtype = EntityType::villager;
 
 		if (is_resource(e.type)) {
 			switch (e.type) {
 			case EntityType::gold:
-				type = EntityType::worker_gold;
+				newtype = EntityType::worker_gold;
 				break;
 			case EntityType::stone:
-				type = EntityType::worker_stone;
+				newtype = EntityType::worker_stone;
+				break;
+			case EntityType::berries:
+				newtype = EntityType::worker_berries;
+				break;
+			case EntityType::dead_tree1:
+			case EntityType::dead_tree2:
+				// prevent lumberjack collecting wood faster
+				newtype = EntityType::worker_wood2;
 				break;
 			default:
-				type = EntityType::worker_wood1;
+				newtype = EntityType::worker_wood1;
 				break;
 			}
 		}
+
+		set_type(newtype);
+	} else if (is_resource(e.type)) {
+		// don't try to attack resources when we're not a villager
+		return task_move(e.x, e.y);
 	}
 
 	set_state(in_range(e) ? EntityState::attack : EntityState::attack_follow);
@@ -314,6 +327,10 @@ std::optional<SfxId> Entity::sfxtick() noexcept {
 		if (state == EntityState::attack)
 			return SfxId::worker_miner_attack;
 
+		break;
+	case EntityType::worker_berries:
+		if (state == EntityState::attack)
+			return SfxId::worker_berries_attack;
 		break;
 	case EntityType::priest:
 		switch (state) {

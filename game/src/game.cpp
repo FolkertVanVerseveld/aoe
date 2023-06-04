@@ -199,7 +199,7 @@ bool Game::entity_kill(IdPoolRef ref) {
 	if (it == entities.end())
 		return false;
 
-	entities_killed.emplace_back(*it);
+	//entities_killed.emplace_back(*it);
 	entities.erase(it);
 
 	modflags |= (unsigned)GameMod::entities;

@@ -92,6 +92,7 @@ enum class SfxId {
 	villager_spawn,
 	worker_wood_attack,
 	worker_miner_attack,
+	worker_berries_attack,
 	melee_spawn,
 	priest,
 	priest_attack_random,

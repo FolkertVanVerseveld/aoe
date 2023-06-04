@@ -181,6 +181,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_villager_stand, gif_villager_move, gif_villager_attack, gif_villager_die1, gif_villager_die2, gif_villager_decay;
 	Animation gif_worker_wood_stand, gif_worker_wood_move, gif_worker_wood_attack1, gif_worker_wood_attack2, gif_worker_wood_die, gif_worker_wood_decay;
 	Animation gif_worker_miner_stand, gif_worker_miner_move, gif_worker_miner_attack, gif_worker_miner_die, gif_worker_miner_decay;
+	Animation gif_worker_berries_attack;
 	Animation gif_melee1_stand, gif_melee1_move, gif_melee1_attack, gif_melee1_die, gif_melee1_decay;
 	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
 	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4, img_dead_tree1, img_dead_tree2, img_decay_tree;
@@ -233,6 +234,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_worker_miner_attack);
 		load_gif(gif_worker_miner_die);
 		load_gif(gif_worker_miner_decay);
+
+		load_gif(gif_worker_berries_attack);
 
 		load_gif(gif_melee1_stand);
 		load_gif(gif_melee1_move);
@@ -326,6 +329,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		gif(gif_worker_miner_attack);
 		gif(gif_worker_miner_die);
 		gif(gif_worker_miner_decay);
+
+		gif(gif_worker_berries_attack);
 
 		add_gifs(p, gif_melee1_stand, DrsId::gif_melee1_stand);
 		add_gifs(p, gif_melee1_move, DrsId::gif_melee1_move);
@@ -437,6 +442,7 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 	sfx(villager_spawn);
 	sfx(worker_wood_attack);
 	sfx(worker_miner_attack);
+	sfx(worker_berries_attack);
 
 	sfx(melee_spawn);
 
