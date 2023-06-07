@@ -466,19 +466,15 @@ void World::entity_kill(WorldEvent &ev) {
 	if (!ent || !controls_player(ev.src, ent->playerid))
 		return;
 
-	if (!is_building(ent->type)) {
-		if (is_resource(ent->type)) {
-			// TODO do we want to support this?
-		} else {
-			if (ent->die()) {
-				players[ent->playerid].lost_entity(ref);
-				dirty_entities.emplace(ent->ref);
-			}
-			return;
-		}
-	}
+	if (is_resource(ent->type)) {
+		nuke_ref(ref);
+	} else if (ent->die()) {
+		if (is_building(ent->type))
+			spawn_particle(ParticleType::explode2, ent->x, ent->y);
 
-	nuke_ref(ref);
+		players[ent->playerid].lost_entity(ref);
+		dirty_entities.emplace(ent->ref);
+	}
 }
 
 /** Completely remove entity with no death animation, no particles or anything. Resources are always nuked. */
