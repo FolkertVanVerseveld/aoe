@@ -1,8 +1,5 @@
 BUILDING THE GAME
 
-For any new readers, you should try to compile game using CMake,
-since this one is actively maintained.
-
 Change directory to game and make a CMake build directory:
 
   cd game/
@@ -44,7 +41,7 @@ make this work, or cross-compile and install and run the game using Wine.
 This project has been built primarly on Xubuntu 22 and Windows. The following
 packages are needed:
 
-  gcc make libssl-dev pkg-config libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libopenal-dev
+  gcc make libssl-dev pkg-config libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev
 
 Windows:
 

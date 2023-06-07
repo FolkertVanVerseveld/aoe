@@ -14,19 +14,8 @@ make clean && make
 All issues have varying degrees of badness. An issue may have a workaround, but
 it depends on the symptoms and the source of the issue.
 
-Empiresx bugs:
-
-Symptom                    | Cause                                                  | Solution
----------------------------|--------------------------------------------------------|-------------------------------------------------------
-No music                   | The CD-ROM audio partition is not mounted              | Open the directory in your filebrowser to automount it
-Cursor clipping inaccurate | X11 does not support clipping of subset of Window area | No workaround at the moment
-Game becomes unresponsive  | To be investigated: probably a thread deadlock         | No workaround at the moment
-
-Bugs for any executable in tools/:
-
-Symptom                    | Cause                              | Solution
----------------------------|------------------------------------|--------------------------
-Cannot patch DRS bitmap    | The bitmap header is also included | Strip the header manually
+See [bug issues on GitHub](https://github.com/FolkertVanVerseveld/aoe/issues?q=is%3Aopen+is%3Aissue+label%3Abug)
+for a complete list.
 
 In case the game does not start at all, make sure the following is satisfied:
 

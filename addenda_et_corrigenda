@@ -67,10 +67,6 @@ can enable/disable since some users would still like to be able to use this.
 Show population limit by default
 Pretty self-explanatory.
 
-Improve volume control
-Audio sound effects or music is either off or very loud. It should be pretty
-simple to be able to regulate this properly.
-
 Projectile session restore bug
 If a session is saved while projectiles are in the air, since (I think) patch
 1.c it crashes the game when restoring a session. This is of course
