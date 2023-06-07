@@ -5,6 +5,7 @@
 #include <atomic>
 #include <string>
 #include <vector>
+#include <optional>
 #include <map>
 
 #include <mutex>
@@ -345,6 +346,7 @@ public:
 	void gameover(unsigned team) noexcept;
 	unsigned winning_team() noexcept;
 
+	std::optional<PlayerView> try_pv(unsigned);
 	PlayerView pv(unsigned);
 private:
 	void imgtick(unsigned n);

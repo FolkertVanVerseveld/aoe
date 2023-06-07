@@ -47,10 +47,19 @@ unsigned Game::winning_team() noexcept {
 	return team_won;
 }
 
-PlayerView Game::pv(unsigned idx) {
+std::optional<PlayerView> Game::try_pv(unsigned idx) {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lk(m);
+
+	if (idx >= players.size())
+		return std::nullopt;
+
 	return players.at(idx);
+}
+
+PlayerView Game::pv(unsigned idx) {
+	ZoneScoped;
+	return try_pv(idx).value();
 }
 
 void Game::imgtick(unsigned n) {
