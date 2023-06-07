@@ -61,7 +61,6 @@ NetPlayerControl NetPkg::get_player_control() {
 		case NetPlayerControlType::erase:
 		case NetPlayerControlType::died:
 		case NetPlayerControlType::set_ref:
-		case NetPlayerControlType::set_cpu_ref:
 			pos += read("H", args, pos);
 			return NetPlayerControl(type, u16(1));
 		case NetPlayerControlType::set_player_name:
@@ -89,11 +88,6 @@ NetPlayerControl NetPkg::get_player_control() {
 		default:
 			throw std::runtime_error("bad player control type");
 	}
-}
-
-void NetPkg::set_cpu_player(uint16_t idx) {
-	PkgWriter out(*this, NetPkgType::playermod);
-	write("2H", pkgargs{ (unsigned)NetPlayerControlType::set_cpu_ref, idx }, false);
 }
 
 void NetPkg::playermod2(NetPlayerControlType type, uint16_t idx, uint16_t pos) {

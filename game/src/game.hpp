@@ -13,6 +13,8 @@
 
 #include "../engine/audio.hpp"
 
+#include "world/terrain.hpp"
+
 #include <idpool.hpp>
 
 #include "world/entity_info.hpp"
@@ -26,13 +28,12 @@ static constexpr unsigned max_players = UINT8_MAX + 1u;
 class PlayerSetting final {
 public:
 	std::string name;
-	bool ai;
 	int civ;
 	unsigned team;
 	Resources res;
 
-	PlayerSetting() : name(), ai(false), civ(0), team(1), res() {}
-	PlayerSetting(const std::string &name, bool ai, int civ, unsigned team, Resources res) : name(name), ai(ai), civ(civ), team(team), res(res) {}
+	PlayerSetting() : name(), civ(0), team(1), res() {}
+	PlayerSetting(const std::string &name, int civ, unsigned team, Resources res) : name(name), civ(civ), team(team), res(res) {}
 	PlayerSetting(const PlayerSetting&) = default;
 };
 
@@ -97,7 +98,19 @@ public:
 
 	void generate();
 
-	uint8_t id_at(unsigned x, unsigned y);
+	static constexpr uint8_t tile_id(TileType type, unsigned subimage) noexcept {
+		return ((unsigned)type & 0x7) | (subimage << 3);
+	}
+
+	static constexpr TileType tile_type(uint8_t id) noexcept {
+		return (TileType)(id & 0x7);
+	}
+
+	static constexpr unsigned tile_img(uint8_t id) noexcept {
+		return id >> 3;
+	}
+
+	uint8_t tile_at(unsigned x, unsigned y);
 	int8_t h_at(unsigned x, unsigned y);
 
 	void fetch(std::vector<uint8_t> &tiles, std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned &w, unsigned &h);
@@ -130,7 +143,7 @@ static bool constexpr is_resource(EntityType t) {
 }
 
 static bool constexpr is_worker(EntityType t) {
-	return t >= EntityType::villager && t <= EntityType::worker_wood2;
+	return t >= EntityType::villager && t <= EntityType::worker_berries;
 }
 
 class Entity;
@@ -190,7 +203,9 @@ public:
 	EntityStats stats;
 
 	Entity(IdPoolRef ref);
-	Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle=0, EntityState state=EntityState::alive);
+	Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle=0.0f, EntityState state=EntityState::alive);
+	// resource only
+	Entity(IdPoolRef ref, EntityType type, float x, float y, unsigned subimage);
 
 	Entity(const EntityView &ev);
 
@@ -216,6 +231,8 @@ public:
 	bool task_train_unit(EntityType) noexcept;
 
 	std::optional<SfxId> sfxtick() noexcept;
+	const EntityBldInfo &bld_info() const;
+	const EntityImgInfo &img_info() const;
 
 	bool imgtick(unsigned n) noexcept;
 private:
@@ -229,7 +246,7 @@ private:
 	/* Compute facing angle and return euclidean distance. */
 	float lookat(float x, float y) noexcept;
 
-	void set_type(EntityType type);
+	void set_type(EntityType type, bool resethp=false);
 };
 
 class PlayerAchievements final {

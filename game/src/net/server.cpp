@@ -1,5 +1,7 @@
 #include "../server.hpp"
 
+#include "../legacy/legacy.hpp"
+
 namespace aoe {
 
 const Peer *Server::try_peer(IdPoolRef ref) {
@@ -121,7 +123,7 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 
 	switch (ctl.type) {
 		case NetPlayerControlType::resize: {
-			uint16_t size = std::get<uint16_t>(ctl.data);
+			uint16_t size = std::clamp<uint16_t>(std::get<uint16_t>(ctl.data), 1, MAX_PLAYERS);
 			w.scn.players.resize(size);
 			pkg.set_player_resize(size);
 			broadcast(pkg);
@@ -138,35 +140,8 @@ bool Server::process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<
 			IdPoolRef ref = peers.at(p).ref;
 			w.scn.owners[ref] = idx;
 
-			if (idx)
-				w.scn.players[idx].ai = false;
-
 			// send to players
 			pkg.set_claim_player(ref, idx);
-			broadcast(pkg);
-
-			return true;
-		}
-		case NetPlayerControlType::set_cpu_ref: {
-			unsigned idx = std::get<uint16_t>(ctl.data);
-
-			// ignore bad index, might be desync
-			if (idx >= w.scn.players.size())
-				return true;
-
-			// claim slot
-			w.scn.players[idx].ai = true;
-
-			// purge any players that had this one claimed
-			for (auto it = w.scn.owners.begin(); it != w.scn.owners.end();) {
-				if (it->second == idx)
-					it = w.scn.owners.erase(it);
-				else
-					++it;
-			}
-
-			// tell everyone and don't care to check which player had claimed this before
-			pkg.set_cpu_player(idx);
 			broadcast(pkg);
 
 			return true;

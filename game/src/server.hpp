@@ -28,6 +28,8 @@
 
 namespace aoe {
 
+typedef std::lock_guard<std::mutex> lock; // easier to read
+
 static_assert(sizeof(int) >= sizeof(int32_t));
 
 enum class ClientInfoFlags {
@@ -104,7 +106,7 @@ class World final {
 	std::mutex m, m_events;
 	Terrain t;
 	IdPool<Entity> entities;
-	std::set<IdPoolRef> dirty_entities, spawned_entities, died_entities;
+	std::set<IdPoolRef> dirty_entities, spawned_entities, died_entities, killed_entities;
 	IdPool<Particle> particles;
 	std::set<IdPoolRef> spawned_particles;
 	std::vector<Player> players;
@@ -145,7 +147,10 @@ private:
 	void add_building(EntityType t, unsigned player, int x, int y);
 	void add_unit(EntityType t, unsigned player, float x, float y);
 	void add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state=EntityState::alive);
-	void add_resource(EntityType t, float x, float y);
+	void add_resource(EntityType t, float x, float y, unsigned subimage);
+	void add_berries(float x, float y);
+	void add_gold(float x, float y);
+	void add_stone(float x, float y);
 
 	void spawn_unit(EntityType t, unsigned player, float x, float y);
 	void spawn_unit(EntityType t, unsigned player, float x, float y, float angle);
@@ -176,6 +181,8 @@ private:
 
 	void entity_kill(WorldEvent &ev);
 	void entity_task(WorldEvent &ev);
+
+	void nuke_ref(IdPoolRef);
 
 	bool controls_player(IdPoolRef src, unsigned pid);
 
@@ -325,7 +332,6 @@ public:
 	void send_username(const std::string&);
 
 	void claim_player(unsigned);
-	void claim_cpu(unsigned);
 
 	void cam_move(float x, float y, float w, float h);
 

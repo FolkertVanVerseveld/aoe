@@ -242,6 +242,8 @@ public:
 	void show_hud_selection(float left, float top, float menubar_h);
 
 	void str2(const ImVec2 &pos, const char *text, bool invert=false);
+
+	const gfx::ImageRef &imgtile(uint8_t v);
 private:
 	void show_terrain();
 	/** Show user selected entities. */

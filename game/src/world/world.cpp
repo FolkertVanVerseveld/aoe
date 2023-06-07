@@ -82,6 +82,7 @@ void World::tick_entities() {
 
 	WorldView wv(*this);
 	died_entities.clear();
+	killed_entities.clear();
 
 	for (auto &kv : entities) {
 		Entity &ent = kv.second;
@@ -133,8 +134,11 @@ void World::tick_entities() {
 
 					// if t died just now, remove from player
 					if (!t->is_alive() && was_alive) {
-						// update score but ensure entity isn't owned by gaia
-						if (t->playerid != 0) {
+						if (is_resource(t->type)) {
+							killed_entities.emplace(t->ref);
+							ent.task_cancel();
+							dirty = true;
+						} else if (t->playerid != 0) { // update score but ensure entity isn't owned by gaia
 							if (is_building(t->type))
 								players[ent.playerid].killed_building();
 							else
@@ -157,6 +161,10 @@ void World::tick_entities() {
 		Entity &ent = entities.at(ref);
 		players[ent.playerid].lost_entity(ref);
 	}
+
+	// now iterate all killed entities
+	for (IdPoolRef ref : killed_entities)
+		nuke_ref(ref);
 }
 
 /** Iterate all particles and remove those whose animation has ended. */
@@ -460,7 +468,7 @@ void World::entity_kill(WorldEvent &ev) {
 
 	if (!is_building(ent->type)) {
 		if (is_resource(ent->type)) {
-			// TODO
+			// TODO do we want to support this?
 		} else {
 			if (ent->die()) {
 				players[ent->playerid].lost_entity(ref);
@@ -470,19 +478,26 @@ void World::entity_kill(WorldEvent &ev) {
 		}
 	}
 
-	// TODO add client info that sent kill command
-	// TODO check if player is allowed to kill this entity
-	if (entities.try_invalidate(ref)) {
-		for (Player &p : players)
-			p.entities.erase(ref);
+	nuke_ref(ref);
+}
 
-		NetPkg pkg;
-		pkg.set_entity_kill(ref);
-		s->broadcast(pkg);
-	}
+/** Completely remove entity with no death animation, no particles or anything. Resources are always nuked. */
+void World::nuke_ref(IdPoolRef ref) {
+	ZoneScoped;
+	if (!entities.try_invalidate(ref))
+		return;
+
+	for (Player &p : players)
+		p.entities.erase(ref);
+
+	// TODO add client info that sent kill command?
+	NetPkg pkg;
+	pkg.set_entity_kill(ref);
+	s->broadcast(pkg);
 }
 
 bool World::controls_player(IdPoolRef src, unsigned pid) {
+	ZoneScoped;
 	// check if the event has been created by a peer. if true, check permissions
 	auto idx = ref2idx(src);
 	if (idx.has_value()) {
@@ -591,7 +606,6 @@ void World::create_players() {
 
 	// force Gaia as special player
 	PlayerSetting &gaia = scn.players.at(0);
-	gaia.ai = true;
 	gaia.team = 0;
 
 	bool one_team = single_team();
@@ -669,11 +683,23 @@ void World::add_unit(EntityType t, unsigned player, float x, float y, float angl
 	players.at(player).entities.emplace(p.first->first);
 }
 
-void World::add_resource(EntityType t, float x, float y) {
+void World::add_resource(EntityType t, float x, float y, unsigned subimage) {
 	ZoneScoped;
 	assert(is_resource(t));
 	// TODO add resource values
-	entities.emplace(t, 0, x, y, 0, EntityState::alive);
+	entities.emplace(t, x, y, subimage);
+}
+
+void World::add_berries(float x, float y) {
+	add_resource(EntityType::berries, x, y, 0);
+}
+
+void World::add_gold(float x, float y) {
+	add_resource(EntityType::gold, x, y, rand() % 7);
+}
+
+void World::add_stone(float x, float y) {
+	add_resource(EntityType::stone, x, y, rand() % 7);
 }
 
 void World::spawn_unit(EntityType t, unsigned player, float x, float y) {
@@ -708,30 +734,35 @@ void World::create_entities() {
 
 	entities.clear();
 	for (unsigned i = 1; i < players.size(); ++i) {
-		add_building(EntityType::town_center, i, 2, 1 + 3 * i);
-		add_building(EntityType::barracks, i, 2 + 2 * 3, 1 + 3 * i);
+		add_building(EntityType::town_center, i, 3, 1 + 3 * i);
+		add_building(EntityType::barracks, i, 3 + 2 * 3, 1 + 3 * i);
 
-		add_unit(EntityType::villager, i, 5, 1 + 3 * i);
-		add_unit(EntityType::villager, i, 5, 2 + 3 * i);
-		add_unit(EntityType::villager, i, 6, 1 + 3 * i);// , 0, EntityState::attack);
+		add_unit(EntityType::villager, i, 6, 1 + 3 * i);
 		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
+		add_unit(EntityType::villager, i, 7, 1 + 3 * i);// , 0, EntityState::attack);
+		add_unit(EntityType::villager, i, 7, 2 + 3 * i);
 
-		add_unit(EntityType::melee1, i, 2 + 3 * 3, 1 + 3 * i);
-		add_unit(EntityType::melee1, i, 2 + 3 * 3, 2 + 3 * i);
+		add_unit(EntityType::melee1, i, 3 + 3 * 3, 1 + 3 * i);
+		add_unit(EntityType::melee1, i, 3 + 3 * 3, 2 + 3 * i);
 	}
 
-	add_unit(EntityType::priest, 0, 2.5, 1);
 	add_unit(EntityType::priest, 0, 3.5, 1);
+	add_unit(EntityType::priest, 0, 4.5, 1);
 
-	add_resource(EntityType::berries, 0, 0);
-	add_resource(EntityType::berries, 0, 1);
-	add_resource(EntityType::berries, 1, 0);
-	add_resource(EntityType::berries, 1, 1);
+	add_berries(0, 0);
+	add_berries(0, 1);
+	add_berries(1, 0);
+	add_berries(1, 1);
 
-	add_resource(EntityType::desert_tree1, 2, 0);
-	add_resource(EntityType::desert_tree2, 3, 0);
-	add_resource(EntityType::desert_tree3, 4, 0);
-	add_resource(EntityType::desert_tree4, 5, 0);
+	add_gold(0, 2);
+	add_gold(1, 2);
+	add_stone(0, 3);
+	add_stone(1, 3);
+
+	add_resource(EntityType::desert_tree1, 2, 0, 0);
+	add_resource(EntityType::desert_tree2, 3, 0, 0);
+	add_resource(EntityType::desert_tree3, 4, 0, 0);
+	add_resource(EntityType::desert_tree4, 5, 0, 0);
 }
 
 void World::startup() {

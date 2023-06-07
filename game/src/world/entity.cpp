@@ -17,14 +17,17 @@ Entity::Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), playeri
 
 Entity::Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle, EntityState state) : ref(ref), type(type), playerid(playerid), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state), xflip(false), stats(entity_info.at((unsigned)type)) {}
 
+Entity::Entity(IdPoolRef ref, EntityType type, float x, float y, unsigned subimage) : ref(ref), type(type), playerid(0), x(x), y(y), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(subimage), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
+
 Entity::Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), playerid(ev.playerid), x(ev.x), y(ev.y), angle(ev.angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(ev.subimage), state(ev.state), xflip(ev.xflip), stats(ev.stats) {}
 
 bool Entity::die() noexcept {
-	if (state == EntityState::dying || state == EntityState::decaying)
+	if (!is_alive())
 		return false;
 
 	stats.hp = 0;
-	set_state(EntityState::dying);
+	// prevent endless dying buildings
+	set_state(is_building(type) ? EntityState::decaying : EntityState::dying);
 
 	return true;
 }
@@ -123,15 +126,23 @@ bool Entity::tick(WorldView &wv) noexcept {
 	return false;
 }
 
-void Entity::set_type(EntityType type) {
+void Entity::set_type(EntityType type, bool resethp) {
 	stats = entity_info.at((unsigned)type);
-	unsigned hp = this->stats.hp;
-	this->stats = stats;
-	this->stats.hp = std::clamp(hp, 0u, this->stats.maxhp);
+
+	if (resethp) {
+		this->stats = stats;
+	} else {
+		unsigned hp = this->stats.hp;
+
+		this->stats = stats;
+		this->stats.hp = std::clamp(hp, 0u, this->stats.maxhp);
+	}
+
+	this->type = type;
 }
 
 bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
-	unsigned atk = aggressor.stats.attack;
+	unsigned atk = std::min(stats.hp, aggressor.stats.attack);
 
 	switch (aggressor.type) {
 	case EntityType::priest:
@@ -144,11 +155,29 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 
 		break;
 	default:
-		if (stats.hp < atk) {
+		if (is_resource(type)) {
+			switch (type) {
+			case EntityType::berries:
+				wv.collect(aggressor.playerid, Resources(0, atk, 0, 0));
+				break;
+			case EntityType::gold:
+				wv.collect(aggressor.playerid, Resources(0, 0, atk, 0));
+				break;
+			case EntityType::stone:
+				wv.collect(aggressor.playerid, Resources(0, 0, 0, atk));
+				break;
+			case EntityType::dead_tree1:
+			case EntityType::dead_tree2:
+				wv.collect(aggressor.playerid, Resources(atk, 0, 0, 0));
+				break;
+			}
+		}
+
+		if (stats.hp <= atk) {
 			if (is_resource(type)) {
 				if (aggressor.type != EntityType::worker_wood1) {
 					set_type(EntityType::dead_tree1);
-					return set_state(EntityState::decaying);
+					return die();
 				}
 
 				switch (type) {
@@ -157,26 +186,13 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 				case EntityType::desert_tree3:
 				case EntityType::desert_tree4:
 					aggressor.set_type(EntityType::worker_wood2);
+					set_type(EntityType::dead_tree1, true);
 
-					type = EntityType::dead_tree1;
-					stats = entity_info.at((unsigned)type);
 					return set_state(EntityState::alive);
 				}
 			}
 
 			return die();
-		}
-
-		if (is_resource(type)) {
-			switch (type) {
-			case EntityType::berries:
-				wv.collect(aggressor.playerid, Resources(0, 1, 0, 0));
-				break;
-			case EntityType::dead_tree1:
-			case EntityType::dead_tree2:
-				wv.collect(aggressor.playerid, Resources(1, 0, 0, 0));
-				break;
-			}
 		}
 
 		stats.hp = std::max(stats.hp - atk, 0u);
@@ -235,20 +251,34 @@ bool Entity::task_attack(Entity &e) noexcept {
 
 	// villagers will change type when interacting with (non-)resources
 	if (is_worker(type)) {
-		type = EntityType::villager;
-
-		// TODO update stats
-		unsigned hp = stats.hp;
-		stats = entity_info.at((unsigned)type);
-		stats.hp = std::clamp(hp, 0u, stats.maxhp);
+		EntityType newtype = EntityType::villager;
 
 		if (is_resource(e.type)) {
 			switch (e.type) {
+			case EntityType::gold:
+				newtype = EntityType::worker_gold;
+				break;
+			case EntityType::stone:
+				newtype = EntityType::worker_stone;
+				break;
+			case EntityType::berries:
+				newtype = EntityType::worker_berries;
+				break;
+			case EntityType::dead_tree1:
+			case EntityType::dead_tree2:
+				// prevent lumberjack collecting wood faster
+				newtype = EntityType::worker_wood2;
+				break;
 			default:
-				type = EntityType::worker_wood1;
+				newtype = EntityType::worker_wood1;
 				break;
 			}
 		}
+
+		set_type(newtype);
+	} else if (is_resource(e.type)) {
+		// don't try to attack resources when we're not a villager
+		return task_move(e.x, e.y);
 	}
 
 	set_state(in_range(e) ? EntityState::attack : EntityState::attack_follow);
@@ -270,6 +300,15 @@ bool Entity::task_train_unit(EntityType type) noexcept {
 	return false;
 }
 
+const EntityBldInfo &Entity::bld_info() const {
+	assert(is_building(type));
+	return entity_bld_info.at((unsigned)type - (unsigned)entity_bld_info[0].type);
+}
+
+const EntityImgInfo &Entity::img_info() const {
+	return entity_img_info.at((unsigned)type - (unsigned)entity_img_info[0].type);
+}
+
 std::optional<SfxId> Entity::sfxtick() noexcept {
 	switch (type) {
 	case EntityType::villager:
@@ -282,8 +321,18 @@ std::optional<SfxId> Entity::sfxtick() noexcept {
 	case EntityType::worker_wood1:
 	case EntityType::worker_wood2:
 		if (state == EntityState::attack)
-			return SfxId::wood_worker_attack;
+			return SfxId::worker_wood_attack;
 
+		break;
+	case EntityType::worker_gold:
+	case EntityType::worker_stone:
+		if (state == EntityState::attack)
+			return SfxId::worker_miner_attack;
+
+		break;
+	case EntityType::worker_berries:
+		if (state == EntityState::attack)
+			return SfxId::worker_berries_attack;
 		break;
 	case EntityType::priest:
 		switch (state) {
@@ -336,7 +385,7 @@ bool Entity::imgtick(unsigned n) noexcept {
 	xflip = uface < 3;
 
 	if (type >= entity_img_info[0].type && type <= entity_img_info.back().type) {
-		const EntityImgInfo &img = entity_img_info.at((unsigned)type - (unsigned)entity_img_info[0].type);
+		const EntityImgInfo &img = img_info();
 
 		switch (state) {
 		case EntityState::alive:

@@ -627,9 +627,11 @@ void UICache::load() {
 
 	Assets &a = *this->e->assets.get();
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_desert));
+	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_desert));
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_grass));
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_water));
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_deepwater));
+	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_grass_desert));
 }
 
 void UICache::str2(const ImVec2 &pos, const char *text, bool invert) {
@@ -774,6 +776,14 @@ void UICache::mouse_left_process() {
 	}
 }
 
+const gfx::ImageRef &UICache::imgtile(uint8_t id) {
+	TileType type = Terrain::tile_type(id);
+	unsigned subimage = Terrain::tile_img(id);
+
+	Assets &a = *e->assets.get();
+	return a.at(t_imgs[(unsigned)type].imgs[subimage]);
+}
+
 void UICache::mouse_right_process() {
 	ZoneScoped;
 
@@ -821,7 +831,7 @@ void UICache::mouse_right_process() {
 	for (VisualTile &vt : display_area) {
 		if (mx >= vt.bnds.x && mx < vt.bnds.x + vt.bnds.w && my >= vt.bnds.y && my < vt.bnds.y + vt.bnds.h) {
 			// get actual image
-			uint8_t id = gv.t.id_at(vt.tx, vt.ty);
+			uint8_t id = gv.t.tile_at(vt.tx, vt.ty);
 			uint8_t h = gv.t.h_at(vt.tx, vt.ty);
 			if (!id) {
 				// TODO does not work yet :/
@@ -831,8 +841,7 @@ void UICache::mouse_right_process() {
 				continue;
 			}
 
-			id %= 4;
-			const gfx::ImageRef &r = tt[id];
+			const gfx::ImageRef &r = imgtile(id);
 
 			int y = (int)(my - vt.bnds.y);
 

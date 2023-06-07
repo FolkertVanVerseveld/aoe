@@ -26,13 +26,15 @@ void Terrain::resize(unsigned width, unsigned height, unsigned seed, unsigned pl
 void Terrain::generate() {
 	// TODO use real generator like perlin noise
 
+	TileType types[] = { TileType::desert, TileType::grass, TileType::grass_desert };
+
 	for (size_t i = 0, n = tiles.size(); i < n; ++i) {
-		tiles[i] = 1 + rand() % 4;
+		tiles[i] = Terrain::tile_id(TileType::desert, rand() % 9);
 		hmap[i] = 0;
 	}
 }
 
-uint8_t Terrain::id_at(unsigned x, unsigned y) {
+uint8_t Terrain::tile_at(unsigned x, unsigned y) {
 	return tiles.at(y * w + x);
 }
 

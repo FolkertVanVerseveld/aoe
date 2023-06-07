@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 
+#include "../legacy/legacy.hpp"
+
 namespace aoe {
 
 enum class EntityType {
@@ -12,9 +14,14 @@ enum class EntityType {
 	villager,
 	worker_wood1,
 	worker_wood2,
+	worker_gold,
+	worker_stone,
+	worker_berries,
 	melee1,
 	priest,
 	berries,
+	gold,
+	stone,
 	desert_tree1,
 	desert_tree2,
 	desert_tree3,
@@ -29,11 +36,17 @@ enum class EntityIconType {
 	resource,
 };
 
+struct EntityBldInfo final {
+	EntityType type;
+	io::DrsId slp_base, slp_player, slp_die;
+};
+
 struct EntityImgInfo final {
 	EntityType type;
 	// ii = Image of Impact
 	unsigned alive, dying, ii_dying, decaying;
 	unsigned attack, ii_attack, attack_follow, moving;
+	io::DrsId slp_die, slp_decay, slp_attack, slp_attack_follow, slp_moving, slp_alive;
 };
 
 struct EntityInfo final {
@@ -41,7 +54,7 @@ struct EntityInfo final {
 	float size;
 	unsigned hp;
 	unsigned atk;
-	unsigned icon;
+	unsigned icon; // unsigned as it can have different types
 	std::string name;
 
 	// TODO add upgrade function that copies everything except hp
@@ -57,5 +70,6 @@ struct EntityStats final {
 
 extern const std::vector<EntityInfo> entity_info;
 extern const std::vector<EntityImgInfo> entity_img_info;
+extern const std::vector<EntityBldInfo> entity_bld_info;
 
 }

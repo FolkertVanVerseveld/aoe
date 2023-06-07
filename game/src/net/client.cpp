@@ -178,21 +178,6 @@ void Client::playermod(const NetPlayerControl &ctl) {
 			g.player_died(pos);
 			break;
 		}
-		case NetPlayerControlType::set_cpu_ref: {
-			unsigned pos = std::get<uint16_t>(ctl.data);
-
-			if (pos < scn.players.size())
-				scn.players[pos].ai = true;
-
-			// remove any refs
-			for (auto it = scn.owners.begin(); it != scn.owners.end();) {
-				if (it->second == pos)
-					it = scn.owners.erase(it);
-				else
-					++it;
-			}
-			break;
-		}
 		case NetPlayerControlType::set_player_name: {
 			auto p = std::get<std::pair<uint16_t, std::string>>(ctl.data);
 
@@ -234,28 +219,6 @@ void Client::playermod(const NetPlayerControl &ctl) {
 	}
 
 	modflags |= (unsigned)ClientModFlags::scn;
-}
-
-void Client::entitymod(const NetEntityMod &em) {
-	std::lock_guard<std::mutex> lk(m);
-
-	switch (em.type) {
-	case NetEntityControlType::add:
-		g.entity_add(std::get<EntityView>(em.data));
-		break;
-	case NetEntityControlType::kill:
-		g.entity_kill(std::get<IdPoolRef>(em.data));
-		break;
-	case NetEntityControlType::update:
-		g.entity_update(std::get<EntityView>(em.data));
-		break;
-	case NetEntityControlType::spawn:
-		g.entity_spawn(std::get<EntityView>(em.data));
-		break;
-	default:
-		fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)em.type);
-		break;
-	}
 }
 
 void Client::start_game() {
@@ -309,12 +272,6 @@ void Client::claim_player(unsigned idx) {
 	send(pkg);
 }
 
-void Client::claim_cpu(unsigned idx) {
-	NetPkg pkg;
-	pkg.set_cpu_player(idx);
-	send(pkg);
-}
-
 void Client::cam_move(float x, float y, float w, float h) {
 	NetPkg pkg;
 	pkg.cam_set(x, y, w, h);
@@ -346,13 +303,13 @@ void Client::send_scn_vars(const ScenarioSettings &scn) {
 }
 
 void Client::stop() {
-	std::lock_guard<std::mutex> lk(m);
+	lock lk(m);
 	m_connected = false;
 	s.close();
 }
 
 void Client::start(const char *host, uint16_t port, bool run) {
-	std::lock_guard<std::mutex> lk(m);
+	lock lk(m);
 	s.open();
 	m_connected = false;
 
@@ -366,7 +323,7 @@ void Client::start(const char *host, uint16_t port, bool run) {
 }
 
 void Client::add_chat_text(IdPoolRef ref, const std::string &s) {
-	std::lock_guard<std::mutex> lk(m_eng);
+	lock lk(m_eng);
 
 	const ClientInfo *ci = nullptr;
 	std::string txt(s);
@@ -374,6 +331,7 @@ void Client::add_chat_text(IdPoolRef ref, const std::string &s) {
 	if (ref != invalid_ref) {
 		txt = std::string("(") + std::to_string(ref.first) + "::" + std::to_string(ref.second) + "): " + s;
 
+		lock lk(m);
 		auto it = peers.find(ref);
 		if (it != peers.end())
 			ci = &it->second;
@@ -393,7 +351,7 @@ void Client::add_chat_text(IdPoolRef ref, const std::string &s) {
 }
 
 void Client::set_scn_vars(const ScenarioSettings &scn) {
-	std::lock_guard<std::mutex> lk(m);
+	lock lk(m);
 
 	this->scn.fixed_start = scn.fixed_start;
 	this->scn.explored = scn.explored;
@@ -417,11 +375,12 @@ void Client::set_scn_vars(const ScenarioSettings &scn) {
 }
 
 void Client::set_username(const std::string &s) {
-	std::lock_guard<std::mutex> lk(m_eng);
+	lock lk(m_eng);
 
 	if (me == invalid_ref) {
 		fprintf(stderr, "%s: got username before ref\n", __func__);
 	} else {
+		lock lk(m);
 		auto it = peers.find(me);
 		assert(it != peers.end());
 		it->second.username = s;
@@ -469,9 +428,6 @@ void Client::peermod(const NetPeerControl &ctl) {
 			unsigned pos = std::get<uint16_t>(ctl.data);
 			scn.owners[ref] = pos;
 
-			if (pos - 1 < scn.players.size())
-				scn.players[pos - 1].ai = false;
-
 			if (ref == me)
 				playerindex = pos;
 
@@ -485,7 +441,7 @@ void Client::peermod(const NetPeerControl &ctl) {
 }
 
 void Client::terrainmod(const NetTerrainMod &tm) {
-	std::lock_guard<std::mutex> lk(m);
+	lock lk(m);
 	modflags |= (unsigned)ClientModFlags::terrain;
 	g.terrain_set(tm.tiles, tm.hmap, tm.x, tm.y, tm.w, tm.h);
 }

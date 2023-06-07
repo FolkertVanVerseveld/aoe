@@ -184,6 +184,10 @@ void Game::entity_update(const EntityView &ev) {
 	}
 
 	switch (ev.state) {
+	case EntityState::decaying:
+		if (!is_building(ev.type))
+			break;
+		/* FALLTHROUGH */
 	case EntityState::dying:
 		if (statechange)
 			entities_killed.emplace_back(v);
@@ -204,7 +208,7 @@ bool Game::entity_kill(IdPoolRef ref) {
 	if (it == entities.end())
 		return false;
 
-	entities_killed.emplace_back(*it);
+	//entities_killed.emplace_back(*it);
 	entities.erase(it);
 
 	modflags |= (unsigned)GameMod::entities;

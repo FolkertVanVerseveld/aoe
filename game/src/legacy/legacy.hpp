@@ -147,6 +147,10 @@ enum class DrsId {
 	trn_water = 15002,
 	trn_deepwater = 15003,
 
+	trn_water_desert = 20000,
+	trn_grass_desert = 20001,
+	trn_water_overlay = 20006,
+
 	pal_default = 50500,
 
 	img_dialog0 = 50210,
@@ -181,6 +185,14 @@ enum class DrsId {
 	gif_worker_wood_die = 338,
 	gif_worker_wood_decay = 399,
 
+	gif_worker_miner_stand = 441,
+	gif_worker_miner_move = 683,
+	gif_worker_miner_attack = 633,
+	gif_worker_miner_die = 339,
+	gif_worker_miner_decay = 400,
+
+	gif_worker_berries_attack = 632,
+
 	gif_melee1_stand = 425,
 	gif_melee1_move = 664,
 	gif_melee1_attack = 212,
@@ -209,6 +221,8 @@ enum class DrsId {
 	gif_bld_fire3 = 4,
 
 	ent_berries = 240,
+	gif_gold = 481,
+	gif_stone = 622,
 	ent_desert_tree1 = 463,
 	ent_desert_tree2 = 464,
 	ent_desert_tree3 = 465,
@@ -251,7 +265,9 @@ enum class DrsId {
 	sfx_villager_attack2 = 5139,
 	sfx_villager_attack3 = 5140,
 	sfx_villager_spawn = 5166,
-	sfx_wood_worker_attack = 5048,
+	sfx_worker_wood_attack = 5048,
+	sfx_worker_miner_attack = 5159,
+	sfx_worker_berries_attack = 5085,
 
 	sfx_melee_spawn = 5144,
 

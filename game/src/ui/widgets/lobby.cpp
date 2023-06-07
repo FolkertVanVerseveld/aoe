@@ -50,11 +50,6 @@ void UICache::show_mph_tbl(ui::Frame &f) {
 				if (f.btn("Claim"))
 					e->client->claim_player(i);
 
-				f.sl();
-
-				if (!p.ai && e->server.get() != nullptr && f.btn("Set CPU"))
-					e->client->claim_cpu(i);
-
 				r.next();
 			}
 

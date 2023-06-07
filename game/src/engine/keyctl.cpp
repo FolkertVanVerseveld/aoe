@@ -18,7 +18,9 @@ KeyboardController::KeyboardController() : state((size_t)GameKey::max, false), s
 
 void KeyboardController::clear() {
 	state.clear();
+	state_tapped.clear();
 	state.resize((size_t)GameKey::max, false);
+	state_tapped.resize((size_t)GameKey::max, false);
 }
 
 GameKey KeyboardController::down(const SDL_KeyboardEvent &k) {
