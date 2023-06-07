@@ -202,7 +202,9 @@ public:
 	EntityStats stats;
 
 	Entity(IdPoolRef ref);
-	Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle=0, EntityState state=EntityState::alive);
+	Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle=0.0f, EntityState state=EntityState::alive);
+	// resource only
+	Entity(IdPoolRef ref, EntityType type, float x, float y, unsigned subimage);
 
 	Entity(const EntityView &ev);
 

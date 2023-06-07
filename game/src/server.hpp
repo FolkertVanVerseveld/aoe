@@ -147,7 +147,7 @@ private:
 	void add_building(EntityType t, unsigned player, int x, int y);
 	void add_unit(EntityType t, unsigned player, float x, float y);
 	void add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state=EntityState::alive);
-	void add_resource(EntityType t, float x, float y);
+	void add_resource(EntityType t, float x, float y, unsigned subimage);
 
 	void spawn_unit(EntityType t, unsigned player, float x, float y);
 	void spawn_unit(EntityType t, unsigned player, float x, float y, float angle);

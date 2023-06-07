@@ -683,11 +683,11 @@ void World::add_unit(EntityType t, unsigned player, float x, float y, float angl
 	players.at(player).entities.emplace(p.first->first);
 }
 
-void World::add_resource(EntityType t, float x, float y) {
+void World::add_resource(EntityType t, float x, float y, unsigned subimage) {
 	ZoneScoped;
 	assert(is_resource(t));
 	// TODO add resource values
-	entities.emplace(t, 0, x, y, 0, EntityState::alive);
+	entities.emplace(t, x, y, subimage);
 }
 
 void World::spawn_unit(EntityType t, unsigned player, float x, float y) {
@@ -737,20 +737,20 @@ void World::create_entities() {
 	add_unit(EntityType::priest, 0, 3.5, 1);
 	add_unit(EntityType::priest, 0, 4.5, 1);
 
-	add_resource(EntityType::berries, 0, 0);
-	add_resource(EntityType::berries, 0, 1);
-	add_resource(EntityType::berries, 1, 0);
-	add_resource(EntityType::berries, 1, 1);
+	add_resource(EntityType::berries, 0, 0, 0);
+	add_resource(EntityType::berries, 0, 1, 0);
+	add_resource(EntityType::berries, 1, 0, 0);
+	add_resource(EntityType::berries, 1, 1, 0);
 
-	add_resource(EntityType::gold, 0, 2);
-	add_resource(EntityType::gold, 1, 2);
-	add_resource(EntityType::stone, 0, 3);
-	add_resource(EntityType::stone, 1, 3);
+	add_resource(EntityType::gold, 0, 2, rand() % 7);
+	add_resource(EntityType::gold, 1, 2, rand() % 7);
+	add_resource(EntityType::stone, 0, 3, rand() % 7);
+	add_resource(EntityType::stone, 1, 3, rand() % 7);
 
-	add_resource(EntityType::desert_tree1, 2, 0);
-	add_resource(EntityType::desert_tree2, 3, 0);
-	add_resource(EntityType::desert_tree3, 4, 0);
-	add_resource(EntityType::desert_tree4, 5, 0);
+	add_resource(EntityType::desert_tree1, 2, 0, 0);
+	add_resource(EntityType::desert_tree2, 3, 0, 0);
+	add_resource(EntityType::desert_tree3, 4, 0, 0);
+	add_resource(EntityType::desert_tree4, 5, 0, 0);
 }
 
 void World::startup() {

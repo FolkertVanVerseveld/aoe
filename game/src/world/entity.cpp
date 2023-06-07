@@ -17,6 +17,8 @@ Entity::Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), playeri
 
 Entity::Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle, EntityState state) : ref(ref), type(type), playerid(playerid), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state), xflip(false), stats(entity_info.at((unsigned)type)) {}
 
+Entity::Entity(IdPoolRef ref, EntityType type, float x, float y, unsigned subimage) : ref(ref), type(type), playerid(0), x(x), y(y), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(subimage), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
+
 Entity::Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), playerid(ev.playerid), x(ev.x), y(ev.y), angle(ev.angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(ev.subimage), state(ev.state), xflip(ev.xflip), stats(ev.stats) {}
 
 bool Entity::die() noexcept {
