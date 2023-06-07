@@ -148,6 +148,9 @@ private:
 	void add_unit(EntityType t, unsigned player, float x, float y);
 	void add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state=EntityState::alive);
 	void add_resource(EntityType t, float x, float y, unsigned subimage);
+	void add_berries(float x, float y);
+	void add_gold(float x, float y);
+	void add_stone(float x, float y);
 
 	void spawn_unit(EntityType t, unsigned player, float x, float y);
 	void spawn_unit(EntityType t, unsigned player, float x, float y, float angle);
