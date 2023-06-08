@@ -60,6 +60,7 @@ public:
 	void set_dropped(IdPoolRef);
 	void set_ref_username(IdPoolRef, const std::string&);
 	void set_claim_player(IdPoolRef, uint16_t); // server to client
+	void set_peer_ref(IdPoolRef);
 	NetPeerControl get_peer_control();
 
 	void cam_set(float x, float y, float w, float h);

@@ -390,8 +390,15 @@ void Client::set_username(const std::string &s) {
 		eng->trigger_username(s);
 }
 
+/** set me to \a ref. NOTE assuming mutex \a m has already been acquired. */
+void Client::set_me(IdPoolRef ref) {
+	me = ref;
+	modflags |= (unsigned)ClientModFlags::ref;
+}
+
 void Client::peermod(const NetPeerControl &ctl) {
 	IdPoolRef ref(ctl.ref);
+	std::lock_guard<std::mutex> lk(m);
 
 	switch (ctl.type) {
 		case NetPeerControlType::incoming: {
@@ -399,8 +406,6 @@ void Client::peermod(const NetPeerControl &ctl) {
 			std::string name(std::string("(") + std::to_string(ref.first) + "::" + std::to_string(ref.second) + ")");
 			peers.emplace(std::piecewise_construct, std::forward_as_tuple(ref), std::forward_as_tuple(ref, name));
 
-			if (me == invalid_ref)
-				me = ref;
 			break;
 		}
 		case NetPeerControlType::dropped: {
@@ -423,8 +428,6 @@ void Client::peermod(const NetPeerControl &ctl) {
 			break;
 		}
 		case NetPeerControlType::set_player_idx: {
-			std::lock_guard<std::mutex> lk(m);
-
 			unsigned pos = std::get<uint16_t>(ctl.data);
 			scn.owners[ref] = pos;
 
@@ -434,6 +437,9 @@ void Client::peermod(const NetPeerControl &ctl) {
 			modflags |= (unsigned)ClientModFlags::scn;
 			break;
 		}
+		case NetPeerControlType::set_peer_ref:
+			set_me(ref);
+			break;
 		default:
 			fprintf(stderr, "%s: unknown type: %u\n", __func__, (unsigned)ctl.type);
 			break;

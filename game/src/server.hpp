@@ -260,7 +260,8 @@ class ClientView;
 
 enum class ClientModFlags {
 	scn = 1 << 0,
-	terrain = 1 << 1,
+	ref = 1 << 1,
+	terrain = 1 << 2,
 };
 
 class Client final {
@@ -302,6 +303,8 @@ private:
 	void resource_ctl(NetPkg&);
 	void gameticks(unsigned n);
 	void gamespeed_control(const NetGamespeedControl&);
+
+	void set_me(IdPoolRef);
 public:
 	bool connected() const noexcept { return m_connected; }
 

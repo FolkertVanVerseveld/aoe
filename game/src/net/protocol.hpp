@@ -62,6 +62,7 @@ enum class NetPeerControlType {
 	dropped,
 	set_username,
 	set_player_idx,
+	set_peer_ref,
 };
 
 struct NetPlayerScore final {

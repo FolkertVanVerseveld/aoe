@@ -35,6 +35,9 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 	pkg.set_chat_text(invalid_ref, name + " joined");
 	broadcast(pkg);
 
+	pkg.set_peer_ref(ref);
+	send(p, pkg);
+
 	pkg.set_username(name);
 	send(p, pkg);
 
