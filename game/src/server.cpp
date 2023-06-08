@@ -137,7 +137,8 @@ void Server::send(const Peer &p, NetPkg &pkg) {
 	s.send(p, v.data(), v.size());
 }
 
-bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req) {
+bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, NetPkg &in) {
+	uint16_t req = in.protocol_version();
 	printf("%s: (%s,%s) requests protocol %u. answer protocol %u\n", __func__, p.host.c_str(), p.server.c_str(), req, protocol);
 
 	NetPkg pkg;

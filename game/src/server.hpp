@@ -231,7 +231,7 @@ public:
 	int proper_packet(ServerSocket &s, const std::deque<uint8_t> &q) override;
 	bool process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) override;
 private:
-	bool chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req);
+	bool chk_protocol(const Peer &p, std::deque<uint8_t> &out, NetPkg &pkg);
 	bool chk_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);
 
 	void change_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);

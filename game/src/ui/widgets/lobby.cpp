@@ -38,7 +38,7 @@ void UICache::show_mph_tbl(ui::Frame &f) {
 				continue;
 			}
 
-			if (i == idx) {
+			if (i == idx) { // show unclaim and player name if selected
 				if (f.btn("X"))
 					e->client->claim_player(0);
 
@@ -46,7 +46,7 @@ void UICache::show_mph_tbl(ui::Frame &f) {
 
 				if (r.text("##0", p.name, ImGuiInputTextFlags_EnterReturnsTrue))
 					e->client->send_set_player_name(i, p.name);
-			} else {
+			} else { // allow client to select this one
 				if (f.btn("Claim"))
 					e->client->claim_player(i);
 
