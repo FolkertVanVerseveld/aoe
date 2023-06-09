@@ -522,7 +522,9 @@ void Engine::show_multiplayer_host() {
 
 		player_tbl_y = ImGui::GetCursorPosY();
 	} else {
+		--player_count;
 		f.fmt("Multiplayer game - %u %s", player_count, player_count == 1 ? "player" : "players");
+		++player_count;
 	}
 
 	if (player_tbl_y > 0)
@@ -537,29 +539,32 @@ void Engine::show_multiplayer_host() {
 		}
 		show_mph_chat(f);
 
-		f.chkbox("I'm Ready!", multiplayer_ready);
-
-		f.sl();
-
-		if (scn.players.empty() || !multiplayer_ready) {
-			f.xbtn("Start Game");
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-				if (scn.players.empty())
-					ImGui::Tooltip("Game cannot be started without players. The host can add and remove players.");
-				else
-					ImGui::Tooltip("Click \"I'm Ready\" in order to start the game");
-			}
-		} else if (f.btn("Start Game")) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
-			client->send_start_game();
-		}
-
-		f.sl();
-
 		if (f.btn("Cancel")) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
 			cancel_multiplayer_host(MenuState::start);
 		}
+
+		if (server.get()) {
+			f.sl();
+
+			if (scn.players.empty() || !multiplayer_ready) {
+				f.xbtn("Start Game");
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+					if (scn.players.empty())
+						ImGui::Tooltip("Game cannot be started without players. The host can add and remove players.");
+					else
+						ImGui::Tooltip("Click \"I'm Ready\" in order to start the game");
+				}
+			} else if (f.btn("Start Game")) {
+				sfx.play_sfx(SfxId::sfx_ui_click);
+				client->send_start_game();
+			}
+		}
+
+		f.sl();
+
+		if (f.chkbox("I'm Ready!", multiplayer_ready))
+			client->send_ready(multiplayer_ready);
 	}
 
 	f.sl();

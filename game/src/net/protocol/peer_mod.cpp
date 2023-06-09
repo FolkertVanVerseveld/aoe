@@ -18,6 +18,15 @@ void NetPkg::set_incoming(IdPoolRef ref) {
 	}, false);
 }
 
+void NetPkg::set_peer_ref(IdPoolRef ref) {
+	refcheck(ref);
+	PkgWriter out(*this, NetPkgType::peermod);
+
+	write("2IH", pkgargs{
+		ref.first, ref.second, (unsigned)NetPeerControlType::set_peer_ref,
+	}, false);
+}
+
 void NetPkg::set_dropped(IdPoolRef ref) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::peermod);

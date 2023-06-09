@@ -35,6 +35,9 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 	pkg.set_chat_text(invalid_ref, name + " joined");
 	broadcast(pkg);
 
+	pkg.set_peer_ref(ref);
+	send(p, pkg);
+
 	pkg.set_username(name);
 	send(p, pkg);
 
@@ -134,7 +137,8 @@ void Server::send(const Peer &p, NetPkg &pkg) {
 	s.send(p, v.data(), v.size());
 }
 
-bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req) {
+bool Server::chk_protocol(const Peer &p, std::deque<uint8_t> &out, NetPkg &in) {
+	uint16_t req = in.protocol_version();
 	printf("%s: (%s,%s) requests protocol %u. answer protocol %u\n", __func__, p.host.c_str(), p.server.c_str(), req, protocol);
 
 	NetPkg pkg;

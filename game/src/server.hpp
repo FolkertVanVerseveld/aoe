@@ -231,12 +231,13 @@ public:
 	int proper_packet(ServerSocket &s, const std::deque<uint8_t> &q) override;
 	bool process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) override;
 private:
-	bool chk_protocol(const Peer &p, std::deque<uint8_t> &out, uint16_t req);
+	bool chk_protocol(const Peer &p, std::deque<uint8_t> &out, NetPkg &pkg);
 	bool chk_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);
 
 	void change_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);
 	bool set_scn_vars(const Peer &p, ScenarioSettings &scn);
 
+	bool process_clientinfo(const Peer &p, NetPkg &pkg);
 	bool process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out);
 	bool process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint8_t> &out);
 
@@ -244,7 +245,7 @@ private:
 
 	void gamespeed_control(const Peer &p, const NetGamespeedControl &control);
 
-	void start_game();
+	void start_game(const Peer &p);
 
 	const Peer *try_peer(IdPoolRef);
 	ClientInfo &get_ci(IdPoolRef);
@@ -260,7 +261,8 @@ class ClientView;
 
 enum class ClientModFlags {
 	scn = 1 << 0,
-	terrain = 1 << 1,
+	ref = 1 << 1,
+	terrain = 1 << 2,
 };
 
 class Client final {
@@ -302,6 +304,8 @@ private:
 	void resource_ctl(NetPkg&);
 	void gameticks(unsigned n);
 	void gamespeed_control(const NetGamespeedControl&);
+
+	void set_me(IdPoolRef);
 public:
 	bool connected() const noexcept { return m_connected; }
 
@@ -323,6 +327,7 @@ public:
 
 	void send_chat_text(const std::string&);
 	void send_start_game();
+	void send_ready(bool);
 	void send_players_resize(unsigned n);
 	void send_set_player_name(unsigned idx, const std::string&);
 	void send_set_player_civ(unsigned idx, unsigned civ);
