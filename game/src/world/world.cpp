@@ -624,6 +624,7 @@ void World::create_players() {
 			for (auto kv : scn.owners) {
 				if (kv.second == i) {
 					++owners;
+					std::lock_guard<std::mutex> lk(s->m_peers);
 					alias = s->get_ci(kv.first).username;
 				}
 			}

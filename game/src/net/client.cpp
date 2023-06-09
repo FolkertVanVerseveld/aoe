@@ -254,6 +254,12 @@ void Client::send_chat_text(const std::string &s) {
 	send(pkg);
 }
 
+void Client::send_ready(bool v) {
+	NetPkg pkg;
+	pkg.set_ready(v);
+	send(pkg);
+}
+
 void Client::send_start_game() {
 	NetPkg pkg;
 	pkg.set_start_game();

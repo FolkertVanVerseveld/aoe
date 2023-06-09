@@ -21,6 +21,7 @@ enum class NetPkgType {
 	gameticks,
 	particle_mod,
 	gamespeed_control,
+	client_info,
 };
 
 struct NetPkgHdr final {
@@ -109,6 +110,15 @@ public:
 	NetPeerControl(IdPoolRef ref, NetPeerControlType type) : ref(ref), type(type), data(std::nullopt) {}
 	NetPeerControl(IdPoolRef ref, const std::string &name) : ref(ref), type(NetPeerControlType::set_username), data(name) {}
 	NetPeerControl(IdPoolRef ref, NetPeerControlType type, uint16_t idx) : ref(ref), type(type), data(idx) {}
+
+	const uint16_t u16() const { return std::get<uint16_t>(data); }
+};
+
+class NetClientInfoControl final {
+public:
+	uint8_t v;
+
+	NetClientInfoControl(uint8_t v) : v(v) {}
 };
 
 class NetTerrainMod final {
@@ -138,7 +148,6 @@ public:
 	std::variant<std::nullopt_t, IdPoolRef, EntityView, EntityTask> data;
 
 	static constexpr size_t minsize = 2;
-	// TODO byte misalignment. this will cause bus errors on archs that don't support unaligned fetching
 	static constexpr size_t killsize = minsize + refsize;
 	/*
 	2 minsize

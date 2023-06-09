@@ -28,6 +28,8 @@ void NetPkg::chktype(NetPkgType type) {
 		throw std::runtime_error("not a terrain control packet");
 	case NetPkgType::peermod:
 		throw std::runtime_error("not a peer control packet");
+	case NetPkgType::client_info:
+		throw std::runtime_error("not a client info packet");
 	default:
 		throw std::runtime_error("invalid network packet type");
 	}

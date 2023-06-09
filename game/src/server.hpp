@@ -237,6 +237,7 @@ private:
 	void change_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);
 	bool set_scn_vars(const Peer &p, ScenarioSettings &scn);
 
+	bool process_clientinfo(const Peer &p, NetPkg &pkg);
 	bool process_playermod(const Peer &p, NetPlayerControl &ctl, std::deque<uint8_t> &out);
 	bool process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint8_t> &out);
 
@@ -244,7 +245,7 @@ private:
 
 	void gamespeed_control(const Peer &p, const NetGamespeedControl &control);
 
-	void start_game();
+	void start_game(const Peer &p);
 
 	const Peer *try_peer(IdPoolRef);
 	ClientInfo &get_ci(IdPoolRef);
@@ -326,6 +327,7 @@ public:
 
 	void send_chat_text(const std::string&);
 	void send_start_game();
+	void send_ready(bool);
 	void send_players_resize(unsigned n);
 	void send_set_player_name(unsigned idx, const std::string&);
 	void send_set_player_civ(unsigned idx, unsigned civ);

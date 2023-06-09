@@ -63,6 +63,9 @@ public:
 	void set_peer_ref(IdPoolRef);
 	NetPeerControl get_peer_control();
 
+	void set_ready(bool);
+	NetClientInfoControl get_client_info();
+
 	void cam_set(float x, float y, float w, float h);
 	NetCamSet get_cam_set();
 
