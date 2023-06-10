@@ -385,6 +385,7 @@ public:
 	bool try_read(Game&, bool reset=true);
 
 	Entity *try_get(IdPoolRef) noexcept;
+	Entity &get(IdPoolRef);
 };
 
 }

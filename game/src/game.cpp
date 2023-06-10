@@ -282,4 +282,10 @@ Entity *GameView::try_get(IdPoolRef ref) noexcept {
 	return it == entities.end() ? nullptr : (Entity*)&*it;
 }
 
+Entity &GameView::get(IdPoolRef ref) {
+	auto it = entities.find(ref);
+	assert(it != entities.end());
+	return (Entity&)*it;
+}
+
 }

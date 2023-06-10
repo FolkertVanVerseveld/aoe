@@ -184,18 +184,18 @@ void UICache::mouse_right_process() {
 	//printf("right click at %.2f,%.2f\n", mx, my);
 
 	if (!selected.empty()) {
-		Entity *ent = e->gv.try_get(selected.front());
-		if (ent) {
-			// find all entities we right clicked on
-			std::vector<IdPoolRef> targets;
-			collect(targets, mx, my);
+		std::vector<IdPoolRef> targets;
+		collect(targets, mx, my);
 
-			if (!targets.empty()) {
-				// TODO should we always take the first one?
-				IdPoolRef t = targets.front();
-				e->client->entity_infer(ent->ref, t);
-				return;
+		if (!targets.empty()) {
+			IdPoolRef t = targets.front();
+
+			for (IdPoolRef r : selected) {
+				Entity &ent = e->gv.get(r);
+				e->client->entity_infer(ent.ref, t);
 			}
+
+			return;
 		}
 	}
 
