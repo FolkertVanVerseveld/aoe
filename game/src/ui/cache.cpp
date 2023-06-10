@@ -40,7 +40,7 @@ void UICache::mouse_left_process() {
 		dy = start_y - io.MousePos.y;
 	}
 
-	if (fabs(dx) > 3 && fabs(dy) > 3)
+	if (fabs(dx) > 3 || fabs(dy) > 3)
 		multi_select = true;
 
 	// stop if not changed
@@ -60,7 +60,7 @@ void UICache::mouse_left_process() {
 
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 
-	if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_top) || point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom))
+	if (!select_area && (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_top) || point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom)))
 		return;
 
 	if (select_area) {

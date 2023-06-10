@@ -828,6 +828,15 @@ void UICache::show_selections() {
 		lst->AddLine(tr, tt, IM_COL32(255, 255, 255, 160));
 		lst->AddLine(tt, tl, IM_COL32(255, 255, 255, 160));
 	}
+
+	if (multi_select) {
+		ImGuiIO &io = ImGui::GetIO();
+
+		lst->AddRect(
+			ImVec2(std::min(start_x, io.MousePos.x), std::min(start_y, io.MousePos.y)),
+			ImVec2(std::max(start_x, io.MousePos.x), std::max(start_y, io.MousePos.y)), IM_COL32_WHITE
+		);
+	}
 }
 
 void UICache::show_entities() {
