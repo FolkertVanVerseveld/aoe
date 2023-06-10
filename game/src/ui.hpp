@@ -263,6 +263,8 @@ private:
 	void collect(std::vector<IdPoolRef> &refs, float mx, float my, bool filter=true);
 
 	void image(const gfx::ImageRef &ref, float x, float y, float scale);
+
+	unsigned player_index() const;
 };
 
 }

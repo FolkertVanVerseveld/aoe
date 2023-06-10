@@ -237,6 +237,10 @@ void Audio::load_sfx(SfxId id, const std::vector<uint8_t> &data) {
 
 void Audio::play_sfx(SfxId id, int loops) {
 	ZoneScoped;
+
+	if (sfx_mute)
+		return;
+
 	std::lock_guard<std::mutex> lk(m_mix);
 
 	// check if special sfxid
