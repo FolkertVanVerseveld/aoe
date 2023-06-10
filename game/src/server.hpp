@@ -26,26 +26,15 @@
 #include "net/protocol.hpp"
 #include "net/netpkg.hpp"
 
+#include "net/clientinfo.hpp"
+
+#include "world/world.hpp"
+
 namespace aoe {
 
 typedef std::lock_guard<std::mutex> lock; // easier to read
 
 static_assert(sizeof(int) >= sizeof(int32_t));
-
-enum class ClientInfoFlags {
-	ready = 1 << 0,
-};
-
-class ClientInfo final {
-public:
-	std::string username;
-	unsigned flags;
-	IdPoolRef ref;
-
-	ClientInfo() : username(), flags(0), ref(invalid_ref) {}
-	ClientInfo(IdPoolRef ref, const std::string &username) : username(username), flags(0), ref(ref) {}
-};
-
 /*
  * Simple wrapper to make peers uniquely identifiable without leaking the ip
  * address and using a fixed width identifier to reduce network bandwidth.
@@ -56,28 +45,6 @@ public:
 	SOCKET sock;
 
 	SocketRef(IdPoolRef ref, SOCKET sock) : ref(ref), sock(sock) {}
-};
-
-// TODO create world events and use them in world::event_queue
-enum class WorldEventType {
-	entity_add,
-	entity_spawn,
-	entity_kill,
-	entity_task,
-	player_kill,
-	peer_cam_move,
-	gameover,
-	gamespeed_control,
-};
-
-class Server;
-
-class EventCameraMove final {
-public:
-	IdPoolRef ref;
-	NetCamSet cam;
-
-	EventCameraMove(IdPoolRef ref, const NetCamSet &cam) : ref(ref), cam(cam) {}
 };
 
 class WorldEvent final {
@@ -101,6 +68,8 @@ public:
 	bool try_convert(Entity&, Entity &aggressor);
 	void collect(unsigned player, const Resources &res);
 };
+
+class Server;
 
 class World final {
 	std::mutex m, m_events;
