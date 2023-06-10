@@ -19,14 +19,6 @@ namespace aoe {
 
 namespace ui {
 
-UICache::UICache()
-	: civs(), e(nullptr), entities(), particles(), selected(), display_area()
-	, left(0), top(0), scale(1)
-	, bkg(nullptr), btnsel()
-	, t_imgs()
-	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
-	, scn(), scn_edit(), mem(), gmb_top(), gmb_bottom() {}
-
 void str(const char *s, TextHalign ha, bool wrap) {
 	ImGui::TextUnformatted(s, (int)ha, wrap);
 }
@@ -666,6 +658,57 @@ void UICache::game_mouse_process() {
 	mouse_right_process();
 }
 
+void UICache::collect(std::vector<IdPoolRef> &dst, const SDL_Rect &area, bool filter) {
+	dst.clear();
+
+	// click
+	std::vector<std::pair<float, size_t>> selected;
+
+	// first pass to filter all rectangles
+	for (size_t i = 0; i < entities.size(); ++i) {
+		VisualEntity &v = entities[i];
+
+		float mid_x = v.x + v.w * 0.5f, mid_y = v.y + v.h * 0.5f;
+
+		if (mid_x >= area.x && mid_x < area.x + area.w && mid_y >= area.y && mid_y < area.y + area.h)
+			selected.emplace_back(v.z, i);
+	}
+
+	Assets &a = *e->assets.get();
+	std::set<IdPoolRef> refs;
+
+	// second pass to remove duplicates
+	for (auto it = selected.begin(); it != selected.end();) {
+		VisualEntity &v = entities[it->second];
+
+		// ignore if already added
+		if (!refs.emplace(v.ref).second) {
+			it = selected.erase(it);
+			continue;
+		}
+
+		++it;
+	}
+
+	// sort on Z-order. NOTE: order is flipped compared to drawing
+	std::sort(selected.begin(), selected.end(), [](const auto &lhs, const auto &rhs) { return lhs.first > rhs.first; });
+
+	//printf("selected: %llu\n", (unsigned long long)selected.size());
+
+	// store entities and filter invalid and dead ones
+	for (auto kv : selected) {
+		VisualEntity &v = entities[kv.second];
+
+		if (filter) {
+			Entity *ent = e->gv.try_get(v.ref);
+			if (ent && ent->is_alive())
+				dst.emplace_back(v.ref);
+		} else {
+			dst.emplace_back(v.ref);
+		}
+	}
+}
+
 void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, bool filter) {
 	dst.clear();
 
@@ -739,143 +782,12 @@ void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, boo
 	}
 }
 
-static constexpr bool point_in_rect(float x, float y, const SDL_Rect &rect)
-{
-	return x >= rect.x && y >= rect.y && x < rect.x + rect.w && y < rect.y + rect.h;
-}
-
-void UICache::mouse_left_process() {
-	ZoneScoped;
-
-	ImGuiIO &io = ImGui::GetIO();
-	if (!io.MouseDown[0] || io.MouseDownDuration[0] > 0.0f)
-		return;
-
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-
-	if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_top) || point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom))
-		return;
-
-	collect(this->selected, io.MousePos.x, io.MousePos.y);
-
-	if (this->selected.empty())
-		return;
-
-	IdPoolRef ref = *this->selected.begin();
-	Entity *ent = e->gv.try_get(ref);
-
-	if (ent) {
-		switch (ent->type) {
-		case EntityType::town_center:
-			e->sfx.play_sfx(SfxId::towncenter);
-			break;
-		case EntityType::barracks:
-			e->sfx.play_sfx(SfxId::barracks);
-			break;
-		case EntityType::villager:
-		case EntityType::melee1:
-		case EntityType::priest:
-			e->sfx.play_sfx(SfxId::villager_random);
-			break;
-		}
-	}
-}
-
 const gfx::ImageRef &UICache::imgtile(uint8_t id) {
 	TileType type = Terrain::tile_type(id);
 	unsigned subimage = Terrain::tile_img(id);
 
 	Assets &a = *e->assets.get();
 	return a.at(t_imgs[(unsigned)type].imgs[subimage]);
-}
-
-void UICache::mouse_right_process() {
-	ZoneScoped;
-
-	ImGuiIO &io = ImGui::GetIO();
-
-	if (!(io.MouseDown[1] && io.MouseDownDuration[1] <= 0.0f))
-		return;
-
-	if (selected.empty())
-		return;
-
-	// find visual tile
-	Assets &a = *e->assets.get();
-	const gfx::ImageRef &t0 = a.at(t_imgs[0].imgs[0]);
-	const gfx::ImageRef &t1 = a.at(t_imgs[1].imgs[0]);
-	const gfx::ImageRef &t2 = a.at(t_imgs[2].imgs[0]);
-	const gfx::ImageRef &t3 = a.at(t_imgs[3].imgs[0]);
-
-	const gfx::ImageRef tt[] = { t0, t1, t2, t3 };
-	GameView &gv = e->gv;
-
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-
-	float mx = io.MousePos.x, my = io.MousePos.y;
-
-	//printf("right click at %.2f,%.2f\n", mx, my);
-
-	if (!selected.empty()) {
-		Entity *ent = e->gv.try_get(selected.front());
-		if (ent) {
-			// find all entities we right clicked on
-			std::vector<IdPoolRef> targets;
-			collect(targets, mx, my);
-
-			if (!targets.empty()) {
-				// TODO should we always take the first one?
-				IdPoolRef t = targets.front();
-				e->client->entity_infer(ent->ref, t);
-				return;
-			}
-		}
-	}
-
-	// no entities found to interact with, search tiles
-	for (VisualTile &vt : display_area) {
-		if (mx >= vt.bnds.x && mx < vt.bnds.x + vt.bnds.w && my >= vt.bnds.y && my < vt.bnds.y + vt.bnds.h) {
-			// get actual image
-			uint8_t id = gv.t.tile_at(vt.tx, vt.ty);
-			uint8_t h = gv.t.h_at(vt.tx, vt.ty);
-			if (!id) {
-				// TODO does not work yet :/
-				// unexplored tiles should still be clickable
-				// use dummy id, which may be sligthly inaccurate
-				id = 0;
-				continue;
-			}
-
-			const gfx::ImageRef &r = imgtile(id);
-
-			int y = (int)(my - vt.bnds.y);
-
-			// ignore if out of range
-			if (y < 0 || y >= r.mask.size())
-				continue;
-
-			auto row = r.mask.at(y);
-			int x = (int)(mx - vt.bnds.x);
-
-			// ignore if point not on line
-			if (x < row.first || x >= row.second)
-				continue;
-
-			// TODO determine precise value, now we always use tile's center
-			//printf("clicked on %d,%d\n", vt.tx, vt.ty);
-
-			for (IdPoolRef ref : selected) {
-				Entity *ent = e->gv.try_get(ref);
-				if (!ent)
-					continue;
-
-				e->client->entity_move(ent->ref, vt.tx, vt.ty);
-			}
-			return;
-		}
-	}
-
-	//printf("nothing selected\n");
 }
 
 void UICache::show_selections() {
@@ -915,6 +827,15 @@ void UICache::show_selections() {
 		lst->AddLine(tb, tr, IM_COL32_WHITE);
 		lst->AddLine(tr, tt, IM_COL32(255, 255, 255, 160));
 		lst->AddLine(tt, tl, IM_COL32(255, 255, 255, 160));
+	}
+
+	if (multi_select) {
+		ImGuiIO &io = ImGui::GetIO();
+
+		lst->AddRect(
+			ImVec2(std::min(start_x, io.MousePos.x), std::min(start_y, io.MousePos.y)),
+			ImVec2(std::max(start_x, io.MousePos.x), std::max(start_y, io.MousePos.y)), IM_COL32_WHITE
+		);
 	}
 }
 

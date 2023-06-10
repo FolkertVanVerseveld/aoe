@@ -32,8 +32,19 @@ void UICache::idle_game() {
 	ImGuiIO &io = ImGui::GetIO();
 
 	scale = std::max(1.0f, e->font_scaling ? io.DisplaySize.y / WINDOW_HEIGHT_MAX : 1.0f);
+
+	float old_left = left, old_top = top;
+
 	left = vp->WorkPos.x + vp->WorkSize.x / 2 - floor(e->cam_x);
 	top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e->cam_y);
+
+	// adjust selection area if the camera is moving
+	float dx = left - old_left, dy = top - old_top;
+
+	if (fabs(dx) > 0.5f || fabs(dy) > 0.5f) {
+		start_x += dx;
+		start_y += dy;
+	}
 
 	bkg = ImGui::GetBackgroundDrawList();
 
