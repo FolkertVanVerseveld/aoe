@@ -7,6 +7,15 @@ namespace aoe {
 
 namespace ui {
 
+UICache::UICache()
+	: civs(), e(nullptr), entities(), particles(), selected(), display_area()
+	, left(0), top(0), scale(1)
+	, bkg(nullptr), btnsel()
+	, t_imgs()
+	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
+	, scn(), scn_edit(), mem(), gmb_top(), gmb_bottom()
+	, select_started(false), multi_select(false), btn_left(false), start_x(0), start_y(0) {}
+
 static constexpr bool point_in_rect(float x, float y, const SDL_Rect &rect)
 {
 	return x >= rect.x && y >= rect.y && x < rect.x + rect.w && y < rect.y + rect.h;
@@ -20,21 +29,105 @@ void UICache::mouse_left_process() {
 	ZoneScoped;
 
 	ImGuiIO &io = ImGui::GetIO();
-	if (!io.MouseDown[0] || io.MouseDownDuration[0] > 0.0f)
+
+	bool old = btn_left;
+	btn_left = io.MouseDown[0];
+
+	float dx = 0, dy = 0;
+
+	if (select_started) {
+		dx = start_x - io.MousePos.x;
+		dy = start_y - io.MousePos.y;
+	}
+
+	if (fabs(dx) > 3 && fabs(dy) > 3)
+		multi_select = true;
+
+	// stop if not changed
+	if (old == btn_left || io.MouseDownDuration[0] > 0.0f)
 		return;
+
+	if (io.MouseDown[0]) {
+		select_started = true;
+		multi_select = false;
+		start_x = io.MousePos.x;
+		start_y = io.MousePos.y;
+		return;
+	}
+
+	bool select_area = multi_select;
+	multi_select = select_started = false;
 
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 
 	if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_top) || point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom))
 		return;
 
-	collect(this->selected, io.MousePos.x, io.MousePos.y);
+	if (select_area) {
+		SDL_Rect area;
+
+		area.x = (int)std::min(start_x, io.MousePos.x);
+		area.y = (int)std::min(start_y, io.MousePos.y);
+		area.w = (int)std::max(start_x, io.MousePos.x) - area.x;
+		area.h = (int)std::max(start_y, io.MousePos.y) - area.y;
+
+		collect(this->selected, area);
+	} else {
+		collect(this->selected, io.MousePos.x, io.MousePos.y);
+	}
 
 	if (this->selected.empty())
 		return;
 
-	if (this->selected.size() != 1)
+	if (select_area) {
+		// filter all non controllable entities
+		bool has_units = false, has_buildings = false;
+
+		for (auto it = this->selected.begin(); it != this->selected.end();) {
+			IdPoolRef ref = *it;
+			Entity *ent = e->gv.try_get(ref);
+
+			if (!ent || player_index() != ent->playerid) {
+				it = this->selected.erase(it);
+				continue;
+			}
+
+			if (is_building(ent->type))
+				has_buildings = true;
+			else if (!is_resource(ent->type))
+				has_units = true;
+
+			++it;
+		}
+
+		// prefer selecting units over buildings
+		if (has_units) {
+			for (auto it = this->selected.begin(); it != this->selected.end();) {
+				IdPoolRef ref = *it;
+				Entity *ent = e->gv.try_get(ref);
+
+				if (is_building(ent->type))
+					it = this->selected.erase(it);
+				else
+					++it;
+			}
+		} else if (has_buildings) {
+			for (auto it = this->selected.begin(); it != this->selected.end();) {
+				IdPoolRef ref = *it;
+				Entity *ent = e->gv.try_get(ref);
+
+				if (!is_building(ent->type))
+					it = this->selected.erase(it);
+				else
+					++it;
+			}
+		}
+
+		if (this->selected.empty())
+			return;
+	} else {
 		this->selected.resize(1);
+	}
 
 	IdPoolRef ref = *this->selected.begin();
 	Entity *ent = e->gv.try_get(ref);

@@ -19,14 +19,6 @@ namespace aoe {
 
 namespace ui {
 
-UICache::UICache()
-	: civs(), e(nullptr), entities(), particles(), selected(), display_area()
-	, left(0), top(0), scale(1)
-	, bkg(nullptr), btnsel()
-	, t_imgs()
-	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
-	, scn(), scn_edit(), mem(), gmb_top(), gmb_bottom() {}
-
 void str(const char *s, TextHalign ha, bool wrap) {
 	ImGui::TextUnformatted(s, (int)ha, wrap);
 }
@@ -664,6 +656,57 @@ void UICache::game_mouse_process() {
 
 	mouse_left_process();
 	mouse_right_process();
+}
+
+void UICache::collect(std::vector<IdPoolRef> &dst, const SDL_Rect &area, bool filter) {
+	dst.clear();
+
+	// click
+	std::vector<std::pair<float, size_t>> selected;
+
+	// first pass to filter all rectangles
+	for (size_t i = 0; i < entities.size(); ++i) {
+		VisualEntity &v = entities[i];
+
+		float mid_x = v.x + v.w * 0.5f, mid_y = v.y + v.h * 0.5f;
+
+		if (mid_x >= area.x && mid_x < area.x + area.w && mid_y >= area.y && mid_y < area.y + area.h)
+			selected.emplace_back(v.z, i);
+	}
+
+	Assets &a = *e->assets.get();
+	std::set<IdPoolRef> refs;
+
+	// second pass to remove duplicates
+	for (auto it = selected.begin(); it != selected.end();) {
+		VisualEntity &v = entities[it->second];
+
+		// ignore if already added
+		if (!refs.emplace(v.ref).second) {
+			it = selected.erase(it);
+			continue;
+		}
+
+		++it;
+	}
+
+	// sort on Z-order. NOTE: order is flipped compared to drawing
+	std::sort(selected.begin(), selected.end(), [](const auto &lhs, const auto &rhs) { return lhs.first > rhs.first; });
+
+	//printf("selected: %llu\n", (unsigned long long)selected.size());
+
+	// store entities and filter invalid and dead ones
+	for (auto kv : selected) {
+		VisualEntity &v = entities[kv.second];
+
+		if (filter) {
+			Entity *ent = e->gv.try_get(v.ref);
+			if (ent && ent->is_alive())
+				dst.emplace_back(v.ref);
+		} else {
+			dst.emplace_back(v.ref);
+		}
+	}
 }
 
 void UICache::collect(std::vector<IdPoolRef> &dst, float off_x, float off_y, bool filter) {
