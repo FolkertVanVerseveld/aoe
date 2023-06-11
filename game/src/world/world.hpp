@@ -2,7 +2,7 @@
 
 #include <idpool.hpp>
 
-#include "net/protocol.hpp"
+#include "../net/protocol.hpp"
 
 namespace aoe {
 

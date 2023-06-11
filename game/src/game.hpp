@@ -102,7 +102,6 @@ public:
 	IdPoolRef target_ref; // if == invalid_ref, use target_x,target_y
 	float target_x, target_y;
 
-	// TODO add more params
 	float subimage;
 	EntityState state;
 	bool xflip;
