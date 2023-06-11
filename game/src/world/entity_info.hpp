@@ -53,7 +53,7 @@ struct EntityInfo final {
 	EntityType type;
 	float size;
 	unsigned hp;
-	unsigned atk;
+	unsigned atk, atk_bld;
 	unsigned icon; // unsigned as it can have different types
 	std::string name;
 
@@ -63,9 +63,9 @@ struct EntityInfo final {
 struct EntityStats final {
 	EntityType type;
 	unsigned hp, maxhp;
-	unsigned attack;
+	unsigned attack, attack_bld;
 
-	EntityStats(const EntityInfo &i) : type(i.type), hp(i.hp), maxhp(i.hp), attack(i.atk) {}
+	EntityStats(const EntityInfo &i) : type(i.type), hp(i.hp), maxhp(i.hp), attack(i.atk), attack_bld(i.atk_bld) {}
 };
 
 extern const std::vector<EntityInfo> entity_info;

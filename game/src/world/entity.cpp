@@ -4,6 +4,8 @@
 
 #include <cmath>
 
+#include "../debug.hpp"
+
 #include "../server.hpp"
 #include "entity_info.hpp"
 
@@ -127,6 +129,9 @@ bool Entity::tick(WorldView &wv) noexcept {
 }
 
 void Entity::set_type(EntityType type, bool resethp) {
+	if (this->type == type)
+		return;
+
 	stats = entity_info.at((unsigned)type);
 
 	if (resethp) {
@@ -141,8 +146,13 @@ void Entity::set_type(EntityType type, bool resethp) {
 	this->type = type;
 }
 
+unsigned Entity::get_atk(const EntityStats &stats) noexcept {
+	return std::min(stats.hp, is_building(type) ? stats.attack_bld : stats.attack);
+}
+
 bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
-	unsigned atk = std::min(stats.hp, aggressor.stats.attack);
+	ZoneScoped;
+	unsigned atk = get_atk(aggressor.stats);
 
 	switch (aggressor.type) {
 	case EntityType::priest:
@@ -168,7 +178,12 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 				break;
 			case EntityType::dead_tree1:
 			case EntityType::dead_tree2:
+				// aggressor could be worker_wood1
+				aggressor.set_type(EntityType::worker_wood2);
+
+				atk = get_atk(aggressor.stats);
 				wv.collect(aggressor.playerid, Resources(atk, 0, 0, 0));
+
 				break;
 			}
 		}

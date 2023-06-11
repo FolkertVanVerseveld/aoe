@@ -21,102 +21,9 @@
 #include "world/particle.hpp"
 #include "world/resources.hpp"
 
+#include "world/game/game_settings.hpp"
+
 namespace aoe {
-
-static constexpr unsigned max_players = UINT8_MAX + 1u;
-
-class PlayerSetting final {
-public:
-	std::string name;
-	int civ;
-	unsigned team;
-	Resources res;
-
-	PlayerSetting() : name(), civ(0), team(1), res() {}
-	PlayerSetting(const std::string &name, int civ, unsigned team, Resources res) : name(name), civ(civ), team(team), res(res) {}
-	PlayerSetting(const PlayerSetting&) = default;
-};
-
-class ScenarioSettings final {
-public:
-	std::vector<PlayerSetting> players;
-	std::map<IdPoolRef, unsigned> owners; // refs to player setting
-	bool fixed_start;
-	bool explored;
-	bool all_technologies;
-	bool cheating;
-	bool square;
-	bool wrap;
-	bool restricted; // allow other players to also change settings
-	bool reorder; // allow to move players up and down in the list
-	unsigned width, height;
-	unsigned popcap;
-	unsigned age;
-	unsigned seed;
-	unsigned villagers;
-
-	Resources res;
-
-	ScenarioSettings();
-
-	void remove(IdPoolRef);
-};
-
-enum class TerrainTile {
-	unknown, // either empty or unexplored
-	desert,
-	grass,
-	water,
-	deepwater,
-	water_desert,
-	grass_desert,
-	desert_overlay,
-	deepwater_overlay,
-};
-
-enum class TerrainType {
-	islands,
-	continents,
-	normal,
-	flat,
-	bumpy,
-	max,
-};
-
-// TODO introduce terrain block/chunk
-
-class Terrain final {
-	std::vector<uint8_t> tiles;
-	std::vector<int8_t> hmap;
-public:
-	unsigned w, h, seed, players;
-	bool wrap;
-
-	Terrain();
-
-	void resize(unsigned width, unsigned height, unsigned seed, unsigned players, bool wrap);
-
-	void generate();
-
-	static constexpr uint8_t tile_id(TileType type, unsigned subimage) noexcept {
-		return ((unsigned)type & 0x7) | (subimage << 3);
-	}
-
-	static constexpr TileType tile_type(uint8_t id) noexcept {
-		return (TileType)(id & 0x7);
-	}
-
-	static constexpr unsigned tile_img(uint8_t id) noexcept {
-		return id >> 3;
-	}
-
-	uint8_t tile_at(unsigned x, unsigned y);
-	int8_t h_at(unsigned x, unsigned y);
-
-	void fetch(std::vector<uint8_t> &tiles, std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned &w, unsigned &h);
-
-	void set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
-};
 
 enum class EntityState {
 	alive,
@@ -218,6 +125,8 @@ public:
 
 	bool tick(WorldView&) noexcept;
 	bool hit(WorldView&, Entity &aggressor) noexcept;
+
+	unsigned get_atk(const EntityStats &stats) noexcept;
 
 	constexpr bool is_alive() const noexcept {
 		return state != EntityState::dying && state != EntityState::decaying;
