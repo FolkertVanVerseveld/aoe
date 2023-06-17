@@ -30,6 +30,20 @@ enum class EntityType {
 	dead_tree2,
 };
 
+static bool constexpr is_building(EntityType t) {
+	return t >= EntityType::town_center && t <= EntityType::barracks;
+}
+
+static bool constexpr is_resource(EntityType t) {
+	return t >= EntityType::berries && t <= EntityType::dead_tree2;
+}
+
+static bool constexpr is_worker(EntityType t) {
+	return t >= EntityType::villager && t <= EntityType::worker_berries;
+}
+
+// TODO add is_unit (when needed?)
+
 enum class EntityIconType {
 	building,
 	unit,

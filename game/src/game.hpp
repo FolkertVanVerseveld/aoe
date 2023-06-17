@@ -22,72 +22,9 @@
 #include "world/resources.hpp"
 
 #include "world/game/game_settings.hpp"
+#include "world/entity.hpp"
 
 namespace aoe {
-
-enum class EntityState {
-	alive,
-	dying,
-	decaying,
-	attack,
-	attack_follow,
-	moving,
-};
-
-enum class EntityTaskType {
-	move,
-	infer, // use context to determine task
-	attack,
-	train_unit,
-};
-
-static bool constexpr is_building(EntityType t) {
-	return t >= EntityType::town_center && t <= EntityType::barracks;
-}
-
-static bool constexpr is_resource(EntityType t) {
-	return t >= EntityType::berries && t <= EntityType::dead_tree2;
-}
-
-static bool constexpr is_worker(EntityType t) {
-	return t >= EntityType::villager && t <= EntityType::worker_berries;
-}
-
-class Entity;
-
-class EntityView final {
-public:
-	IdPoolRef ref;
-	EntityType type; // TODO remove this and use stats.type
-
-	unsigned playerid;
-	float x, y, angle;
-
-	// TODO add ui info
-	unsigned subimage;
-	EntityState state;
-	bool xflip;
-
-	EntityStats stats;
-
-	EntityView();
-	EntityView(const Entity&);
-};
-
-class EntityTask final {
-public:
-	EntityTaskType type;
-	IdPoolRef ref1, ref2;
-	uint32_t x, y;
-	unsigned info_type, info_value;
-
-	// TODO use floating point number x,y
-	// move to area
-	EntityTask(IdPoolRef ref, uint32_t x, uint32_t y);
-	EntityTask(EntityTaskType type, IdPoolRef ref1, IdPoolRef ref2);
-	// train unit
-	EntityTask(IdPoolRef ref, EntityType t);
-};
 
 class WorldView;
 
