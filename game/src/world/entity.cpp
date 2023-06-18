@@ -90,7 +90,6 @@ bool Entity::move() noexcept {
 }
 
 bool Entity::attack(WorldView &wv) noexcept {
-	// TODO determine if we have to follow the target to stay in range of attack
 	Entity *t = wv.try_get(target_ref);
 	if (!t) {
 		// cannot find target, just move there
@@ -104,6 +103,7 @@ bool Entity::attack(WorldView &wv) noexcept {
 		return set_state(EntityState::alive);
 	}
 
+	// determine if we have to follow the target to stay in range of attack
 	if (in_range(*t))
 		return try_state(EntityState::attack);
 

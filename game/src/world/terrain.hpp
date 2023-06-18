@@ -3,6 +3,8 @@
 #include <vector>
 #include <cstdint>
 
+#include "entity_info.hpp"
+
 namespace aoe {
 
 enum class TileType {
@@ -40,6 +42,7 @@ enum class TerrainType {
 class Terrain final {
 	std::vector<uint8_t> tiles;
 	std::vector<int8_t> hmap;
+	std::vector<bool> obstructed; // tiles occupied by buildings
 public:
 	unsigned w, h, seed, players;
 	bool wrap;
@@ -64,6 +67,8 @@ public:
 
 	uint8_t tile_at(unsigned x, unsigned y);
 	int8_t h_at(unsigned x, unsigned y);
+
+	void add_building(EntityType t, unsigned x, unsigned y);
 
 	void fetch(std::vector<uint8_t> &tiles, std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned &w, unsigned &h);
 

@@ -561,7 +561,7 @@ void World::entity_task(WorldEvent &ev) {
 
 			if (can_train) {
 				// TODO add to build queue stuff
-				spawn_unit(train, ent->playerid, ent->x + 2, ent->y + 2, fmodf(rand(), 360));
+				spawn_unit(train, ent->playerid, ent->x + 2, ent->y + 2);
 			}
 			break;
 		}
@@ -663,6 +663,7 @@ void World::create_players() {
 void World::add_building(EntityType t, unsigned player, int x, int y) {
 	ZoneScoped;
 	assert(is_building(t) && player < MAX_PLAYERS);
+	this->t.add_building(t, x, y);
 	auto p = entities.emplace(t, player, x, y);
 	assert(p.second);
 	players.at(player).entities.emplace(p.first->first);
