@@ -2,6 +2,7 @@
 
 #include "../legacy/legacy.hpp"
 
+#include <array>
 #include <chrono>
 
 #include <tracy/Tracy.hpp>
@@ -737,30 +738,31 @@ void World::create_entities() {
 
 		add_unit(EntityType::villager, i, 6, 1 + 3 * i);
 		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
-		add_unit(EntityType::villager, i, 7, 1 + 3 * i);// , 0, EntityState::attack);
+		//add_unit(EntityType::villager, i, 7, 1 + 3 * i);// , 0, EntityState::attack);
 		add_unit(EntityType::villager, i, 7, 2 + 3 * i);
-
-		add_unit(EntityType::melee1, i, 3 + 3 * 3, 1 + 3 * i);
-		add_unit(EntityType::melee1, i, 3 + 3 * 3, 2 + 3 * i);
 	}
 
 	add_unit(EntityType::priest, 0, 3.5, 1);
 	add_unit(EntityType::priest, 0, 4.5, 1);
 
-	add_berries(0, 0);
-	add_berries(0, 1);
-	add_berries(1, 0);
-	add_berries(1, 1);
+	std::array<EntityType, 4> trees{
+		EntityType::desert_tree1,
+		EntityType::desert_tree2,
+		EntityType::desert_tree3,
+		EntityType::desert_tree4
+	};
 
-	add_gold(0, 2);
-	add_gold(1, 2);
-	add_stone(0, 3);
-	add_stone(1, 3);
+	for (unsigned y = 0; y < players.size() * 3; ++y) {
+		add_berries(14, y);
+		add_berries(15, y);
 
-	add_resource(EntityType::desert_tree1, 2, 0, 0);
-	add_resource(EntityType::desert_tree2, 3, 0, 0);
-	add_resource(EntityType::desert_tree3, 4, 0, 0);
-	add_resource(EntityType::desert_tree4, 5, 0, 0);
+		add_resource(trees[rand() % 4], 18, y, 0);
+		add_resource(trees[rand() % 4], 19, y, 0);
+		add_resource(trees[rand() % 4], 20, y, 0);
+
+		add_gold(22, y);
+		add_stone(23, y);
+	}
 }
 
 void World::startup() {
@@ -788,11 +790,16 @@ void World::startup() {
 
 	// send initial terrain chunk
 	// TODO this is buggy if the map is too small...
-	unsigned w = 16, h = 16;
-	NetTerrainMod tm(fetch_terrain(0, 0, w, h));
 
-	pkg.set_terrain_mod(tm);
-	s->broadcast(pkg);
+	for (unsigned y = 0; y < 48; y += 16) {
+		for (unsigned x = 0; x < 48; x += 16) {
+			unsigned w = 16, h = 16;
+			NetTerrainMod tm(fetch_terrain(x, y, w, h));
+
+			pkg.set_terrain_mod(tm);
+			s->broadcast(pkg);
+		}
+	}
 
 	this->running = true;
 
