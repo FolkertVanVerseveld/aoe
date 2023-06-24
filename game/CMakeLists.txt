@@ -27,7 +27,7 @@ file(GLOB_RECURSE AOE_SRC "src/*.cpp" "src/*.c" "../wepoll/wepoll.c")
 file(GLOB AOE_TEST "tests/*.cpp")
 
 file(GLOB IMGUI_CORE_SRC "../imgui/*.cpp")
-set(IMGUI_BACKEND_SRC "../imgui/backends/imgui_impl_sdl.cpp" "../imgui/backends/imgui_impl_opengl3.cpp")
+set(IMGUI_BACKEND_SRC "../imgui/backends/imgui_impl_sdl2.cpp" "../imgui/backends/imgui_impl_opengl3.cpp")
 set(IMGUI_SRC ${IMGUI_CORE_SRC} ${IMGUI_BACKEND_SRC})
 
 file(GLOB AOE_DLLS "*.dll")

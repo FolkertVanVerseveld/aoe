@@ -8,7 +8,7 @@
 #include "engine/sdl.hpp"
 
 #include <imgui.h>
-#include <imgui_impl_sdl.h>
+#include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 
 #if _WIN32 || defined(AOE_SDL_NO_PREFIX)
