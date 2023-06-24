@@ -135,7 +135,7 @@ private:
 	bool assets_good;
 	// TODO move this to a game class or smth
 	bool show_chat;
-	bool show_achievements;
+	bool m_show_achievements;
 	bool show_timeline;
 	bool show_diplomacy;
 
@@ -199,6 +199,7 @@ private:
 
 	void show_multiplayer_achievements();
 	void show_multiplayer_diplomacy();
+	bool show_achievements(ui::Frame&, bool bkg=false);
 
 	void show_general_settings();
 	void show_menubar();
