@@ -934,6 +934,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 void Engine::show_gameover() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowSize(vp->WorkSize);
 	ImGui::SetNextWindowPos(vp->WorkPos);
 
 	Frame f;
