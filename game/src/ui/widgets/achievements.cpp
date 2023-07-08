@@ -5,18 +5,9 @@ namespace aoe {
 
 using namespace ui;
 
-void Engine::show_multiplayer_achievements() {
+bool Engine::show_achievements(Frame &f, bool bkg) {
+	ZoneScoped;
 	ImGuiIO &io = ImGui::GetIO();
-
-	float scale = io.DisplaySize.y / WINDOW_HEIGHT_MIN;
-
-	ImVec2 max(std::min(io.DisplaySize.x, WINDOW_WIDTH_MAX + 8.0f), std::min(io.DisplaySize.y, WINDOW_HEIGHT_MAX + 8.0f));
-
-	ImGui::SetNextWindowSizeConstraints(ImVec2(std::min(max.x, 450 * scale), std::min(max.y, 420 * scale)), max);
-	Frame f;
-
-	if (!f.begin("Achievements", show_achievements))
-		return;
 
 	Assets &a = *assets.get();
 	const gfx::ImageRef &ref = a.at(io::DrsId::bkg_achievements);
@@ -25,10 +16,26 @@ void Engine::show_multiplayer_achievements() {
 	ImVec2 pos(ImGui::GetWindowPos());
 	ImVec2 tl(ImGui::GetWindowContentRegionMin()), br(ImGui::GetWindowContentRegionMax());
 	tl.x += pos.x; tl.y += pos.y; br.x += pos.x; br.y += pos.y;
-	lst->AddImage(tex1, tl, br, ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
 
-	float w = br.x - tl.x;
-	float sx = w / ref.bnds.w, sy = (br.y - tl.y) / ref.bnds.h;
+	float w = 1, sx = 1, sy = 1;
+
+	if (bkg) {
+		lst->AddImage(tex1, tl, br, ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
+		w = br.x - tl.x;
+	} else {
+		//w = ImGui::GetMainViewport()->Size.x;
+		w = io.DisplaySize.x;
+		if (w < 1) {
+			int iw, dummy;
+			sdl->window.size(iw, dummy);
+			w = iw;
+		}
+
+		tl.x = 0;
+	}
+
+	sx = w / ref.bnds.w;
+	sy = (br.y - tl.y) / ref.bnds.h;
 
 	if (show_timeline) {
 		f.str("World Population");
@@ -141,9 +148,28 @@ void Engine::show_multiplayer_achievements() {
 
 		if (f.btn("Close")) {
 			sfx.play_sfx(SfxId::sfx_ui_click);
-			show_achievements = false;
+			return false;
 		}
 	}
+
+	return true;
+}
+
+void Engine::show_multiplayer_achievements() {
+	ImGuiIO &io = ImGui::GetIO();
+
+	float scale = io.DisplaySize.y / WINDOW_HEIGHT_MIN;
+
+	ImVec2 max(std::min(io.DisplaySize.x, WINDOW_WIDTH_MAX + 8.0f), std::min(io.DisplaySize.y, WINDOW_HEIGHT_MAX + 8.0f));
+
+	ImGui::SetNextWindowSizeConstraints(ImVec2(std::min(max.x, 450 * scale), std::min(max.y, 420 * scale)), max);
+	Frame f;
+
+	if (!f.begin("Achievements", m_show_achievements))
+		return;
+
+	if (!show_achievements(f, true))
+		m_show_achievements = false;
 }
 
 }

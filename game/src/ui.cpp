@@ -7,7 +7,7 @@
 #include <cmath>
 
 #include <imgui.h>
-#include <imgui_impl_sdl.h>
+#include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 
 #include <minmax.hpp>
@@ -934,6 +934,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 void Engine::show_gameover() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetNextWindowSize(vp->WorkSize);
 	ImGui::SetNextWindowPos(vp->WorkPos);
 
 	Frame f;
@@ -941,17 +942,8 @@ void Engine::show_gameover() {
 	if (!f.begin("start", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
 		return;
 
-	if (f.btn("Timeline")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		// TODO show timeline
-	}
-
-	f.sl();
-
-	if (f.btn("Close")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (!show_achievements(f))
 		next_menu_state = MenuState::start;
-	}
 }
 
 void Engine::show_start() {

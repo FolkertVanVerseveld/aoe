@@ -317,7 +317,7 @@ void UICache::show_multiplayer_game() {
 
 	if (ImGui::BeginPopup("MenuPopup")) {
 		if (ImGui::MenuItem("Achievements"))
-			e->show_achievements = !e->show_achievements;
+			e->m_show_achievements = !e->m_show_achievements;
 
 		if (ImGui::MenuItem("Quit")) {
 			e->cancel_multiplayer_host(e->cv.victory ? MenuState::victory : MenuState::defeat);
@@ -384,7 +384,7 @@ void UICache::show_multiplayer_game() {
 
 	show_hud_selection(menubar_left, top, menubar_h);
 
-	if (e->show_achievements)
+	if (e->m_show_achievements)
 		e->show_multiplayer_achievements();
 
 	if (e->show_diplomacy)
