@@ -30,6 +30,8 @@ bool Engine::show_achievements(Frame &f, bool bkg) {
 			sdl->window.size(iw, dummy);
 			w = iw;
 		}
+
+		tl.x = 0;
 	}
 
 	sx = w / ref.bnds.w;
