@@ -29,6 +29,12 @@ public:
 	uint32_t players;
 
 	void load(const char *path);
+private:
+	uint8_t u8(size_t &pos) const;
+	uint16_t u16(size_t &pos) const;
+	uint32_t u32(size_t &pos) const;
+	std::string str16(size_t &pos) const;
+	std::string str(size_t &pos, size_t max) const;
 };
 
 }

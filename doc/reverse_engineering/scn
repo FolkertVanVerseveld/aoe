@@ -2,6 +2,9 @@ The scenario file format has a flat header followed by deflated data. See this
 thread for details:
 http://aok.heavengames.com/cgi-bin/aokcgi/display.cgi?action=ct&f=4,40134,0,30
 
+astr16 is pascal string where first two bytes is u16 specifying its length
+dword is u32
+
 scn header
   range type   name    description
   00-03        version 1.10 or 1.11 in all scenarios we have tested so far
@@ -16,6 +19,62 @@ scn header
   1C-XX        data    compressed scenario data
 
 compressed scenario data (scn header 3)
+  00-03 dword0 unknown metadata size? no idea
+
+  04-07 u32 magic header 33 33 93 3f
+
+  player nicknames at 0x008, 0x108, 0x208, ..., 0xff8 ??
+
+  sections are separated using 9d ff ff ff
+  first section always starts at 0x1000
+
+  1000 some dword numbers (hex) in this pattern:
+  0 0 1 1
+  1 4 1 0
+  2 4 0 0
+  3 4 0 0
+  4 4 0 0
+  5 4 0 0
+  6 4 0 0
+  7 4 0 0
+  8 4 0 0
+  9 4 0 0
+  a 4 0 0
+  b 4 0 0
+  c 4 0 0
+  d 4 0 0
+  e 4 0 0
+  f 4 0 0
+  10 4 1 80000000
+
+  first number is player index, 10 is gaia
+  second number unknown
+  third number is can be claimed? (except 10 for gaia i assume)
+  fourth number must be claimed
+
+  third and fourth number seem inconsistent though
+
+  for loading i assume we can ignore these numbers
+
+  then the byte 0xbf (or bytes 0x80 0xbf, not sure)
+
+  astr16 filename
+  astr16 instructions
+
+  then lots of astr16 follow, keep going till we find section separator 9d ff ff ff
+  not sure what these are used for. doesn't look like individual victory, more like AI strategy?
+
+    some astr16's found in here are:
+    "NONE"
+    " <none> "
+    "Random"
+    "Default"
+
+  list of dwords, either 00, 0xc8 or 0x96, ended by 9d ff ff ff
+
+  byte 01, some zeros, then dword 0x0384 and 0x2328??
+
+
   range     type      name               description
   0000-1110 byte0
   1111-1112 astr16    filename_length    original scenario name length
