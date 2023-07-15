@@ -16,6 +16,13 @@ public:
 	explicit BadScenarioError(const char *msg) : std::runtime_error(msg) {}
 };
 
+class ScenarioPlayer final {
+public:
+	std::string ai, entities, some_string;
+
+	ScenarioPlayer(const std::string &ai, const std::string &entities, const std::string &some_string) : ai(ai), entities(entities), some_string(some_string) {}
+};
+
 class Scenario final {
 public:
 	std::vector<uint8_t> data;
@@ -28,6 +35,11 @@ public:
 	std::string instructions;
 	uint32_t players;
 
+	std::vector<ScenarioPlayer> player_data;
+
+	uint32_t w, h;
+	std::vector<uint8_t> tile_types, tile_height, tile_meta;
+
 	void load(const char *path);
 private:
 	uint8_t u8(size_t &pos) const;
@@ -35,6 +47,8 @@ private:
 	uint32_t u32(size_t &pos) const;
 	std::string str16(size_t &pos) const;
 	std::string str(size_t &pos, size_t max) const;
+
+	void next_section(std::vector<uint32_t> &lst, size_t &pos);
 };
 
 }

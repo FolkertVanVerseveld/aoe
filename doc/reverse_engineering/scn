@@ -49,7 +49,7 @@ compressed scenario data (scn header 3)
 
   first number is player index, 10 is gaia
   second number unknown
-  third number is can be claimed? (except 10 for gaia i assume)
+  third number can be claimed? (except 10 for gaia i assume)
   fourth number must be claimed
 
   third and fourth number seem inconsistent though

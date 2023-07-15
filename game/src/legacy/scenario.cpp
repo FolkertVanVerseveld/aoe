@@ -107,7 +107,7 @@ void Scenario::load(const char *path) {
 	inflated.resize(stream.total_out);
 
 	if (inflated.size() < 0x1000) {
-		fprintf(stderr, "corrupt inflated data: too small: at least 0x1000, got: %llu\n", (unsigned long long)inflated.size());
+		fprintf(stderr, "corrupt inflated data: too small: at least 4096, got: %llu\n", (unsigned long long)inflated.size());
 		return;
 	}
 
@@ -164,32 +164,27 @@ void Scenario::load(const char *path) {
 		return;
 	}
 
-	for (unsigned i = 0; i < 48; ++i)
+	for (unsigned i = 0; i < 48; ++i) // 3 * 16 player data??
 		some_strings.emplace_back(str16(pos));
+
+	player_data.clear();
 
 	for (unsigned p = 0; p < 16; ++p) {
 		uint32_t some_ai_length = u32(pos), some_entities_length = u32(pos), some_length = u32(pos);
 
-		std::string some_ai;
+		std::string ai;
 		for (size_t i = 0; i < some_ai_length; ++i)
-			some_ai.push_back(u8(pos));
+			ai.push_back(u8(pos));
 
-		if (!some_ai.empty())
-			printf("some_ai:\n%s\n", some_ai.c_str());
-
-		std::string some_entities;
+		std::string entities;
 		for (size_t i = 0; i < some_entities_length; ++i)
-			some_entities.push_back(u8(pos));
-
-		if (!some_entities.empty())
-			printf("some entities:\n%s\n", some_entities.c_str());
+			entities.push_back(u8(pos));
 
 		std::string some_string;
 		for (size_t i = 0; i < some_length; ++i)
 			some_string.push_back(u8(pos));
 
-		if (!some_string.empty())
-			printf("some string:\n%s\n", some_string.c_str());
+		player_data.emplace_back(ai, entities, some_string);
 	}
 
 	const uint32_t magic_sep = 0xffffff9d;
@@ -202,20 +197,68 @@ void Scenario::load(const char *path) {
 
 	std::vector<uint32_t> some_dwords;
 
-	for (uint32_t v; (v = u32(pos)) != magic_sep;)
-		some_dwords.emplace_back(v);
+	next_section(some_dwords, pos);
+	// dwords 1 0 0 0 0 0 0 0 900 9000 some 3s
 
-	printf("TODO pos: %llX\n", (unsigned long long)pos);
+	some_dwords.clear();
 
-#if 0
-	for (uint32_t sep; (sep = u32(pos)) != magic_sep;) {
-		pos -= 4; // revert bogus separator
-		some_strings.emplace_back(str16(pos));
+	for (unsigned i = 0; i < 10; ++i)
+		some_dwords.emplace_back(u32(pos));
+
+	next_section(some_dwords, pos);
+	next_section(some_dwords, pos);
+
+	some_dwords.clear();
+
+	printf("terrain pos: %llX\n", (unsigned long long)pos);
+
+	// TODO parse terrain data
+	uint32_t w = u32(pos), h = u32(pos);
+
+	if (!w || !h) {
+		fprintf(stderr, "invalid map size: %ux%u\n", w, h);
+		return;
 	}
 
+	if (w > SIZE_MAX / h || (uint64_t)w * h > UINT32_MAX) {
+		fprintf(stderr, "map too big: %ux%u\n", w, h);
+		fprintf(stderr, "max size: %llu\n", std::min<unsigned long long>(SIZE_MAX, UINT32_MAX));
+		return;
+	}
+
+	size_t count = (size_t)w * h;
+
+	this->w = w;
+	this->h = h;
+
+	tile_types.clear();
+	tile_height.clear();
+	tile_meta.clear();
+
+	tile_types.reserve(count);
+	tile_height.reserve(count);
+	tile_meta.reserve(count);
+
+	// NOTE: the game uses x,y ordering, while we use y,x so the loops are swapped
+	for (size_t x = 0; x < w; ++x) {
+		for (size_t y = 0; y < h; ++y) {
+			tile_types.emplace_back(u8(pos));
+			tile_height.emplace_back(u8(pos));
+			tile_meta.emplace_back(u8(pos));
+		}
+	}
+
+	printf("TODO pos: %llX\n", (unsigned long long)pos);
 	// TODO parse remaining sections and data
-	some_byte = u8(pos);
-#endif
+}
+
+void Scenario::next_section(std::vector<uint32_t> &lst, size_t &pos) {
+	const uint32_t magic_sep = 0xffffff9d;
+
+	lst.clear();
+
+	for (uint32_t v; (v = u32(pos)) != magic_sep;)
+		lst.emplace_back(v);
 }
 
 uint8_t Scenario::u8(size_t &pos) const {
