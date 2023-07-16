@@ -253,6 +253,7 @@ public:
 
 	void set_scn(const io::Scenario&);
 private:
+	void draw_tile(uint8_t id, uint8_t h, int x, int y, const ImVec2 &size, ImU32 col);
 	void show_terrain();
 	/** Show user selected entities. */
 	void show_selections();

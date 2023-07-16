@@ -307,7 +307,7 @@ void Scenario::load(const char *path) {
 		}
 	}
 
-	// TODO second pass to fix tiles
+	// second pass to fix tiles
 	for (size_t y = 0; y < h; ++y) {
 		for (size_t x = 0; x < w; ++x) {
 			size_t idx = y * w + x;
@@ -344,7 +344,7 @@ void Scenario::load(const char *path) {
 						subimage = 3;
 					break;
 				case 0:
-					// TODO find diagonal neighbors
+					// find diagonal neighbors
 					nn = fdn(tile_types, w, h, x, y, TileType::desert);
 
 					if (nn[0] == TileType::water)
@@ -361,9 +361,29 @@ void Scenario::load(const char *path) {
 
 				// update
 				tile_types[idx] = Terrain::tile_id(type, subimage);
+			} else if (type == TileType::deepwater) {
+				auto nn = fhvn(tile_types, w, h, x, y, TileType::deepwater);
+				unsigned bits = 0;
+
+				if (nn[1] == TileType::water)
+					bits |= 1 << 0;
+				if (nn[0] == TileType::water)
+					bits |= 1 << 1;
+				if (nn[3] == TileType::water)
+					bits |= 1 << 2;
+				if (nn[2] == TileType::water)
+					bits |= 1 << 3;
+
+				if (bits)
+					type = TileType::deepwater_water;
+
+				// update
+				tile_types[idx] = Terrain::tile_id(type, bits);
 			}
 		}
 	}
+
+	// TODO third pass for heightmap data
 
 	printf("TODO pos: %llX\n", (unsigned long long)pos);
 	// TODO parse remaining sections and data

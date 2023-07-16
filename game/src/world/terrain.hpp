@@ -18,18 +18,6 @@ enum class TileType {
 	deepwater_water,
 };
 
-enum class TerrainTile {
-	unknown, // either empty or unexplored
-	desert,
-	grass,
-	water,
-	deepwater,
-	water_desert,
-	grass_desert,
-	desert_overlay,
-	deepwater_overlay,
-};
-
 enum class TerrainType {
 	islands,
 	continents,
@@ -65,6 +53,18 @@ public:
 
 	static constexpr unsigned tile_img(uint8_t id) noexcept {
 		return id >> 3;
+	}
+
+	static constexpr bool tile_hasoverlay(uint8_t v) noexcept {
+		return tile_type(v) == TileType::deepwater_water;
+	}
+
+	static constexpr TileType tile_base(uint8_t v) noexcept {
+		TileType type = tile_type(v);
+		if (type == TileType::deepwater_water)
+			return TileType::deepwater;
+
+		return type;
 	}
 
 	uint8_t tile_at(unsigned x, unsigned y);
