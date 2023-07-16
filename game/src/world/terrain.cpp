@@ -42,7 +42,7 @@ uint8_t Terrain::tile_at(unsigned x, unsigned y) {
 	return tiles.at(y * w + x);
 }
 
-int8_t Terrain::h_at(unsigned x, unsigned y) {
+uint8_t Terrain::h_at(unsigned x, unsigned y) {
 	x = std::clamp(x, 0u, w - 1);
 	y = std::clamp(y, 0u, h - 1);
 	return hmap.at(y * w + x);
@@ -67,7 +67,7 @@ void Terrain::add_building(EntityType t, unsigned x, unsigned y) {
 	}
 }
 
-void Terrain::fetch(std::vector<uint8_t> &tt, std::vector<int8_t> &hm, unsigned x0, unsigned y0, unsigned &w, unsigned &h) {
+void Terrain::fetch(std::vector<uint8_t> &tt, std::vector<uint8_t> &hm, unsigned x0, unsigned y0, unsigned &w, unsigned &h) {
 	tt.clear();
 	hm.clear();
 
@@ -86,7 +86,7 @@ void Terrain::fetch(std::vector<uint8_t> &tt, std::vector<int8_t> &hm, unsigned 
 	h = y1 - y0;
 }
 
-void Terrain::set(const std::vector<uint8_t> &tt, const std::vector<int8_t> &hm, unsigned x0, unsigned y0, unsigned w, unsigned h) {
+void Terrain::set(const std::vector<uint8_t> &tt, const std::vector<uint8_t> &hm, unsigned x0, unsigned y0, unsigned w, unsigned h) {
 	assert(x0 < this->w && y0 < this->h);
 
 	unsigned x1 = std::min(x0 + w, this->w), y1 = std::min(y0 + h, this->h);

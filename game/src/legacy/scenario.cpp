@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 
 #include "../debug.hpp"
+#include "../world/terrain.hpp"
 
 // yes, including .c's is evil, but... we have no choice :/
 #include <miniz.c>
@@ -18,6 +19,48 @@
 namespace aoe {
 
 namespace io {
+
+/** Find horizontal and vertical neighbors */
+static std::array<TileType, 4> fhvn(const std::vector<uint8_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f) {
+	std::array<TileType, 4> n;
+	n.fill(f);
+
+	/*
+	  0            (0,  1)
+	1 X 2  (-1, 0)         (1, 0)
+	  3            (0, -1)
+	*/
+
+	if (y > 0)     n[3] = (TileType)tiles.at((y - 1) * w + x);
+	if (x > 0)     n[1] = (TileType)tiles.at(y * w + x - 1);
+	if (x < w - 1) n[2] = (TileType)tiles.at(y * w + x + 1);
+	if (y < h - 1) n[0] = (TileType)tiles.at((y + 1) * w + x);
+
+	return n;
+}
+
+/** Find diagonal neighbors */
+static std::array<TileType, 4> fdn(const std::vector<uint8_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f) {
+	std::array<TileType, 4> n;
+	n.fill(f);
+
+	/*
+	0   1  (-1,  1)  (1,  1)
+	  X
+	2   3  (-1, -1)  (1, -1)
+	*/
+
+	if (y > 0) {
+		if (x > 0)     n[2] = (TileType)tiles.at((y - 1) * w + x - 1);
+		if (x < w - 1) n[3] = (TileType)tiles.at((y - 1) * w + x + 1);
+	}
+	if (y < h - 1) {
+		if (x > 0)     n[0] = (TileType)tiles.at((y + 1) * w + x - 1);
+		if (x < w - 1) n[1] = (TileType)tiles.at((y + 1) * w + x + 1);
+	}
+
+	return n;
+}
 
 void Scenario::load(const char *path) {
 	std::ifstream in(path, std::ios_base::binary);
@@ -235,16 +278,90 @@ void Scenario::load(const char *path) {
 	tile_height.clear();
 	tile_meta.clear();
 
-	tile_types.reserve(count);
-	tile_height.reserve(count);
-	tile_meta.reserve(count);
+	tile_types.resize(count);
+	tile_height.resize(count);
+	tile_meta.resize(count);
 
-	// NOTE: the game uses x,y ordering, while we use y,x so the loops are swapped
 	for (size_t x = 0; x < w; ++x) {
 		for (size_t y = 0; y < h; ++y) {
-			tile_types.emplace_back(u8(pos));
-			tile_height.emplace_back(u8(pos));
-			tile_meta.emplace_back(u8(pos));
+			uint8_t type = u8(pos);
+
+			// TODO convert properly
+			switch (type) {
+			case 0x16: type = (unsigned)TileType::deepwater; break;
+			case 0x01: type = (unsigned)TileType::water; break;
+			case 0x02: type = (unsigned)TileType::water_desert; break; // grass water edge
+			case 0x00: type = (unsigned)TileType::grass; break;
+			case 0x06: type = (unsigned)TileType::desert; break;
+			case 0x0d: type = (unsigned)TileType::desert; break; // desert palm trees
+			case 0x0a: type = (unsigned)TileType::grass; break; // grass trees
+			case 0x04: type = (unsigned)TileType::water; break; // shallows
+			default: type = (unsigned)TileType::deepwater; break; // unknown
+			}
+
+			size_t idx = y * w + x;
+
+			tile_types[idx] = type;
+			tile_height[idx] = u8(pos);
+			tile_meta[idx] = u8(pos);
+		}
+	}
+
+	// TODO second pass to fix tiles
+	for (size_t y = 0; y < h; ++y) {
+		for (size_t x = 0; x < w; ++x) {
+			size_t idx = y * w + x;
+			// prefer a slow and dumb algorithm that just works
+			TileType type = (TileType)tile_types[idx];
+			if (type == TileType::water_desert) {
+				auto nn = fhvn(tile_types, w, h, x, y, TileType::desert);
+				unsigned edges = 0, subimage = 0;
+
+				// count water tiles
+				for (TileType t : nn)
+					if (t == TileType::water)
+						++edges;
+
+				switch (edges) {
+				case 1:
+					if (nn[0] == TileType::water)
+						subimage = 11;
+					else if (nn[1] == TileType::water)
+						subimage = 8;
+					else if (nn[2] == TileType::water)
+						subimage = 9;
+					else
+						subimage = 10;
+					break;
+				case 2:
+					if (nn[1] == TileType::water && nn[3] == TileType::water)
+						subimage = 0;
+					else if (nn[1] == TileType::water && nn[0] == TileType::water)
+						subimage = 1;
+					else if (nn[2] == TileType::water && nn[3] == TileType::water)
+						subimage = 2;
+					else
+						subimage = 3;
+					break;
+				case 0:
+					// TODO find diagonal neighbors
+					nn = fdn(tile_types, w, h, x, y, TileType::desert);
+
+					if (nn[0] == TileType::water)
+						subimage = 5;
+					else if (nn[1] == TileType::water)
+						subimage = 7;
+					else if (nn[2] == TileType::water)
+						subimage = 4;
+					else
+						subimage = 6;
+
+					break;
+				}
+
+				// update
+				tile_types[idx] = Terrain::tile_id(type, subimage);
+			}
 		}
 	}
 

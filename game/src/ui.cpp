@@ -629,6 +629,8 @@ void UICache::load() {
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_water));
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_deepwater));
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_grass_desert));
+	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_water_desert));
+	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_water_overlay));
 }
 
 void UICache::str2(const ImVec2 &pos, const char *text, bool invert) {
@@ -787,7 +789,7 @@ const gfx::ImageRef &UICache::imgtile(uint8_t id) {
 	unsigned subimage = Terrain::tile_img(id);
 
 	Assets &a = *e->assets.get();
-	return a.at(t_imgs[(unsigned)type].imgs[subimage]);
+	return a.at(t_imgs.at((unsigned)type).imgs.at(subimage));
 }
 
 void UICache::show_selections() {

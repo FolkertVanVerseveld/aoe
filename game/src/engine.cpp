@@ -259,6 +259,7 @@ void Engine::display_ui() {
 			draw_background_border();
 			break;
 		case MenuState::editor_scenario:
+			ui.show_world();
 			ui.show_editor_scenario();
 			break;
 		default:
@@ -588,6 +589,10 @@ void Engine::set_game_data() {
 	ui.load();
 }
 
+void Engine::cam_reset() {
+	cam_x = cam_y = 0.0f;
+}
+
 void Engine::idle() {
 	ZoneScoped;
 	idle_async();
@@ -620,8 +625,12 @@ void Engine::idle() {
 	if (c)
 		cv.try_read(*c);
 
-	if (menu_state == MenuState::multiplayer_game)
+	if (capture_keys())
 		idle_game();
+}
+
+bool Engine::capture_keys() const noexcept {
+	return menu_state == MenuState::multiplayer_game || menu_state == MenuState::editor_scenario;
 }
 
 void Engine::idle_game() {
@@ -646,7 +655,7 @@ void Engine::idle_game() {
 	// TODO clamp right, top and bottom side as well
 	cam_x = std::max(0.0f, cam_x);
 
-	{
+	if (menu_state != MenuState::editor_scenario) {
 		std::lock_guard<std::mutex> lk(m);
 		if (client) {
 			if (cam_move)
@@ -654,6 +663,9 @@ void Engine::idle_game() {
 
 			gv.try_read(client->g);
 		}
+	} else {
+		std::lock_guard<std::mutex> lk(m);
+		ui.idle_editor(*this);
 	}
 	ui.idle_game();
 }
@@ -1010,7 +1022,7 @@ int Engine::mainloop() {
 				case SDL_KEYDOWN:
 					p = ImGui_ImplSDL2_ProcessEvent(&event);
 
-					if (!p || (menu_state == MenuState::multiplayer_game && !io.WantCaptureKeyboard))
+					if (!p || (capture_keys() && !io.WantCaptureKeyboard))
 						keyctl.down(event.key);
 					break;
 				default:

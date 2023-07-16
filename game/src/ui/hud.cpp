@@ -25,6 +25,10 @@ void UICache::idle(Engine &e) {
 	bkg = ImGui::GetBackgroundDrawList();
 }
 
+void UICache::idle_editor(Engine &e) {
+	e.gv.try_read(scn_game);
+}
+
 void UICache::idle_game() {
 	ZoneScoped;
 

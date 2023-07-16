@@ -31,6 +31,7 @@ struct ScnBtn {
 
 void UICache::show_editor_scenario() {
 	ZoneScoped;
+
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGuiIO &io = ImGui::GetIO();
 
@@ -125,9 +126,11 @@ void UICache::show_editor_scenario() {
 			// TODO use scn_edit to load everything
 			try {
 				scn.load(path.c_str());
+				set_scn(scn);
 			} catch (io::BadScenarioError &e) {
 				scn_edit.load(path.c_str());
 			}
+			e->cam_reset();
 		} catch (std::runtime_error &e) {
 			fprintf(stderr, "%s: cannot load scn: %s\n", __func__, e.what());
 		}

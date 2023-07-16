@@ -120,7 +120,7 @@ public:
 	void tick(unsigned n);
 
 	void resize(const ScenarioSettings &scn);
-	void terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
+	void terrain_set(const std::vector<uint8_t> &tiles, const std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
 
 	void set_players(const std::vector<PlayerSetting>&);
 	void set_player_score(unsigned idx, const NetPlayerScore&);

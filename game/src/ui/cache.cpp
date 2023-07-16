@@ -8,12 +8,12 @@ namespace aoe {
 namespace ui {
 
 UICache::UICache()
-	: civs(), e(nullptr), entities(), particles(), selected(), display_area()
+	: civs(), e(nullptr), entities(), entities_deceased(), particles(), selected(), display_area()
 	, left(0), top(0), scale(1)
 	, bkg(nullptr), btnsel()
 	, t_imgs()
 	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
-	, scn(), scn_edit(), mem(), gmb_top(), gmb_bottom()
+	, scn(), scn_edit(), scn_game(), mem(), gmb_top(), gmb_bottom()
 	, select_started(false), multi_select(false), btn_left(false), start_x(0), start_y(0) {}
 
 static constexpr bool point_in_rect(float x, float y, const SDL_Rect &rect)

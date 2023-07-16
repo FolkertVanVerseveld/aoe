@@ -12,6 +12,8 @@
 
 #include "external/imgui_memory_editor.h"
 
+#include "game.hpp"
+
 #include <SDL2/SDL_rect.h>
 
 #include <cstdint>
@@ -220,6 +222,7 @@ class UICache final {
 	ImGui::FileBrowser fd2; // for saving scn or cpx
 	io::Scenario scn;
 	ScenarioEditor scn_edit;
+	Game scn_game;
 	MemoryEditor mem;
 	SDL_Rect gmb_top, gmb_bottom; // game menu bars
 	bool select_started, multi_select, btn_left;
@@ -231,6 +234,7 @@ public:
 
 	void idle(Engine &e);
 	void idle_game();
+	void idle_editor(Engine &e);
 	void show_multiplayer_game();
 
 	void user_interact_entities();
@@ -246,6 +250,8 @@ public:
 	void str2(const ImVec2 &pos, const char *text, bool invert=false);
 
 	const gfx::ImageRef &imgtile(uint8_t v);
+
+	void set_scn(const io::Scenario&);
 private:
 	void show_terrain();
 	/** Show user selected entities. */

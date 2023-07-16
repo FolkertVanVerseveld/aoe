@@ -125,7 +125,7 @@ class NetTerrainMod final {
 public:
 	uint16_t x, y, w, h;
 	std::vector<uint8_t> tiles;
-	std::vector<int8_t> hmap;
+	std::vector<uint8_t> hmap;
 
 	static constexpr size_t possize = 4 * sizeof(uint16_t);
 
