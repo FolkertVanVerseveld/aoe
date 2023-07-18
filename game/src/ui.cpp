@@ -628,7 +628,7 @@ void UICache::load() {
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_grass));
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_water));
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_deepwater));
-	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_grass_desert));
+	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_desert_overlay));
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_water_desert));
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_water_overlay));
 }

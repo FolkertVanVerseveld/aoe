@@ -31,10 +31,10 @@ static std::array<TileType, 4> fhvn(const std::vector<uint8_t> &tiles, size_t w,
 	  3            (0, -1)
 	*/
 
-	if (y > 0)     n[3] = (TileType)tiles.at((y - 1) * w + x);
-	if (x > 0)     n[1] = (TileType)tiles.at(y * w + x - 1);
-	if (x < w - 1) n[2] = (TileType)tiles.at(y * w + x + 1);
-	if (y < h - 1) n[0] = (TileType)tiles.at((y + 1) * w + x);
+	if (y > 0)     n[3] = Terrain::tile_type(tiles.at((y - 1) * w + x));
+	if (x > 0)     n[1] = Terrain::tile_type(tiles.at(y * w + x - 1));
+	if (x < w - 1) n[2] = Terrain::tile_type(tiles.at(y * w + x + 1));
+	if (y < h - 1) n[0] = Terrain::tile_type(tiles.at((y + 1) * w + x));
 
 	return n;
 }
@@ -51,12 +51,12 @@ static std::array<TileType, 4> fdn(const std::vector<uint8_t> &tiles, size_t w, 
 	*/
 
 	if (y > 0) {
-		if (x > 0)     n[2] = (TileType)tiles.at((y - 1) * w + x - 1);
-		if (x < w - 1) n[3] = (TileType)tiles.at((y - 1) * w + x + 1);
+		if (x > 0)     n[2] = Terrain::tile_type(tiles.at((y - 1) * w + x - 1));
+		if (x < w - 1) n[3] = Terrain::tile_type(tiles.at((y - 1) * w + x + 1));
 	}
 	if (y < h - 1) {
-		if (x > 0)     n[0] = (TileType)tiles.at((y + 1) * w + x - 1);
-		if (x < w - 1) n[1] = (TileType)tiles.at((y + 1) * w + x + 1);
+		if (x > 0)     n[0] = Terrain::tile_type(tiles.at((y + 1) * w + x - 1));
+		if (x < w - 1) n[1] = Terrain::tile_type(tiles.at((y + 1) * w + x + 1));
 	}
 
 	return n;
@@ -376,6 +376,24 @@ void Scenario::load(const char *path) {
 
 				if (bits)
 					type = TileType::deepwater_water;
+
+				// update
+				tile_types[idx] = Terrain::tile_id(type, bits);
+			} else if (type == TileType::grass) {
+				auto nn = fhvn(tile_types, w, h, x, y, TileType::grass);
+				unsigned bits = 0;
+
+				if (nn[1] == TileType::desert || nn[1] == TileType::water_desert)
+					bits |= 1 << 0;
+				if (nn[0] == TileType::desert || nn[0] == TileType::water_desert)
+					bits |= 1 << 1;
+				if (nn[3] == TileType::desert || nn[3] == TileType::water_desert)
+					bits |= 1 << 2;
+				if (nn[2] == TileType::desert || nn[2] == TileType::water_desert)
+					bits |= 1 << 3;
+
+				if (bits)
+					type = TileType::grass_desert;
 
 				// update
 				tile_types[idx] = Terrain::tile_id(type, bits);

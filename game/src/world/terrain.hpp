@@ -56,13 +56,16 @@ public:
 	}
 
 	static constexpr bool tile_hasoverlay(uint8_t v) noexcept {
-		return tile_type(v) == TileType::deepwater_water;
+		TileType t = tile_type(v);
+		return t == TileType::deepwater_water || t == TileType::grass_desert;
 	}
 
 	static constexpr TileType tile_base(uint8_t v) noexcept {
 		TileType type = tile_type(v);
 		if (type == TileType::deepwater_water)
 			return TileType::deepwater;
+		else if (type == TileType::grass_desert)
+			return TileType::grass;
 
 		return type;
 	}
