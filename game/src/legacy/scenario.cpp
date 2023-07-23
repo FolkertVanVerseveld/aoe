@@ -57,6 +57,28 @@ static std::array<TileType, 4> fhvn(const std::vector<uint16_t> &tiles, size_t w
 	return n;
 }
 
+static std::array<unsigned, 4> hdn(const std::vector<uint8_t> &hmap, size_t w, size_t h, size_t x, size_t y, unsigned hdef) {
+	std::array<unsigned, 4> n;
+	n.fill(hdef);
+
+	/*
+	0   1  (-1,  1)  (1,  1)
+	  X
+	2   3  (-1, -1)  (1, -1)
+	*/
+
+	if (y > 0) {
+		if (x > 0)     n[2] = hmap.at((y - 1) * w + x - 1);
+		if (x < w - 1) n[3] = hmap.at((y - 1) * w + x + 1);
+	}
+	if (y < h - 1) {
+		if (x > 0)     n[0] = hmap.at((y + 1) * w + x - 1);
+		if (x < w - 1) n[1] = hmap.at((y + 1) * w + x + 1);
+	}
+
+	return n;
+}
+
 /** Find diagonal neighbors */
 static std::array<TileType, 4> fdn(const std::vector<uint16_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f) {
 	std::array<TileType, 4> n;
@@ -423,7 +445,7 @@ void Scenario::load(const char *path) {
 		}
 	}
 
-	// TODO third pass for heightmap data
+	// third pass for heightmap data
 	for (size_t y = 0; y < h; ++y) {
 		for (size_t x = 0; x < w; ++x) {
 			size_t idx = y * w + x;
@@ -442,6 +464,20 @@ void Scenario::load(const char *path) {
 				img = 14;
 			} else if (hh[3] > th) {
 				img = 13;
+			}
+
+			if (!img) {
+				hh = hdn(tile_height, w, h, x, y, th);
+
+				if (hh[0] > th) {
+					img = 10;
+				} else if (hh[1] > th) {
+					img = 12;
+				} else if (hh[2] > th) {
+					img = 11;
+				} else if (hh[3] > th) {
+					img = 9;
+				}
 			}
 
 			tile_types[idx] |= Terrain::tile_id((TileType)0, img);
