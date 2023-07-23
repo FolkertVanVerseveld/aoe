@@ -6,6 +6,8 @@
 
 #include <stdexcept>
 
+#include "../world/entity.hpp"
+
 namespace aoe {
 
 namespace io {
@@ -40,6 +42,7 @@ public:
 	uint32_t w, h;
 	std::vector<uint16_t> tile_types;
 	std::vector<uint8_t> tile_height, tile_meta;
+	IdPool<Entity> entities;
 
 	void load(const char *path);
 private:

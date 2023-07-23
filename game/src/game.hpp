@@ -133,6 +133,8 @@ public:
 	bool entity_kill(IdPoolRef);
 	void entity_update(const EntityView &ev);
 
+	void entities_set(std::set<Entity> &&ent);
+
 	void particle_spawn(const Particle &p);
 
 	void gameover(unsigned team) noexcept;

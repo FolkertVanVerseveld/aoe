@@ -251,7 +251,7 @@ public:
 
 	const gfx::ImageRef &imgtile(uint8_t v);
 
-	void set_scn(const io::Scenario&);
+	void set_scn(io::Scenario&);
 private:
 	void draw_tile(uint8_t id, uint8_t h, int x, int y, const ImVec2 &size, ImU32 col);
 	void show_terrain();

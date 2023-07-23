@@ -99,6 +99,11 @@ void Game::terrain_set(const std::vector<uint16_t> &tiles, const std::vector<uin
 	modflags |= (unsigned)GameMod::terrain;
 }
 
+void Game::entities_set(std::set<Entity> &&ent) {
+	lock lk(m);
+	entities = ent;
+}
+
 void Game::set_players(const std::vector<PlayerSetting> &lst) {
 	std::lock_guard<std::mutex> lk(m);
 

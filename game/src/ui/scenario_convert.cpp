@@ -6,7 +6,7 @@ namespace aoe {
 
 namespace ui {
 
-void UICache::set_scn(const io::Scenario &scn) {
+void UICache::set_scn(io::Scenario &scn) {
 	ScenarioSettings settings;
 
 	settings.players.resize(scn.players);
@@ -18,6 +18,9 @@ void UICache::set_scn(const io::Scenario &scn) {
 
 	scn_game.resize(settings);
 	scn_game.terrain_set(scn.tile_types, scn.tile_height, 0, 0, scn.w, scn.h);
+
+	for (const auto kv : scn.entities)
+		scn_game.entity_add(kv.second);
 }
 
 }

@@ -317,6 +317,7 @@ void Scenario::load(const char *path) {
 	tile_types.clear();
 	tile_height.clear();
 	tile_meta.clear();
+	entities.clear();
 
 	tile_types.resize(count);
 	tile_height.resize(count);
@@ -333,10 +334,19 @@ void Scenario::load(const char *path) {
 			case 0x02: type = (unsigned)TileType::water_desert; break; // grass water edge
 			case 0x00: type = (unsigned)TileType::grass; break;
 			case 0x06: type = (unsigned)TileType::desert; break;
-			case 0x0d: type = (unsigned)TileType::desert; break; // desert palm trees on desert
-			case 0x0a: type = (unsigned)TileType::grass; break; // grass trees
+			case 0x0d:
+				type = (unsigned)TileType::desert;
+				entities.emplace(EntityType::desert_tree1, (float)x, (float)y, 0);
+				break; // desert palm trees on desert
+			case 0x0a:
+				type = (unsigned)TileType::grass;
+				entities.emplace(EntityType::desert_tree1, (float)x, (float)y, 0); // TODO add grass tree
+				break; // grass trees
 			case 0x04: type = (unsigned)TileType::water; break; // shallows
-			case 0x14: type = (unsigned)TileType::grass; break; // desert palm tree on grass
+			case 0x14:
+				type = (unsigned)TileType::grass;
+				entities.emplace(EntityType::desert_tree1, (float)x, (float)y, 0);
+				break; // desert palm tree on grass
 			default: type = (unsigned)TileType::deepwater; break; // unknown
 			}
 
