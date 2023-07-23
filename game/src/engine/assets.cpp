@@ -32,7 +32,7 @@ void Background::load(DRS &drs, DrsId id) {
 	this->drs = DrsBkg(drs.open_bkg(id));
 	pal = drs.open_pal((DrsId)this->drs.pal_id);
 	auto slp = drs.open_slp((DrsId)this->drs.bkg_id[2]);
-	img.load(pal.get(), slp, 0, 0);
+	img.load(pal.get(), slp, 0, 0, id);
 
 	for (unsigned i = 0; i < 6; ++i)
 		cols.border[i] = pal->colors[this->drs.bevel_col[i]];
@@ -65,7 +65,7 @@ void Animation::load(io::DRS &drs, const SDL_Palette *pal, io::DrsId id) {
 	dynamic = false;
 
 	for (unsigned i = 0; i < image_count; ++i) {
-		if (images[i].load(pal, slp, i)) {
+		if (images[i].load(pal, slp, i, 0, id)) {
 			dynamic = true;
 			break;
 		}
@@ -79,7 +79,7 @@ void Animation::load(io::DRS &drs, const SDL_Palette *pal, io::DrsId id) {
 
 	for (unsigned p = 0; p < MAX_PLAYERS; ++p)
 		for (unsigned i = 0; i < image_count; ++i)
-			images[p * image_count + i].load(pal, slp, i, p);
+			images[p * image_count + i].load(pal, slp, i, p, id);
 }
 
 Image &Animation::subimage(unsigned index, unsigned player) {
@@ -141,10 +141,10 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		gif_menu_btn_medium0.load(drs_ui, pal.get(), DrsId::gif_menu_btn_medium0);
 		gif_menubar0.load(drs_ui, pal.get(), DrsId::gif_menubar0);
 		auto slp = drs_ui.open_slp(DrsId::img_dialog0);
-		img_dialog0.load(pal.get(), slp, 0, 0);
+		img_dialog0.load(pal.get(), slp, 0, 0, DrsId::img_dialog0);
 		gif_cursors.load(drs_ui, pal.get(), DrsId::gif_cursors);
 		slp = drs_ui.open_slp(DrsId::img_editor);
-		img_dialog_editor.load(pal.get(), slp, 0, 0);
+		img_dialog_editor.load(pal.get(), slp, 0, 0, DrsId::img_editor);
 
 #define load_gif(id) id.load(drs_ui, pal.get(), DrsId:: ##id)
 		load_gif(gif_building_icons);
@@ -252,20 +252,20 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_explode1);
 		load_gif(gif_explode2);
 
-#define load_ent(id) img_##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_##id), 0)
+#define load_ent(id) img_##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_##id), 0, 0, DrsId::ent_##id)
 		load_ent(berries);
 #undef load_ent
 
 		load_gif(gif_gold);
 		load_gif(gif_stone);
 
-		img_desert_tree1.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree1), 0);
-		img_desert_tree2.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree2), 0);
-		img_desert_tree3.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree3), 0);
-		img_desert_tree4.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree4), 0);
-		img_bld_debris.load(pal.get(), drs_graphics.open_slp(DrsId::bld_debris), 0);
+		img_desert_tree1.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree1), 0, 0, DrsId::ent_desert_tree1);
+		img_desert_tree2.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree2), 0, 0, DrsId::ent_desert_tree2);
+		img_desert_tree3.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree3), 0, 0, DrsId::ent_desert_tree3);
+		img_desert_tree4.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree4), 0, 0, DrsId::ent_desert_tree4);
+		img_bld_debris.load(pal.get(), drs_graphics.open_slp(DrsId::bld_debris), 0, 0, DrsId::bld_debris);
 #undef load_gif
-#define load_img(id) img_ ##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_ ##id), 0)
+#define load_img(id) img_ ##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_ ##id), 0, 0, DrsId::ent_##id)
 		load_img(dead_tree1);
 		load_img(dead_tree2);
 		load_img(decay_tree);

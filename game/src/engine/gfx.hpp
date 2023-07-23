@@ -28,7 +28,7 @@ public:
 	Image(const Image&) = delete;
 	Image(Image&&) = default;
 
-	bool load(const SDL_Palette *pal, const io::Slp &slp, unsigned index, unsigned player=0);
+	bool load(const SDL_Palette *pal, const io::Slp &slp, unsigned index, unsigned player, io::DrsId id);
 };
 
 class ImageRef final {

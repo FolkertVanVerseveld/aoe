@@ -26,7 +26,7 @@ static unsigned cmd_or_next(const std::vector<uint8_t> &data, uint32_t &cmdpos, 
 	return v ? v : data.at(++cmdpos);
 }
 
-bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigned player) {
+bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigned player, io::DrsId id) {
 	ZoneScoped;
 	const SlpFrame &frame = slp.frames.at(index);
 
@@ -190,6 +190,16 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 
 	if (SDL_SetColorKey(surface.get(), SDL_TRUE, 0))
 		fprintf(stderr, "Could not set transparency: %s\n", SDL_GetError());
+
+	// TODO patch weird images
+	switch (id) {
+	case io::DrsId::trn_desert:
+	case io::DrsId::trn_grass:
+		if (index == 14 || index == 16) {
+			hotspot_y += 16;
+		}
+		break;
+	}
 
 	return dynamic;
 }
