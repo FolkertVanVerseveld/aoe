@@ -333,9 +333,10 @@ void Scenario::load(const char *path) {
 			case 0x02: type = (unsigned)TileType::water_desert; break; // grass water edge
 			case 0x00: type = (unsigned)TileType::grass; break;
 			case 0x06: type = (unsigned)TileType::desert; break;
-			case 0x0d: type = (unsigned)TileType::desert; break; // desert palm trees
+			case 0x0d: type = (unsigned)TileType::desert; break; // desert palm trees on desert
 			case 0x0a: type = (unsigned)TileType::grass; break; // grass trees
 			case 0x04: type = (unsigned)TileType::water; break; // shallows
+			case 0x14: type = (unsigned)TileType::grass; break; // desert palm tree on grass
 			default: type = (unsigned)TileType::deepwater; break; // unknown
 			}
 
@@ -451,17 +452,34 @@ void Scenario::load(const char *path) {
 			size_t idx = y * w + x;
 
 			TileType type = (TileType)tile_types[idx];
+			if (type == TileType::water || type == TileType::deepwater)
+				continue;
+
 			auto th = tile_height[idx];
 
 			unsigned img = 0;
 			auto hh = hhvn(tile_height, w, h, x, y, th);
 
 			if (hh[0] > th) {
-				img = 16;
+				if (hh[1] > th) {
+					img = 22;
+				} else if (hh[2] > th) {
+					img = 23;
+				} else {
+					img = 16;
+				}
 			} else if (hh[2] > th) {
-				img = 15;
+				if (hh[3] > th) {
+					img = 21;
+				} else {
+					img = 15;
+				}
 			} else if (hh[1] > th) {
-				img = 14;
+				if (hh[3] > th) {
+					img = 24;
+				} else {
+					img = 14;
+				}
 			} else if (hh[3] > th) {
 				img = 13;
 			}

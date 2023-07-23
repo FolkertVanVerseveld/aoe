@@ -195,7 +195,7 @@ bool Image::load(const SDL_Palette *pal, const Slp &slp, unsigned index, unsigne
 	switch (id) {
 	case io::DrsId::trn_desert:
 	case io::DrsId::trn_grass:
-		if (index == 10 || index == 14 || index == 16) {
+		if (index == 10 || index == 14 || index == 16 || index >= 22) {
 			hotspot_y += 16;
 		}
 		break;
