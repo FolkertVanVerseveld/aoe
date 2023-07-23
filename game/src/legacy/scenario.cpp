@@ -21,7 +21,7 @@ namespace aoe {
 namespace io {
 
 /** Find horizontal and vertical neighbors */
-static std::array<TileType, 4> fhvn(const std::vector<uint8_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f) {
+static std::array<TileType, 4> fhvn(const std::vector<uint16_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f) {
 	std::array<TileType, 4> n;
 	n.fill(f);
 
@@ -40,7 +40,7 @@ static std::array<TileType, 4> fhvn(const std::vector<uint8_t> &tiles, size_t w,
 }
 
 /** Find diagonal neighbors */
-static std::array<TileType, 4> fdn(const std::vector<uint8_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f) {
+static std::array<TileType, 4> fdn(const std::vector<uint16_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f) {
 	std::array<TileType, 4> n;
 	n.fill(f);
 
@@ -374,8 +374,10 @@ void Scenario::load(const char *path) {
 				if (nn[2] == TileType::water)
 					bits |= 1 << 3;
 
-				if (bits)
+				if (bits) {
 					type = TileType::deepwater_water;
+					bits <<= 16 - 4 - 3;
+				}
 
 				// update
 				tile_types[idx] = Terrain::tile_id(type, bits);
@@ -392,8 +394,10 @@ void Scenario::load(const char *path) {
 				if (nn[2] == TileType::desert || nn[2] == TileType::water_desert)
 					bits |= 1 << 3;
 
-				if (bits)
+				if (bits) {
 					type = TileType::grass_desert;
+					bits <<= 16 - 4 - 3;
+				}
 
 				// update
 				tile_types[idx] = Terrain::tile_id(type, bits);

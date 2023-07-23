@@ -19,8 +19,8 @@ void NetPkg::set_terrain_mod(const NetTerrainMod &tm) {
 	unsigned pos = write("4H", pkgargs{ tm.x, tm.y, tm.w, tm.h }, false);
 
 	// TODO implement write(int ch, vector)
-	for (uint8_t v : tm.tiles)
-		pos += write("B", pkgargs{ v });
+	for (uint16_t v : tm.tiles)
+		pos += write("H", pkgargs{ v });
 
 	for (uint8_t h : tm.hmap)
 		pos += write("B", pkgargs{ h });
@@ -41,8 +41,8 @@ NetTerrainMod NetPkg::get_terrain_mod() {
 
 	for (size_t i = 0; i < size; ++i) {
 		args.clear();
-		pos += read("B", args, pos);
-		tm.tiles.emplace_back(u8(0));
+		pos += read("H", args, pos);
+		tm.tiles.emplace_back(u16(0));
 	}
 
 	for (size_t i = 0; i < size; ++i) {

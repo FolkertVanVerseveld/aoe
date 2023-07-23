@@ -38,7 +38,8 @@ public:
 	std::vector<ScenarioPlayer> player_data;
 
 	uint32_t w, h;
-	std::vector<uint8_t> tile_types, tile_height, tile_meta;
+	std::vector<uint16_t> tile_types;
+	std::vector<uint8_t> tile_height, tile_meta;
 
 	void load(const char *path);
 private:

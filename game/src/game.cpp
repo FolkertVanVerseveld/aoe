@@ -92,7 +92,7 @@ void Game::imgtick(unsigned n) {
 		modflags |= (unsigned)GameMod::particles;
 }
 
-void Game::terrain_set(const std::vector<uint8_t> &tiles, const std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h) {
+void Game::terrain_set(const std::vector<uint16_t> &tiles, const std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h) {
 	std::lock_guard<std::mutex> lk(m);
 
 	t.set(tiles, hmap, x, y, w, h);

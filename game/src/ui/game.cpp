@@ -39,7 +39,7 @@ void UICache::show_terrain() {
 		for (int x = 0; x < gv.t.w; ++x) {
 			ImU32 col = IM_COL32_WHITE;
 
-			uint8_t id = gv.t.tile_at(x, y);
+			uint16_t id = gv.t.tile_at(x, y);
 			uint8_t h = gv.t.h_at(x, y);
 			if (!id) {
 				// draw black tile
@@ -48,9 +48,11 @@ void UICache::show_terrain() {
 
 			if (Terrain::tile_hasoverlay(id)) {
 				TileType base = Terrain::tile_base(id);
-				unsigned bits = Terrain::tile_img(id);
+				unsigned meta = Terrain::tile_img(id);
+				unsigned bits = meta >> (12 - 3);
+				unsigned img = meta & ~0x1e00;
 
-				unsigned base_id = Terrain::tile_id(base, 0);
+				unsigned base_id = Terrain::tile_id(base, img);
 				draw_tile(base_id, h, x, y, io.DisplaySize, col);
 
 				TileType t = Terrain::tile_type(id);

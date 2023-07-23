@@ -28,9 +28,10 @@ enum class TerrainType {
 };
 
 // TODO introduce terrain block/chunk
+typedef uint16_t tile_t;
 
 class Terrain final {
-	std::vector<uint8_t> tiles;
+	std::vector<tile_t> tiles;
 	std::vector<uint8_t> hmap;
 	std::vector<bool> obstructed; // tiles occupied by buildings
 public:
@@ -43,24 +44,24 @@ public:
 
 	void generate();
 
-	static constexpr uint8_t tile_id(TileType type, unsigned subimage) noexcept {
+	static constexpr tile_t tile_id(TileType type, unsigned subimage) noexcept {
 		return ((unsigned)type & 0x7) | (subimage << 3);
 	}
 
-	static constexpr TileType tile_type(uint8_t id) noexcept {
+	static constexpr TileType tile_type(tile_t id) noexcept {
 		return (TileType)(id & 0x7);
 	}
 
-	static constexpr unsigned tile_img(uint8_t id) noexcept {
+	static constexpr unsigned tile_img(tile_t id) noexcept {
 		return id >> 3;
 	}
 
-	static constexpr bool tile_hasoverlay(uint8_t v) noexcept {
+	static constexpr bool tile_hasoverlay(tile_t v) noexcept {
 		TileType t = tile_type(v);
 		return t == TileType::deepwater_water || t == TileType::grass_desert;
 	}
 
-	static constexpr TileType tile_base(uint8_t v) noexcept {
+	static constexpr TileType tile_base(tile_t v) noexcept {
 		TileType type = tile_type(v);
 		if (type == TileType::deepwater_water)
 			return TileType::deepwater;
@@ -70,14 +71,14 @@ public:
 		return type;
 	}
 
-	uint8_t tile_at(unsigned x, unsigned y);
+	tile_t tile_at(unsigned x, unsigned y);
 	uint8_t h_at(unsigned x, unsigned y);
 
 	void add_building(EntityType t, unsigned x, unsigned y);
 
-	void fetch(std::vector<uint8_t> &tiles, std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned &w, unsigned &h);
+	void fetch(std::vector<tile_t> &tiles, std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned &w, unsigned &h);
 
-	void set(const std::vector<uint8_t> &tiles, const std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
+	void set(const std::vector<tile_t> &tiles, const std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
 };
 
 }
