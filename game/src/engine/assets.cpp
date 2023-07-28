@@ -184,7 +184,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_worker_berries_attack;
 	Animation gif_melee1_stand, gif_melee1_move, gif_melee1_attack, gif_melee1_die, gif_melee1_decay;
 	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
-	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4, img_dead_tree1, img_dead_tree2, img_decay_tree;
+	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4;
+	Image img_grass_tree1, img_grass_tree2, img_grass_tree3, img_grass_tree4, img_dead_tree1, img_dead_tree2, img_decay_tree;
 	Animation gif_gold, gif_stone;
 	Image img_bld_debris;
 
@@ -259,10 +260,18 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_gold);
 		load_gif(gif_stone);
 
-		img_desert_tree1.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree1), 0, 0, DrsId::ent_desert_tree1);
-		img_desert_tree2.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree2), 0, 0, DrsId::ent_desert_tree2);
-		img_desert_tree3.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree3), 0, 0, DrsId::ent_desert_tree3);
-		img_desert_tree4.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree4), 0, 0, DrsId::ent_desert_tree4);
+#define load_img(id) img_ ##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_ ##id), 0, 0, DrsId::ent_ ##id)
+
+		load_img(desert_tree1);
+		load_img(desert_tree2);
+		load_img(desert_tree3);
+		load_img(desert_tree4);
+
+		load_img(grass_tree1);
+		load_img(grass_tree2);
+		load_img(grass_tree3);
+		load_img(grass_tree4);
+
 		img_bld_debris.load(pal.get(), drs_graphics.open_slp(DrsId::bld_debris), 0, 0, DrsId::bld_debris);
 #undef load_gif
 #define load_img(id) img_ ##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_ ##id), 0, 0, DrsId::ent_##id)
@@ -360,6 +369,11 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		img(desert_tree2);
 		img(desert_tree3);
 		img(desert_tree4);
+		img(grass_tree1);
+		img(grass_tree2);
+		img(grass_tree3);
+		img(grass_tree4);
+
 		img(dead_tree1);
 		img(dead_tree2);
 		img(decay_tree);

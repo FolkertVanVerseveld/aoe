@@ -22,6 +22,11 @@ Game::Game()
 
 void Game::resize(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m);
+	// nuke entities
+	entities.clear();
+	entities_spawned.clear();
+	entities_killed.clear();
+
 	t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
 	modflags |= (unsigned)GameMod::terrain;
 }

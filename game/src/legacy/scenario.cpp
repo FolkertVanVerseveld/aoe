@@ -336,16 +336,16 @@ void Scenario::load(const char *path) {
 			case 0x06: type = (unsigned)TileType::desert; break;
 			case 0x0d:
 				type = (unsigned)TileType::desert;
-				entities.emplace(EntityType::desert_tree1, (float)x, (float)y, 0);
+				entities.emplace(desert_tree(x + 2 * y), (float)x, (float)y, 0);
 				break; // desert palm trees on desert
 			case 0x0a:
 				type = (unsigned)TileType::grass;
-				entities.emplace(EntityType::desert_tree1, (float)x, (float)y, 0); // TODO add grass tree
+				entities.emplace(grass_tree(x + 2 * y), (float)x, (float)y, 0);
 				break; // grass trees
 			case 0x04: type = (unsigned)TileType::water; break; // shallows
 			case 0x14:
 				type = (unsigned)TileType::grass;
-				entities.emplace(EntityType::desert_tree1, (float)x, (float)y, 0);
+				entities.emplace(desert_tree(x + 2 * y), (float)x, (float)y, 0);
 				break; // desert palm tree on grass
 			default: type = (unsigned)TileType::deepwater; break; // unknown
 			}

@@ -723,6 +723,8 @@ void Engine::start_multiplayer_game() {
 	show_diplomacy = false;
 	multiplayer_ready = false;
 	keyctl.clear();
+
+	cam_reset();
 }
 
 void Engine::add_chat_text(const std::string &s) {

@@ -142,6 +142,18 @@ void UICache::load_entities() {
 				case EntityType::desert_tree4:
 					img = io::DrsId::ent_desert_tree4;
 					break;
+				case EntityType::grass_tree1:
+					img = io::DrsId::ent_grass_tree1;
+					break;
+				case EntityType::grass_tree2:
+					img = io::DrsId::ent_grass_tree2;
+					break;
+				case EntityType::grass_tree3:
+					img = io::DrsId::ent_grass_tree3;
+					break;
+				case EntityType::grass_tree4:
+					img = io::DrsId::ent_grass_tree4;
+					break;
 				case EntityType::dead_tree1:
 					img = ent.state == EntityState::decaying ? io::DrsId::ent_decay_tree : io::DrsId::ent_dead_tree1;
 					break;

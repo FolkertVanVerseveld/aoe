@@ -26,9 +26,21 @@ enum class EntityType {
 	desert_tree2,
 	desert_tree3,
 	desert_tree4,
+	grass_tree1,
+	grass_tree2,
+	grass_tree3,
+	grass_tree4,
 	dead_tree1,
 	dead_tree2,
 };
+
+static inline EntityType desert_tree(unsigned pos) {
+	return (EntityType)((unsigned)EntityType::desert_tree1 + pos % 4);
+}
+
+static inline EntityType grass_tree(unsigned pos) {
+	return (EntityType)((unsigned)EntityType::grass_tree1 + pos % 4);
+}
 
 static bool constexpr is_building(EntityType t) {
 	return t >= EntityType::town_center && t <= EntityType::barracks;

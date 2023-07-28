@@ -45,6 +45,10 @@ const std::vector<EntityInfo> entity_info {
 	{EntityType::desert_tree2, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
 	{EntityType::desert_tree3, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
 	{EntityType::desert_tree4, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
+	{EntityType::grass_tree1, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest"},
+	{EntityType::grass_tree2, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest"},
+	{EntityType::grass_tree3, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest"},
+	{EntityType::grass_tree4, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest"},
 	// hp for tree refers to amount of wood
 	{EntityType::dead_tree1, 5, 40, 0, 0, (unsigned)UnitIcon::wood, "Tree"},
 	{EntityType::dead_tree2, 5, 40, 0, 0, (unsigned)UnitIcon::wood, "Tree"},

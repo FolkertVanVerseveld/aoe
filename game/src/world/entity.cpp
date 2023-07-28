@@ -204,6 +204,14 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 					set_type(EntityType::dead_tree1, true);
 
 					return set_state(EntityState::alive);
+				case EntityType::grass_tree1:
+				case EntityType::grass_tree2:
+				case EntityType::grass_tree3:
+				case EntityType::grass_tree4:
+					aggressor.set_type(EntityType::worker_wood2);
+					set_type(EntityType::dead_tree1, true);
+
+					return set_state(EntityState::alive);
 				}
 			}
 

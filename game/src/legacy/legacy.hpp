@@ -228,6 +228,11 @@ enum class DrsId {
 	ent_desert_tree3 = 465,
 	ent_desert_tree4 = 466,
 
+	ent_grass_tree1 = 492,
+	ent_grass_tree2 = 493,
+	ent_grass_tree3 = 494,
+	ent_grass_tree4 = 495,
+
 	ent_dead_tree1 = 636,
 	ent_dead_tree2 = 637,
 	ent_decay_tree = 623,
