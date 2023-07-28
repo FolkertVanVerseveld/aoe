@@ -226,6 +226,7 @@ class UICache final {
 	MemoryEditor mem;
 	SDL_Rect gmb_top, gmb_bottom; // game menu bars
 	bool select_started, multi_select, btn_left;
+	int build_menu;
 	float start_x, start_y;
 public:
 	UICache();

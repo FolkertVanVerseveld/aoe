@@ -14,7 +14,7 @@ UICache::UICache()
 	, t_imgs()
 	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
 	, scn(), scn_edit(), scn_game(), mem(), gmb_top(), gmb_bottom()
-	, select_started(false), multi_select(false), btn_left(false), start_x(0), start_y(0) {}
+	, select_started(false), multi_select(false), btn_left(false), build_menu(-1), start_x(0), start_y(0) {}
 
 static constexpr bool point_in_rect(float x, float y, const SDL_Rect &rect)
 {
@@ -62,6 +62,8 @@ void UICache::mouse_left_process() {
 
 	if (!select_area && (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_top) || point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom)))
 		return;
+
+	build_menu = -1;
 
 	if (select_area) {
 		SDL_Rect area;

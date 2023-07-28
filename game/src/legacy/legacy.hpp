@@ -206,6 +206,7 @@ enum class DrsId {
 	gif_priest_decay = 402,
 
 	gif_building_icons = 50704,
+	gif_task_icons = 50721,
 	gif_unit_icons = 50730,
 	gif_moveto = 50405,
 	gif_explode1 = 409,

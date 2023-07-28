@@ -65,6 +65,7 @@ public:
 	WorldView(World &w) : w(w) {}
 
 	Entity *try_get(IdPoolRef);
+	Entity *try_get_alive(EntityType);
 	bool try_convert(Entity&, Entity &aggressor);
 	void collect(unsigned player, const Resources &res);
 };

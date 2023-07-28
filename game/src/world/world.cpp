@@ -13,6 +13,26 @@ Entity *WorldView::try_get(IdPoolRef r) {
 	return w.entities.try_get(r);
 }
 
+Entity *WorldView::try_get_alive(EntityType t) {
+	// special case for trees
+	if (t == EntityType::desert_tree1) {
+		for (auto it = w.entities.begin(); it != w.entities.end(); ++it) {
+			if (it->second.is_alive() && is_tree(it->second.type))
+				return &it->second;
+		}
+
+		return nullptr;
+	}
+
+	// find exact match
+	for (auto it = w.entities.begin(); it != w.entities.end(); ++it) {
+		if (it->second.is_alive() && it->second.type == t)
+			return &it->second;
+	}
+
+	return nullptr;
+}
+
 World::World()
 	: m(), m_events(), t(), entities(), dirty_entities(), spawned_entities()
 	, particles(), spawned_particles()
@@ -129,7 +149,7 @@ void World::tick_entities() {
 							spawn_particle(ParticleType::explode2, t->x, t->y);
 
 						died_entities.emplace(t->ref);
-						ent.task_cancel();
+						ent.target_died(wv);
 						dirty = true;
 					}
 
@@ -137,7 +157,7 @@ void World::tick_entities() {
 					if (!t->is_alive() && was_alive) {
 						if (is_resource(t->type)) {
 							killed_entities.emplace(t->ref);
-							ent.task_cancel();
+							ent.target_died(wv);
 							dirty = true;
 						} else if (t->playerid != 0) { // update score but ensure entity isn't owned by gaia
 							if (is_building(t->type))

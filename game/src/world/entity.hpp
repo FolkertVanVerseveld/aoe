@@ -114,6 +114,7 @@ public:
 	const EntityImgInfo &img_info() const;
 
 	bool imgtick(unsigned n) noexcept;
+	void target_died(WorldView&);
 private:
 	void reset_anim() noexcept;
 	bool set_state(EntityState) noexcept;

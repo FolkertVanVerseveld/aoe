@@ -89,6 +89,28 @@ bool Entity::move() noexcept {
 	return true;
 }
 
+void Entity::target_died(WorldView &wv) {
+	if (!is_worker(type)) {
+		task_cancel();
+		return;
+	}
+
+	EntityType tt = EntityType::desert_tree1;
+
+	switch (type) {
+	case EntityType::worker_gold: tt = EntityType::gold; break;
+	case EntityType::stone: tt = EntityType::stone; break;
+	case EntityType::worker_berries: tt = EntityType::berries; break;
+	}
+
+	Entity *next_target = wv.try_get_alive(tt);
+	if (next_target)
+		task_attack(*next_target);
+	else
+		task_cancel();
+
+}
+
 bool Entity::attack(WorldView &wv) noexcept {
 	Entity *t = wv.try_get(target_ref);
 	if (!t) {
@@ -190,7 +212,7 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 
 		if (stats.hp <= atk) {
 			if (is_resource(type)) {
-				if (aggressor.type != EntityType::worker_wood1) {
+				if (aggressor.type == EntityType::worker_wood2) {
 					set_type(EntityType::dead_tree1);
 					return die();
 				}

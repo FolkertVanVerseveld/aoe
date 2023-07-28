@@ -130,7 +130,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		drs_ids[DrsId::bkg_achievements] = p.add_img(0, 0, bkg_achievements);
 	}
 
-	Animation gif_menu_btn_small0, gif_menu_btn_medium0, gif_menubar0, gif_building_icons, gif_unit_icons, gif_hpbar;
+	Animation gif_menu_btn_small0, gif_menu_btn_medium0, gif_menubar0, gif_building_icons, gif_task_icons, gif_unit_icons, gif_hpbar;
 	Animation gif_moveto, gif_explode1, gif_explode2;
 	Image img_dialog0, img_dialog_editor;
 	auto pal = drs_ui.open_pal(DrsId::pal_default);
@@ -148,6 +148,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 #define load_gif(id) id.load(drs_ui, pal.get(), DrsId:: ##id)
 		load_gif(gif_building_icons);
+		load_gif(gif_task_icons);
 		load_gif(gif_unit_icons);
 		load_gif(gif_hpbar);
 		load_gif(gif_moveto);
@@ -293,6 +294,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		add_gifs(p, gif_menu_btn_medium0, DrsId::gif_menu_btn_medium0);
 		add_gifs(p, gif_menubar0, DrsId::gif_menubar0);
 		gif(gif_building_icons);
+		gif(gif_task_icons);
 		gif(gif_unit_icons);
 		gif(gif_hpbar);
 

@@ -54,6 +54,10 @@ static bool constexpr is_worker(EntityType t) {
 	return t >= EntityType::villager && t <= EntityType::worker_berries;
 }
 
+static bool constexpr is_tree(EntityType t) {
+	return t >= EntityType::desert_tree1 && t <= EntityType::grass_tree4;
+}
+
 // TODO add is_unit (when needed?)
 
 enum class EntityIconType {
