@@ -4,6 +4,7 @@
 
 #include <array>
 #include <chrono>
+#include <random>
 
 #include <tracy/Tracy.hpp>
 
@@ -761,6 +762,8 @@ void World::create_entities() {
 	ZoneScoped;
 
 	entities.clear();
+
+#if 0
 	for (unsigned i = 1; i < players.size(); ++i) {
 		add_building(EntityType::town_center, i, 3, 1 + 3 * i);
 		add_building(EntityType::barracks, i, 3 + 2 * 3, 1 + 3 * i);
@@ -770,7 +773,95 @@ void World::create_entities() {
 		//add_unit(EntityType::villager, i, 7, 1 + 3 * i);// , 0, EntityState::attack);
 		add_unit(EntityType::villager, i, 7, 2 + 3 * i);
 	}
+#else
+	/*
+	strategy:
+	  place ellipsoid on map in centre that is enclosed completely by the map's dimensions, then scale to make it smaller
+	  then place town centers along perimeter s.t. they are not too close to each other with random offset to make it look more organic
+	*/
 
+	double scale = 0.7;
+	double eps_x = t.w * 0.5, eps_y = t.h * 0.5;
+	long eps_hw = (long)(scale * t.w / 2), eps_hh = (long)(scale * t.h / 2);
+
+	std::uniform_real_distribution<double> unif(0.0, 2.0 * M_PI);
+	std::default_random_engine re;
+
+	scale = 0.1;
+	double angle_step = 2 * M_PI / this->players.size();
+	double angle_jitter = angle_step * scale;
+	double angle_offset = unif(re);
+
+	scale = 0.1; // NOTE: this + ellipsoid position scale must be less than 1
+	double x_jitter = scale * t.w, y_jitter = scale * t.h;
+
+	std::uniform_real_distribution<double> unif_ang(-angle_jitter * 0.5, angle_jitter * 0.5);
+	std::uniform_real_distribution<double> unif_jx(-x_jitter * 0.5, x_jitter * 0.5);
+	std::uniform_real_distribution<double> unif_jy(-y_jitter * 0.5, y_jitter * 0.5);
+
+	const double villager_radius = 4.0;
+
+	// create player stuff
+	for (unsigned pid = 1; pid < this->players.size(); ++pid) {
+		double angle = angle_offset + pid * angle_step + unif_ang(re);
+
+		int t_x = (int)(eps_x + eps_hw * cos(angle) + unif_jx(re));
+		int t_y = (int)(eps_y + eps_hh * sin(angle) + unif_jy(re));
+
+		add_building(EntityType::town_center, pid, t_x, t_y);
+
+		unsigned villagers = this->scn.villagers;
+		double angle_villagers = 2 * M_PI / villagers;
+		double angle_vilagers_offset = unif(re);
+
+		double r = villager_radius;
+
+		// place villagers around town center facing random directions
+		for (unsigned j = 0; j < villagers; ++j) {
+			angle = unif(re);
+
+			add_unit(
+				EntityType::villager, pid,
+				t_x + r * cos(angle), t_y + r * sin(angle),
+				unif(re)
+			);
+		}
+
+		// add some resources near the player
+		r = 8;
+		angle = unif(re);
+
+		int b_x = t_x + r * cos(angle), b_y = t_y + r * sin(angle);
+
+		add_berries(b_x - 1, b_y - 1);
+		add_berries(b_x + 0, b_y - 1);
+		add_berries(b_x + 1, b_y - 1);
+		add_berries(b_x - 1, b_y);
+		add_berries(b_x + 0, b_y);
+		add_berries(b_x + 1, b_y);
+
+		r = 12;
+		angle = unif(re);
+		int g_x = t_x = r * cos(angle), g_y = t_y + r * sin(angle);
+
+		add_gold(g_x + 0, g_y + 0);
+		add_gold(g_x + 1, g_y + 0);
+		add_gold(g_x + 0, g_y + 1);
+		add_gold(g_x + 1, g_y + 1);
+
+		angle = unif(re);
+		int s_x = t_x = r * cos(angle), s_y = t_y + r * sin(angle);
+
+		add_stone(s_x + 0, s_y + 0);
+		add_stone(s_x + 1, s_y + 0);
+		add_stone(s_x + 0, s_y + 1);
+		add_stone(s_x + 1, s_y + 1);
+
+		// TODO add more resources trees
+	}
+#endif
+
+	// TODO change this dummy stuff
 	add_unit(EntityType::priest, 0, 3.5, 1);
 	add_unit(EntityType::priest, 0, 4.5, 1);
 
@@ -782,15 +873,9 @@ void World::create_entities() {
 	};
 
 	for (unsigned y = 0; y < players.size() * 3; ++y) {
-		add_berries(14, y);
-		add_berries(15, y);
-
-		add_resource(trees[rand() % 4], 18, y, 0);
-		add_resource(trees[rand() % 4], 19, y, 0);
-		add_resource(trees[rand() % 4], 20, y, 0);
-
-		add_gold(22, y);
-		add_stone(23, y);
+		add_resource(trees[rand() % 4], 7, y, 0);
+		add_resource(trees[rand() % 4], 8, y, 0);
+		add_resource(trees[rand() % 4], 9, y, 0);
 	}
 }
 
