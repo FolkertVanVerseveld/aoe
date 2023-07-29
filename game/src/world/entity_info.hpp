@@ -55,7 +55,7 @@ static bool constexpr is_worker(EntityType t) {
 }
 
 static bool constexpr is_tree(EntityType t) {
-	return t >= EntityType::desert_tree1 && t <= EntityType::grass_tree4;
+	return t >= EntityType::desert_tree1 && t <= EntityType::dead_tree2;
 }
 
 // TODO add is_unit (when needed?)

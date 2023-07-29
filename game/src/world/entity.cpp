@@ -15,13 +15,13 @@ EntityView::EntityView() : ref(invalid_ref), type(EntityType::town_center), play
 
 EntityView::EntityView(const Entity &e) : ref(e.ref), type(e.type), playerid(e.playerid), x(e.x), y(e.y), angle(e.angle), subimage(e.subimage), state(e.state), xflip(e.xflip), stats(e.stats) {}
 
-Entity::Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), playerid(0), x(0), y(0), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
+Entity::Entity(IdPoolRef ref) : ref(ref), type(EntityType::town_center), playerid(0), x(0), y(0), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(EntityState::alive), xflip(false), autotask(false), stats(entity_info.at((unsigned)type)) {}
 
-Entity::Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle, EntityState state) : ref(ref), type(type), playerid(playerid), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state), xflip(false), stats(entity_info.at((unsigned)type)) {}
+Entity::Entity(IdPoolRef ref, EntityType type, unsigned playerid, float x, float y, float angle, EntityState state) : ref(ref), type(type), playerid(playerid), x(x), y(y), angle(angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(0), state(state), xflip(false), autotask(false), stats(entity_info.at((unsigned)type)) {}
 
-Entity::Entity(IdPoolRef ref, EntityType type, float x, float y, unsigned subimage) : ref(ref), type(type), playerid(0), x(x), y(y), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(subimage), state(EntityState::alive), xflip(false), stats(entity_info.at((unsigned)type)) {}
+Entity::Entity(IdPoolRef ref, EntityType type, float x, float y, unsigned subimage) : ref(ref), type(type), playerid(0), x(x), y(y), angle(0), target_ref(invalid_ref), target_x(0), target_y(0), subimage(subimage), state(EntityState::alive), xflip(false), autotask(false), stats(entity_info.at((unsigned)type)) {}
 
-Entity::Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), playerid(ev.playerid), x(ev.x), y(ev.y), angle(ev.angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(ev.subimage), state(ev.state), xflip(ev.xflip), stats(ev.stats) {}
+Entity::Entity(const EntityView &ev) : ref(ev.ref), type(ev.type), playerid(ev.playerid), x(ev.x), y(ev.y), angle(ev.angle), target_ref(invalid_ref), target_x(0), target_y(0), subimage(ev.subimage), state(ev.state), xflip(ev.xflip), autotask(false), stats(ev.stats) {}
 
 bool Entity::die() noexcept {
 	if (!is_alive())
@@ -87,28 +87,6 @@ bool Entity::move() noexcept {
 	y += speed * sin(angle);
 
 	return true;
-}
-
-void Entity::target_died(WorldView &wv) {
-	if (!is_worker(type)) {
-		task_cancel();
-		return;
-	}
-
-	EntityType tt = EntityType::desert_tree1;
-
-	switch (type) {
-	case EntityType::worker_gold: tt = EntityType::gold; break;
-	case EntityType::stone: tt = EntityType::stone; break;
-	case EntityType::worker_berries: tt = EntityType::berries; break;
-	}
-
-	Entity *next_target = wv.try_get_alive(tt);
-	if (next_target)
-		task_attack(*next_target);
-	else
-		task_cancel();
-
 }
 
 bool Entity::attack(WorldView &wv) noexcept {
@@ -253,7 +231,7 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 	return true;
 }
 
-bool Entity::task_cancel() noexcept {
+bool Entity::task_cancel(bool user) noexcept {
 	if (!is_alive())
 		return false;
 
@@ -261,6 +239,10 @@ bool Entity::task_cancel() noexcept {
 
 	if (b)
 		this->target_ref = invalid_ref;
+
+	// disable autotask if user initiated
+	if (user)
+		autotask = false;
 
 	return b;
 }
@@ -274,6 +256,7 @@ bool Entity::task_move(float x, float y) noexcept {
 	this->target_x = x;
 	this->target_y = y;
 	this->state = EntityState::moving;
+	autotask = false;
 
 	return true;
 }
@@ -297,6 +280,8 @@ bool Entity::task_attack(Entity &e) noexcept {
 	// villagers will change type when interacting with (non-)resources
 	if (is_worker(type)) {
 		EntityType newtype = EntityType::villager;
+
+		autotask = true;
 
 		if (is_resource(e.type)) {
 			switch (e.type) {

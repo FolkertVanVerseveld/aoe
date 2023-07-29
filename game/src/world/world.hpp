@@ -6,7 +6,6 @@
 
 namespace aoe {
 
-// TODO create world events and use them in world::event_queue
 enum class WorldEventType {
 	entity_add,
 	entity_spawn,

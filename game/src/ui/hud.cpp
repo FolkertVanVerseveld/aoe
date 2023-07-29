@@ -2,6 +2,7 @@
 
 #include "../engine.hpp"
 #include "../world/entity_info.hpp"
+#include "../legacy/legacy.hpp"
 
 #include <minmax.hpp>
 
@@ -215,11 +216,11 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 			const ImageSet &s_bld = a.anim_at(io::DrsId::gif_building_icons);
 			unsigned p = ent->playerid;
 
-			const gfx::ImageRef &bld_melee = a.at(s_bld.at(p, 3));
-			const gfx::ImageRef &bld_docks = a.at(s_bld.at(p, 6));
-			const gfx::ImageRef &bld_food = a.at(s_bld.at(p, 11));
-			const gfx::ImageRef &bld_house = a.at(s_bld.at(p, 15));
-			const gfx::ImageRef &bld_stock = a.at(s_bld.at(p, 28));
+			const gfx::ImageRef &bld_melee = a.at(s_bld.at(p, (unsigned)io::BldIcon::barracks1));
+			const gfx::ImageRef &bld_docks = a.at(s_bld.at(p, (unsigned)io::BldIcon::dock1));
+			const gfx::ImageRef &bld_food = a.at(s_bld.at(p, (unsigned)io::BldIcon::granary1));
+			const gfx::ImageRef &bld_house = a.at(s_bld.at(p, (unsigned)io::BldIcon::house1));
+			const gfx::ImageRef &bld_stock = a.at(s_bld.at(p, (unsigned)io::BldIcon::storage1));
 
 			std::array<gfx::ImageRef, 5> blds{ bld_house, bld_melee, bld_food, bld_stock, bld_docks };
 
@@ -227,7 +228,7 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 			float w = blds[0].bnds.w * scale, h = blds[0].bnds.h * scale;
 			float ww = w + margin + 4;
 
-			for (unsigned i = 0; i < 5; ++i) {
+			for (unsigned i = 0; i < blds.size(); ++i) {
 				char lbl[32];
 				snprintf(lbl, sizeof lbl, "build %u", i);
 

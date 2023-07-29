@@ -75,7 +75,7 @@ public:
 
 	float subimage;
 	EntityState state;
-	bool xflip;
+	bool xflip, autotask;
 
 	EntityStats stats;
 
@@ -98,11 +98,15 @@ public:
 
 	unsigned get_atk(const EntityStats &stats) noexcept;
 
+	constexpr bool is_attacking() const noexcept {
+		return state == EntityState::attack || state == EntityState::attack_follow;
+	}
+
 	constexpr bool is_alive() const noexcept {
 		return state != EntityState::dying && state != EntityState::decaying;
 	}
 
-	bool task_cancel() noexcept;
+	bool task_cancel(bool user=false) noexcept;
 
 	bool task_move(float x, float y) noexcept;
 	bool task_attack(Entity&) noexcept;
@@ -114,7 +118,6 @@ public:
 	const EntityImgInfo &img_info() const;
 
 	bool imgtick(unsigned n) noexcept;
-	void target_died(WorldView&);
 private:
 	void reset_anim() noexcept;
 	bool set_state(EntityState) noexcept;

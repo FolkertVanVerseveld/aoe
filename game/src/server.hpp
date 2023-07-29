@@ -64,6 +64,7 @@ class WorldView final {
 public:
 	WorldView(World &w) : w(w) {}
 
+	Entity &at(IdPoolRef);
 	Entity *try_get(IdPoolRef);
 	Entity *try_get_alive(EntityType);
 	bool try_convert(Entity&, Entity &aggressor);

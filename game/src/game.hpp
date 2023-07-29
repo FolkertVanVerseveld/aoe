@@ -66,7 +66,13 @@ private:
 public:
 	uint64_t explored_max;
 	std::set<IdPoolRef> entities;
-	bool alive;
+	bool alive, ai;
+	// TODO add std::optional<AI> ai;
+
+	// ai stuff
+	std::vector<IdPoolRef> ai_workers;
+
+	static constexpr unsigned gaia = 0;
 
 	Player(const PlayerSetting&, size_t explored_max);
 
@@ -77,6 +83,10 @@ public:
 	void killed_unit();
 	void killed_building();
 	void lost_entity(IdPoolRef);
+
+	void tick(WorldView&);
+private:
+	void tick_autotask(WorldView&);
 };
 
 class PlayerView final {

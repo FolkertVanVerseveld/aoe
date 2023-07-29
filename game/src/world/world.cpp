@@ -9,6 +9,10 @@
 
 namespace aoe {
 
+Entity &WorldView::at(IdPoolRef r) {
+	return w.entities.at(r);
+}
+
 Entity *WorldView::try_get(IdPoolRef r) {
 	return w.entities.try_get(r);
 }
@@ -127,6 +131,7 @@ void World::tick_entities() {
 				break;
 			case EntityState::attack: {
 				Entity *t = entities.try_get(ent.target_ref);
+
 				if (!t || !t->is_alive()) {
 					ent.task_cancel();
 					dirty = true;
@@ -149,7 +154,7 @@ void World::tick_entities() {
 							spawn_particle(ParticleType::explode2, t->x, t->y);
 
 						died_entities.emplace(t->ref);
-						ent.target_died(wv);
+						ent.task_cancel();
 						dirty = true;
 					}
 
@@ -157,9 +162,9 @@ void World::tick_entities() {
 					if (!t->is_alive() && was_alive) {
 						if (is_resource(t->type)) {
 							killed_entities.emplace(t->ref);
-							ent.target_died(wv);
+							ent.task_cancel();
 							dirty = true;
-						} else if (t->playerid != 0) { // update score but ensure entity isn't owned by gaia
+						} else if (t->playerid != Player::gaia) { // update score but ensure entity isn't owned by gaia
 							if (is_building(t->type))
 								players[ent.playerid].killed_building();
 							else
@@ -223,12 +228,15 @@ void World::tick_players() {
 		return; // no game over condition
 
 	std::set<unsigned> alive_teams;
+	WorldView wv(*this);
 
 	// collect surviving teams
 	for (unsigned i = 1; i < players.size(); ++i) {
 		Player &p = players[i];
-		if (p.alive)
+		if (p.alive) {
 			alive_teams.emplace(p.init.team);
+			p.tick(wv);
+		}
 	}
 
 	if (alive_teams.size() <= 1) {
@@ -654,6 +662,7 @@ void World::create_players() {
 				p.name = alias;
 			} else {
 				p.name = "Oerkneus de Eerste";
+				p.ai = true;
 
 				if (p.civ >= 0 && p.civ < s->civs.size()) {
 					auto &names = s->civs[s->civnames[p.civ]];
