@@ -66,7 +66,7 @@ public:
 
 	Entity &at(IdPoolRef);
 	Entity *try_get(IdPoolRef);
-	Entity *try_get_alive(EntityType);
+	Entity *try_get_alive(float x, float y, EntityType);
 	bool try_convert(Entity&, Entity &aggressor);
 	void collect(unsigned player, const Resources &res);
 };

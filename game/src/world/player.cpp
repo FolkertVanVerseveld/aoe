@@ -82,7 +82,7 @@ void Player::tick_autotask(WorldView &wv) {
 			case EntityType::worker_berries: tt = EntityType::berries; break;
 			}
 
-			Entity *next_target = wv.try_get_alive(tt);
+			Entity *next_target = wv.try_get_alive(e->x, e->y, tt);
 			if (next_target)
 				e->task_attack(*next_target);
 		}
@@ -149,7 +149,7 @@ void Player::tick(WorldView &wv) {
 				if (e.is_attacking())
 					continue;
 
-				Entity *target = wv.try_get_alive(EntityType::berries);
+				Entity *target = wv.try_get_alive(e.x, e.y, EntityType::berries);
 				if (target)
 					e.task_attack(*target);
 			}
@@ -166,7 +166,7 @@ void Player::tick(WorldView &wv) {
 				if (e.is_attacking())
 					continue;
 
-				Entity *target = wv.try_get_alive(EntityType::desert_tree1);
+				Entity *target = wv.try_get_alive(e.x, e.y, EntityType::desert_tree1);
 				if (target)
 					e.task_attack(*target);
 			}

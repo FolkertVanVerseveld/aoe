@@ -18,24 +18,44 @@ Entity *WorldView::try_get(IdPoolRef r) {
 	return w.entities.try_get(r);
 }
 
-Entity *WorldView::try_get_alive(EntityType t) {
+Entity *WorldView::try_get_alive(float x, float y, EntityType t) {
+	Entity *closest = nullptr;
+	double d = DBL_MAX;
+
 	// special case for trees
 	if (t == EntityType::desert_tree1) {
 		for (auto it = w.entities.begin(); it != w.entities.end(); ++it) {
-			if (it->second.is_alive() && is_tree(it->second.type))
-				return &it->second;
+			Entity &e = it->second;
+			if (e.is_alive() && is_tree(e.type)) {
+				double dx = e.x - x, dy = e.y - y;
+				double d2 = sqrt(dx * dx + dy * dy);
+
+				if (d2 < d) {
+					d = d2;
+					closest = &e;
+				}
+			}
 		}
 
-		return nullptr;
+		return closest;
 	}
 
 	// find exact match
 	for (auto it = w.entities.begin(); it != w.entities.end(); ++it) {
-		if (it->second.is_alive() && it->second.type == t)
-			return &it->second;
+		Entity &e = it->second;
+
+		if (e.is_alive() && e.type == t) {
+			double dx = e.x - x, dy = e.y - y;
+			double d2 = sqrt(dx * dx + dy * dy);
+
+			if (d2 < d) {
+				d = d2;
+				closest = &e;
+			}
+		}
 	}
 
-	return nullptr;
+	return closest;
 }
 
 World::World()
@@ -828,7 +848,7 @@ void World::create_entities() {
 		}
 
 		// add some resources near the player
-		r = 8;
+		r = 6;
 		angle = unif(re);
 
 		int b_x = t_x + r * cos(angle), b_y = t_y + r * sin(angle);
@@ -840,7 +860,7 @@ void World::create_entities() {
 		add_berries(b_x + 0, b_y);
 		add_berries(b_x + 1, b_y);
 
-		r = 12;
+		r = 7;
 		angle = unif(re);
 		int g_x = t_x = r * cos(angle), g_y = t_y + r * sin(angle);
 
