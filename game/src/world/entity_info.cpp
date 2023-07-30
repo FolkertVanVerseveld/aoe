@@ -25,33 +25,33 @@ const std::vector<EntityImgInfo> entity_img_info {
 };
 
 const std::vector<EntityInfo> entity_info {
-	{EntityType::town_center, 3, 600, 0, 0, (unsigned)BldIcon::towncenter1, "Town Center"},
-	{EntityType::barracks, 3, 350, 0, 0, (unsigned)BldIcon::barracks1, "Barracks"},
-	{EntityType::bird1, 5, 1, 0, 0, (unsigned)UnitIcon::villager, "Bird"},
-	{EntityType::villager, 5, 25, 3, 1, (unsigned)UnitIcon::villager, "Villager"},
-	{EntityType::worker_wood1, 5, 25, 3, 1, (unsigned)UnitIcon::villager, "Lumberjack"}, // attacking tree
-	{EntityType::worker_wood2, 5, 25, 1, 1, (unsigned)UnitIcon::villager, "Lumberjack"}, // gather wood
-	{EntityType::worker_gold, 5, 25, 1, 1, (unsigned)UnitIcon::villager, "Gold Miner"}, // gather gold
-	{EntityType::worker_stone, 5, 25, 1, 1, (unsigned)UnitIcon::villager, "Stone Miner"}, // gather stone
-	{EntityType::worker_stone, 5, 25, 1, 1, (unsigned)UnitIcon::villager, "Forager"}, // gather stone
-	{EntityType::melee1, 5, 40, 4, 1, (unsigned)UnitIcon::melee1, "Clubman"},
+	{EntityType::town_center, 3, 600, 0, 0, (unsigned)BldIcon::towncenter1, "Town Center", Resources(200, 0, 0, 0)},
+	{EntityType::barracks, 3, 350, 0, 0, (unsigned)BldIcon::barracks1, "Barracks", Resources(150, 0, 0, 0)},
+	{EntityType::bird1, 5, 1, 0, 0, (unsigned)UnitIcon::villager, "Bird", Resources(0, 0, 0, 0)},
+	{EntityType::villager, 5, 25, 3, 1, (unsigned)UnitIcon::villager, "Villager", Resources(0, 50, 0, 0)},
+	{EntityType::worker_wood1, 5, 25, 3, 1, (unsigned)UnitIcon::villager, "Lumberjack", Resources(0, 50, 0, 0)}, // attacking tree
+	{EntityType::worker_wood2, 5, 25, 1, 1, (unsigned)UnitIcon::villager, "Lumberjack", Resources(0, 50, 0, 0)}, // gather wood
+	{EntityType::worker_gold, 5, 25, 1, 1, (unsigned)UnitIcon::villager, "Gold Miner", Resources(0, 50, 0, 0)}, // gather gold
+	{EntityType::worker_stone, 5, 25, 1, 1, (unsigned)UnitIcon::villager, "Stone Miner", Resources(0, 50, 0, 0)}, // gather stone
+	{EntityType::worker_stone, 5, 25, 1, 1, (unsigned)UnitIcon::villager, "Forager", Resources(0, 50, 0, 0)}, // gather stone
+	{EntityType::melee1, 5, 40, 4, 1, (unsigned)UnitIcon::melee1, "Clubman", Resources(0, 50, 0, 0)},
 	// a priest converts units and does not deal damage while converting
-	{EntityType::priest, 5, 25, 0, 0, (unsigned)UnitIcon::priest, "Priest"},
+	{EntityType::priest, 5, 25, 0, 0, (unsigned)UnitIcon::priest, "Priest", Resources(0, 0, 125, 0)},
 	// hp for berries refers to amount of food
-	{EntityType::berries, 8, 150, 0, 0, (unsigned)UnitIcon::food, "Berry Bush"},
-	{EntityType::gold, 12, 400, 0, 0, (unsigned)UnitIcon::gold, "Gold"},
-	{EntityType::stone, 12, 250, 0, 0, (unsigned)UnitIcon::stone, "Stone"},
-	{EntityType::desert_tree1, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
-	{EntityType::desert_tree2, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
-	{EntityType::desert_tree3, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
-	{EntityType::desert_tree4, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm"},
-	{EntityType::grass_tree1, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest"},
-	{EntityType::grass_tree2, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest"},
-	{EntityType::grass_tree3, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest"},
-	{EntityType::grass_tree4, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest"},
+	{EntityType::berries, 8, 150, 0, 0, (unsigned)UnitIcon::food, "Berry Bush", Resources(0, 0, 0, 0)},
+	{EntityType::gold, 12, 400, 0, 0, (unsigned)UnitIcon::gold, "Gold", Resources(0, 0, 0, 0)},
+	{EntityType::stone, 12, 250, 0, 0, (unsigned)UnitIcon::stone, "Stone", Resources(0, 0, 0, 0)},
+	{EntityType::desert_tree1, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm", Resources(0, 0, 0, 0)},
+	{EntityType::desert_tree2, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm", Resources(0, 0, 0, 0)},
+	{EntityType::desert_tree3, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm", Resources(0, 0, 0, 0)},
+	{EntityType::desert_tree4, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Palm", Resources(0, 0, 0, 0)},
+	{EntityType::grass_tree1, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest", Resources(0, 0, 0, 0)},
+	{EntityType::grass_tree2, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest", Resources(0, 0, 0, 0)},
+	{EntityType::grass_tree3, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest", Resources(0, 0, 0, 0)},
+	{EntityType::grass_tree4, 5, 25, 0, 0, (unsigned)UnitIcon::wood, "Tree - Forest", Resources(0, 0, 0, 0)},
 	// hp for tree refers to amount of wood
-	{EntityType::dead_tree1, 5, 40, 0, 0, (unsigned)UnitIcon::wood, "Tree"},
-	{EntityType::dead_tree2, 5, 40, 0, 0, (unsigned)UnitIcon::wood, "Tree"},
+	{EntityType::dead_tree1, 5, 40, 0, 0, (unsigned)UnitIcon::wood, "Tree", Resources(0, 0, 0, 0)},
+	{EntityType::dead_tree2, 5, 40, 0, 0, (unsigned)UnitIcon::wood, "Tree", Resources(0, 0, 0, 0)},
 };
 
 }

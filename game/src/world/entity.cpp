@@ -224,8 +224,8 @@ bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
 
 	// TODO do we need to recompute target_ref?
 
-	// if we don't have a target ourselves, make this our target
-	if (target_ref == invalid_ref)
+	// if we don't have a target ourselves, make this our target or if we are collecting resources and get attack by something else
+	if (target_ref == invalid_ref || (is_worker(type) && !is_resource(aggressor.type)))
 		task_attack(aggressor);
 
 	return true;

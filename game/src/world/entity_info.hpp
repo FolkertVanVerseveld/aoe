@@ -4,6 +4,7 @@
 #include <string>
 
 #include "../legacy/legacy.hpp"
+#include "resources.hpp"
 
 namespace aoe {
 
@@ -86,6 +87,7 @@ struct EntityInfo final {
 	unsigned atk, atk_bld;
 	unsigned icon; // unsigned as it can have different types
 	std::string name;
+	Resources cost;
 
 	// TODO add upgrade function that copies everything except hp
 };

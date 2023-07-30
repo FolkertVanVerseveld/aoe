@@ -592,9 +592,8 @@ void World::entity_task(WorldEvent &ev) {
 			assert(task.info_type == (unsigned)EntityIconType::unit);
 			EntityType train = (EntityType)task.info_value;
 
-			// TODO extract resources cost from entity info
-			Resources cost(0, 50, 0, 0);
-			bool can_train = true;
+			Resources cost = entity_info.at((unsigned)train).cost;
+			bool can_train = false;
 			auto idx = ref2idx(ev.src);
 
 			if (idx.has_value()) {
@@ -783,17 +782,6 @@ void World::create_entities() {
 
 	entities.clear();
 
-#if 0
-	for (unsigned i = 1; i < players.size(); ++i) {
-		add_building(EntityType::town_center, i, 3, 1 + 3 * i);
-		add_building(EntityType::barracks, i, 3 + 2 * 3, 1 + 3 * i);
-
-		add_unit(EntityType::villager, i, 6, 1 + 3 * i);
-		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
-		//add_unit(EntityType::villager, i, 7, 1 + 3 * i);// , 0, EntityState::attack);
-		add_unit(EntityType::villager, i, 7, 2 + 3 * i);
-	}
-#else
 	/*
 	strategy:
 	  place ellipsoid on map in centre that is enclosed completely by the map's dimensions, then scale to make it smaller
@@ -830,6 +818,10 @@ void World::create_entities() {
 
 		add_building(EntityType::town_center, pid, t_x, t_y);
 
+		// center t_x, t_y
+		++t_x;
+		++t_y;
+
 		unsigned villagers = this->scn.villagers;
 		double angle_villagers = 2 * M_PI / villagers;
 		double angle_vilagers_offset = unif(re);
@@ -862,7 +854,7 @@ void World::create_entities() {
 
 		r = 7;
 		angle = unif(re);
-		int g_x = t_x = r * cos(angle), g_y = t_y + r * sin(angle);
+		int g_x = t_x + r * cos(angle), g_y = t_y + r * sin(angle);
 
 		add_gold(g_x + 0, g_y + 0);
 		add_gold(g_x + 1, g_y + 0);
@@ -870,7 +862,7 @@ void World::create_entities() {
 		add_gold(g_x + 1, g_y + 1);
 
 		angle = unif(re);
-		int s_x = t_x = r * cos(angle), s_y = t_y + r * sin(angle);
+		int s_x = t_x + r * cos(angle), s_y = t_y + r * sin(angle);
 
 		add_stone(s_x + 0, s_y + 0);
 		add_stone(s_x + 1, s_y + 0);
@@ -879,12 +871,8 @@ void World::create_entities() {
 
 		// TODO add more resources trees
 	}
-#endif
 
 	// TODO change this dummy stuff
-	add_unit(EntityType::priest, 0, 3.5, 1);
-	add_unit(EntityType::priest, 0, 4.5, 1);
-
 	std::array<EntityType, 4> trees{
 		EntityType::desert_tree1,
 		EntityType::desert_tree2,
@@ -892,10 +880,10 @@ void World::create_entities() {
 		EntityType::desert_tree4
 	};
 
-	for (unsigned y = 0; y < players.size() * 3; ++y) {
-		add_resource(trees[rand() % 4], 7, y, 0);
-		add_resource(trees[rand() % 4], 8, y, 0);
-		add_resource(trees[rand() % 4], 9, y, 0);
+	for (unsigned x = 0; x < players.size() * 3; ++x) {
+		add_resource(trees[rand() % 4], x, 0, 0);
+		add_resource(trees[rand() % 4], x, 1, 0);
+		add_resource(trees[rand() % 4], x, 2, 0);
 	}
 }
 
