@@ -31,7 +31,7 @@ int64_t PlayerAchievements::recompute() noexcept {
 	return score;
 }
 
-Player::Player(const PlayerSetting &ps, size_t explored_max) : init(ps), res(ps.res), achievements(), explored_max(explored_max), entities(), alive(true), ai(ps.ai), ai_workers() {
+Player::Player(const PlayerSetting &ps, size_t explored_max) : init(ps), res(ps.res), achievements(), entities(), explored_max(explored_max), alive(true), ai(ps.ai), ai_workers() {
 	achievements.alive = alive;
 }
 
@@ -50,11 +50,16 @@ PlayerAchievements Player::get_score() noexcept {
 	return achievements;
 }
 
-void Player::lost_entity(IdPoolRef ref) {
+void Player::new_entity(Entity &e) {
+	entities.emplace(e.ref);
+}
+
+void Player::lost_entity(IdPoolRef ref, bool cnt) {
 	if (!entities.erase(ref))
 		return;
 
-	++achievements.losses;
+	if (cnt)
+		++achievements.losses;
 }
 
 void Player::killed_unit() {

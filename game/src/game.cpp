@@ -27,6 +27,9 @@ void Game::resize(const ScenarioSettings &scn) {
 	entities_spawned.clear();
 	entities_killed.clear();
 
+	particles.clear();
+	particles_spawned.clear();
+
 	t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
 	modflags |= (unsigned)GameMod::terrain;
 }

@@ -108,12 +108,12 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 bool WorldView::try_convert(Entity &e, Entity &aggressor) {
 	// TODO convert gradually with some randomness
 	for (Player &p : w.players)
-		p.entities.erase(e.ref);
+		p.lost_entity(e.ref, false);
 
 	unsigned player = aggressor.playerid;
 
 	e.playerid = player;
-	w.players.at(player).entities.emplace(e.ref);
+	w.players.at(player).new_entity(e);
 
 	return true;
 }
@@ -236,7 +236,7 @@ void World::tick_players() {
 		Player &p = players[i];
 
 		// players may have additional rules to resign, but this always applies
-		if (!p.alive || !p.entities.empty())
+		if (!p.alive || p.has_entities())
 			continue;
 
 		p.alive = false;
@@ -534,7 +534,7 @@ void World::nuke_ref(IdPoolRef ref) {
 		return;
 
 	for (Player &p : players)
-		p.entities.erase(ref);
+		p.lost_entity(ref, false);
 
 	// TODO add client info that sent kill command?
 	NetPkg pkg;
@@ -713,10 +713,13 @@ void World::create_players() {
 void World::add_building(EntityType t, unsigned player, int x, int y) {
 	ZoneScoped;
 	assert(is_building(t) && player < MAX_PLAYERS);
+
 	this->t.add_building(t, x, y);
+
 	auto p = entities.emplace(t, player, x, y);
 	assert(p.second);
-	players.at(player).entities.emplace(p.first->first);
+
+	players.at(player).new_entity(p.first->second);
 }
 
 void World::add_unit(EntityType t, unsigned player, float x, float y) {
@@ -726,9 +729,11 @@ void World::add_unit(EntityType t, unsigned player, float x, float y) {
 void World::add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state) {
 	ZoneScoped;
 	assert(!is_building(t) && !is_resource(t) && player < MAX_PLAYERS);
+
 	auto p = entities.emplace(t, player, x, y, angle, state);
 	assert(p.second);
-	players.at(player).entities.emplace(p.first->first);
+
+	players.at(player).new_entity(p.first->second);
 }
 
 void World::add_resource(EntityType t, float x, float y, unsigned subimage) {
@@ -761,9 +766,9 @@ void World::spawn_unit(EntityType t, unsigned player, float x, float y, float an
 	auto p = entities.emplace(t, player, x, y, angle, EntityState::alive);
 	assert(p.second);
 
-	IdPoolRef ref = p.first->first;
-	players.at(player).entities.emplace(ref);
-	spawned_entities.emplace(ref);
+	auto &ref = p.first;
+	players.at(player).new_entity(ref->second);
+	spawned_entities.emplace(ref->first);
 }
 
 void World::spawn_particle(ParticleType t, float x, float y)

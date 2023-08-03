@@ -63,9 +63,9 @@ public:
 	Resources res;
 private:
 	PlayerAchievements achievements;
+	std::set<IdPoolRef> entities;
 public:
 	uint64_t explored_max;
-	std::set<IdPoolRef> entities;
 	bool alive, ai;
 	// TODO add std::optional<AI> ai;
 
@@ -80,9 +80,14 @@ public:
 
 	PlayerAchievements get_score() noexcept;
 
+	bool has_entities() const noexcept {
+		return !entities.empty();
+	}
+
 	void killed_unit();
 	void killed_building();
-	void lost_entity(IdPoolRef);
+	void lost_entity(IdPoolRef, bool update_score=true);
+	void new_entity(Entity&);
 
 	void tick(WorldView&);
 private:
