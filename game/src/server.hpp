@@ -109,6 +109,8 @@ public:
 		std::lock_guard<std::mutex> lk(m_events);
 		events_in.emplace_back(src, type, data...);
 	}
+
+	int non_gaia_players() const noexcept { return this->players.size() - 1; }
 private:
 	void startup();
 	void create_terrain();

@@ -801,7 +801,7 @@ void World::create_entities() {
 	std::default_random_engine re;
 
 	scale = 0.1;
-	double angle_step = 2 * M_PI / this->players.size();
+	double angle_step = 2 * M_PI / std::max(1, non_gaia_players());
 	double angle_jitter = angle_step * scale;
 	double angle_offset = unif(re);
 
