@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 
 #include "../debug.hpp"
+#include "../game.hpp"
 #include "../world/terrain.hpp"
 
 // yes, including .c's is evil, but... we have no choice :/
@@ -570,9 +571,22 @@ std::string Scenario::str(size_t &pos, size_t max) const {
 
 }
 
-void ScenarioEditor::create_map() {
+// TODO extract scenarioeditor functions to separate file
+void ScenarioEditor::create_map(Game &g) {
 	map_width = std::clamp(map_gen_width, 0, UINT16_MAX + 1);
 	map_height = std::clamp(map_gen_height, 0, UINT16_MAX + 1);
+
+	ScenarioSettings scn;
+	scn.width = map_width;
+	scn.height = map_height;
+
+	g.resize(scn);
+	g.terrain_create();
+}
+
+void ScenarioEditor::load(const io::Scenario &scn) {
+	map_gen_width  = map_width  = scn.w;
+	map_gen_height = map_height = scn.h;
 }
 
 void ScenarioEditor::load(const std::string &path) {

@@ -57,6 +57,8 @@ private:
 
 }
 
+class Game;
+
 class ScenarioEditor final {
 public:
 	unsigned top_btn_idx;
@@ -68,10 +70,12 @@ public:
 
 	static constexpr unsigned version = 1;
 
-	void create_map();
+	void create_map(Game &g);
 
 	void load(const std::string &path);
 	void save(const std::string &path);
+
+	void load(const io::Scenario&);
 };
 
 }

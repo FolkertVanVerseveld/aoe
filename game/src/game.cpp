@@ -31,7 +31,7 @@ void Game::resize(const ScenarioSettings &scn) {
 	particles_spawned.clear();
 
 	t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
-	modflags |= (unsigned)GameMod::terrain;
+	modflags |= (unsigned)-1;
 }
 
 void Game::tick(unsigned n) {
@@ -98,6 +98,10 @@ void Game::imgtick(unsigned n) {
 
 	if (changed)
 		modflags |= (unsigned)GameMod::particles;
+}
+
+void Game::terrain_create() {
+	t.generate();
 }
 
 void Game::terrain_set(const std::vector<uint16_t> &tiles, const std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h) {

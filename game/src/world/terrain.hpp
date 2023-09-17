@@ -38,6 +38,9 @@ public:
 	unsigned w, h, seed, players;
 	bool wrap;
 
+	// TODO increase max_size on demand
+	static constexpr unsigned min_size = 48, max_size = 500;
+
 	Terrain();
 
 	void resize(unsigned width, unsigned height, unsigned seed, unsigned players, bool wrap);
