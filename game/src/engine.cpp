@@ -46,21 +46,6 @@ namespace aoe {
 Engine *eng;
 std::mutex m_eng;
 
-ScenarioSettings::ScenarioSettings()
-	: players(), owners()
-	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
-	, square(true), wrap(false), restricted(true), reorder(false), width(48), height(48)
-	, popcap(100)
-	, age(1), seed(1), villagers(3)
-	, res(200, 200, 0, 0)
-{
-	players.emplace_back("Gaia", 0, 0, Resources());
-}
-
-void ScenarioSettings::remove(IdPoolRef ref) {
-	owners.erase(ref);
-}
-
 Engine::Engine()
 	: net(), show_demo(false), show_debug(false), font_scaling(true)
 	, connection_mode(0), connection_port(32768), connection_host("")

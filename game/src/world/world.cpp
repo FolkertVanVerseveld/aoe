@@ -83,13 +83,14 @@ void World::load_scn(const ScenarioSettings &scn) {
 	this->scn.cheating = scn.cheating;
 	this->scn.square = scn.square;
 	this->scn.wrap = scn.wrap;
+	this->scn.type = scn.type;
 
-	t.resize(this->scn.width, this->scn.height, this->scn.seed, this->scn.players.size(), this->scn.wrap);
+	t.resize(this->scn.width, this->scn.height, this->scn.seed, this->scn.players.size(), this->scn.wrap, this->scn.type);
 }
 
 void World::create_terrain() {
 	ZoneScoped;
-	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
+	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap, scn.type);
 	this->t.generate();
 }
 
@@ -98,7 +99,7 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 	assert(x >= 0 && y >= 0);
 
 	NetTerrainMod tm;
-	t.fetch(tm.tiles, tm.hmap, 0, 0, w, h);
+	t.fetch(tm.tiles, tm.hmap, x, y, w, h);
 
 	tm.x = x; tm.y = y; tm.w = w; tm.h = h;
 

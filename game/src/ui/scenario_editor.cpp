@@ -195,6 +195,7 @@ void UICache::show_editor_scenario() {
 		// 11, 636 - 625
 		//str2(ImVec2(menubar_left + 11 * scale, menubar2_top + 11 * scale), "Map");
 
+		// TODO combo box
 		ImGui::Input("map type", scn_edit.map_gen_type);
 
 		// 182, 725 - 625

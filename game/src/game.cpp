@@ -30,7 +30,7 @@ void Game::resize(const ScenarioSettings &scn) {
 	particles.clear();
 	particles_spawned.clear();
 
-	t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
+	t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap, scn.type);
 	modflags |= (unsigned)-1;
 }
 

@@ -573,7 +573,7 @@ std::string Scenario::str(size_t &pos, size_t max) const {
 
 // TODO extract scenarioeditor functions to separate file
 void ScenarioEditor::create_map(Game &g) {
-	map_width = std::clamp(map_gen_width, 0, UINT16_MAX + 1);
+	map_width  = std::clamp(map_gen_width , 0, UINT16_MAX + 1);
 	map_height = std::clamp(map_gen_height, 0, UINT16_MAX + 1);
 
 	ScenarioSettings scn;

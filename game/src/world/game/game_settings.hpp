@@ -7,6 +7,7 @@
 #include <idpool.hpp>
 
 #include "../resources.hpp"
+#include "../terrain.hpp"
 
 namespace aoe {
 
@@ -42,6 +43,7 @@ public:
 	unsigned age;
 	unsigned seed;
 	unsigned villagers;
+	TerrainType type;
 
 	Resources res;
 

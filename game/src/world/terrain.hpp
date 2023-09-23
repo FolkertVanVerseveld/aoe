@@ -19,11 +19,11 @@ enum class TileType {
 };
 
 enum class TerrainType {
-	islands,
-	continents,
-	normal,
-	flat,
-	bumpy,
+	islands,    // small islands
+	continents, // large islands
+	normal,     // coastal
+	flat,       // inland
+	bumpy,      // highland
 	max,
 };
 
@@ -37,13 +37,14 @@ class Terrain final {
 public:
 	unsigned w, h, seed, players;
 	bool wrap;
+	TerrainType type;
 
 	// TODO increase max_size on demand
 	static constexpr unsigned min_size = 48, max_size = 500;
 
 	Terrain();
 
-	void resize(unsigned width, unsigned height, unsigned seed, unsigned players, bool wrap);
+	void resize(unsigned width, unsigned height, unsigned seed, unsigned players, bool wrap, TerrainType type);
 
 	void generate();
 
@@ -82,6 +83,10 @@ public:
 	void fetch(std::vector<tile_t> &tiles, std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned &w, unsigned &h);
 
 	void set(const std::vector<tile_t> &tiles, const std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
+private:
+	void tgen_desert();
+	void tgen_normal();
+	void tgen_flat();
 };
 
 }

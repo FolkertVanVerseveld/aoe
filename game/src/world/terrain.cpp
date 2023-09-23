@@ -9,9 +9,9 @@
 
 namespace aoe {
 
-Terrain::Terrain() : tiles(), hmap(), obstructed(false), w(0), h(0), seed(0), players(0), wrap(false) {}
+Terrain::Terrain() : tiles(), hmap(), obstructed(false), w(0), h(0), seed(0), players(0), wrap(false), type(TerrainType::normal) {}
 
-void Terrain::resize(unsigned width, unsigned height, unsigned seed, unsigned players, bool wrap) {
+void Terrain::resize(unsigned width, unsigned height, unsigned seed, unsigned players, bool wrap, TerrainType type) {
 	ZoneScoped;
 
 	this->w = width;
@@ -19,22 +19,13 @@ void Terrain::resize(unsigned width, unsigned height, unsigned seed, unsigned pl
 	this->seed = seed;
 	this->players = players;
 	this->wrap = wrap;
+	this->type = type;
 
 	size_t count = (size_t)w * h;
 
 	tiles.resize(count, 0);
 	hmap.resize(count, 0);
 	obstructed.resize(count, false);
-}
-
-void Terrain::generate() {
-	// TODO use real generator like perlin noise
-	TileType types[] = { TileType::desert, TileType::grass, TileType::grass_desert };
-
-	for (size_t i = 0, n = tiles.size(); i < n; ++i) {
-		tiles[i] = Terrain::tile_id(TileType::desert, rand() % 9);
-		hmap[i] = 0;
-	}
 }
 
 tile_t Terrain::tile_at(unsigned x, unsigned y) {
