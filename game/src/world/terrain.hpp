@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <cstdint>
+#include <array>
 
 #include "entity_info.hpp"
 
@@ -29,6 +30,19 @@ enum class TerrainType {
 
 // TODO introduce terrain block/chunk
 typedef uint16_t tile_t;
+
+static constexpr bool is_water(TileType t) {
+	// NOTE TileType::water_desert doesn't count!
+	return t == TileType::water || t == TileType::deepwater || t == TileType::deepwater_water;
+}
+
+extern std::array<unsigned, 8> heights(const std::vector<uint8_t> &hmap, size_t w, size_t h, size_t x, size_t y, unsigned f);
+extern std::array<unsigned, 4> hhvn(const std::vector<uint8_t> &hmap, size_t w, size_t h, size_t x, size_t y, unsigned hdef);
+extern std::array<unsigned, 4> hdn(const std::vector<uint8_t> &hmap, size_t w, size_t h, size_t x, size_t y, unsigned hdef);
+
+extern std::array<TileType, 8> neighs(const std::vector<tile_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f);
+extern std::array<TileType, 4> fhvn(const std::vector<tile_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f);
+extern std::array<TileType, 4> fdn(const std::vector<tile_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f);
 
 class Terrain final {
 	std::vector<tile_t> tiles;
