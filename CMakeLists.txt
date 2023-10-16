@@ -14,12 +14,21 @@ project(${GAME_TARGET}
 # dependencies
 
 find_package(SDL2 REQUIRED)
-find_package(SDL2_mixer CONFIG REQUIRED)
+if (UNIX)
+	find_package(PkgConfig)
+	pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
+else()
+	find_package(SDL2_mixer CONFIG REQUIRED)
+endif()
 find_package(OpenGL REQUIRED)
+
+if (MVSC)
+	set(${SDL2_MIXER_LIBRARIES} $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+endif()
 
 set(GAME_LIBRARIES
 	${SDL2_LIBRARIES}
-	$<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
+	${SDL2_MIXER_LIBRARIES}
 	${OPENGL_LIBRARIES}
 )
 
