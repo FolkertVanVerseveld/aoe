@@ -43,7 +43,7 @@ typedef int HANDLE;
 #define INVALID_SOCKET ((int)-1)
 #define INVALID_HANDLE_VALUE ((int)-1)
 
-#define epoll_close(fd) close(fd)
+#define epoll_close(fd) ::close(fd)
 #endif
 
 static constexpr unsigned tcp4_max_size = UINT16_MAX - 32 + 1;

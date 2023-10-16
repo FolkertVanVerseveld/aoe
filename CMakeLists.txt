@@ -44,8 +44,11 @@ set(IMGUI_DIR ${PROJECT_SRCDIR}/imgui)
 set(IMGUI_BACKENDS_DIR ${IMGUI_DIR}/backends)
 file(GLOB IMGUI_SRC ${IMGUI_DIR}/*.cpp ${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.cpp ${IMGUI_BACKENDS_DIR}/imgui_impl_sdl2.cpp)
 
+# fake epoll support for windows
+if (MVSC)
 set(WEPOLL_DIR ${PROJECT_SRCDIR}/wepoll)
 set(WEPOLL_SRC ${WEPOLL_DIR}/wepoll.c)
+endif()
 
 set(GAME_SRC ${GAME_DIR}/main.cpp ${GAME_SOURCES} ${IMGUI_SRC} ${WEPOLL_SRC})
 

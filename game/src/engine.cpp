@@ -195,8 +195,10 @@ void Engine::show_menubar() {
 void Engine::verify_game_data(const std::string &path) {
 	assets_good = false;
 
-	if (!fnt.loaded())
+	if (!fnt.loaded()) {
+		font_scaling = false;
 		return;
+	}
 
 	tp.push([this](int id, std::string path) {
 		ZoneScoped;

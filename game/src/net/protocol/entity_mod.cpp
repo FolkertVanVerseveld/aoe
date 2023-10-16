@@ -38,18 +38,18 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	refcheck(e.ref);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H4IHHHBbbBHH", pkgargs{
+	write("2H4IHHHBbbBHH", pkgargs({
 		(uint16_t)type, (uint16_t)e.type,
-		e.ref.first, e.ref.second, e.x, e.y,
-		e.angle * UINT16_MAX / (2 * M_PI),
-		e.playerid, e.subimage,
+		e.ref.first, e.ref.second, (uint64_t)e.x, (uint64_t)e.y,
+		(uint64_t)(e.angle * UINT16_MAX / (2 * M_PI)),
+		(uint64_t)e.playerid, (uint64_t)e.subimage,
 		(uint8_t)e.state,
-		(int8_t)(INT8_MAX * fmodf(e.x, 1)),
-		(int8_t)(INT8_MAX * fmodf(e.y, 1)),
-		e.stats.attack,
-		e.stats.hp,
-		e.stats.maxhp,
-	}, false);
+		(uint64_t)(int8_t)(INT8_MAX * fmodf(e.x, 1)),
+		(uint64_t)(int8_t)(INT8_MAX * fmodf(e.y, 1)),
+		(uint64_t)e.stats.attack,
+		(uint64_t)e.stats.hp,
+		(uint64_t)e.stats.maxhp,
+	}), false);
 }
 
 void NetPkg::set_entity_kill(IdPoolRef ref) {
@@ -67,11 +67,11 @@ void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H4I", pkgargs{
+	write("2H4I", pkgargs({
 		(uint16_t)NetEntityControlType::task,
 		(uint16_t)EntityTaskType::move,
-		ref.first, ref.second, x, y
-	}, false);
+		ref.first, ref.second, (uint64_t)x, (uint64_t)y
+	}), false);
 }
 
 void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {

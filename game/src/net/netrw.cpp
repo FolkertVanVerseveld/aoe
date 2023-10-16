@@ -3,6 +3,8 @@
 #include <except.hpp>
 #include <string>
 
+#include <climits>
+
 namespace aoe {
 
 void NetPkg::chktype(NetPkgType type) {
