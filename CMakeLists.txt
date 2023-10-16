@@ -22,15 +22,19 @@ else()
 endif()
 find_package(OpenGL REQUIRED)
 
-if (MVSC)
-	set(${SDL2_MIXER_LIBRARIES} $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+if (WIN32)
+	set(GAME_LIBRARIES
+		${SDL2_LIBRARIES}
+		$<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
+		${OPENGL_LIBRARIES}
+	)
+else()
+	set(GAME_LIBRARIES
+		${SDL2_LIBRARIES}
+		${SDL2_MIXER_LIBRARIES}
+		${OPENGL_LIBRARIES}
+	)
 endif()
-
-set(GAME_LIBRARIES
-	${SDL2_LIBRARIES}
-	${SDL2_MIXER_LIBRARIES}
-	${OPENGL_LIBRARIES}
-)
 
 # source tree config
 
@@ -45,7 +49,7 @@ set(IMGUI_BACKENDS_DIR ${IMGUI_DIR}/backends)
 file(GLOB IMGUI_SRC ${IMGUI_DIR}/*.cpp ${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.cpp ${IMGUI_BACKENDS_DIR}/imgui_impl_sdl2.cpp)
 
 # fake epoll support for windows
-if (MVSC)
+if (WIN32)
 set(WEPOLL_DIR ${PROJECT_SRCDIR}/wepoll)
 set(WEPOLL_SRC ${WEPOLL_DIR}/wepoll.c)
 endif()

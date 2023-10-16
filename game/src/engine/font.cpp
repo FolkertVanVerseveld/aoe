@@ -83,7 +83,7 @@ bool FontCache::try_load() {
 	//IM_ASSERT(font != NULL);
 #if _WIN32
 	float f = SDL::fnt_scale;
-	fnt_arial = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\arial.ttf", ceil(13.0f * f));
+	fnt_arial = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\arial.ttf", ceil(15.0f * f));
 
 	if (!(fnt_copper = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\COPRGTB.TTF", ceil(18.0f * f)))) {
 		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTB.TTF");

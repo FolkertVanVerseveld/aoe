@@ -14,7 +14,10 @@
 #include <ws2tcpip.h>
 
 #pragma comment(lib, "ws2_32.lib")
-#define close(sock) closesocket(sock)
+static int close(SOCKET sock)
+{
+	return ::closesocket(sock);
+}
 #else
 #include <arpa/inet.h>
 #include <netdb.h>
