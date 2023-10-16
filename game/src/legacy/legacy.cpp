@@ -12,7 +12,10 @@
 
 #include <tracy/Tracy.hpp>
 
+// don't ask me why, but windows needs this and including the correct header does not seem to help
+#if _WIN32
 int ::rand(void);
+#endif
 
 namespace aoe {
 

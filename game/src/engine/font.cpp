@@ -30,7 +30,12 @@ static std::string get_username() {
 	return name;
 }
 #else
-#error get_username unimplemented
+#include <unistd.h>
+
+static std::string get_username() {
+	std::string name(getlogin());
+	return name;
+}
 #endif
 
 namespace aoe {

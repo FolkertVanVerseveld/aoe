@@ -146,7 +146,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		slp = drs_ui.open_slp(DrsId::img_editor);
 		img_dialog_editor.load(pal.get(), slp, 0, 0, DrsId::img_editor);
 
-#define load_gif(id) id.load(drs_ui, pal.get(), DrsId:: ##id)
+#define load_gif(id) id.load(drs_ui, pal.get(), DrsId::id)
 		load_gif(gif_building_icons);
 		load_gif(gif_task_icons);
 		load_gif(gif_unit_icons);
@@ -201,7 +201,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		bld_barracks.load(drs_graphics, pal.get(), DrsId::bld_barracks);
 
-#define load_gif(id) id.load(drs_graphics, pal.get(), DrsId:: ##id)
+#define load_gif(id) id.load(drs_graphics, pal.get(), DrsId::id)
 		load_gif(gif_bld_fire1);
 		load_gif(gif_bld_fire2);
 		load_gif(gif_bld_fire3);
@@ -288,7 +288,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		drs_ids[DrsId::img_editor] = p.add_img(0, 0, img_dialog_editor.surface.get());
 
-#define gif(id) add_gifs(p, id, DrsId:: ##id)
+#define gif(id) add_gifs(p, id, DrsId::id)
 		add_gifs(p, gif_cursors, DrsId::gif_cursors);
 		add_gifs(p, gif_menu_btn_small0, DrsId::gif_menu_btn_small0);
 		add_gifs(p, gif_menu_btn_medium0, DrsId::gif_menu_btn_medium0);

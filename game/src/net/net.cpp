@@ -14,6 +14,10 @@
 #include <ws2tcpip.h>
 
 #pragma comment(lib, "ws2_32.lib")
+#else
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 #include <tracy/Tracy.hpp>
@@ -22,6 +26,7 @@
 
 namespace aoe {
 
+#if _WIN32
 // process and throw error message. always throws
 static void wsa_generic_error(const char *prefix, int code) noexcept(false)
 {
@@ -144,12 +149,51 @@ void TcpSocket::close() {
 		s = INVALID_SOCKET;
 }
 
-SOCKET TcpSocket::accept() {
-	return ::accept(s, NULL, NULL);
+SOCKET TcpSocket::accept(sockaddr &a, int &sz) {
+	return ::accept(s, &a, &sz);
+}
+#else
+Net::Net() {}
+Net::~Net() {}
+
+TcpSocket::TcpSocket() : s(INVALID_SOCKET) {
+	int sock;
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1)
+		throw std::runtime_error(std::string("socket failed: ") + strerror(errno));
+
+	s.store(sock);
+
+}
+
+TcpSocket::~TcpSocket() {
+	::close(s.load());
+}
+
+void TcpSocket::open() {
+	int sock;
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1)
+		throw std::runtime_error(std::string("socket failed: ") + strerror(errno));
+
+	::close(s.load());
+	s.store(sock);
+}
+
+void TcpSocket::close() {
+	if (!::close(s.load()))
+		s = INVALID_SOCKET;
 }
 
 SOCKET TcpSocket::accept(sockaddr &a, int &sz) {
-	return ::accept(s, &a, &sz);
+	socklen_t len = sz;
+	int ret = ::accept(s, &a, &len);
+	return sz = len;
+}
+#endif
+
+SOCKET TcpSocket::accept() {
+	return ::accept(s, NULL, NULL);
 }
 
 void TcpSocket::bind(const char *address, uint16_t port) {

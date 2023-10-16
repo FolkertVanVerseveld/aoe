@@ -18,9 +18,12 @@
 #if _WIN32
 // use lowercase header names as we may be cross compiling on a filesystem where filenames are case-sensitive (which is typical on e.g. linux)
 #include <winsock2.h>
-#endif
 
 #include <wepoll.h>
+#else
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#endif
 
 // wepoll does not support EPOLLET
 #ifndef EPOLLET
@@ -31,6 +34,17 @@
 #include <ctpl_stl.hpp>
 
 namespace aoe {
+
+// define these in our namespace to reduce the risk of name clashes
+#ifdef __unix__
+typedef int SOCKET;
+typedef int HANDLE;
+
+#define INVALID_SOCKET ((int)-1)
+#define INVALID_HANDLE_VALUE ((int)-1)
+
+#define epoll_close(fd) close(fd)
+#endif
 
 static constexpr unsigned tcp4_max_size = UINT16_MAX - 32 + 1;
 
