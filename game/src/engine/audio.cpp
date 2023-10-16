@@ -19,9 +19,15 @@ Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic),
 	, m_mix(), taunts(), sfx(), jukebox(), play_taunts(true)
 {
 	int flags = MIX_INIT_MP3;
+	int ret;
 
-	if ((Mix_Init(flags) & flags) != flags)
-		throw std::runtime_error(std::string("Mix: Could not initialize audio: ") + Mix_GetError());
+	if (((ret = Mix_Init(flags)) & flags) != flags) {
+		const char *msg = Mix_GetError();
+		if (msg)
+			throw std::runtime_error(std::string("Mix: Could not initialize audio: ") + msg);
+		else
+			throw std::runtime_error(std::string("Mix: Could not initialize audio: unknown error"));
+	}
 
 	if (Mix_OpenAudio(SAMPLING_FREQ, MIX_DEFAULT_FORMAT, NUM_CHANNELS, 1024) == -1)
 		throw std::runtime_error(std::string("Mix: Could not initialize audio: ") + Mix_GetError());

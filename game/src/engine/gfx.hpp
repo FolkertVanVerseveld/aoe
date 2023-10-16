@@ -1,12 +1,13 @@
 #pragma once
 
-#include <GL/gl3w.h>
 #include <string>
 #include <vector>
 
 #include <idpool.hpp>
 
 #include "../legacy/legacy.hpp"
+
+#include "gl.hpp"
 
 #define GLCHK aoe::gfx::glchk(__FILE__, __func__, __LINE__)
 
