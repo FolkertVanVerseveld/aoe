@@ -3,6 +3,9 @@
 #include <cassert>
 
 #include <array>
+#include <set>
+
+#include "../engine/grid.hpp"
 
 namespace aoe {
 
@@ -56,8 +59,17 @@ void Terrain::generate() {
 		break;
 	}
 
-	// fix tile transitions
-	// fix water desert transition
+	fix_tile_transitions();
+	fix_heightmap();
+}
+
+void Terrain::fix_tile_transitions() {
+	fix_water_desert();
+	smooth_water();
+	fix_grass_desert();
+}
+
+void Terrain::fix_water_desert() {
 	for (size_t y = 0; y < h; ++y) {
 		for (size_t x = 0; x < w; ++x) {
 			size_t idx = y * w + x;
@@ -77,12 +89,31 @@ void Terrain::generate() {
 				if (!is_water(tt)) {
 					size_t idx2 = pos_dir(w, x, y, i);
 					tiles[idx2] = tile_id(TileType::water_desert, 0);
+					hmap[idx2] = 0;
 				}
 			}
 		}
 	}
 
-	// second pass water transitions
+	// another pass to prevent floating water desert tiles
+	for (size_t y = 0; y < h; ++y) {
+		for (size_t x = 0; x < w; ++x) {
+			size_t idx = y * w + x;
+			TileType type = tile_type(tiles[idx]);
+
+			if (type != TileType::water_desert)
+				continue;
+
+			auto nn = fhvn(tiles, w, h, x, y, TileType::water_desert);
+
+			if ((is_water(nn[1]) && is_water(nn[2])) || (is_water(nn[0]) && is_water(nn[3])))
+				// invalid transition, revert to water
+				tiles[idx] = tile_id(TileType::water, 0);
+		}
+	}
+}
+
+void Terrain::smooth_water() {
 	for (size_t y = 0; y < h; ++y) {
 		for (size_t x = 0; x < w; ++x) {
 			size_t idx = y * w + x;
@@ -133,12 +164,12 @@ void Terrain::generate() {
 				}
 
 				tiles[idx] = Terrain::tile_id(type, subimage);
-				hmap[idx] = 0;
 			}
 		}
 	}
+}
 
-	// fix grass desert transitions
+void Terrain::fix_grass_desert() {
 	// TODO add water deep water transitions
 	for (size_t y = 0; y < h; ++y) {
 		for (size_t x = 0; x < w; ++x) {
@@ -167,35 +198,52 @@ void Terrain::generate() {
 			}
 		}
 	}
+}
 
+void Terrain::fix_heightmap() {
 	// smooth heightmap. three steps
 	// step one: force tiles adjacent to water_desert to have same hmap
+	fix_water_transitions();
+
+	// step two: smooth slopes. limit runs just in case to prevent looping forever
+	smooth_slopes();
+
+	// TODO step three: convert flat tiles to hill tiles with corners etc.
+}
+
+void Terrain::fix_water_transitions() {
+	// force tiles adjacent to water to have same height
+	Vector2dView<tile_t> grid(tiles, w);
+
 	for (size_t y = 0; y < h; ++y) {
 		for (size_t x = 0; x < w; ++x) {
-			size_t idx = y * w + x;
-			TileType type = tile_type(tiles[idx]);
+			TileType type = tile_type(grid.at(x, y));
 
 			if (type != TileType::water_desert)
 				continue;
 
-			unsigned h0 = hmap[idx];
-			assert(h0 == 0);
-			auto hh = heights(hmap, w, h, x, y, 1);
+			unsigned h0 = hmap[grid.idx(x, y)];
 
-			for (unsigned i = 0; i < hh.size(); ++i) {
-				if (hh[i] != 1) {
-					size_t idx2 = pos_dir(w, x, y, i);
-					hmap[idx2] = h0;
-				}
-			}
+			if (y > 1)     hmap[grid.idx(x, y - 1)] = h0;
+			if (y < h - 1) hmap[grid.idx(x, y + 1)] = h0;
+			if (x > 1)     hmap[grid.idx(x - 1, y)] = h0;
+			if (x < w - 1) hmap[grid.idx(x + 1, y)] = h0;
 		}
 	}
+}
 
-	// step two: smooth slopes. limit runs just in case to prevent looping forever
-	for (size_t runs = 0; runs < std::max(w, h); ++runs) {
+void Terrain::smooth_slopes() {
+	bool changed = true;
+	Vector2dView grid(tiles, w);
+
+	std::set<size_t> hlower;
+
+	for (size_t runs = 0; changed && runs < std::max(w, h); ++runs) {
+		changed = false;
+
 		for (size_t y = 0; y < h; ++y) {
 			for (size_t x = 0; x < w; ++x) {
-				size_t idx = y * w + x;
+				size_t idx = grid.idx(x, y);
 				unsigned h0 = hmap[idx];
 				auto hh = heights(hmap, w, h, x, y, h0);
 
@@ -203,13 +251,44 @@ void Terrain::generate() {
 					if (hh[i] > h0 + 1) {
 						size_t idx2 = pos_dir(w, x, y, i);
 						hmap[idx2] = h0 + 1;
+						changed = true;
 					}
+				}
+			}
+		}
+
+		if (!changed)
+			break;
+
+		for (size_t y = 0; y < h; ++y) {
+			for (size_t x = 0; x < w; ++x) {
+				size_t idx = grid.idx(x, y);
+				TileType t = tile_type(tiles[idx]);
+
+				if (t != TileType::desert && t != TileType::grass)
+					continue;
+
+				unsigned h0 = hmap[idx];
+				auto hh = heights(hmap, w, h, x, y, h0);
+
+				if (h0 > hh[3] && h0 > hh[6]) {
+					tiles[idx] = tile_id(t, 23);
+					hlower.emplace(idx);
+				} else if (hh[3] == h0 && hh[4] == h0 && hh[1] > h0) {
+					if (hh[0] == h0)
+						tiles[idx] = tile_id(t, 12);
+					else if (hh[2] == h0)
+						tiles[idx] = tile_id(t, 10);
+					else
+						tiles[idx] = tile_id(t, 16);
 				}
 			}
 		}
 	}
 
-	// TODO step three: convert flat tiles to hill tiles with corners etc.
+	for (size_t idx : hlower) {
+		hmap[idx]--;
+	}
 }
 
 }

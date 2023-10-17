@@ -332,6 +332,7 @@ void Scenario::load(const char *path) {
 				// update
 				tile_types[idx] = Terrain::tile_id(type, subimage);
 			} else if (type == TileType::deepwater) {
+				// deepwater drs id 20006
 				auto nn = fhvn(tile_types, w, h, x, y, TileType::deepwater);
 				unsigned bits = 0;
 

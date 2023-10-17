@@ -119,6 +119,18 @@ std::array<TileType, 4> fhvn(const std::vector<tile_t> &tiles, size_t w, size_t 
 	return n;
 }
 
+/** Like fhvn but no bounds check. Only valid if 0 < x < w - 1, 0 < y < h - 1 */
+std::array<TileType, 4> neighs_hv(const std::vector<tile_t> &tiles, size_t w, size_t h, size_t x, size_t y) {
+	std::array<TileType, 4> n;
+
+	n[3] = Terrain::tile_type(tiles.at(y - 1) * w + x);
+	n[1] = Terrain::tile_type(tiles.at(y * w + x - 1));
+	n[2] = Terrain::tile_type(tiles.at(y * w + x + 1));
+	n[0] = Terrain::tile_type(tiles.at((y + 1) * w + x));
+
+	return n;
+}
+
 /** Find diagonal neighbors */
 std::array<TileType, 4> fdn(const std::vector<tile_t> &tiles, size_t w, size_t h, size_t x, size_t y, TileType f) {
 	std::array<TileType, 4> n;
