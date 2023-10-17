@@ -83,7 +83,7 @@ bool FontCache::try_load() {
 	//IM_ASSERT(font != NULL);
 #if _WIN32
 	float f = SDL::fnt_scale;
-	fnt_arial = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\arial.ttf", ceil(15.0f * f));
+	fnt_arial = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\arial.ttf", ceil(13.0f * f));
 
 	if (!(fnt_copper = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\COPRGTB.TTF", ceil(18.0f * f)))) {
 		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTB.TTF");
@@ -96,6 +96,15 @@ bool FontCache::try_load() {
 
 		fnt_copper2 = try_add_font(io.Fonts, localpath.c_str(), ceil(30.0f * f));
 	}
+#else
+	float f = SDL::fnt_scale;
+
+	#define FONT_DIR "/usr/share/fonts/truetype/"
+
+	fnt_arial = try_add_font(io.Fonts, FONT_DIR "liberation/LiberationSans-Regular.ttf", ceil(15.0f * f));
+
+	fnt_copper = try_add_font(io.Fonts, FONT_DIR "abyssinica/AbyssinicaSIL-Regular.ttf", ceil(18.0f * f));
+	fnt_copper2 = try_add_font(io.Fonts, FONT_DIR "ancient-scripts/Symbola_hint.ttf", ceil(30.0f * f));
 #endif
 	return loaded();
 }

@@ -194,7 +194,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	{
 		ZoneScopedN("Loading game entities data");
 
-		DRS drs_graphics(path + "/data/Graphics.drs");
+		DRS drs_graphics(path + "/data/graphics.drs"); // NOTE official installer uses lowercase g in graphics
 
 		bld_town_center.load(drs_graphics, pal.get(), DrsId::bld_town_center);
 		bld_town_center_player.load(drs_graphics, pal.get(), DrsId::bld_town_center_player);
@@ -416,6 +416,15 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 		snprintf(buf, sizeof buf, "%03d.wav", i + 1);
 
 		std::string fname(path + "/sound/Taunt" + buf);
+
+		// NOTE unix is case sensitive and some taunts have different casing...
+#if __unix__
+		if (i == 11 || i == 12 || i == 13)
+			fname = path + "/sound/taunt" + buf;
+		else if (i == 7 || i == 8 || i == 10 || i == 15 || i == 16 || i == 17)
+			fname = path + "/sound/TAUNT" + buf;
+#endif
+
 		eng.sfx.load_taunt((TauntId)i, fname.c_str());
 	}
 
