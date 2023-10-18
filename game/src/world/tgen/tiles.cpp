@@ -265,23 +265,56 @@ void Terrain::smooth_slopes() {
 				size_t idx = grid.idx(x, y);
 				TileType t = tile_type(tiles[idx]);
 
-				if (t != TileType::desert && t != TileType::grass)
-					continue;
-
 				unsigned h0 = hmap[idx];
 				auto hh = heights(hmap, w, h, x, y, h0);
 
+				// smooth conflicting edges
+				if ((h0 > hh[1] && h0 > hh[6]) || (h0 < hh[1] && h0 < hh[6])) {
+					hmap[idx] = std::min(hh[1], hh[6]);
+				}
+
+				if ((h0 > hh[3] && h0 > hh[4]) || (h0 < hh[3] && h0 < hh[4])) {
+					hmap[idx] = std::min(hh[3], hh[4]);
+				}
+
+				if (t != TileType::desert && t != TileType::grass)
+					continue;
+
+				// try to deduce subimage
 				if (h0 > hh[3] && h0 > hh[6]) {
 					tiles[idx] = tile_id(t, 23);
 					hlower.emplace(idx);
-				} else if (hh[3] == h0 && hh[4] == h0 && hh[1] > h0) {
-					if (hh[0] == h0)
-						tiles[idx] = tile_id(t, 12);
-					else if (hh[2] == h0)
-						tiles[idx] = tile_id(t, 10);
+				}
+#if 0
+				else if (hh[3] == h0 && hh[4] == h0 && hh[1] > h0) {
+					if (hh[2] == h0)
+						tiles[idx] = tile_id(t, 10); // 0 edge up
 					else
 						tiles[idx] = tile_id(t, 16);
 				}
+#else
+				else if (hh[1] > h0 && hh[3] > h0 && hh[4] == h0 && hh[6] == h0 && hh[7] == h0) {
+					tiles[idx] = tile_id(t, 22); // 7 edge down
+				}
+				else if (hh[1] == h0 && hh[4] == h0 && hh[6] == h0 && hh[3] > h0) {
+					tiles[idx] = tile_id(t, 14); // 3 side up
+				}
+				else if (hh[3] == h0 && hh[4] == h0 && hh[6] == h0 && hh[1] > h0) {
+					tiles[idx] = tile_id(t, 16); // 1 side up
+				}
+				else if (hh[4] == h0 && hh[6] == h0 && (hh[1] > h0 && hh[3] > h0)) {
+					tiles[idx] = tile_id(t, 10); // 0 edge up
+				}
+				else if (hh[1] == h0 && hh[4] == h0 && (hh[3] > h0 || hh[6] > h0)) {
+					tiles[idx] = tile_id(t, 11); // 5 edge up
+				}
+				else if (hh[1] == h0 && hh[3] == h0 && (hh[4] > h0 || hh[6] > h0)) {
+					tiles[idx] = tile_id(t, 9); // 7 edge up
+				}
+				else if (hh[3] == h0 && hh[6] == h0 && (hh[1] > h0 || hh[4] > h0)) {
+					tiles[idx] = tile_id(t, 12); // 2 edge up
+				}
+#endif
 			}
 		}
 	}
