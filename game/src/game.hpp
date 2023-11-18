@@ -63,10 +63,16 @@ public:
 	Resources res;
 private:
 	PlayerAchievements achievements;
+	std::set<IdPoolRef> entities;
 public:
 	uint64_t explored_max;
-	std::set<IdPoolRef> entities;
-	bool alive;
+	bool alive, ai;
+	// TODO add std::optional<AI> ai;
+
+	// ai stuff
+	std::vector<IdPoolRef> ai_workers;
+
+	static constexpr unsigned gaia = 0;
 
 	Player(const PlayerSetting&, size_t explored_max);
 
@@ -74,9 +80,18 @@ public:
 
 	PlayerAchievements get_score() noexcept;
 
+	bool has_entities() const noexcept {
+		return !entities.empty();
+	}
+
 	void killed_unit();
 	void killed_building();
-	void lost_entity(IdPoolRef);
+	void lost_entity(IdPoolRef, bool update_score=true);
+	void new_entity(Entity&);
+
+	void tick(WorldView&);
+private:
+	void tick_autotask(WorldView&);
 };
 
 class PlayerView final {
@@ -120,7 +135,8 @@ public:
 	void tick(unsigned n);
 
 	void resize(const ScenarioSettings &scn);
-	void terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
+	void terrain_create();
+	void terrain_set(const std::vector<uint16_t> &tiles, const std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h);
 
 	void set_players(const std::vector<PlayerSetting>&);
 	void set_player_score(unsigned idx, const NetPlayerScore&);
@@ -132,6 +148,8 @@ public:
 	void entity_spawn(const EntityView &ev);
 	bool entity_kill(IdPoolRef);
 	void entity_update(const EntityView &ev);
+
+	void entities_set(std::set<Entity> &&ent);
 
 	void particle_spawn(const Particle &p);
 

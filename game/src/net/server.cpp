@@ -33,23 +33,33 @@ bool Server::process(const Peer &p, NetPkg &pkg, std::deque<uint8_t> &out) {
 		case NetPkgType::start_game:
 			start_game(p);
 			break;
-		case NetPkgType::set_scn_vars:
-			return set_scn_vars(p, pkg.get_scn_vars());
+		case NetPkgType::set_scn_vars: {
+			auto scn = pkg.get_scn_vars();
+			return set_scn_vars(p, scn);
+		}
 		case NetPkgType::set_username:
 			return chk_username(p, out, pkg.username());
 		case NetPkgType::client_info:
 			return process_clientinfo(p, pkg);
-		case NetPkgType::playermod:
-			return process_playermod(p, pkg.get_player_control(), out);
-		case NetPkgType::entity_mod:
-			return process_entity_mod(p, pkg.get_entity_mod(), out);
-		case NetPkgType::cam_set:
-			return cam_set(p, pkg.get_cam_set());
-		case NetPkgType::gamespeed_control:
-			gamespeed_control(p, pkg.get_gamespeed());
+		case NetPkgType::playermod: {
+			auto cntl = pkg.get_player_control();
+			return process_playermod(p, cntl, out);
+		}
+		case NetPkgType::entity_mod: {
+			auto ent = pkg.get_entity_mod();
+			return process_entity_mod(p, ent, out);
+		}
+		case NetPkgType::cam_set: {
+			auto cam = pkg.get_cam_set();
+			return cam_set(p, cam);
+		}
+		case NetPkgType::gamespeed_control: {
+			auto spd = pkg.get_gamespeed();
+			gamespeed_control(p, spd);
 			break;
+		}
 		default:
-			fprintf(stderr, "bad type: %u\n", pkg.type());
+			fprintf(stderr, "bad type: %u\n", (unsigned)pkg.type());
 			throw "invalid type";
 	}
 

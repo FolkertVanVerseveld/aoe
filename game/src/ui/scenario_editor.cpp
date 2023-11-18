@@ -31,6 +31,7 @@ struct ScnBtn {
 
 void UICache::show_editor_scenario() {
 	ZoneScoped;
+
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGuiIO &io = ImGui::GetIO();
 
@@ -125,9 +126,12 @@ void UICache::show_editor_scenario() {
 			// TODO use scn_edit to load everything
 			try {
 				scn.load(path.c_str());
+				set_scn(scn);
+				scn_edit.load(scn);
 			} catch (io::BadScenarioError &e) {
 				scn_edit.load(path.c_str());
 			}
+			e->cam_reset();
 		} catch (std::runtime_error &e) {
 			fprintf(stderr, "%s: cannot load scn: %s\n", __func__, e.what());
 		}
@@ -191,20 +195,21 @@ void UICache::show_editor_scenario() {
 		// 11, 636 - 625
 		//str2(ImVec2(menubar_left + 11 * scale, menubar2_top + 11 * scale), "Map");
 
-		ImGui::InputInt("map type", &scn_edit.map_gen_type);
+		// TODO combo box
+		ImGui::Input("map type", scn_edit.map_gen_type);
 
 		// 182, 725 - 625
 
 		//if (frame_btn(col, "Generate Map", menubar_left + 182 * scale, menubar2_bottom - (38 + 3) * scale, 130, 38, scale)) {}
 
-		ImGui::InputInt("map width", &scn_edit.map_gen_width);
-		ImGui::InputInt("map height", &scn_edit.map_gen_height);
+		ImGui::InputClamp("map width", scn_edit.map_gen_width, Terrain::min_size, Terrain::max_size);
+		ImGui::InputClamp("map height", scn_edit.map_gen_height, Terrain::min_size, Terrain::max_size);
 
-		ImGui::InputInt("default terrain", &scn_edit.map_gen_terrain_type);
+		ImGui::Input("default terrain", scn_edit.map_gen_terrain_type);
 
 		if (f.btn("Generate Map")) {
 			e->sfx.play_sfx(SfxId::sfx_ui_click);
-			scn_edit.create_map();
+			scn_edit.create_map(scn_game);
 		}
 		break;
 	default:

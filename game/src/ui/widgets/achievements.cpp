@@ -83,33 +83,6 @@ bool Engine::show_achievements(Frame &f, bool bkg) {
 			// 40, 338
 			// 40, 386
 
-#if 0
-			for (unsigned i = 0; i < cv.scn.players.size(); ++i) {
-				PlayerSetting &p = cv.scn.players[i];
-
-				float rowy = tl.y + 300 * sy + (348 - 300) * i * sy;
-
-				lst->AddText(ImVec2(tl.x + 40 * sx, rowy - sz.y), IM_COL32_WHITE, p.name.c_str());
-
-				sz = ImGui::CalcTextSize("0");
-				lst->AddText(ImVec2(tl.x + 324 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "0");
-
-				sz = ImGui::CalcTextSize("0");
-				lst->AddText(ImVec2(tl.x + 408 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "0");
-
-				sz = ImGui::CalcTextSize("0");
-				lst->AddText(ImVec2(tl.x + 492 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "0");
-
-				sz = ImGui::CalcTextSize("0");
-				lst->AddText(ImVec2(tl.x + 577 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "0");
-
-				sz = ImGui::CalcTextSize("Yes");
-				lst->AddText(ImVec2(tl.x + 662 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "Yes");
-
-				sz = ImGui::CalcTextSize("100");
-				lst->AddText(ImVec2(tl.x + 830 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, "100");
-			}
-#else
 			for (unsigned i = 1; i < gv.players.size(); ++i) {
 				PlayerView &v = gv.players[i];
 
@@ -136,7 +109,6 @@ bool Engine::show_achievements(Frame &f, bool bkg) {
 				sz = ImGui::CalcTextSize(txt.c_str());
 				lst->AddText(ImVec2(tl.x + 830 * sx - sz.x / 2, rowy - sz.y), IM_COL32_WHITE, txt.c_str());
 			}
-#endif
 		}
 
 		if (f.btn("Timeline")) {

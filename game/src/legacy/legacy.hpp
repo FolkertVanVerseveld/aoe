@@ -148,7 +148,7 @@ enum class DrsId {
 	trn_deepwater = 15003,
 
 	trn_water_desert = 20000,
-	trn_grass_desert = 20001,
+	trn_desert_overlay = 20002,
 	trn_water_overlay = 20006,
 
 	pal_default = 50500,
@@ -206,6 +206,7 @@ enum class DrsId {
 	gif_priest_decay = 402,
 
 	gif_building_icons = 50704,
+	gif_task_icons = 50721,
 	gif_unit_icons = 50730,
 	gif_moveto = 50405,
 	gif_explode1 = 409,
@@ -227,6 +228,11 @@ enum class DrsId {
 	ent_desert_tree2 = 464,
 	ent_desert_tree3 = 465,
 	ent_desert_tree4 = 466,
+
+	ent_grass_tree1 = 492,
+	ent_grass_tree2 = 493,
+	ent_grass_tree3 = 494,
+	ent_grass_tree4 = 495,
 
 	ent_dead_tree1 = 636,
 	ent_dead_tree2 = 637,

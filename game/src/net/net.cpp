@@ -14,6 +14,15 @@
 #include <ws2tcpip.h>
 
 #pragma comment(lib, "ws2_32.lib")
+static int close(SOCKET sock)
+{
+	return ::closesocket(sock);
+}
+#else
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 #include <tracy/Tracy.hpp>
@@ -22,6 +31,7 @@
 
 namespace aoe {
 
+#if _WIN32
 // process and throw error message. always throws
 static void wsa_generic_error(const char *prefix, int code) noexcept(false)
 {
@@ -284,6 +294,192 @@ void TcpSocket::connect(const char *address, uint16_t port) {
 	}
 }
 
+int TcpSocket::send(const void *ptr, int len, unsigned tries) {
+	int out = try_send(ptr, len, tries);
+
+	if (out != SOCKET_ERROR && out >= 0)
+		return out;
+
+	int err = WSAGetLastError();
+
+	switch (err) {
+		case 0:
+			throw std::runtime_error(std::string("wsa: send failed: unknown return code ") + std::to_string(out));
+		default:
+			wsa_generic_error("wsa: send failed", err);
+			break;
+	}
+
+	return out;
+}
+
+int TcpSocket::recv(void *dst, int len, unsigned tries) {
+	int in = try_recv(dst, len, tries);
+
+	if (in != SOCKET_ERROR && in >= 0)
+		return in;
+
+	int err = WSAGetLastError();
+
+	if (!err && in < 0)
+		throw std::runtime_error(std::string("wsa: recv failed: unknown return code ") + std::to_string(in));
+
+	wsa_generic_error("wsa: recv failed", err);
+
+	return in;
+}
+#else
+Net::Net() {}
+Net::~Net() {}
+
+void set_nonblocking(int fd, bool nonbl) {
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (flags == -1)
+		throw std::runtime_error(std::string("cannot change non-blocking mode: fcntl F_GETFL failed: ") + strerror(errno));
+
+	flags = nonbl ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
+	if (fcntl(fd, F_SETFL, flags))
+		throw std::runtime_error(std::string("cannot change non-blocking mode: fcntl F_SETFL failed: ") + strerror(errno));
+}
+
+TcpSocket::TcpSocket() : s(INVALID_SOCKET) {
+	int sock;
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1)
+		throw std::runtime_error(std::string("socket failed: ") + strerror(errno));
+
+	s.store(sock);
+
+}
+
+TcpSocket::~TcpSocket() {
+	::close(s.load());
+}
+
+void TcpSocket::open() {
+	int sock;
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1)
+		throw std::runtime_error(std::string("socket failed: ") + strerror(errno));
+
+	::close(s.load());
+	s.store(sock);
+}
+
+void TcpSocket::close() {
+	if (!::close(s.load()))
+		s = INVALID_SOCKET;
+}
+
+int TcpSocket::accept() {
+	return ::accept(s, NULL, NULL);
+}
+
+int TcpSocket::accept(sockaddr &a, int &sz) {
+	socklen_t len = sz;
+	int ret = ::accept(s, &a, &len);
+	return sz = len;
+}
+
+void TcpSocket::bind(const char *address, uint16_t port) {
+	const int sock = s.load(std::memory_order_relaxed);
+	sockaddr_in dst{ 0 };
+
+	dst.sin_family = AF_INET;
+	dst.sin_addr.s_addr = inet_addr(address);
+	dst.sin_port = htons(port);
+
+	// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-bind
+	int r = ::bind(sock, (const sockaddr *)&dst, sizeof dst);
+
+	if (r == 0)
+		return;
+
+	if (r != -1)
+		throw std::runtime_error(std::string("bind failed: unknown return code ") + std::to_string(r));
+
+	int err = errno;
+
+	if (err)
+		throw std::runtime_error(std::string("bind failed: ") + strerror(err));
+	else
+		throw std::runtime_error(std::string("bind failed: unknown error code ") + std::to_string(err));
+}
+
+void TcpSocket::listen(int backlog) {
+	if (backlog < 1)
+		throw std::runtime_error("listen failed: backlog must be positive");
+
+	const auto sock = s.load(std::memory_order_relaxed);
+	int r = ::listen(sock, backlog);
+
+	if (r == 0)
+		return;
+
+	if (r != -1)
+		throw std::runtime_error(std::string("listen failed: unknown return code ") + std::to_string(r));
+
+	int err = errno;
+
+	if (err)
+		throw std::runtime_error(std::string("listen failed: ") + strerror(err));
+	else
+		throw std::runtime_error(std::string("listen failed: unknown error code ") + std::to_string(err));
+}
+
+void TcpSocket::connect(const char *address, uint16_t port) {
+	const auto sock = s.load(std::memory_order_relaxed);
+	sockaddr_in dst{ 0 };
+
+	dst.sin_family = AF_INET;
+	dst.sin_addr.s_addr = inet_addr(address);
+	dst.sin_port = htons(port);
+
+	int r = ::connect(sock, (const sockaddr *)&dst, sizeof dst);
+
+	if (r == 0)
+		return;
+
+	if (r != -1)
+		throw std::runtime_error(std::string("wsa: connect failed: unknown return code ") + std::to_string(r));
+
+	int err = errno;
+
+	if (err)
+		throw std::runtime_error(std::string("connect failed: ") + strerror(err));
+	else
+		throw std::runtime_error(std::string("connect failed: unknown error code ") + std::to_string(err));
+}
+
+int TcpSocket::send(const void *ptr, int len, unsigned tries) {
+	int out = try_send(ptr, len, tries);
+
+	if (out != -1 && out >= 0)
+		return out;
+
+	int err = errno;
+
+	if (err == 0)
+		throw std::runtime_error(std::string("send failed: unknown return code ") + std::to_string(out));
+	else
+		throw std::runtime_error(std::string("send failed: ") + strerror(err));
+}
+
+int TcpSocket::recv(void *dst, int len, unsigned tries) {
+	int in = try_recv(dst, len, tries);
+
+	if (in != -1 && in >= 0)
+		return in;
+
+	int err = errno;
+
+	if (!err && in < 0)
+		throw std::runtime_error(std::string("recv failed: unknown return code ") + std::to_string(in));
+	else
+		throw std::runtime_error(std::string("recv failed: ") + strerror(err));
+}
+#endif
+
 int TcpSocket::try_send(const void *ptr, int len, unsigned tries) noexcept {
 	const auto sock = s.load(std::memory_order_relaxed);
 	int written = 0;
@@ -307,28 +503,9 @@ int TcpSocket::try_send(const void *ptr, int len, unsigned tries) noexcept {
 	return written;
 }
 
-int TcpSocket::send(const void *ptr, int len, unsigned tries) {
-	int out = try_send(ptr, len, tries);
-
-	if (out != SOCKET_ERROR && out >= 0)
-		return out;
-
-	int err = WSAGetLastError();
-
-	switch (err) {
-		case 0:
-			throw std::runtime_error(std::string("wsa: send failed: unknown return code ") + std::to_string(out));
-		default:
-			wsa_generic_error("wsa: send failed", err);
-			break;
-	}
-
-	return out;
-}
-
 void TcpSocket::send_fully(const void *ptr, int len) {
 	int out;
-	
+
 	if ((out = send(ptr, len, 0)) == len)
 		return;
 
@@ -364,22 +541,6 @@ int TcpSocket::try_recv(void *dst, int len, unsigned tries) noexcept {
 	return read;
 }
 
-int TcpSocket::recv(void *dst, int len, unsigned tries) {
-	int in = try_recv(dst, len, tries);
-
-	if (in != SOCKET_ERROR && in >= 0)
-		return in;
-
-	int err = WSAGetLastError();
-
-	if (!err && in < 0)
-		throw std::runtime_error(std::string("wsa: recv failed: unknown return code ") + std::to_string(in));
-
-	wsa_generic_error("wsa: recv failed", err);
-
-	return in;
-}
-
 void TcpSocket::recv_fully(void *ptr, int len) {
 	int in;
 
@@ -405,15 +566,21 @@ void ServerSocket::open(const char *addr, uint16_t port, unsigned backlog) {
 	s.listen(backlog);
 }
 
+#if _WIN32
+#define EPOLL_SOCK(ev) (ev).data.sock
+#else
+#define EPOLL_SOCK(ev) (ev).data.fd
+#endif
+
 void ServerSocket::stop() {
 	ZoneScoped;
 
 	std::unique_lock<std::mutex> lk(peer_ev_lock);
 
 	for (const epoll_event &ev : events) {
-		SOCKET s = ev.data.sock;
+		SOCKET s = EPOLL_SOCK(ev);
 		del_fd(s);
-		::closesocket(s);
+		::close(s);
 	}
 
 	events.clear();
@@ -473,18 +640,26 @@ void ServerSocket::incoming() {
 		hbuf[0] = sbuf[0] = '\0';
 
 		if ((infd = s.accept(in_addr, in_len = sizeof in_addr)) == INVALID_SOCKET) {
+#if _WIN32
 			int r = WSAGetLastError();
 
 			if (r == WSAEINPROGRESS || r == WSAEWOULDBLOCK)
 				return; // all peers have been accepted. stop
 
 			wsa_generic_error("ssock incoming", r);
-			return;
+#else
+			int r = errno;
+
+			if (r == EINPROGRESS || r == EWOULDBLOCK)
+				return; // all peers have been accepted. stop
+
+			throw std::runtime_error(std::string("ssock incoming: ") + strerror(r));
+#endif
 		}
 
 		if (getnameinfo(&in_addr, in_len, hbuf, sizeof hbuf, sbuf, sizeof sbuf, NI_NUMERICHOST | NI_NUMERICSERV)) {
 			// force drop
-			::closesocket(infd);
+			::close(infd);
 			continue;
 		}
 
@@ -535,7 +710,7 @@ bool ServerSocket::io_step(int idx) {
 	std::unique_lock<std::mutex> lk(peer_ev_lock);
 
 	epoll_event &ev = events.at(idx);
-	SOCKET s = ev.data.sock;
+	SOCKET s = EPOLL_SOCK(ev);
 
 	auto it = peers.find(s);
 	if (it == peers.end())
@@ -554,12 +729,21 @@ bool ServerSocket::recv_step(const Peer &p, SOCKET s) {
 	while (1) {
 		int count = ::recv(s, recvbuf.data(), recvbuf.size(), 0);
 		if (count < 0) {
+#if _WIN32
 			int r = WSAGetLastError();
 
 			if (r != WSAEWOULDBLOCK) {
 				fprintf(stderr, "%s: recv failed: code %d\n", __func__, r);
 				return false;
 			}
+#else
+			int r = errno;
+
+			if (r != EWOULDBLOCK) {
+				fprintf(stderr, "%s: recv failed: %s\n", __func__, strerror(r));
+				return false;
+			}
+#endif
 
 			return true;
 		}
@@ -628,12 +812,21 @@ bool ServerSocket::send_step(SOCKET s) {
 
 		count = ::send(s, sendbuf.data(), out, 0);
 		if (count < 0) {
+#if _WIN32
 			int r = WSAGetLastError();
 
 			if (r != WSAEWOULDBLOCK) {
 				fprintf(stderr, "%s: send failed: code %d\n", __func__, r);
 				return false;
 			}
+#else
+			int r = errno;
+
+			if (r != EWOULDBLOCK) {
+				fprintf(stderr, "%s: send failed: %s\n", __func__, strerror(r));
+				return false;
+			}
+#endif
 
 			return true;
 		}
@@ -695,7 +888,7 @@ void ServerSocket::reduce_peers() {
 
 	for (SOCKET sock : closing) {
 		del_fd(sock);
-		::closesocket(sock);
+		::close(sock);
 		data_out.erase(sock);
 		send_pending.erase(sock);
 	}
@@ -726,7 +919,7 @@ bool ServerSocket::event_step(int idx) {
 		incoming();
 	} else if (!io_step(idx)) {
 		// error or done: close fd
-		SOCKET s = ev->data.sock;
+		SOCKET s = EPOLL_SOCK(*ev);
 
 		// if socket was host: terminate server
 		if (s == peer_host)

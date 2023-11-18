@@ -7,6 +7,7 @@
 #include <idpool.hpp>
 
 #include "../resources.hpp"
+#include "../terrain.hpp"
 
 namespace aoe {
 
@@ -18,9 +19,10 @@ public:
 	int civ;
 	unsigned team;
 	Resources res;
+	bool ai;
 
-	PlayerSetting() : name(), civ(0), team(1), res() {}
-	PlayerSetting(const std::string &name, int civ, unsigned team, Resources res) : name(name), civ(civ), team(team), res(res) {}
+	PlayerSetting() : name(), civ(0), team(1), res(), ai(false) {}
+	PlayerSetting(const std::string &name, int civ, unsigned team, Resources res) : name(name), civ(civ), team(team), res(res), ai(false) {}
 	PlayerSetting(const PlayerSetting&) = default;
 };
 
@@ -41,6 +43,7 @@ public:
 	unsigned age;
 	unsigned seed;
 	unsigned villagers;
+	TerrainType type;
 
 	Resources res;
 

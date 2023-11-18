@@ -4,6 +4,10 @@
 #include <stdexcept>
 #include <string>
 
+#ifndef _WIN32
+#include <arpa/inet.h>
+#endif
+
 namespace aoe {
 
 void NetPkgHdr::ntoh() {

@@ -1,12 +1,13 @@
 #pragma once
 
-#include <GL/gl3w.h>
 #include <string>
 #include <vector>
 
 #include <idpool.hpp>
 
 #include "../legacy/legacy.hpp"
+
+#include "gl.hpp"
 
 #define GLCHK aoe::gfx::glchk(__FILE__, __func__, __LINE__)
 
@@ -28,7 +29,7 @@ public:
 	Image(const Image&) = delete;
 	Image(Image&&) = default;
 
-	bool load(const SDL_Palette *pal, const io::Slp &slp, unsigned index, unsigned player=0);
+	bool load(const SDL_Palette *pal, const io::Slp &slp, unsigned index, unsigned player, io::DrsId id);
 };
 
 class ImageRef final {

@@ -9,9 +9,9 @@
 
 namespace aoe {
 
-Terrain::Terrain() : tiles(), hmap(), obstructed(false), w(0), h(0), seed(0), players(0), wrap(false) {}
+Terrain::Terrain() : tiles(), hmap(), obstructed(false), w(0), h(0), seed(0), players(0), wrap(false), type(TerrainType::normal) {}
 
-void Terrain::resize(unsigned width, unsigned height, unsigned seed, unsigned players, bool wrap) {
+void Terrain::resize(unsigned width, unsigned height, unsigned seed, unsigned players, bool wrap, TerrainType type) {
 	ZoneScoped;
 
 	this->w = width;
@@ -19,6 +19,7 @@ void Terrain::resize(unsigned width, unsigned height, unsigned seed, unsigned pl
 	this->seed = seed;
 	this->players = players;
 	this->wrap = wrap;
+	this->type = type;
 
 	size_t count = (size_t)w * h;
 
@@ -27,22 +28,11 @@ void Terrain::resize(unsigned width, unsigned height, unsigned seed, unsigned pl
 	obstructed.resize(count, false);
 }
 
-void Terrain::generate() {
-	// TODO use real generator like perlin noise
-
-	TileType types[] = { TileType::desert, TileType::grass, TileType::grass_desert };
-
-	for (size_t i = 0, n = tiles.size(); i < n; ++i) {
-		tiles[i] = Terrain::tile_id(TileType::desert, rand() % 9);
-		hmap[i] = 0;
-	}
-}
-
-uint8_t Terrain::tile_at(unsigned x, unsigned y) {
+tile_t Terrain::tile_at(unsigned x, unsigned y) {
 	return tiles.at(y * w + x);
 }
 
-int8_t Terrain::h_at(unsigned x, unsigned y) {
+uint8_t Terrain::h_at(unsigned x, unsigned y) {
 	x = std::clamp(x, 0u, w - 1);
 	y = std::clamp(y, 0u, h - 1);
 	return hmap.at(y * w + x);
@@ -67,7 +57,7 @@ void Terrain::add_building(EntityType t, unsigned x, unsigned y) {
 	}
 }
 
-void Terrain::fetch(std::vector<uint8_t> &tt, std::vector<int8_t> &hm, unsigned x0, unsigned y0, unsigned &w, unsigned &h) {
+void Terrain::fetch(std::vector<uint16_t> &tt, std::vector<uint8_t> &hm, unsigned x0, unsigned y0, unsigned &w, unsigned &h) {
 	tt.clear();
 	hm.clear();
 
@@ -86,7 +76,7 @@ void Terrain::fetch(std::vector<uint8_t> &tt, std::vector<int8_t> &hm, unsigned 
 	h = y1 - y0;
 }
 
-void Terrain::set(const std::vector<uint8_t> &tt, const std::vector<int8_t> &hm, unsigned x0, unsigned y0, unsigned w, unsigned h) {
+void Terrain::set(const std::vector<uint16_t> &tt, const std::vector<uint8_t> &hm, unsigned x0, unsigned y0, unsigned w, unsigned h) {
 	assert(x0 < this->w && y0 < this->h);
 
 	unsigned x1 = std::min(x0 + w, this->w), y1 = std::min(y0 + h, this->h);

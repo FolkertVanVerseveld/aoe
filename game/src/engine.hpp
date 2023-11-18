@@ -177,6 +177,8 @@ private:
 	void idle_async();
 	void idle_game();
 
+	void cam_reset();
+
 	void verify_game_data(const std::string &path);
 	void set_game_data();
 
@@ -226,6 +228,7 @@ private:
 	void guess_font_paths();
 
 	bool locked_settings() const noexcept;
+	bool capture_keys() const noexcept;
 
 	ImVec2 tilepos(float x, float y, float left=0, float top=0, int h=0);
 public:

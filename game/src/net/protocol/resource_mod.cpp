@@ -11,9 +11,9 @@ void NetPkg::set_resources(const Resources &res) {
 	ZoneScoped;
 	PkgWriter out(*this, NetPkgType::resmod);
 
-	write("4I", std::initializer_list<netarg>{
-		res.wood, res.food, res.gold, res.stone
-	}, false);
+	write("4I", pkgargs({
+		(uint64_t)res.wood, (uint64_t)res.food, (uint64_t)res.gold, (uint64_t)res.stone
+	}), false);
 }
 
 Resources NetPkg::get_resources() {

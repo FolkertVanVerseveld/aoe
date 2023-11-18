@@ -1,5 +1,7 @@
 #include "gfx.hpp"
 
+#include <climits>
+
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb_rect_pack.h"
 
@@ -59,7 +61,7 @@ Tileset ImagePacker::collect(int w, int h) {
 
 	std::vector<IdPoolRef> id_to_ref; // keep track of refs
 	std::vector<stbrp_rect> rects;
-	
+
 	rects.reserve(w);
 
 	// add all rects to be packed

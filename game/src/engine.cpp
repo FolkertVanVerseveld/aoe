@@ -46,21 +46,6 @@ namespace aoe {
 Engine *eng;
 std::mutex m_eng;
 
-ScenarioSettings::ScenarioSettings()
-	: players(), owners()
-	, fixed_start(true), explored(false), all_technologies(false), cheating(false)
-	, square(true), wrap(false), restricted(true), reorder(false), width(48), height(48)
-	, popcap(100)
-	, age(1), seed(1), villagers(3)
-	, res(200, 200, 0, 0)
-{
-	players.emplace_back("Gaia", 0, 0, Resources());
-}
-
-void ScenarioSettings::remove(IdPoolRef ref) {
-	owners.erase(ref);
-}
-
 Engine::Engine()
 	: net(), show_demo(false), show_debug(false), font_scaling(true)
 	, connection_mode(0), connection_port(32768), connection_host("")
@@ -210,8 +195,10 @@ void Engine::show_menubar() {
 void Engine::verify_game_data(const std::string &path) {
 	assets_good = false;
 
-	if (!fnt.loaded())
+	if (!fnt.loaded()) {
+		font_scaling = false;
 		return;
+	}
 
 	tp.push([this](int id, std::string path) {
 		ZoneScoped;
@@ -259,6 +246,7 @@ void Engine::display_ui() {
 			draw_background_border();
 			break;
 		case MenuState::editor_scenario:
+			ui.show_world();
 			ui.show_editor_scenario();
 			break;
 		default:
@@ -588,6 +576,10 @@ void Engine::set_game_data() {
 	ui.load();
 }
 
+void Engine::cam_reset() {
+	cam_x = cam_y = 0.0f;
+}
+
 void Engine::idle() {
 	ZoneScoped;
 	idle_async();
@@ -620,8 +612,12 @@ void Engine::idle() {
 	if (c)
 		cv.try_read(*c);
 
-	if (menu_state == MenuState::multiplayer_game)
+	if (capture_keys())
 		idle_game();
+}
+
+bool Engine::capture_keys() const noexcept {
+	return menu_state == MenuState::multiplayer_game || menu_state == MenuState::editor_scenario;
 }
 
 void Engine::idle_game() {
@@ -646,7 +642,7 @@ void Engine::idle_game() {
 	// TODO clamp right, top and bottom side as well
 	cam_x = std::max(0.0f, cam_x);
 
-	{
+	if (menu_state != MenuState::editor_scenario) {
 		std::lock_guard<std::mutex> lk(m);
 		if (client) {
 			if (cam_move)
@@ -654,6 +650,9 @@ void Engine::idle_game() {
 
 			gv.try_read(client->g);
 		}
+	} else {
+		std::lock_guard<std::mutex> lk(m);
+		ui.idle_editor(*this);
 	}
 	ui.idle_game();
 }
@@ -711,6 +710,8 @@ void Engine::start_multiplayer_game() {
 	show_diplomacy = false;
 	multiplayer_ready = false;
 	keyctl.clear();
+
+	cam_reset();
 }
 
 void Engine::add_chat_text(const std::string &s) {
@@ -1010,7 +1011,7 @@ int Engine::mainloop() {
 				case SDL_KEYDOWN:
 					p = ImGui_ImplSDL2_ProcessEvent(&event);
 
-					if (!p || (menu_state == MenuState::multiplayer_game && !io.WantCaptureKeyboard))
+					if (!p || (capture_keys() && !io.WantCaptureKeyboard))
 						keyctl.down(event.key);
 					break;
 				default:

@@ -64,7 +64,9 @@ class WorldView final {
 public:
 	WorldView(World &w) : w(w) {}
 
+	Entity &at(IdPoolRef);
 	Entity *try_get(IdPoolRef);
+	Entity *try_get_alive(float x, float y, EntityType);
 	bool try_convert(Entity&, Entity &aggressor);
 	void collect(unsigned player, const Resources &res);
 };
@@ -107,6 +109,8 @@ public:
 		std::lock_guard<std::mutex> lk(m_events);
 		events_in.emplace_back(src, type, data...);
 	}
+
+	int non_gaia_players() const noexcept { return this->players.size() - 1; }
 private:
 	void startup();
 	void create_terrain();

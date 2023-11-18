@@ -2,6 +2,7 @@
 
 #include "../engine.hpp"
 #include "../world/entity_info.hpp"
+#include "../legacy/legacy.hpp"
 
 #include <minmax.hpp>
 
@@ -23,6 +24,10 @@ void UICache::idle(Engine &e) {
 	top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e.cam_y);
 
 	bkg = ImGui::GetBackgroundDrawList();
+}
+
+void UICache::idle_editor(Engine &e) {
+	e.gv.try_read(scn_game);
 }
 
 void UICache::idle_game() {
@@ -106,7 +111,7 @@ void UICache::user_interact_entities() {
 	}
 }
 
-void  UICache::image(const gfx::ImageRef &ref, float x, float y, float scale) {
+void UICache::image(const gfx::ImageRef &ref, float x, float y, float scale) {
 	bkg->AddImage(e->tex1, ImVec2(x, y), ImVec2(x + ref.bnds.w * scale, y + ref.bnds.h * scale), ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
 }
 
@@ -159,7 +164,10 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 	snprintf(buf, sizeof buf, "%u/%u", ent->stats.hp, ent->stats.maxhp);
 	bkg->AddText(ImVec2(menubar_left + 10 * scale, top + 102 * scale), IM_COL32_WHITE, buf);
 
-	if (e->cv.playerindex == ent->playerid && is_building(info.type)) {
+	if (e->cv.playerindex != ent->playerid)
+		return;
+	
+	if (is_building(info.type)) {
 		const ImageSet &s_units = a.anim_at(io::DrsId::gif_unit_icons);
 
 		x0 = menubar_left + 140 * scale;
@@ -188,6 +196,46 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 
 				image(img_melee, x0, y0, scale);
 				break;
+			}
+		}
+	} else if (is_worker(ent->type)) {
+		const ImageSet &s_task = a.anim_at(io::DrsId::gif_task_icons);
+		const gfx::ImageRef &img_build = a.at(s_task.imgs[2]);
+
+		BackgroundColors col = a.bkg_cols.at(io::DrsId::bkg_editor_menu);
+
+		x0 = menubar_left + 140 * scale;
+		y0 = top + 10 * scale;
+
+		if (build_menu < 0) {
+			if (frame_btn(col, "build 1", x0 - 2, y0 - 2, img_build.bnds.w * scale + 4, img_build.bnds.h * scale + 4, 1))
+				build_menu = 0; // TODO open build menu
+
+			image(img_build, x0, y0, scale);
+		} else {
+			const ImageSet &s_bld = a.anim_at(io::DrsId::gif_building_icons);
+			unsigned p = ent->playerid;
+
+			const gfx::ImageRef &bld_melee = a.at(s_bld.at(p, (unsigned)io::BldIcon::barracks1));
+			const gfx::ImageRef &bld_docks = a.at(s_bld.at(p, (unsigned)io::BldIcon::dock1));
+			const gfx::ImageRef &bld_food = a.at(s_bld.at(p, (unsigned)io::BldIcon::granary1));
+			const gfx::ImageRef &bld_house = a.at(s_bld.at(p, (unsigned)io::BldIcon::house1));
+			const gfx::ImageRef &bld_stock = a.at(s_bld.at(p, (unsigned)io::BldIcon::storage1));
+
+			std::array<gfx::ImageRef, 5> blds{ bld_house, bld_melee, bld_food, bld_stock, bld_docks };
+
+			float margin = 4;
+			float w = blds[0].bnds.w * scale, h = blds[0].bnds.h * scale;
+			float ww = w + margin + 4;
+
+			for (unsigned i = 0; i < blds.size(); ++i) {
+				char lbl[32];
+				snprintf(lbl, sizeof lbl, "build %u", i);
+
+				if (frame_btn(col, lbl, x0 - 2 + i * ww, y0 - 2, w + margin, h + margin, 1))
+					; // TODO start building placement
+
+				image(blds[i], x0 + i * ww, y0, scale);
 			}
 		}
 	}

@@ -7,7 +7,7 @@
 
 #include <tracy/Tracy.hpp>
 
-#include <GL/gl3w.h>
+#include "engine/gfx.hpp"
 #include <vector>
 
 namespace aoe {

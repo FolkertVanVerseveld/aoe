@@ -32,13 +32,13 @@ void NetPkg::set_player_score(uint16_t idx, const PlayerAchievements &pa) {
 
 	if (pa.alive) flags |= 1 << 0;
 
-	write("2HILB", pkgargs{
+	write("2HILB", pkgargs({
 		(unsigned)NetPlayerControlType::set_score,
-		idx,
-		pa.military_score,
-		pa.score,
-		flags,
-	}, false);
+		(uint64_t)idx,
+		(uint64_t)pa.military_score,
+		(uint64_t)pa.score,
+		(uint64_t)flags,
+	}), false);
 }
 
 NetPlayerControl NetPkg::get_player_control() {

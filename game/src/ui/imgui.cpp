@@ -1,6 +1,7 @@
 #include "imgui_user.hpp"
 
 #include <cstdarg>
+#include <algorithm>
 
 #include <imgui_internal.h>
 
@@ -104,6 +105,19 @@ bool Combo(const char *label, int &idx, const std::vector<std::string> &lst, int
 	return ImGui::Combo(label, &idx, vec_get, (void*)&lst, lst.size(), popup_max_height_in_items);
 }
 
+bool Input(const char *label, int &v, int step, int step2, ImGuiInputTextFlags flags)
+{
+	return ImGui::InputInt(label, &v, step, step2, flags);
+}
+
+bool InputClamp(const char *label, int &v, int min, int max, int step, int step2, ImGuiInputTextFlags flags)
+{
+	v = std::clamp(v, min, max);
+	bool b = ImGui::InputInt(label, &v, step, step2, flags);
+	v = std::clamp(v, min, max);
+	return b;
+}
+
 void Tooltip(const char *str, float width)
 {
 	ImGui::BeginTooltip();
@@ -191,7 +205,7 @@ void TextWrappedV(const char *fmt, int halign, va_list args)
 void TextWrapped(const char *fmt, int halign, ...)
 {
 	va_list args;
-	va_start(args, fmt);
+	va_start(args, halign);
 	TextWrappedV(fmt, halign, args);
 	va_end(args);
 }

@@ -69,7 +69,7 @@ void Debug::show(bool &open) {
 
 			// try to determine exact ratio
 			long long llw = (long long)bnds.w, llh = (long long)bnds.h;
-			char *fmt = "unknown format";
+			const char *fmt = "unknown format";
 
 			// check both ways as we may have rounding errors.
 			// i didn't verify this formula, so there might be situations were it isn't exact

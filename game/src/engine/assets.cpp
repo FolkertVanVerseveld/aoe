@@ -32,7 +32,7 @@ void Background::load(DRS &drs, DrsId id) {
 	this->drs = DrsBkg(drs.open_bkg(id));
 	pal = drs.open_pal((DrsId)this->drs.pal_id);
 	auto slp = drs.open_slp((DrsId)this->drs.bkg_id[2]);
-	img.load(pal.get(), slp, 0, 0);
+	img.load(pal.get(), slp, 0, 0, id);
 
 	for (unsigned i = 0; i < 6; ++i)
 		cols.border[i] = pal->colors[this->drs.bevel_col[i]];
@@ -65,7 +65,7 @@ void Animation::load(io::DRS &drs, const SDL_Palette *pal, io::DrsId id) {
 	dynamic = false;
 
 	for (unsigned i = 0; i < image_count; ++i) {
-		if (images[i].load(pal, slp, i)) {
+		if (images[i].load(pal, slp, i, 0, id)) {
 			dynamic = true;
 			break;
 		}
@@ -79,7 +79,7 @@ void Animation::load(io::DRS &drs, const SDL_Palette *pal, io::DrsId id) {
 
 	for (unsigned p = 0; p < MAX_PLAYERS; ++p)
 		for (unsigned i = 0; i < image_count; ++i)
-			images[p * image_count + i].load(pal, slp, i, p);
+			images[p * image_count + i].load(pal, slp, i, p, id);
 }
 
 Image &Animation::subimage(unsigned index, unsigned player) {
@@ -130,7 +130,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		drs_ids[DrsId::bkg_achievements] = p.add_img(0, 0, bkg_achievements);
 	}
 
-	Animation gif_menu_btn_small0, gif_menu_btn_medium0, gif_menubar0, gif_building_icons, gif_unit_icons, gif_hpbar;
+	Animation gif_menu_btn_small0, gif_menu_btn_medium0, gif_menubar0, gif_building_icons, gif_task_icons, gif_unit_icons, gif_hpbar;
 	Animation gif_moveto, gif_explode1, gif_explode2;
 	Image img_dialog0, img_dialog_editor;
 	auto pal = drs_ui.open_pal(DrsId::pal_default);
@@ -141,20 +141,21 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		gif_menu_btn_medium0.load(drs_ui, pal.get(), DrsId::gif_menu_btn_medium0);
 		gif_menubar0.load(drs_ui, pal.get(), DrsId::gif_menubar0);
 		auto slp = drs_ui.open_slp(DrsId::img_dialog0);
-		img_dialog0.load(pal.get(), slp, 0, 0);
+		img_dialog0.load(pal.get(), slp, 0, 0, DrsId::img_dialog0);
 		gif_cursors.load(drs_ui, pal.get(), DrsId::gif_cursors);
 		slp = drs_ui.open_slp(DrsId::img_editor);
-		img_dialog_editor.load(pal.get(), slp, 0, 0);
+		img_dialog_editor.load(pal.get(), slp, 0, 0, DrsId::img_editor);
 
-#define load_gif(id) id.load(drs_ui, pal.get(), DrsId:: ##id)
+#define load_gif(id) id.load(drs_ui, pal.get(), DrsId::id)
 		load_gif(gif_building_icons);
+		load_gif(gif_task_icons);
 		load_gif(gif_unit_icons);
 		load_gif(gif_hpbar);
 		load_gif(gif_moveto);
 #undef load_gif
 	}
 
-	Animation trn_water_desert, trn_grass_desert, trn_water_overlay;
+	Animation trn_water_desert, trn_desert_overlay, trn_water_overlay;
 	Animation trn_desert, trn_grass, trn_water, trn_deepwater;
 	info.next("Loading terrain data");
 	{
@@ -163,7 +164,7 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		DRS drs_border(path + "/data/Border.drs");
 
 		trn_water_desert.load(drs_border, pal.get(), DrsId::trn_water_desert);
-		trn_grass_desert.load(drs_border, pal.get(), DrsId::trn_grass_desert);
+		trn_desert_overlay.load(drs_border, pal.get(), DrsId::trn_desert_overlay);
 		trn_water_overlay.load(drs_border, pal.get(), DrsId::trn_water_overlay);
 
 		DRS drs_terrain(path + "/data/Terrain.drs");
@@ -184,7 +185,8 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	Animation gif_worker_berries_attack;
 	Animation gif_melee1_stand, gif_melee1_move, gif_melee1_attack, gif_melee1_die, gif_melee1_decay;
 	Animation gif_priest_stand, gif_priest_move, gif_priest_attack, gif_priest_die, gif_priest_decay;
-	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4, img_dead_tree1, img_dead_tree2, img_decay_tree;
+	Image img_berries, img_desert_tree1, img_desert_tree2, img_desert_tree3, img_desert_tree4;
+	Image img_grass_tree1, img_grass_tree2, img_grass_tree3, img_grass_tree4, img_dead_tree1, img_dead_tree2, img_decay_tree;
 	Animation gif_gold, gif_stone;
 	Image img_bld_debris;
 
@@ -192,14 +194,14 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	{
 		ZoneScopedN("Loading game entities data");
 
-		DRS drs_graphics(path + "/data/Graphics.drs");
+		DRS drs_graphics(path + "/data/graphics.drs"); // NOTE official installer uses lowercase g in graphics
 
 		bld_town_center.load(drs_graphics, pal.get(), DrsId::bld_town_center);
 		bld_town_center_player.load(drs_graphics, pal.get(), DrsId::bld_town_center_player);
 
 		bld_barracks.load(drs_graphics, pal.get(), DrsId::bld_barracks);
 
-#define load_gif(id) id.load(drs_graphics, pal.get(), DrsId:: ##id)
+#define load_gif(id) id.load(drs_graphics, pal.get(), DrsId::id)
 		load_gif(gif_bld_fire1);
 		load_gif(gif_bld_fire2);
 		load_gif(gif_bld_fire3);
@@ -252,20 +254,28 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		load_gif(gif_explode1);
 		load_gif(gif_explode2);
 
-#define load_ent(id) img_##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_##id), 0)
+#define load_ent(id) img_##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_##id), 0, 0, DrsId::ent_##id)
 		load_ent(berries);
 #undef load_ent
 
 		load_gif(gif_gold);
 		load_gif(gif_stone);
 
-		img_desert_tree1.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree1), 0);
-		img_desert_tree2.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree2), 0);
-		img_desert_tree3.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree3), 0);
-		img_desert_tree4.load(pal.get(), drs_graphics.open_slp(DrsId::ent_desert_tree4), 0);
-		img_bld_debris.load(pal.get(), drs_graphics.open_slp(DrsId::bld_debris), 0);
+#define load_img(id) img_ ##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_ ##id), 0, 0, DrsId::ent_ ##id)
+
+		load_img(desert_tree1);
+		load_img(desert_tree2);
+		load_img(desert_tree3);
+		load_img(desert_tree4);
+
+		load_img(grass_tree1);
+		load_img(grass_tree2);
+		load_img(grass_tree3);
+		load_img(grass_tree4);
+
+		img_bld_debris.load(pal.get(), drs_graphics.open_slp(DrsId::bld_debris), 0, 0, DrsId::bld_debris);
 #undef load_gif
-#define load_img(id) img_ ##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_ ##id), 0)
+#define load_img(id) img_ ##id.load(pal.get(), drs_graphics.open_slp(DrsId::ent_ ##id), 0, 0, DrsId::ent_##id)
 		load_img(dead_tree1);
 		load_img(dead_tree2);
 		load_img(decay_tree);
@@ -278,17 +288,18 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 
 		drs_ids[DrsId::img_editor] = p.add_img(0, 0, img_dialog_editor.surface.get());
 
-#define gif(id) add_gifs(p, id, DrsId:: ##id)
+#define gif(id) add_gifs(p, id, DrsId::id)
 		add_gifs(p, gif_cursors, DrsId::gif_cursors);
 		add_gifs(p, gif_menu_btn_small0, DrsId::gif_menu_btn_small0);
 		add_gifs(p, gif_menu_btn_medium0, DrsId::gif_menu_btn_medium0);
 		add_gifs(p, gif_menubar0, DrsId::gif_menubar0);
 		gif(gif_building_icons);
+		gif(gif_task_icons);
 		gif(gif_unit_icons);
 		gif(gif_hpbar);
 
 		add_gifs(p, trn_water_desert, DrsId::trn_water_desert);
-		add_gifs(p, trn_grass_desert, DrsId::trn_grass_desert);
+		add_gifs(p, trn_desert_overlay, DrsId::trn_desert_overlay);
 		add_gifs(p, trn_water_overlay, DrsId::trn_water_overlay);
 
 		add_gifs(p, trn_desert, DrsId::trn_desert);
@@ -360,6 +371,11 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 		img(desert_tree2);
 		img(desert_tree3);
 		img(desert_tree4);
+		img(grass_tree1);
+		img(grass_tree2);
+		img(grass_tree3);
+		img(grass_tree4);
+
 		img(dead_tree1);
 		img(dead_tree2);
 		img(decay_tree);
@@ -400,6 +416,15 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 		snprintf(buf, sizeof buf, "%03d.wav", i + 1);
 
 		std::string fname(path + "/sound/Taunt" + buf);
+
+		// NOTE unix is case sensitive and some taunts have different casing...
+#if __unix__
+		if (i == 11 || i == 12 || i == 13)
+			fname = path + "/sound/taunt" + buf;
+		else if (i == 7 || i == 8 || i == 10 || i == 15 || i == 16 || i == 17)
+			fname = path + "/sound/TAUNT" + buf;
+#endif
+
 		eng.sfx.load_taunt((TauntId)i, fname.c_str());
 	}
 

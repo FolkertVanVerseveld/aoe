@@ -30,7 +30,7 @@ bool Server::process_entity_mod(const Peer &p, NetEntityMod &em, std::deque<uint
 		return true;
 	}
 	default:
-		fprintf(stderr, "%s: bad entity control type %u\n", __func__, em.type);
+		fprintf(stderr, "%s: bad entity control type %u\n", __func__, (unsigned)em.type);
 		break;
 	}
 

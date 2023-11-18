@@ -9,7 +9,7 @@ namespace aoe {
 void NetPkg::cam_set(float x, float y, float w, float h) {
 	ZoneScoped;
 	PkgWriter out(*this, NetPkgType::cam_set);
-	write("4i", pkgargs{ x, y, w, h }, false);
+	write("4i", pkgargs({(uint64_t)x, (uint64_t)y, (uint64_t)w, (uint64_t)h}), false);
 }
 
 NetCamSet NetPkg::get_cam_set() {

@@ -4,13 +4,58 @@
 
 #include <array>
 #include <chrono>
+#include <random>
 
 #include <tracy/Tracy.hpp>
 
 namespace aoe {
 
+Entity &WorldView::at(IdPoolRef r) {
+	return w.entities.at(r);
+}
+
 Entity *WorldView::try_get(IdPoolRef r) {
 	return w.entities.try_get(r);
+}
+
+Entity *WorldView::try_get_alive(float x, float y, EntityType t) {
+	Entity *closest = nullptr;
+	double d = DBL_MAX;
+
+	// special case for trees
+	if (t == EntityType::desert_tree1) {
+		for (auto it = w.entities.begin(); it != w.entities.end(); ++it) {
+			Entity &e = it->second;
+			if (e.is_alive() && is_tree(e.type)) {
+				double dx = e.x - x, dy = e.y - y;
+				double d2 = sqrt(dx * dx + dy * dy);
+
+				if (d2 < d) {
+					d = d2;
+					closest = &e;
+				}
+			}
+		}
+
+		return closest;
+	}
+
+	// find exact match
+	for (auto it = w.entities.begin(); it != w.entities.end(); ++it) {
+		Entity &e = it->second;
+
+		if (e.is_alive() && e.type == t) {
+			double dx = e.x - x, dy = e.y - y;
+			double d2 = sqrt(dx * dx + dy * dy);
+
+			if (d2 < d) {
+				d = d2;
+				closest = &e;
+			}
+		}
+	}
+
+	return closest;
 }
 
 World::World()
@@ -38,13 +83,14 @@ void World::load_scn(const ScenarioSettings &scn) {
 	this->scn.cheating = scn.cheating;
 	this->scn.square = scn.square;
 	this->scn.wrap = scn.wrap;
+	this->scn.type = scn.type;
 
-	t.resize(this->scn.width, this->scn.height, this->scn.seed, this->scn.players.size(), this->scn.wrap);
+	t.resize(this->scn.width, this->scn.height, this->scn.seed, this->scn.players.size(), this->scn.wrap, this->scn.type);
 }
 
 void World::create_terrain() {
 	ZoneScoped;
-	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
+	this->t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap, scn.type);
 	this->t.generate();
 }
 
@@ -53,7 +99,7 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 	assert(x >= 0 && y >= 0);
 
 	NetTerrainMod tm;
-	t.fetch(tm.tiles, tm.hmap, 0, 0, w, h);
+	t.fetch(tm.tiles, tm.hmap, x, y, w, h);
 
 	tm.x = x; tm.y = y; tm.w = w; tm.h = h;
 
@@ -63,12 +109,12 @@ NetTerrainMod World::fetch_terrain(int x, int y, unsigned &w, unsigned &h) {
 bool WorldView::try_convert(Entity &e, Entity &aggressor) {
 	// TODO convert gradually with some randomness
 	for (Player &p : w.players)
-		p.entities.erase(e.ref);
+		p.lost_entity(e.ref, false);
 
 	unsigned player = aggressor.playerid;
 
 	e.playerid = player;
-	w.players.at(player).entities.emplace(e.ref);
+	w.players.at(player).new_entity(e);
 
 	return true;
 }
@@ -107,6 +153,7 @@ void World::tick_entities() {
 				break;
 			case EntityState::attack: {
 				Entity *t = entities.try_get(ent.target_ref);
+
 				if (!t || !t->is_alive()) {
 					ent.task_cancel();
 					dirty = true;
@@ -139,7 +186,7 @@ void World::tick_entities() {
 							killed_entities.emplace(t->ref);
 							ent.task_cancel();
 							dirty = true;
-						} else if (t->playerid != 0) { // update score but ensure entity isn't owned by gaia
+						} else if (t->playerid != Player::gaia) { // update score but ensure entity isn't owned by gaia
 							if (is_building(t->type))
 								players[ent.playerid].killed_building();
 							else
@@ -190,7 +237,7 @@ void World::tick_players() {
 		Player &p = players[i];
 
 		// players may have additional rules to resign, but this always applies
-		if (!p.alive || !p.entities.empty())
+		if (!p.alive || p.has_entities())
 			continue;
 
 		p.alive = false;
@@ -203,12 +250,15 @@ void World::tick_players() {
 		return; // no game over condition
 
 	std::set<unsigned> alive_teams;
+	WorldView wv(*this);
 
 	// collect surviving teams
 	for (unsigned i = 1; i < players.size(); ++i) {
 		Player &p = players[i];
-		if (p.alive)
+		if (p.alive) {
 			alive_teams.emplace(p.init.team);
+			p.tick(wv);
+		}
 	}
 
 	if (alive_teams.size() <= 1) {
@@ -485,7 +535,7 @@ void World::nuke_ref(IdPoolRef ref) {
 		return;
 
 	for (Player &p : players)
-		p.entities.erase(ref);
+		p.lost_entity(ref, false);
 
 	// TODO add client info that sent kill command?
 	NetPkg pkg;
@@ -543,9 +593,8 @@ void World::entity_task(WorldEvent &ev) {
 			assert(task.info_type == (unsigned)EntityIconType::unit);
 			EntityType train = (EntityType)task.info_value;
 
-			// TODO extract resources cost from entity info
-			Resources cost(0, 50, 0, 0);
-			bool can_train = true;
+			Resources cost = entity_info.at((unsigned)train).cost;
+			bool can_train = false;
 			auto idx = ref2idx(ev.src);
 
 			if (idx.has_value()) {
@@ -634,6 +683,7 @@ void World::create_players() {
 				p.name = alias;
 			} else {
 				p.name = "Oerkneus de Eerste";
+				p.ai = true;
 
 				if (p.civ >= 0 && p.civ < s->civs.size()) {
 					auto &names = s->civs[s->civnames[p.civ]];
@@ -664,10 +714,13 @@ void World::create_players() {
 void World::add_building(EntityType t, unsigned player, int x, int y) {
 	ZoneScoped;
 	assert(is_building(t) && player < MAX_PLAYERS);
+
 	this->t.add_building(t, x, y);
+
 	auto p = entities.emplace(t, player, x, y);
 	assert(p.second);
-	players.at(player).entities.emplace(p.first->first);
+
+	players.at(player).new_entity(p.first->second);
 }
 
 void World::add_unit(EntityType t, unsigned player, float x, float y) {
@@ -677,9 +730,11 @@ void World::add_unit(EntityType t, unsigned player, float x, float y) {
 void World::add_unit(EntityType t, unsigned player, float x, float y, float angle, EntityState state) {
 	ZoneScoped;
 	assert(!is_building(t) && !is_resource(t) && player < MAX_PLAYERS);
+
 	auto p = entities.emplace(t, player, x, y, angle, state);
 	assert(p.second);
-	players.at(player).entities.emplace(p.first->first);
+
+	players.at(player).new_entity(p.first->second);
 }
 
 void World::add_resource(EntityType t, float x, float y, unsigned subimage) {
@@ -712,9 +767,9 @@ void World::spawn_unit(EntityType t, unsigned player, float x, float y, float an
 	auto p = entities.emplace(t, player, x, y, angle, EntityState::alive);
 	assert(p.second);
 
-	IdPoolRef ref = p.first->first;
-	players.at(player).entities.emplace(ref);
-	spawned_entities.emplace(ref);
+	auto &ref = p.first;
+	players.at(player).new_entity(ref->second);
+	spawned_entities.emplace(ref->first);
 }
 
 void World::spawn_particle(ParticleType t, float x, float y)
@@ -732,19 +787,98 @@ void World::create_entities() {
 	ZoneScoped;
 
 	entities.clear();
-	for (unsigned i = 1; i < players.size(); ++i) {
-		add_building(EntityType::town_center, i, 3, 1 + 3 * i);
-		add_building(EntityType::barracks, i, 3 + 2 * 3, 1 + 3 * i);
 
-		add_unit(EntityType::villager, i, 6, 1 + 3 * i);
-		add_unit(EntityType::villager, i, 6, 2 + 3 * i);
-		//add_unit(EntityType::villager, i, 7, 1 + 3 * i);// , 0, EntityState::attack);
-		add_unit(EntityType::villager, i, 7, 2 + 3 * i);
+	/*
+	strategy:
+	  place ellipsoid on map in centre that is enclosed completely by the map's dimensions, then scale to make it smaller
+	  then place town centers along perimeter s.t. they are not too close to each other with random offset to make it look more organic
+	*/
+
+	double scale = 0.7;
+	double eps_x = t.w * 0.5, eps_y = t.h * 0.5;
+	long eps_hw = (long)(scale * t.w / 2), eps_hh = (long)(scale * t.h / 2);
+
+	std::uniform_real_distribution<double> unif(0.0, 2.0 * M_PI);
+	std::default_random_engine re;
+
+	scale = 0.1;
+	double angle_step = 2 * M_PI / std::max(1, non_gaia_players());
+	double angle_jitter = angle_step * scale;
+	double angle_offset = unif(re);
+
+	scale = 0.1; // NOTE: this + ellipsoid position scale must be less than 1
+	double x_jitter = scale * t.w, y_jitter = scale * t.h;
+
+	std::uniform_real_distribution<double> unif_ang(-angle_jitter * 0.5, angle_jitter * 0.5);
+	std::uniform_real_distribution<double> unif_jx(-x_jitter * 0.5, x_jitter * 0.5);
+	std::uniform_real_distribution<double> unif_jy(-y_jitter * 0.5, y_jitter * 0.5);
+
+	const double villager_radius = 4.0;
+
+	// create player stuff
+	for (unsigned pid = 1; pid < this->players.size(); ++pid) {
+		double angle = angle_offset + pid * angle_step + unif_ang(re);
+
+		int t_x = (int)(eps_x + eps_hw * cos(angle) + unif_jx(re));
+		int t_y = (int)(eps_y + eps_hh * sin(angle) + unif_jy(re));
+
+		add_building(EntityType::town_center, pid, t_x, t_y);
+
+		// center t_x, t_y
+		++t_x;
+		++t_y;
+
+		unsigned villagers = this->scn.villagers;
+		double angle_villagers = 2 * M_PI / villagers;
+		double angle_vilagers_offset = unif(re);
+
+		double r = villager_radius;
+
+		// place villagers around town center facing random directions
+		for (unsigned j = 0; j < villagers; ++j) {
+			angle = unif(re);
+
+			add_unit(
+				EntityType::villager, pid,
+				t_x + r * cos(angle), t_y + r * sin(angle),
+				unif(re)
+			);
+		}
+
+		// add some resources near the player
+		r = 6;
+		angle = unif(re);
+
+		int b_x = t_x + r * cos(angle), b_y = t_y + r * sin(angle);
+
+		add_berries(b_x - 1, b_y - 1);
+		add_berries(b_x + 0, b_y - 1);
+		add_berries(b_x + 1, b_y - 1);
+		add_berries(b_x - 1, b_y);
+		add_berries(b_x + 0, b_y);
+		add_berries(b_x + 1, b_y);
+
+		r = 7;
+		angle = unif(re);
+		int g_x = t_x + r * cos(angle), g_y = t_y + r * sin(angle);
+
+		add_gold(g_x + 0, g_y + 0);
+		add_gold(g_x + 1, g_y + 0);
+		add_gold(g_x + 0, g_y + 1);
+		add_gold(g_x + 1, g_y + 1);
+
+		angle = unif(re);
+		int s_x = t_x + r * cos(angle), s_y = t_y + r * sin(angle);
+
+		add_stone(s_x + 0, s_y + 0);
+		add_stone(s_x + 1, s_y + 0);
+		add_stone(s_x + 0, s_y + 1);
+		add_stone(s_x + 1, s_y + 1);
+
+		// TODO add more resources trees
 	}
 
-	add_unit(EntityType::priest, 0, 3.5, 1);
-	add_unit(EntityType::priest, 0, 4.5, 1);
-
+	// TODO change this dummy stuff
 	std::array<EntityType, 4> trees{
 		EntityType::desert_tree1,
 		EntityType::desert_tree2,
@@ -752,16 +886,10 @@ void World::create_entities() {
 		EntityType::desert_tree4
 	};
 
-	for (unsigned y = 0; y < players.size() * 3; ++y) {
-		add_berries(14, y);
-		add_berries(15, y);
-
-		add_resource(trees[rand() % 4], 18, y, 0);
-		add_resource(trees[rand() % 4], 19, y, 0);
-		add_resource(trees[rand() % 4], 20, y, 0);
-
-		add_gold(22, y);
-		add_stone(23, y);
+	for (unsigned x = 0; x < players.size() * 3; ++x) {
+		add_resource(trees[rand() % 4], x, 0, 0);
+		add_resource(trees[rand() % 4], x, 1, 0);
+		add_resource(trees[rand() % 4], x, 2, 0);
 	}
 }
 

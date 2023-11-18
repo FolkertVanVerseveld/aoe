@@ -22,8 +22,16 @@ Game::Game()
 
 void Game::resize(const ScenarioSettings &scn) {
 	std::lock_guard<std::mutex> lk(m);
-	t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap);
-	modflags |= (unsigned)GameMod::terrain;
+	// nuke entities
+	entities.clear();
+	entities_spawned.clear();
+	entities_killed.clear();
+
+	particles.clear();
+	particles_spawned.clear();
+
+	t.resize(scn.width, scn.height, scn.seed, scn.players.size(), scn.wrap, scn.type);
+	modflags |= (unsigned)-1;
 }
 
 void Game::tick(unsigned n) {
@@ -92,11 +100,20 @@ void Game::imgtick(unsigned n) {
 		modflags |= (unsigned)GameMod::particles;
 }
 
-void Game::terrain_set(const std::vector<uint8_t> &tiles, const std::vector<int8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h) {
+void Game::terrain_create() {
+	t.generate();
+}
+
+void Game::terrain_set(const std::vector<uint16_t> &tiles, const std::vector<uint8_t> &hmap, unsigned x, unsigned y, unsigned w, unsigned h) {
 	std::lock_guard<std::mutex> lk(m);
 
 	t.set(tiles, hmap, x, y, w, h);
 	modflags |= (unsigned)GameMod::terrain;
+}
+
+void Game::entities_set(std::set<Entity> &&ent) {
+	lock lk(m);
+	entities = ent;
 }
 
 void Game::set_players(const std::vector<PlayerSetting> &lst) {

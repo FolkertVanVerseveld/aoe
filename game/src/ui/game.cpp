@@ -4,6 +4,27 @@ namespace aoe {
 
 using namespace ui;
 
+void UICache::draw_tile(uint8_t id, uint8_t h, int x, int y, const ImVec2 &size, ImU32 col) {
+	const gfx::ImageRef &img = imgtile(id);
+
+	ImVec2 tpos(e->tilepos(x, y, left, top, h));
+
+	float x0 = tpos.x - img.hotspot_x;
+	float y0 = tpos.y - img.hotspot_y;
+
+	float x1 = x0 + img.bnds.w;
+	float y1 = y0 + img.bnds.h;
+
+	if (x1 >= 0 && x0 < size.x && y1 >= 0 && y0 < size.y) {
+		if (x == 0 && y == 0)
+			--tpos.x;
+
+		display_area.emplace_back(x, y, SDL_Rect{ (int)x0, (int)y0, (int)img.bnds.w + 1, (int)img.bnds.h + 1 });
+
+		bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x1, y1), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1), col);
+	}
+}
+
 void UICache::show_terrain() {
 	ZoneScoped;
 
@@ -18,30 +39,36 @@ void UICache::show_terrain() {
 		for (int x = 0; x < gv.t.w; ++x) {
 			ImU32 col = IM_COL32_WHITE;
 
-			uint8_t id = gv.t.tile_at(x, y);
+			uint16_t id = gv.t.tile_at(x, y);
 			uint8_t h = gv.t.h_at(x, y);
 			if (!id) {
 				// draw black tile
 				col = IM_COL32_BLACK;
 			}
 
-			const gfx::ImageRef &img = imgtile(id);
+			if (Terrain::tile_hasoverlay(id)) {
+				TileType base = Terrain::tile_base(id);
+				unsigned meta = Terrain::tile_img(id);
+				unsigned bits = meta >> (12 - 3);
+				unsigned img = meta & ~0x1e00;
 
-			ImVec2 tpos(e->tilepos(x, y, left, top, h));
+				unsigned base_id = Terrain::tile_id(base, img);
+				draw_tile(base_id, h, x, y, io.DisplaySize, col);
 
-			float x0 = tpos.x - img.hotspot_x;
-			float y0 = tpos.y - img.hotspot_y;
+				TileType t = Terrain::tile_type(id);
 
-			float x1 = x0 + img.bnds.w;
-			float y1 = y0 + img.bnds.h;
+				assert(bits);
 
-			if (x1 >= 0 && x0 < io.DisplaySize.x && y1 >= 0 && y0 < io.DisplaySize.y) {
-				if (x == 0 && y == 0) {
-					tpos.x--;
-				}
-				display_area.emplace_back(x, y, SDL_Rect{ (int)x0, (int)y0, (int)img.bnds.w + 1, (int)img.bnds.h + 1 });
-
-				bkg->AddImage(e->tex1, ImVec2(x0, y0), ImVec2(x1, y1), ImVec2(img.s0, img.t0), ImVec2(img.s1, img.t1), col);
+				if (bits & 1)
+					draw_tile(Terrain::tile_id(t, 0), h, x, y, io.DisplaySize, col);
+				if (bits & 2)
+					draw_tile(Terrain::tile_id(t, 1), h, x, y, io.DisplaySize, col);
+				if (bits & 4)
+					draw_tile(Terrain::tile_id(t, 2), h, x, y, io.DisplaySize, col);
+				if (bits & 8)
+					draw_tile(Terrain::tile_id(t, 3), h, x, y, io.DisplaySize, col);
+			} else {
+				draw_tile(id, h, x, y, io.DisplaySize, col);
 			}
 		}
 	}

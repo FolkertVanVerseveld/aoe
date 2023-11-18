@@ -3,6 +3,8 @@
 #include <except.hpp>
 #include <string>
 
+#include <climits>
+
 namespace aoe {
 
 void NetPkg::chktype(NetPkgType type) {
@@ -15,7 +17,7 @@ void NetPkg::chktype(NetPkgType type) {
 	case NetPkgType::set_protocol:
 		throw std::runtime_error("not a protocol network packet");
 	case NetPkgType::entity_mod:
-		throw std::runtime_error("not an entityu control packet");
+		throw std::runtime_error("not an entity control packet");
 	case NetPkgType::cam_set:
 		throw std::runtime_error("not a camera set packet");
 	case NetPkgType::set_username:

@@ -30,7 +30,12 @@ static std::string get_username() {
 	return name;
 }
 #else
-#error get_username unimplemented
+#include <unistd.h>
+
+static std::string get_username() {
+	std::string name(getlogin());
+	return name;
+}
 #endif
 
 namespace aoe {
@@ -91,6 +96,15 @@ bool FontCache::try_load() {
 
 		fnt_copper2 = try_add_font(io.Fonts, localpath.c_str(), ceil(30.0f * f));
 	}
+#else
+	float f = SDL::fnt_scale;
+
+	#define FONT_DIR "/usr/share/fonts/truetype/"
+
+	fnt_arial = try_add_font(io.Fonts, FONT_DIR "liberation/LiberationSans-Regular.ttf", ceil(15.0f * f));
+
+	fnt_copper = try_add_font(io.Fonts, FONT_DIR "abyssinica/AbyssinicaSIL-Regular.ttf", ceil(18.0f * f));
+	fnt_copper2 = try_add_font(io.Fonts, FONT_DIR "ancient-scripts/Symbola_hint.ttf", ceil(30.0f * f));
 #endif
 	return loaded();
 }

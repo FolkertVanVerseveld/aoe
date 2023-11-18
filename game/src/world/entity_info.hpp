@@ -4,6 +4,7 @@
 #include <string>
 
 #include "../legacy/legacy.hpp"
+#include "resources.hpp"
 
 namespace aoe {
 
@@ -26,9 +27,21 @@ enum class EntityType {
 	desert_tree2,
 	desert_tree3,
 	desert_tree4,
+	grass_tree1,
+	grass_tree2,
+	grass_tree3,
+	grass_tree4,
 	dead_tree1,
 	dead_tree2,
 };
+
+static inline EntityType desert_tree(unsigned pos) {
+	return (EntityType)((unsigned)EntityType::desert_tree1 + pos % 4);
+}
+
+static inline EntityType grass_tree(unsigned pos) {
+	return (EntityType)((unsigned)EntityType::grass_tree1 + pos % 4);
+}
 
 static bool constexpr is_building(EntityType t) {
 	return t >= EntityType::town_center && t <= EntityType::barracks;
@@ -40,6 +53,10 @@ static bool constexpr is_resource(EntityType t) {
 
 static bool constexpr is_worker(EntityType t) {
 	return t >= EntityType::villager && t <= EntityType::worker_berries;
+}
+
+static bool constexpr is_tree(EntityType t) {
+	return t >= EntityType::desert_tree1 && t <= EntityType::dead_tree2;
 }
 
 // TODO add is_unit (when needed?)
@@ -70,6 +87,7 @@ struct EntityInfo final {
 	unsigned atk, atk_bld;
 	unsigned icon; // unsigned as it can have different types
 	std::string name;
+	Resources cost;
 
 	// TODO add upgrade function that copies everything except hp
 };
