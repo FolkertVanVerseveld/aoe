@@ -27,7 +27,7 @@ void Terrain::tgen_normal() {
 				tiles[i] = Terrain::tile_id(TileType::water, 0);
 
 			// scale 0 to 5
-			hmap[i] = (uint8_t)(v * 5);
+			//hmap[i] = (uint8_t)(v * 5);
 		}
 	}
 }
