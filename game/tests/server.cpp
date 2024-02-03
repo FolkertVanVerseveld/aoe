@@ -185,18 +185,24 @@ TEST_F(ServerFixture, protocol) {
 
 	char buf[64];
 
-	if ((prot = c.recv_protocol()) != 1u)
+	if ((prot = c.recv_protocol()) != 1u) {
 		snprintf(buf, sizeof buf, "bad protocol: expected %u, got %u", 1u, prot);
+		bt.emplace_back(buf);
+	}
 
 	// request older version
 	c.send_protocol(0);
-	if ((prot = c.recv_protocol()) != 1u)
+	if ((prot = c.recv_protocol()) != 1u) {
 		snprintf(buf, sizeof buf, "bad protocol: expected %u, got %u", 1u, prot);
+		bt.emplace_back(buf);
+	}
 
 	// request same version
 	c.send_protocol(1);
-	if ((prot = c.recv_protocol()) != 1u)
+	if ((prot = c.recv_protocol()) != 1u) {
 		snprintf(buf, sizeof buf, "bad protocol: expected %u, got %u", 1u, prot);
+		bt.emplace_back(buf);
+	}
 
 	c.stop();
 	t1.join();
