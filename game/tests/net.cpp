@@ -12,29 +12,31 @@
 #include <memory>
 #include <ctime>
 
+#include <gtest/gtest.h>
+
 namespace aoe {
 
 static const char *default_host = "127.0.0.1";
 static const uint16_t default_port = 1234;
 
-static void net_start_stop() {
+TEST(Net, StartStop) {
 	Net net;
 	(void)net;
 }
 
-static void net_start_twice() {
+TEST(Net, StartTwice) {
 	Net net;
 	try {
 		// definitely not recommended to start the network subsystem twice, but it should work
 		Net net2;
 	} catch (std::exception &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		FAIL() << e.what();
 	} catch (...) {
-		fprintf(stderr, "%s: unknown error\n", __func__);
+		FAIL() << "unknown error";
 	}
 }
 
-static void adapters() {
+TEST(Net, Adapters) {
 	DWORD ret = 0;
 
 	// NOTE ptr is an array, but only a[0] is valid! to get a[1] use a[0]->Next
@@ -46,19 +48,15 @@ static void adapters() {
 	errno_t error;
 
 	// assume first attempt will fail as we have no idea what size to expect, but it might succeed
-	if ((err = GetAdaptersInfo(&a[0], &sz)) != 0 && err != ERROR_BUFFER_OVERFLOW) {
-		fprintf(stderr, "%s: GetAdaptersInfo: code %lu\n", __func__, err);
-		return;
-	}
+	if ((err = GetAdaptersInfo(&a[0], &sz)) != 0 && err != ERROR_BUFFER_OVERFLOW)
+		FAIL() << "GetAdaptersInfo: code " << err;
 
 	// resize and retry if failed
 	if (err) {
 		a.reset(new IP_ADAPTER_INFO[sz / sizeof(a[0]) + 1]);
 
-		if ((err = GetAdaptersInfo(&a[0], &sz)) != 0) {
-			fprintf(stderr, "%s: GetAdaptersInfo: code %lu\n", __func__, err);
-			return;
-		}
+		if ((err = GetAdaptersInfo(&a[0], &sz)) != 0)
+			FAIL() << "GetAdaptersInfo: code " << err;
 	}
 
 	puts("Network adapters:");
@@ -80,31 +78,31 @@ static void adapters() {
 		printf("\tIndex: \t%d\n", ai->Index);
 		printf("\tType: \t");
 		switch (ai->Type) {
-			case MIB_IF_TYPE_OTHER:
-				puts("Other");
-				break;
-			case MIB_IF_TYPE_ETHERNET:
-				puts("Ethernet");
-				has_eth = true;
-				break;
-			case MIB_IF_TYPE_TOKENRING:
-				puts("Token Ring");
-				break;
-			case MIB_IF_TYPE_FDDI:
-				puts("FDDI");
-				break;
-			case MIB_IF_TYPE_PPP:
-				puts("PPP");
-				break;
-			case MIB_IF_TYPE_LOOPBACK:
-				puts("Lookback");
-				break;
-			case MIB_IF_TYPE_SLIP:
-				puts("Slip");
-				break;
-			default:
-				printf("Unknown type %ld\n", ai->Type);
-				break;
+		case MIB_IF_TYPE_OTHER:
+			puts("Other");
+			break;
+		case MIB_IF_TYPE_ETHERNET:
+			puts("Ethernet");
+			has_eth = true;
+			break;
+		case MIB_IF_TYPE_TOKENRING:
+			puts("Token Ring");
+			break;
+		case MIB_IF_TYPE_FDDI:
+			puts("FDDI");
+			break;
+		case MIB_IF_TYPE_PPP:
+			puts("PPP");
+			break;
+		case MIB_IF_TYPE_LOOPBACK:
+			puts("Lookback");
+			break;
+		case MIB_IF_TYPE_SLIP:
+			puts("Slip");
+			break;
+		default:
+			printf("Unknown type %ld\n", ai->Type);
+			break;
 		}
 
 		printf("\tIP Address: \t%s\n", ai->IpAddressList.IpAddress.String);
@@ -119,23 +117,29 @@ static void adapters() {
 			/* Display local time */
 			error = _localtime32_s(&newtime, (__time32_t *)&ai->LeaseObtained);
 			if (error) {
-				puts("Invalid Argument to _localtime32_s");
+				ADD_FAILURE() << "Invalid Argument to _localtime32_s";
 			} else {
 				// Convert to an ASCII representation
 				error = asctime_s(buffer, sizeof(buffer), &newtime);
 				/* asctime_s returns the string terminated by \n\0 */
-				printf("%s", error ? "Invalid Argument to asctime_s\n" : buffer);
+				if (error)
+					ADD_FAILURE() << "Invalid Argument to asctime_s";
+				else
+					puts(buffer);
 			}
 
 			printf("\t  Lease Expires:  ");
 			error = _localtime32_s(&newtime, (__time32_t *)&ai->LeaseExpires);
 			if (error) {
-				puts("Invalid Argument to _localtime32_s");
+				ADD_FAILURE() << "Invalid Argument to _localtime32_s";
 			} else {
 				// Convert to an ASCII representation
 				error = asctime_s(buffer, sizeof(buffer), &newtime);
 				/* asctime_s returns the string terminated by \n\0 */
-				printf("%s", error ? "Invalid Argument to asctime_s\n" : buffer);
+				if (error)
+					ADD_FAILURE() << "Invalid Argument to asctime_s";
+				else
+					puts(buffer);
 			}
 		} else {
 			puts("\tDHCP Enabled: No");
@@ -154,147 +158,129 @@ static void adapters() {
 	putchar('\n');
 
 	if (!has_eth)
-		fprintf(stderr, "%s: no ethernet found\n", __func__);
+		ADD_FAILURE() << "no ethernet found";
 }
 
-static void tcp_init_too_early() {
+class NoTracyFixture : public ::testing::Test {
+protected:
+	void SetUp() override {
+#if TRACY_ENABLE
+		GTEST_SKIP() << "skipping tcp init because tracy already has initialised network layer";
+#endif
+	}
+};
+
+// FIXME use NoLinuxOrTracyFixture
+TEST_F(NoTracyFixture, TcpInitTooEarly) {
 	try {
 		TcpSocket tcp;
-		fprintf(stderr, "%s: net should not be initialised already\n", __func__);
+		FAIL() << "net should be initialised already";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_init_too_late() {
+// FIXME use NoLinuxOrTracyFixture
+TEST_F(NoTracyFixture, TcpInitTooLate) {
 	try {
 		{
 			Net net;
 		}
 		TcpSocket tcp;
-		fprintf(stderr, "%s: net should not be initialised anymore\n", __func__);
+		FAIL() << "net should not be initialised anymore";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_init() {
-	try {
-		Net net;
-		TcpSocket tcp;
-	} catch (std::exception &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
-	}
+TEST_F(NoTracyFixture, TcpInit) {
+	Net net;
+	TcpSocket tcp;
 }
 
-static void tcp_init_all() {
-#if TRACY_ENABLE
-	fprintf(stderr, "%s: skipping tcp init because tracy already has initialised network layer\n", __func__);
-#else
-	tcp_init_too_early();
-	tcp_init_too_late();
-	tcp_init();
-#endif
-}
-
-static void tcp_bad_accept() {
+TEST(Tcp, BadAccept) {
 	Net net;
 	TcpSocket tcp;
 	SOCKET s = tcp.accept();
-	if (s != INVALID_SOCKET)
-		fprintf(stderr, "%s: s is a socket: s=%p\n", __func__, (void*)s);
+	ASSERT_EQ(s, INVALID_SOCKET);
 }
 
-static void tcp_bind_dummy() {
+TEST(Tcp, BindDummy) {
 	Net net;
 	TcpSocket tcp(INVALID_SOCKET);
 	try {
 		tcp.bind("127.0.0.1", 80);
-		fprintf(stderr, "%s: invalid socket has been bound successfully\n", __func__);
+		FAIL() << "invalid socket has been bound successfully";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_bind_bad_address() {
+TEST(Tcp, BindBadAddress) {
 	Net net;
 	TcpSocket tcp;
 	try {
 		tcp.bind("a.b.c.d", 1234);
-		fprintf(stderr, "%s: should not accept a.b.c.d\n", __func__);
+		FAIL() << "should not bind to a.b.c.d:1234";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_bind() {
+TEST(Tcp, Bind) {
 	Net net;
 	TcpSocket tcp;
 	tcp.bind("127.0.0.1", 80);
 }
 
-static void tcp_bind_twice() {
+TEST(Tcp, BindTwice) {
 	Net net;
 	TcpSocket tcp, tcp2;
 	try {
 		tcp.bind("127.0.0.1", 80);
 		tcp2.bind("127.0.0.1", 80);
-		fprintf(stderr, "%s: should not bind to 80\n", __func__);
+		FAIL() << "should not bind to 127.0.0.1:80";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_bind_all() {
-	tcp_bind_bad_address();
-	tcp_bind_twice();
-	tcp_bind();
-}
-
-static void tcp_listen_too_early() {
+TEST(Tcp, ListenTooEarly) {
 	Net net;
 	TcpSocket tcp;
 	try {
 		tcp.listen(50);
-		fprintf(stderr, "%s: should have called bind(address, port) first\n", __func__);
+		FAIL() << "should have called bind(address, port) first";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_listen_bad_backlog() {
+TEST(Tcp, ListenBadBacklog) {
 	Net net;
 	TcpSocket tcp;
+	tcp.bind("127.0.0.1", 80);
 	try {
-		tcp.bind("127.0.0.1", 80);
 		tcp.listen(-1);
-		fprintf(stderr, "%s: backlog cannot be negative\n", __func__);
+		FAIL() << "backlog cannot be negative";
+	} catch (std::runtime_error&) {}
+	try {
 		tcp.listen(0);
-		fprintf(stderr, "%s: backlog must be positive\n", __func__);
+		FAIL() << "backlog must be positive";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_listen_twice() {
+TEST(Tcp, ListenTwice) {
 	Net net;
 	TcpSocket tcp;
-	try {
-		tcp.bind("127.0.0.1", 80);
-		tcp.listen(50);
-		tcp.listen(50);
-	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
-	}
+	tcp.bind("127.0.0.1", 80);
+	tcp.listen(50);
+	tcp.listen(50);
 }
 
-static void tcp_listen_all() {
-	tcp_listen_too_early();
-	tcp_listen_bad_backlog();
-	tcp_listen_twice();
-}
-
-static void tcp_connect_bad_address() {
+TEST(Tcp, ConnectBadAddress) {
 	Net net;
 	TcpSocket tcp;
 	try {
 		tcp.connect("a.b.c.d", 80);
-		fprintf(stderr, "%s: should not recognize a.b.c.d\n", __func__);
+		FAIL() << "should not recognize a.b.c.d";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_connect_timeout() {
+TEST(Tcp, ConnectTimeout) {
 	Net net;
 	TcpSocket tcp;
 	try {
 		tcp.connect(default_host, 80);
-		fprintf(stderr, "%s: should timeout\n", __func__);
+		FAIL() << "should timeout";
 	} catch (std::runtime_error&) {}
 }
 
@@ -304,7 +290,6 @@ static void main_accept() {
 		server.bind(default_host, 80);
 		server.listen(1);
 		SOCKET s = server.accept();
-		//printf("%s: s=%p\n", __func__, (void*)s);
 	} catch (std::runtime_error &e) {
 		fprintf(stderr, "%s: got %s\n", __func__, e.what());
 	}
@@ -473,8 +458,6 @@ static void tcp_send_less_than_recv() {
 }
 
 static void tcp_connect_all() {
-	tcp_connect_bad_address();
-	tcp_connect_timeout();
 	tcp_connect();
 	tcp_exchange();
 }
@@ -508,44 +491,41 @@ static void tcp_runall() {
 	//kill_net();
 
 	puts("tcp");
-	tcp_init_all();
-	tcp_bad_accept();
-	tcp_bind_all();
-	tcp_listen_all();
 	tcp_connect_all();
 	tcp_exchange_int();
 	tcp_send_all();
 }
 
-static void ssock_init_fail() {
-#if TRACY_ENABLE
-	fprintf(stderr, "%s: skipping ssock_init_fail because tracy already has initialised network layer\n", __func__);
-#else
+// FIXME use NoLinuxOrTracyFixture
+TEST_F(NoTracyFixture, SsockInitFail) {
 	try {
 		ServerSocket s;
 		(void)s;
-		fprintf(stderr, "%s: ssock created without network subsystem\n", __func__);
-	} catch (std::exception&) {}
-#endif
+		FAIL("ssock created without network subsystem");
+	} catch (std::runtime_error&) {}
 }
 
-static void ssock_init_delete() {
+TEST(Ssock, InitDelete) {
+	Net net;
 	ServerSocket s;
 	(void)s;
 }
 
-static void ssock_init_stop() {
+TEST(Ssock, InitStop) {
+	Net net;
 	ServerSocket s;
 	s.stop();
 }
 
-static void ssock_open_stop() {
+TEST(Ssock, OpenStop) {
+	Net net;
 	ServerSocket s;
 	s.open(default_host, default_port);
 	s.stop();
 }
 
-static void ssock_connect_stop() {
+TEST(Ssock, ConnectStop) {
+	Net net;
 	ServerSocket s;
 	s.open(default_host, default_port);
 	std::thread t1([&] {
@@ -651,13 +631,8 @@ static void ssock_mainloop_echo() {
 }
 
 static void ssock_runall() {
-	ssock_init_fail();
 	Net net;
-	ssock_init_delete();
-	ssock_init_stop();
-	ssock_open_stop();
 	puts("ssock connect");
-	ssock_connect_stop();
 	ssock_mainloop();
 	ssock_mainloop_send();
 	ssock_mainloop_echo();
@@ -668,10 +643,6 @@ static void ssock_runall() {
 }
 
 void net_runall() {
-	puts("net");
-	net_start_stop();
-	net_start_twice();
-	adapters();
 	tcp_runall();
 	puts("ssock");
 	ssock_runall();

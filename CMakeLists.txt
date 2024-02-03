@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.11)
 
 set(GAME_TARGET "empires")
 set(GAME_VERSION "0.1")
@@ -11,7 +11,13 @@ project(${GAME_TARGET}
 	LANGUAGES C CXX
 )
 
+option(BUILD_TESTS "Build unit tests" ON)
+
+set(TEST_TARGET "testempires")
+
 # dependencies
+
+include(FetchContent)
 
 find_package(SDL2 REQUIRED)
 if (UNIX)
@@ -21,6 +27,12 @@ else()
 	find_package(SDL2_mixer CONFIG REQUIRED)
 endif()
 find_package(OpenGL REQUIRED)
+
+if(BUILD_TESTS)
+enable_testing()
+
+find_package(GTest CONFIG REQUIRED)
+endif()
 
 if (WIN32)
 	set(GAME_LIBRARIES
@@ -48,6 +60,11 @@ set(IMGUI_DIR ${PROJECT_SRCDIR}/imgui)
 set(IMGUI_BACKENDS_DIR ${IMGUI_DIR}/backends)
 file(GLOB IMGUI_SRC ${IMGUI_DIR}/*.cpp ${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.cpp ${IMGUI_BACKENDS_DIR}/imgui_impl_sdl2.cpp)
 
+if(BUILD_TESTS)
+set(TEST_DIR ${GAME_DIR}/tests)
+file(GLOB TEST_SRC ${TEST_DIR}/*.cpp)
+endif()
+
 # fake epoll support for windows
 if (WIN32)
 set(WEPOLL_DIR ${PROJECT_SRCDIR}/wepoll)
@@ -70,6 +87,10 @@ set(LOCAL_INCLUDE_DIRS
 
 add_executable(${GAME_TARGET} ${GAME_SRC})
 
+if(BUILD_TESTS)
+add_executable(${TEST_TARGET} ${GAME_SOURCES} ${IMGUI_SRC} ${WEPOLL_SRC} ${TEST_SRC})
+endif()
+
 # configure header and linker info
 
 target_include_directories(${GAME_TARGET} PRIVATE
@@ -80,6 +101,17 @@ target_include_directories(${GAME_TARGET} PRIVATE
 )
 
 target_link_libraries(${GAME_TARGET} ${GAME_LIBRARIES})
+
+if(BUILD_TESTS)
+target_include_directories(${TEST_TARGET} PRIVATE
+	${SDL2_INCLUDE_DIRS}
+	${OPENGL_INCLUDE_DIR}
+	${LOCAL_INCLUDE_DIRS}
+	${GAME_INCLUDE_DIRS}
+)
+
+target_link_libraries(${TEST_TARGET} PRIVATE ${GAME_LIBRARIES} GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
+endif()
 
 # some mvsc magic. will be ignored on other platforms
 

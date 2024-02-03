@@ -2,6 +2,8 @@
 
 #include "../src/engine.hpp"
 
+#include <gtest/gtest.h>
+
 namespace aoe {
 
 extern void sdl_runall();
@@ -37,8 +39,9 @@ static void runall() {
 
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
-	aoe::runall();
-	return 0;
+	testing::InitGoogleTest(&argc, argv);
+	//aoe::runall();
+	return RUN_ALL_TESTS();
 }
