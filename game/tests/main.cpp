@@ -6,35 +6,25 @@
 
 namespace aoe {
 
-extern void sdl_runall();
 extern void net_runall();
 extern void server_runall();
-extern void protocol_runall();
 
-static void engine_create_delete() {
+TEST(Engine, CreateDelete) {
 	Engine eng;
 	(void)eng;
 }
 
-static void engine_create_twice() {
+TEST(Engine, CreateTwice) {
 	Engine eng1;
 	try {
 		Engine eng2;
-		fprintf(stderr, "%s: created twice\n", __func__);
+		FAIL() << "created twice";
 	} catch (std::runtime_error&) {}
-}
-
-static void engine_runall() {
-	engine_create_delete();
-	engine_create_twice();
 }
 
 static void runall() {
 	net_runall();
-	protocol_runall();
 	server_runall();
-	sdl_runall();
-	engine_runall();
 }
 
 }
