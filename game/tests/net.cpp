@@ -14,6 +14,8 @@
 
 #include <gtest/gtest.h>
 
+#include "util.hpp"
+
 namespace aoe {
 
 static const char *default_host = "127.0.0.1";
@@ -166,15 +168,6 @@ protected:
 	void SetUp() override {
 #if TRACY_ENABLE
 		GTEST_SKIP() << "skipping tcp init because tracy already has initialised network layer";
-#endif
-	}
-};
-
-class NoUnixOrTracyFixture : public ::testing::Test {
-protected:
-	void SetUp() override {
-#if _WIN32 == 0 || TRACY_ENABLE
-		GTEST_SKIP() << "net is already initialised by C runtime";
 #endif
 	}
 };
@@ -444,16 +437,6 @@ static void main_exchange_send(std::vector<std::string> &bt, unsigned step)
 	} catch (std::runtime_error &e) {
 		bt.emplace_back(std::string("got ") + e.what());
 	}
-}
-
-static void dump_errors(std::vector<std::string> &bt) {
-	if (bt.empty())
-		return;
-
-	for (size_t i = 0; i < bt.size() - 1; ++i)
-		ADD_FAILURE() << bt[i];
-
-	FAIL() << bt.back();
 }
 
 static void dump_errors(std::vector<std::string> &t1e, std::vector<std::string> &t2e) {
