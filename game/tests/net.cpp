@@ -12,29 +12,33 @@
 #include <memory>
 #include <ctime>
 
+#include <gtest/gtest.h>
+
+#include "util.hpp"
+
 namespace aoe {
 
 static const char *default_host = "127.0.0.1";
 static const uint16_t default_port = 1234;
 
-static void net_start_stop() {
+TEST(Net, StartStop) {
 	Net net;
 	(void)net;
 }
 
-static void net_start_twice() {
+TEST(Net, StartTwice) {
 	Net net;
 	try {
 		// definitely not recommended to start the network subsystem twice, but it should work
 		Net net2;
 	} catch (std::exception &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		FAIL() << e.what();
 	} catch (...) {
-		fprintf(stderr, "%s: unknown error\n", __func__);
+		FAIL() << "unknown error";
 	}
 }
 
-static void adapters() {
+TEST(Net, Adapters) {
 	DWORD ret = 0;
 
 	// NOTE ptr is an array, but only a[0] is valid! to get a[1] use a[0]->Next
@@ -46,19 +50,15 @@ static void adapters() {
 	errno_t error;
 
 	// assume first attempt will fail as we have no idea what size to expect, but it might succeed
-	if ((err = GetAdaptersInfo(&a[0], &sz)) != 0 && err != ERROR_BUFFER_OVERFLOW) {
-		fprintf(stderr, "%s: GetAdaptersInfo: code %lu\n", __func__, err);
-		return;
-	}
+	if ((err = GetAdaptersInfo(&a[0], &sz)) != 0 && err != ERROR_BUFFER_OVERFLOW)
+		FAIL() << "GetAdaptersInfo: code " << err;
 
 	// resize and retry if failed
 	if (err) {
 		a.reset(new IP_ADAPTER_INFO[sz / sizeof(a[0]) + 1]);
 
-		if ((err = GetAdaptersInfo(&a[0], &sz)) != 0) {
-			fprintf(stderr, "%s: GetAdaptersInfo: code %lu\n", __func__, err);
-			return;
-		}
+		if ((err = GetAdaptersInfo(&a[0], &sz)) != 0)
+			FAIL() << "GetAdaptersInfo: code " << err;
 	}
 
 	puts("Network adapters:");
@@ -80,31 +80,31 @@ static void adapters() {
 		printf("\tIndex: \t%d\n", ai->Index);
 		printf("\tType: \t");
 		switch (ai->Type) {
-			case MIB_IF_TYPE_OTHER:
-				puts("Other");
-				break;
-			case MIB_IF_TYPE_ETHERNET:
-				puts("Ethernet");
-				has_eth = true;
-				break;
-			case MIB_IF_TYPE_TOKENRING:
-				puts("Token Ring");
-				break;
-			case MIB_IF_TYPE_FDDI:
-				puts("FDDI");
-				break;
-			case MIB_IF_TYPE_PPP:
-				puts("PPP");
-				break;
-			case MIB_IF_TYPE_LOOPBACK:
-				puts("Lookback");
-				break;
-			case MIB_IF_TYPE_SLIP:
-				puts("Slip");
-				break;
-			default:
-				printf("Unknown type %ld\n", ai->Type);
-				break;
+		case MIB_IF_TYPE_OTHER:
+			puts("Other");
+			break;
+		case MIB_IF_TYPE_ETHERNET:
+			puts("Ethernet");
+			has_eth = true;
+			break;
+		case MIB_IF_TYPE_TOKENRING:
+			puts("Token Ring");
+			break;
+		case MIB_IF_TYPE_FDDI:
+			puts("FDDI");
+			break;
+		case MIB_IF_TYPE_PPP:
+			puts("PPP");
+			break;
+		case MIB_IF_TYPE_LOOPBACK:
+			puts("Lookback");
+			break;
+		case MIB_IF_TYPE_SLIP:
+			puts("Slip");
+			break;
+		default:
+			printf("Unknown type %ld\n", ai->Type);
+			break;
 		}
 
 		printf("\tIP Address: \t%s\n", ai->IpAddressList.IpAddress.String);
@@ -119,23 +119,29 @@ static void adapters() {
 			/* Display local time */
 			error = _localtime32_s(&newtime, (__time32_t *)&ai->LeaseObtained);
 			if (error) {
-				puts("Invalid Argument to _localtime32_s");
+				ADD_FAILURE() << "Invalid Argument to _localtime32_s";
 			} else {
 				// Convert to an ASCII representation
 				error = asctime_s(buffer, sizeof(buffer), &newtime);
 				/* asctime_s returns the string terminated by \n\0 */
-				printf("%s", error ? "Invalid Argument to asctime_s\n" : buffer);
+				if (error)
+					ADD_FAILURE() << "Invalid Argument to asctime_s";
+				else
+					puts(buffer);
 			}
 
 			printf("\t  Lease Expires:  ");
 			error = _localtime32_s(&newtime, (__time32_t *)&ai->LeaseExpires);
 			if (error) {
-				puts("Invalid Argument to _localtime32_s");
+				ADD_FAILURE() << "Invalid Argument to _localtime32_s";
 			} else {
 				// Convert to an ASCII representation
 				error = asctime_s(buffer, sizeof(buffer), &newtime);
 				/* asctime_s returns the string terminated by \n\0 */
-				printf("%s", error ? "Invalid Argument to asctime_s\n" : buffer);
+				if (error)
+					ADD_FAILURE() << "Invalid Argument to asctime_s";
+				else
+					puts(buffer);
 			}
 		} else {
 			puts("\tDHCP Enabled: No");
@@ -154,172 +160,151 @@ static void adapters() {
 	putchar('\n');
 
 	if (!has_eth)
-		fprintf(stderr, "%s: no ethernet found\n", __func__);
+		ADD_FAILURE() << "no ethernet found";
 }
 
-static void tcp_init_too_early() {
+class NoTracyFixture : public ::testing::Test {
+protected:
+	void SetUp() override {
+#if TRACY_ENABLE
+		GTEST_SKIP() << "skipping tcp init because tracy already has initialised network layer";
+#endif
+	}
+};
+
+TEST_F(NoUnixOrTracyFixture, TcpInitTooEarly) {
 	try {
 		TcpSocket tcp;
-		fprintf(stderr, "%s: net should not be initialised already\n", __func__);
+		FAIL() << "net should be initialised already";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_init_too_late() {
+TEST_F(NoUnixOrTracyFixture, TcpInitTooLate) {
 	try {
 		{
 			Net net;
 		}
 		TcpSocket tcp;
-		fprintf(stderr, "%s: net should not be initialised anymore\n", __func__);
+		FAIL() << "net should not be initialised anymore";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_init() {
-	try {
-		Net net;
-		TcpSocket tcp;
-	} catch (std::exception &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
-	}
+TEST_F(NoTracyFixture, TcpInit) {
+	Net net;
+	TcpSocket tcp;
 }
 
-static void tcp_init_all() {
-#if TRACY_ENABLE
-	fprintf(stderr, "%s: skipping tcp init because tracy already has initialised network layer\n", __func__);
-#else
-	tcp_init_too_early();
-	tcp_init_too_late();
-	tcp_init();
-#endif
-}
-
-static void tcp_bad_accept() {
+TEST(Tcp, BadAccept) {
 	Net net;
 	TcpSocket tcp;
 	SOCKET s = tcp.accept();
-	if (s != INVALID_SOCKET)
-		fprintf(stderr, "%s: s is a socket: s=%p\n", __func__, (void*)s);
+	ASSERT_EQ(s, INVALID_SOCKET);
 }
 
-static void tcp_bind_dummy() {
+TEST(Tcp, BindDummy) {
 	Net net;
 	TcpSocket tcp(INVALID_SOCKET);
 	try {
 		tcp.bind("127.0.0.1", 80);
-		fprintf(stderr, "%s: invalid socket has been bound successfully\n", __func__);
+		FAIL() << "invalid socket has been bound successfully";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_bind_bad_address() {
+TEST(Tcp, BindBadAddress) {
 	Net net;
 	TcpSocket tcp;
 	try {
 		tcp.bind("a.b.c.d", 1234);
-		fprintf(stderr, "%s: should not accept a.b.c.d\n", __func__);
+		FAIL() << "should not bind to a.b.c.d:1234";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_bind() {
+TEST(Tcp, Bind) {
 	Net net;
 	TcpSocket tcp;
 	tcp.bind("127.0.0.1", 80);
 }
 
-static void tcp_bind_twice() {
+TEST(Tcp, BindTwice) {
 	Net net;
 	TcpSocket tcp, tcp2;
 	try {
 		tcp.bind("127.0.0.1", 80);
 		tcp2.bind("127.0.0.1", 80);
-		fprintf(stderr, "%s: should not bind to 80\n", __func__);
+		FAIL() << "should not bind to 127.0.0.1:80";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_bind_all() {
-	tcp_bind_bad_address();
-	tcp_bind_twice();
-	tcp_bind();
-}
-
-static void tcp_listen_too_early() {
+TEST(Tcp, ListenTooEarly) {
 	Net net;
 	TcpSocket tcp;
 	try {
 		tcp.listen(50);
-		fprintf(stderr, "%s: should have called bind(address, port) first\n", __func__);
+		FAIL() << "should have called bind(address, port) first";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_listen_bad_backlog() {
+TEST(Tcp, ListenBadBacklog) {
 	Net net;
 	TcpSocket tcp;
+	tcp.bind("127.0.0.1", 80);
 	try {
-		tcp.bind("127.0.0.1", 80);
 		tcp.listen(-1);
-		fprintf(stderr, "%s: backlog cannot be negative\n", __func__);
+		FAIL() << "backlog cannot be negative";
+	} catch (std::runtime_error&) {}
+	try {
 		tcp.listen(0);
-		fprintf(stderr, "%s: backlog must be positive\n", __func__);
+		FAIL() << "backlog must be positive";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_listen_twice() {
+TEST(Tcp, ListenTwice) {
 	Net net;
 	TcpSocket tcp;
-	try {
-		tcp.bind("127.0.0.1", 80);
-		tcp.listen(50);
-		tcp.listen(50);
-	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
-	}
+	tcp.bind("127.0.0.1", 80);
+	tcp.listen(50);
+	tcp.listen(50);
 }
 
-static void tcp_listen_all() {
-	tcp_listen_too_early();
-	tcp_listen_bad_backlog();
-	tcp_listen_twice();
-}
-
-static void tcp_connect_bad_address() {
+TEST(Tcp, ConnectBadAddress) {
 	Net net;
 	TcpSocket tcp;
 	try {
 		tcp.connect("a.b.c.d", 80);
-		fprintf(stderr, "%s: should not recognize a.b.c.d\n", __func__);
+		FAIL() << "should not recognize a.b.c.d";
 	} catch (std::runtime_error&) {}
 }
 
-static void tcp_connect_timeout() {
+TEST(Tcp, ConnectTimeout) {
 	Net net;
 	TcpSocket tcp;
 	try {
 		tcp.connect(default_host, 80);
-		fprintf(stderr, "%s: should timeout\n", __func__);
+		FAIL() << "should timeout";
 	} catch (std::runtime_error&) {}
 }
 
-static void main_accept() {
+static void main_accept(std::vector<std::string> &bt) {
 	try {
 		TcpSocket server;
 		server.bind(default_host, 80);
 		server.listen(1);
 		SOCKET s = server.accept();
-		//printf("%s: s=%p\n", __func__, (void*)s);
 	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		bt.emplace_back(std::string("got ") + e.what());
 	}
 }
 
-static void main_connect() {
+static void main_connect(std::vector<std::string> &bt) {
 	try {
 		TcpSocket client;
 		client.connect(default_host, 80);
 	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		bt.emplace_back(std::string("got ") + e.what());
 	}
 }
 
-static void main_receive_int(int chk, bool equal) {
+static void main_receive_int(std::vector<std::string> &bt, int chk, bool equal) {
 	try {
 		TcpSocket server;
 
@@ -334,56 +319,72 @@ static void main_receive_int(int chk, bool equal) {
 			in = peer.recv(&v, 1);
 		} catch (std::runtime_error &e) {
 			if (equal)
-				fprintf(stderr, "%s: got %s\n", __func__, e.what());
+				bt.emplace_back(std::string("got ") + e.what());
 		}
+
+		char buf[64];
+		buf[0] = '\0';
 
 		if (equal) {
 			if (in != 1)
-				fprintf(stderr, "%s: requested %u bytes, but %d %s received\n", __func__, (unsigned)(sizeof v), in, in == 1 ? " byte" : "bytes");
+				snprintf(buf, sizeof buf, "%s: requested %u bytes, but %d %s received\n", __func__, (unsigned)(sizeof v), in, in == 1 ? " byte" : "bytes");
 			else if (v != chk)
-				fprintf(stderr, "%s: expected 0x%X, got 0x%X (xor: 0x%X)\n", __func__, chk, v, chk ^ v);
+				snprintf(buf, sizeof buf, "%s: expected 0x%X, got 0x%X (xor: 0x%X)\n", __func__, chk, v, chk ^ v);
+
+			bt.emplace_back(buf);
 		} else {
 			if (in == 1)
-				fprintf(stderr, "%s: requested %u bytes and %d %s received\n", __func__, (unsigned)(sizeof v), in, in == 1 ? " byte" : "bytes");
+				snprintf(buf, sizeof buf, "%s: requested %u bytes and %d %s received\n", __func__, (unsigned)(sizeof v), in, in == 1 ? " byte" : "bytes");
 			else if (v == chk)
-				fprintf(stderr, "%s: did not expect %d\n", __func__, chk);
+				snprintf(buf, sizeof buf, "did not expect %d", chk);
 		}
+
+		if (buf[0])
+			bt.emplace_back(buf);
 	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		bt.emplace_back(std::string("got ") + e.what());
 	}
 }
 
-static void main_send_int(int v) {
+static void main_send_int(std::vector<std::string> &bt, int v) {
 	try {
 		TcpSocket client;
 
 		client.connect(default_host, 80);
 		int out = client.send(&v, 1);
 
-		if (out != 1)
-			fprintf(stderr, "%s: written %u bytes, but %d %s sent\n", __func__, (unsigned)v, out, out == 1 ? "byte" : "bytes");
+		char buf[64];
+
+		if (out != 1) {
+			snprintf(buf, sizeof buf, "%s: written %u bytes, but %d %s sent\n", __func__, (unsigned)v, out, out == 1 ? "byte" : "bytes");
+			bt.emplace_back(buf);
+		}
 	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		bt.emplace_back(std::string("got ") + e.what());
 	}
 }
 
-static void main_send_short(short v) {
+static void main_send_short(std::vector<std::string> &bt, short v) {
 	try {
 		TcpSocket client;
 
 		client.connect("127.0.0.1", 80);
 		int out = client.send(&v, 1);
 
-		if (out != 1)
-			fprintf(stderr, "%s: written %u bytes, but %d %s sent\n", __func__, (unsigned)v, out, out == 1 ? "byte" : "bytes");
+		char buf[64];
+
+		if (out != 1) {
+			snprintf(buf, sizeof buf, "%s: written %u bytes, but %d %s sent\n", __func__, (unsigned)v, out, out == 1 ? "byte" : "bytes");
+			bt.emplace_back(buf);
+		}
 	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		bt.emplace_back(std::string("got ") + e.what());
 	}
 }
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
-static void main_exchange_receive(unsigned step)
+static void main_exchange_receive(std::vector<std::string> &bt, unsigned step)
 {
 	try {
 		TcpSocket server;
@@ -398,9 +399,12 @@ static void main_exchange_receive(unsigned step)
 
 		peer.recv_fully(tbl, ARRAY_SIZE(tbl));
 
+		char buf[64];
+
 		for (unsigned i = 0; i < ARRAY_SIZE(tbl); ++i) {
 			if (tbl[i] != i * step) {
-				fprintf(stderr, "%s: expected %u, got %u\n", __func__, i * step, tbl[i]);
+				snprintf(buf, sizeof buf, "%s: expected %u, got %u\n", __func__, i * step, tbl[i]);
+				bt.emplace_back(buf);
 				break;
 			}
 		}
@@ -408,11 +412,11 @@ static void main_exchange_receive(unsigned step)
 		int dummy = 0;
 		peer.send_fully(&dummy, 1);
 	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		bt.emplace_back(std::string("got ") + e.what());
 	}
 }
 
-static void main_exchange_send(unsigned step)
+static void main_exchange_send(std::vector<std::string> &bt, unsigned step)
 {
 	try {
 		TcpSocket client;
@@ -431,121 +435,119 @@ static void main_exchange_send(unsigned step)
 
 		client.recv_fully(&dummy, 1);
 	} catch (std::runtime_error &e) {
-		fprintf(stderr, "%s: got %s\n", __func__, e.what());
+		bt.emplace_back(std::string("got ") + e.what());
 	}
 }
 
-static void tcp_connect() {
-	Net net;
-	std::thread t1(main_accept), t2(main_connect);
-	t1.join();
-	t2.join();
+static void dump_errors(std::vector<std::string> &t1e, std::vector<std::string> &t2e) {
+	if (!t1e.empty()) {
+		for (size_t i = 0; i < t1e.size() - 1; ++i)
+			ADD_FAILURE() << t1e[i];
+
+		if (t2e.empty())
+			FAIL() << t1e.back();
+	}
+
+	if (!t2e.empty()) {
+		for (size_t i = 0; i < t2e.size() - 1; ++i)
+			ADD_FAILURE() << t2e[i];
+
+		FAIL() << t2e.back();
+	}
 }
 
-static void tcp_exchange() {
+TEST(Tcp, Connect) {
 	Net net;
-	std::thread t1(main_exchange_receive, 5), t2(main_exchange_send, 5);
+	std::vector<std::string> t1e, t2e;
+
+	std::thread t1(main_accept, t1e), t2(main_connect, t2e);
 	t1.join();
 	t2.join();
+
+	dump_errors(t1e, t2e);
 }
 
-static void tcp_exchange_int() {
+TEST(Tcp, Exchange) {
 	Net net;
+	std::vector<std::string> t1e, t2e;
+
+	std::thread t1(main_exchange_receive, t1e, 5), t2(main_exchange_send, t2e, 5);
+	t1.join();
+	t2.join();
+
+	dump_errors(t1e, t2e);
+}
+
+TEST(Tcp, ExchangeInt) {
+	Net net;
+	std::vector<std::string> t1e, t2e;
 	int chk = 0xcafebabe;
+
 	// assumes sockets on localhost always send and receive all data in a single call
-	std::thread t1(main_receive_int, chk, true), t2(main_send_int, chk);
+	std::thread t1(main_receive_int, t1e, chk, true), t2(main_send_int, t2e, chk);
+
 	t1.join();
 	t2.join();
+
+	dump_errors(t1e, t2e);
 }
 
-static void tcp_send_fail() {
-	int chk = 0xcafebabe;
-	std::thread t1(main_receive_int, chk, false), t2(main_connect);
-	t1.join();
-	t2.join();
-}
-
-static void tcp_send_less_than_recv() {
-	int chk = 0xcafebabe;
-	std::thread t1(main_receive_int, chk, false), t2(main_send_short, chk);
-	t1.join();
-	t2.join();
-}
-
-static void tcp_connect_all() {
-	tcp_connect_bad_address();
-	tcp_connect_timeout();
-	tcp_connect();
-	tcp_exchange();
-}
-
-static void tcp_send_all() {
+TEST(Tcp, SendFail) {
 	Net net;
-	tcp_send_fail();
-	tcp_send_less_than_recv();
+	std::vector<std::string> t1e, t2e;
+	int chk = 0xcafebabe;
+
+	std::thread t1(main_receive_int, t1e, chk, false), t2(main_connect, t2e);
+
+	t1.join();
+	t2.join();
+
+	dump_errors(t1e, t2e);
 }
 
-static void kill_net() {
-	int ret;
+TEST(Tcp, SendLessThanRecv) {
+	Net net;
+	std::vector<std::string> t1e, t2e;
+	int chk = 0xcafebabe;
 
-	while ((ret = WSACleanup()) != 0) {}
+	std::thread t1(main_receive_int, t1e, chk, false), t2(main_send_short, t2e, chk);
 
-	switch (ret) {
-		case WSANOTINITIALISED: break;
-		case WSAENETDOWN:
-			fprintf(stderr, "%s: net down\n", __func__);
-			break;
-		case WSAEINPROGRESS:
-			fprintf(stderr, "%s: in progress\n", __func__);
-			break;
-		default:
-			fprintf(stderr, "%s: unexpected error code %X\n", __func__, ret);
-			break;
-	}
+	t1.join();
+	t2.join();
+
+	dump_errors(t1e, t2e);
 }
 
-static void tcp_runall() {
-	//kill_net();
-
-	puts("tcp");
-	tcp_init_all();
-	tcp_bad_accept();
-	tcp_bind_all();
-	tcp_listen_all();
-	tcp_connect_all();
-	tcp_exchange_int();
-	tcp_send_all();
-}
-
-static void ssock_init_fail() {
-#if TRACY_ENABLE
-	fprintf(stderr, "%s: skipping ssock_init_fail because tracy already has initialised network layer\n", __func__);
-#else
+// FIXME use NoLinuxOrTracyFixture
+TEST_F(NoTracyFixture, SsockInitFail) {
 	try {
 		ServerSocket s;
 		(void)s;
-		fprintf(stderr, "%s: ssock created without network subsystem\n", __func__);
-	} catch (std::exception&) {}
-#endif
+		FAIL() << "ssock created without network subsystem";
+	} catch (std::runtime_error&) {}
 }
 
-static void ssock_init_delete() {
+TEST(Ssock, InitDelete) {
+	Net net;
 	ServerSocket s;
 	(void)s;
 }
 
-static void ssock_init_stop() {
+TEST(Ssock, InitStop) {
+	Net net;
 	ServerSocket s;
 	s.stop();
 }
 
-static void ssock_open_stop() {
+TEST(Ssock, OpenStop) {
+	Net net;
 	ServerSocket s;
 	s.open(default_host, default_port);
 	s.stop();
 }
 
-static void ssock_connect_stop() {
+TEST(Ssock, ConnectStop) {
+	Net net;
 	ServerSocket s;
 	s.open(default_host, default_port);
 	std::thread t1([&] {
@@ -595,86 +597,93 @@ public:
 	}
 };
 
-static void ssock_mainloop() {
+class EpollGuard final {
+public:
+	~EpollGuard() {
+#if _WIN32
+		// hack to compensate on windows for epoll library
+		WSACleanup();
+#endif
+	}
+};
+
+TEST(Ssock, mainloop) {
+	EpollGuard g;
+	Net net;
+	std::vector<std::string> bt;
+
 	std::thread t1([&] {
 		SsockCtlDummy nomnom;
 		ServerSocket s;
 		int err = s.mainloop(default_port, 1, nomnom);
 		if (err)
-			fprintf(stderr, "ssock_mainloop.%s: mainloop failed\n", __func__);
+			bt.emplace_back("mainloop failed");
 	});
+
 	TcpSocket dummy;
 	dummy.connect(default_host, default_port);
 	dummy.close();
 	t1.join();
+
+	dump_errors(bt);
 }
 
-static void ssock_mainloop_send() {
+TEST(Ssock, mainloopSend) {
+	EpollGuard g;
+	Net net;
+	std::vector<std::string> bt;
+
 	std::thread t1([&] {
 		SsockCtlDummy nomnom;
 		ServerSocket s;
 		int err = s.mainloop(default_port, 1, nomnom);
 		if (err)
-			fprintf(stderr, "ssock_mainloop_send.%s: mainloop failed\n", __func__);
+			bt.emplace_back("mainloop failed");
 	});
+
 	TcpSocket dummy;
 	char *msg = "Hello, k thx goodbye.";
 	dummy.connect(default_host, default_port);
 	dummy.send_fully(msg, (int)strlen(msg) + 1);
 	dummy.close();
 	t1.join();
+
+	dump_errors(bt);
 }
 
-static void ssock_mainloop_echo() {
+TEST(Ssock, mainloopEcho) {
+	EpollGuard g;
+	Net net;
+	std::vector<std::string> bt;
+
 	std::thread t1([&] {
 		SsockCtlEcho echo;
 		ServerSocket s;
 		int err = s.mainloop(default_port, 1, echo);
 		if (err)
-			fprintf(stderr, "ssock_mainloop_echo.%s: mainloop failed\n", __func__);
+			bt.emplace_back("mainloop failed");
 	});
+
 	TcpSocket dummy;
 	char *msg = "Hello, k thx goodbye.";
 	dummy.connect(default_host, default_port);
 	dummy.send_fully(msg, (int)strlen(msg) + 1);
+
 	std::vector<char> buf(strlen(msg) + 1, '\0');
+
 	try { 
 		dummy.recv_fully(buf.data(), (int)buf.size());
 
 		if (memcmp(msg, buf.data(), buf.size()))
-			fprintf(stderr, "%s: bogus echo\n", __func__);
+			ADD_FAILURE() << "bogus echo";
 	} catch (const std::exception &e) {
-		fprintf(stderr, "%s: failed to receive reply: %s\n", __func__, e.what());
+		ADD_FAILURE() << "failed to receive reply: " << e.what();
 	}
+
 	dummy.close();
 	t1.join();
-}
 
-static void ssock_runall() {
-	ssock_init_fail();
-	Net net;
-	ssock_init_delete();
-	ssock_init_stop();
-	ssock_open_stop();
-	puts("ssock connect");
-	ssock_connect_stop();
-	ssock_mainloop();
-	ssock_mainloop_send();
-	ssock_mainloop_echo();
-#if _WIN32
-	// hack to compensate on windows for epoll library
-	WSACleanup();
-#endif
-}
-
-void net_runall() {
-	puts("net");
-	net_start_stop();
-	net_start_twice();
-	adapters();
-	tcp_runall();
-	puts("ssock");
-	ssock_runall();
+	dump_errors(bt);
 }
 
 }

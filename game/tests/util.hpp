@@ -3,12 +3,27 @@
 #include <cstddef>
 #include <cstdarg>
 
-#define FAIL(fmt, ...) fail(__FILE__, __LINE__, __func__, fmt, ## __VA_ARGS__)
-#define VFAIL(fmt, args) vfail(__FILE__, __LINE__, __func__, fmt, args)
+#include <gtest/gtest.h>
 
 namespace aoe {
 
-void fail(const char *file, size_t lno, const char *func, const char *fmt, ...);
-void vfail(const char *file, size_t lno, const char *func, const char *fmt, va_list args);
+class NoUnixOrTracyFixture : public ::testing::Test {
+protected:
+	void SetUp() override {
+#if _WIN32 == 0 || TRACY_ENABLE
+		GTEST_SKIP() << "net is already initialised by C runtime";
+#endif
+	}
+};
+
+static void dump_errors(std::vector<std::string> &bt) {
+	if (bt.empty())
+		return;
+
+	for (size_t i = 0; i < bt.size() - 1; ++i)
+		ADD_FAILURE() << bt[i];
+
+	FAIL() << bt.back();
+}
 
 }

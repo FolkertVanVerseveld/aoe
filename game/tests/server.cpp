@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 
+#include <gtest/gtest.h>
+
 #include "util.hpp"
 
 namespace aoe {
@@ -9,34 +11,38 @@ namespace aoe {
 static const char *default_host = "127.0.0.1";
 static const uint16_t default_port = 1234;
 
-static void server_create_fail() {
+class ServerFixture : public ::testing::Test {
+	Net net;
+};
+
+TEST_F(NoUnixOrTracyFixture, serverCreateFail) {
 	try {
 		Server s;
 		(void)s;
-		FAIL("server created with no network subsystem\n");
+		FAIL() << "server created with no network subsystem";
 	} catch (std::runtime_error&) {}
 }
 
-static void client_create_fail() {
+TEST_F(NoUnixOrTracyFixture, clientCreateFail) {
 	try {
 		Client c;
 		(void)c;
-		FAIL("client created with no network subsystem\n");
+		FAIL() << "client created with no network subsystem";
 	} catch (std::runtime_error&) {}
 }
 
-static void server_create_delete() {
+TEST_F(ServerFixture, createDelete) {
 	Server s;
 	(void)s;
 }
 
-static void server_create_twice() {
+TEST_F(ServerFixture, createTwice) {
 	Server s, s2;
 	(void)s;
 	(void)s2;
 }
 
-static void server_stop_early() {
+TEST_F(ServerFixture, serverStopEarly) {
 	Server s;
 	s.stop();
 }
@@ -45,20 +51,14 @@ static void f(Server &s) {
 	s.mainloop(1, default_port, 0);
 }
 
-static void client_init_delete() {
+TEST_F(ServerFixture, initDelete) {
 	Client c;
 	(void)c;
 }
 
-static void client_stop_early() {
+TEST_F(ServerFixture, clientStopEarly) {
 	Client c;
 	c.stop();
-}
-
-static void client_tests() {
-	puts("client");
-	client_init_delete();
-	client_stop_early();
 }
 
 static void connect_test(bool close) {
@@ -68,51 +68,63 @@ static void connect_test(bool close) {
 	Client c;
 	c.start(default_host, default_port, false);
 
+	char buf[64];
+	buf[0] = '\0';
+
 	// verify: client connected, server running
 	if (!c.connected())
-		FAIL("client should be connected to %s:%d\n", default_host, default_port);
+		snprintf(buf, sizeof buf, "client should be connected to %s:%d", default_host, default_port);
 	if (!s.active())
-		FAIL("server should be activated at %s:%d\n", default_host, default_port);
+		snprintf(buf, sizeof buf, "server should be activated at %s:%d\n", default_host, default_port);
+
+	if (buf[0])
+		FAIL() << buf;
 
 	c.stop();
 
 	// verify: client disconnected, server thread still running
 	if (c.connected())
-		FAIL("client should be disconnected from %s:%d\n", default_host, default_port);
+		snprintf(buf, sizeof buf, "client should be disconnected from %s:%d\n", default_host, default_port);
 
 	t1.join();
 
 	// verify: server should be running if close is false, stopped otherwise
 	if (close == s.active())
-		FAIL("server should %s at %s:%d\n", close ? "have not be active" : "still be activated", default_host, default_port);
+		snprintf(buf, sizeof buf, "server should %s at %s:%d\n", close ? "have not be active" : "still be activated", default_host, default_port);
+
+	if (buf[0])
+		FAIL() << buf;
 }
 
-static void connect_too_early() {
+TEST_F(ServerFixture, connectTests) {
+	connect_test(false);
+	connect_test(true);
+}
+
+TEST_F(ServerFixture, connectTooEarly) {
 	Client c;
 
 	try {
 		c.start(default_host, default_port, false);
-		FAIL("should not be able to connect to %s:%d\n", default_host, default_port);
+
+		char buf[64];
+		snprintf(buf, sizeof buf, "should not be able to connect to %s:%d\n", default_host, default_port);
+		FAIL() << buf;
 	} catch (std::runtime_error&) {}
 }
 
-static void connect_too_late() {
+TEST_F(ServerFixture, connectTooLate) {
 	Server s;
 	s.close();
 
 	try {
 		Client c;
 		c.start(default_host, default_port, false);
-		FAIL("should not be able to connect to %s:%d\n", default_host, default_port);
-	} catch (std::runtime_error&) {}
-}
 
-static void connect_runall() {
-	puts("connect tests");
-	connect_too_early();
-	connect_too_late();
-	connect_test(false);
-	connect_test(true);
+		char buf[64];
+		snprintf(buf, sizeof buf, "should not be able to connect to %s:%d\n", default_host, default_port);
+		FAIL() << buf;
+	} catch (std::runtime_error&) {}
 }
 
 static void handshake(Client &c) {
@@ -124,13 +136,17 @@ static void handshake(Client &c) {
 	pkg.chat_text();
 
 	pkg = c.recv();
+	pkg.get_peer_control();
+
+	pkg = c.recv();
 	pkg.username();
 
 	pkg = c.recv();
 	pkg.get_player_control();
 }
 
-static void echo_test(bool close) {
+static void echo_test(std::vector<std::string> &bt, bool close) {
+	Net net;
 	Server s;
 	std::thread t1([&] { s.mainloop(1, default_port, 1, true); if (close) s.close(); });
 
@@ -142,14 +158,18 @@ static void echo_test(bool close) {
 	c.send_protocol(1);
 	uint16_t prot = c.recv_protocol();
 
-	if (prot != 1u)
-		FAIL("bad protocol: expected %u, got %u\n", 1u, prot);
+	if (prot != 1u) {
+		char buf[64];
+		snprintf(buf, sizeof buf, "bad protocol: expected %u, got %u\n", 1u, prot);
+		bt.emplace_back(buf);
+	}
 
 	c.stop();
 	t1.join();
 }
 
-static void protocol_test() {
+TEST_F(ServerFixture, protocol) {
+	std::vector<std::string> bt;
 	Server s;
 	std::thread t1([&] { s.mainloop(1, default_port, 1, true); s.close(); });
 
@@ -163,49 +183,40 @@ static void protocol_test() {
 	// request newer version
 	c.send_protocol(2);
 
-	if ((prot = c.recv_protocol()) != 1u)
-		FAIL("bad protocol: expected %u, got %u\n", 1u, prot);
+	char buf[64];
+
+	if ((prot = c.recv_protocol()) != 1u) {
+		snprintf(buf, sizeof buf, "bad protocol: expected %u, got %u", 1u, prot);
+		bt.emplace_back(buf);
+	}
 
 	// request older version
 	c.send_protocol(0);
-	if ((prot = c.recv_protocol()) != 1u)
-		FAIL("bad protocol: expected %u, got %u\n", 1u, prot);
+	if ((prot = c.recv_protocol()) != 1u) {
+		snprintf(buf, sizeof buf, "bad protocol: expected %u, got %u", 1u, prot);
+		bt.emplace_back(buf);
+	}
 
 	// request same version
 	c.send_protocol(1);
-	if ((prot = c.recv_protocol()) != 1u)
-		FAIL("bad protocol: expected %u, got %u\n", 1u, prot);
+	if ((prot = c.recv_protocol()) != 1u) {
+		snprintf(buf, sizeof buf, "bad protocol: expected %u, got %u", 1u, prot);
+		bt.emplace_back(buf);
+	}
 
 	c.stop();
 	t1.join();
+
+	dump_errors(bt);
 }
 
-static void data_exchange_runall() {
-	puts("data exchange");
-	echo_test(false);
-	echo_test(true);
-	protocol_test();
-}
+TEST_F(ServerFixture, dataExchange) {
+	std::vector<std::string> bt;
 
-static void server_tests() {
-	server_create_delete();
-	server_create_twice();
-	server_stop_early();
-}
+	echo_test(bt, false);
+	echo_test(bt, true);
 
-void server_runall() {
-	puts("server");
-#if TRACY_ENABLE
-	fprintf(stderr, "%s: skipping server/client create fail because tracy already has initialised network layer\n", __func__);
-#else
-	server_create_fail();
-	client_create_fail();
-#endif
-	Net n;
-	server_tests();
-	client_tests();
-	connect_runall();
-	data_exchange_runall();
+	dump_errors(bt);
 }
 
 }
