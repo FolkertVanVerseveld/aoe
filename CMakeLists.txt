@@ -110,7 +110,7 @@ target_include_directories(${TEST_TARGET} PRIVATE
 	${GAME_INCLUDE_DIRS}
 )
 
-target_link_libraries(${TEST_TARGET} PRIVATE ${GAME_LIBRARIES} GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
+target_link_libraries(${TEST_TARGET} PRIVATE ${GAME_LIBRARIES} GTest::gtest GTest::gtest_main)
 endif()
 
 # some mvsc magic. will be ignored on other platforms
