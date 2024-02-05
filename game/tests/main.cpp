@@ -6,9 +6,6 @@
 
 namespace aoe {
 
-extern void net_runall();
-extern void server_runall();
-
 TEST(Engine, CreateDelete) {
 	Engine eng;
 	(void)eng;
@@ -20,11 +17,6 @@ TEST(Engine, CreateTwice) {
 		Engine eng2;
 		FAIL() << "created twice";
 	} catch (std::runtime_error&) {}
-}
-
-static void runall() {
-	net_runall();
-	server_runall();
 }
 
 }
