@@ -20,6 +20,6 @@ jobs:
     - name: configure
       run: mkdir build && cd build && cmake ../
     - name: make testempires
-      run: cd build && make testempires; find . -type d
+      run: cd build && make testempires
     - name: run
-      run: ./test/testempires
+      run: find . -type f && ./test/testempires
