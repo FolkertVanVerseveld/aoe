@@ -338,8 +338,6 @@ static void main_receive_int(std::vector<std::string> &bt, int chk, bool equal) 
 				snprintf(buf, sizeof buf, "%s: requested %u bytes, but %d %s received\n", __func__, (unsigned)(sizeof v), in, in == 1 ? " byte" : "bytes");
 			else if (v != chk)
 				snprintf(buf, sizeof buf, "%s: expected 0x%X, got 0x%X (xor: 0x%X)\n", __func__, chk, v, chk ^ v);
-
-			bt.emplace_back(buf);
 		} else {
 			if (in == 1)
 				snprintf(buf, sizeof buf, "%s: requested %u bytes and %d %s received\n", __func__, (unsigned)(sizeof v), in, in == 1 ? " byte" : "bytes");
@@ -468,7 +466,7 @@ TEST(Tcp, Connect) {
 	Net net;
 	std::vector<std::string> t1e, t2e;
 
-	std::thread t1(main_accept, t1e), t2(main_connect, t2e);
+	std::thread t1(main_accept, std::ref(t1e)), t2(main_connect, std::ref(t2e));
 	t1.join();
 	t2.join();
 
@@ -479,7 +477,7 @@ TEST(Tcp, Exchange) {
 	Net net;
 	std::vector<std::string> t1e, t2e;
 
-	std::thread t1(main_exchange_receive, t1e, 5), t2(main_exchange_send, t2e, 5);
+	std::thread t1(main_exchange_receive, std::ref(t1e), 5), t2(main_exchange_send, std::ref(t2e), 5);
 	t1.join();
 	t2.join();
 
@@ -492,7 +490,7 @@ TEST(Tcp, ExchangeInt) {
 	int chk = 0xcafebabe;
 
 	// assumes sockets on localhost always send and receive all data in a single call
-	std::thread t1(main_receive_int, t1e, chk, true), t2(main_send_int, t2e, chk);
+	std::thread t1(main_receive_int, std::ref(t1e), chk, true), t2(main_send_int, std::ref(t2e), chk);
 
 	t1.join();
 	t2.join();
@@ -505,7 +503,7 @@ TEST(Tcp, SendFail) {
 	std::vector<std::string> t1e, t2e;
 	int chk = 0xcafebabe;
 
-	std::thread t1(main_receive_int, t1e, chk, false), t2(main_connect, t2e);
+	std::thread t1(main_receive_int, std::ref(t1e), chk, false), t2(main_connect, std::ref(t2e));
 
 	t1.join();
 	t2.join();
@@ -518,7 +516,7 @@ TEST(Tcp, SendLessThanRecv) {
 	std::vector<std::string> t1e, t2e;
 	int chk = 0xcafebabe;
 
-	std::thread t1(main_receive_int, t1e, chk, false), t2(main_send_short, t2e, chk);
+	std::thread t1(main_receive_int, std::ref(t1e), chk, false), t2(main_send_short, std::ref(t2e), chk);
 
 	t1.join();
 	t2.join();
@@ -650,7 +648,7 @@ TEST(Ssock, mainloopSend) {
 	});
 
 	TcpSocket dummy;
-	char *msg = "Hello, k thx goodbye.";
+	const char *msg = "Hello, k thx goodbye.";
 	dummy.connect(default_host, default_port);
 	dummy.send_fully(msg, (int)strlen(msg) + 1);
 	dummy.close();
