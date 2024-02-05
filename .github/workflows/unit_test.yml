@@ -1,0 +1,21 @@
+name: unit tests
+
+on:
+  push:
+    branches: [ master, 103-github-actions-for-google-test ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install gtest manually
+      run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+    - uses: actions/checkout@v1
+    - name: configure
+      run: mkdir build && cd build && cmake ../
+    - name: make
+      run: cd build && make; ls -la
+    - name: run
+      run: ./test/testempires
