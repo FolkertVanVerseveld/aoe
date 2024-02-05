@@ -5,9 +5,11 @@
 #include <stdexcept>
 #include <thread>
 
+#if _WIN32
 #include <WinSock2.h>
 #include <iphlpapi.h>
 #pragma comment(lib, "IPHLPAPI.lib")
+#endif
 
 #include <memory>
 #include <ctime>
@@ -38,6 +40,7 @@ TEST(Net, StartTwice) {
 	}
 }
 
+#if _WIN32
 TEST(Net, Adapters) {
 	DWORD ret = 0;
 
@@ -162,6 +165,11 @@ TEST(Net, Adapters) {
 	if (!has_eth)
 		ADD_FAILURE() << "no ethernet found";
 }
+#else
+TEST(Net, Adapters) {
+	GTEST_SKIP() << "only implemented on Windows at the moment";
+}
+#endif
 
 class NoTracyFixture : public ::testing::Test {
 protected:

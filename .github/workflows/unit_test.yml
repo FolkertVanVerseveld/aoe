@@ -20,6 +20,6 @@ jobs:
     - name: configure
       run: mkdir build && cd build && cmake ../
     - name: make
-      run: cd build && make; ls -la
+      run: cd build && make; find . -type d
     - name: run
       run: ./test/testempires
