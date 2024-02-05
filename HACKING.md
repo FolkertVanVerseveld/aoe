@@ -41,7 +41,6 @@ Name              | Description
 libsdl2-dev       | SDL2 development package
 libsdl2-image-dev | SDL2 graphics development package
 libsdl2-mixer-dev | SDL2 audio development package
-libopenal-dev     | OpenAL development package
 
 The following commands are expected to be installed
 (descriptions are taken from their repsective manuals):

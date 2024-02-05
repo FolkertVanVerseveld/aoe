@@ -32,7 +32,8 @@ A simple, incomplete user guide is available [here](doc/user_guide.md).
 
 ## Status
 
-At the moment, there is no game to be played. See the github project for most
+At the moment, there's only very basic gameplay. Some villager tasks are
+implemented as well as a very dumb CPU player. See the github project for most
 up-to-date info: [AoE](https://github.com/FolkertVanVerseveld/aoe).
 
 ## Support
