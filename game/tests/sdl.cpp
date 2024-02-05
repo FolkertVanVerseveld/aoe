@@ -18,15 +18,19 @@ static bool skip_chk_stall = false;
 class SDLFixture : public ::testing::Test {
 protected:
 	void SetUp() override {
-		const char *exp = "test", *got;
+#define EXP "test"
+		const char *got;
 
-		SDL_SetError(exp);
-		if (strcmp(got = SDL_GetError(), exp))
-			GTEST_SKIP() << "expected \"" << exp << "\", but got \"" << got << "\"";
+		SDL_SetError(EXP);
+		if (strcmp(got = SDL_GetError(), EXP))
+			GTEST_SKIP() << "expected \"" << EXP << "\", but got \"" << got << "\"";
 
 		SDL_ClearError();
-		if (strcmp(got = SDL_GetError(), exp = ""))
-			GTEST_SKIP() << "expected \"" << exp << "\", but got \"" << got << "\"";
+#undef EXP
+#define EXP ""
+		if (strcmp(got = SDL_GetError(), EXP))
+			GTEST_SKIP() << "expected \"" << EXP << "\", but got \"" << got << "\"";
+#undef EXP
 	}
 };
 

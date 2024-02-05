@@ -2,6 +2,10 @@
 
 #include <time.h>
 
+#if __cplusplus
+extern "C" {
+#endif
+
 #if _WIN32
 #include <Windows.h>
 #include <stdint.h> // portable: uint64_t   MSVC: __int64 
@@ -17,9 +21,6 @@
 #define exp9         1000000000i64     //1E+9
 #define w2ux 116444736000000000i64     //1.jan1601 to 1.jan1970
 
-#if __cplusplus
-extern "C" {
-#endif
 
 static void unix_time(struct timespec *spec)
 {
@@ -45,6 +46,7 @@ static int clock_gettime(int dummy, struct timespec *spec)
 	if (!(spec->tv_nsec < exp9)) { spec->tv_sec++; spec->tv_nsec -= exp9; }
 	return 0;
 }
+
 // END code taken from https://stackoverflow.com/questions/5404277/porting-clock-gettime-to-windows
 #endif
 

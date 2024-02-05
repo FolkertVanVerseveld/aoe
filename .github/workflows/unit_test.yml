@@ -19,7 +19,7 @@ jobs:
         submodules: true
     - name: configure
       run: mkdir build && cd build && cmake ../
-    - name: make
-      run: cd build && make; find . -type d
+    - name: make testempires
+      run: cd build && make testempires; find . -type d
     - name: run
       run: ./test/testempires
