@@ -22,4 +22,4 @@ jobs:
     - name: make testempires
       run: cd build && make testempires
     - name: run
-      run: find . -type f && ./test/testempires
+      run: ./build/testempires
