@@ -12,6 +12,7 @@ project(${GAME_TARGET}
 )
 
 option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_TESTS_HEADLESS "Only run headless unit tests" OFF)
 
 set(TEST_TARGET "testempires")
 

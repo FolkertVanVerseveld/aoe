@@ -6,12 +6,21 @@
 
 namespace aoe {
 
-TEST(Engine, CreateDelete) {
+class NoHeadlessFixture : public ::testing::Test {
+protected:
+	void SetUp() override {
+#if BUILD_TESTS_HEADLESS
+		GTEST_SKIP() << "skipping UI engine tests as we are running headless";
+#endif
+	}
+};
+
+TEST_F(NoHeadlessFixture, engineCreateDelete) {
 	Engine eng;
 	(void)eng;
 }
 
-TEST(Engine, CreateTwice) {
+TEST_F(NoHeadlessFixture, engineCreateTwice) {
 	Engine eng1;
 	try {
 		Engine eng2;

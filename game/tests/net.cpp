@@ -524,8 +524,7 @@ TEST(Tcp, SendLessThanRecv) {
 	dump_errors(t1e, t2e);
 }
 
-// FIXME use NoLinuxOrTracyFixture
-TEST_F(NoTracyFixture, SsockInitFail) {
+TEST_F(NoUnixOrTracyFixture, SsockInitFail) {
 	try {
 		ServerSocket s;
 		(void)s;
