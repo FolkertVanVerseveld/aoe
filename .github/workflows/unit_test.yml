@@ -18,8 +18,8 @@ jobs:
       with:
         submodules: true
     - name: configure
-      run: mkdir build && cd build && cmake ../
+      run: mkdir build && cd build && cmake ../ -DBUILD_TESTS_HEADLESS=ON
     - name: make testempires
-      run: cd build && make testempires -DBUILD_TESTS_HEADLESS=1
+      run: cd build && make testempires
     - name: run
       run: ./build/testempires
