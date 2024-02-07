@@ -213,7 +213,7 @@ TEST(Tcp, BindDummy) {
 	Net net;
 	TcpSocket tcp(INVALID_SOCKET);
 	try {
-		tcp.bind("127.0.0.1", 80);
+		tcp.bind("127.0.0.1", 4312);
 		FAIL() << "invalid socket has been bound successfully";
 	} catch (std::runtime_error&) {}
 }
@@ -230,15 +230,15 @@ TEST(Tcp, BindBadAddress) {
 TEST(Tcp, Bind) {
 	Net net;
 	TcpSocket tcp;
-	tcp.bind("127.0.0.1", 80);
+	tcp.bind("127.0.0.1", 4312);
 }
 
 TEST(Tcp, BindTwice) {
 	Net net;
 	TcpSocket tcp, tcp2;
 	try {
-		tcp.bind("127.0.0.1", 80);
-		tcp2.bind("127.0.0.1", 80);
+		tcp.bind("127.0.0.1", 4312);
+		tcp2.bind("127.0.0.1", 4312);
 		FAIL() << "should not bind to 127.0.0.1:80";
 	} catch (std::runtime_error&) {}
 }
@@ -255,7 +255,7 @@ TEST(Tcp, ListenTooEarly) {
 TEST(Tcp, ListenBadBacklog) {
 	Net net;
 	TcpSocket tcp;
-	tcp.bind("127.0.0.1", 80);
+	tcp.bind("127.0.0.1", 4312);
 	try {
 		tcp.listen(-1);
 		FAIL() << "backlog cannot be negative";
@@ -269,7 +269,7 @@ TEST(Tcp, ListenBadBacklog) {
 TEST(Tcp, ListenTwice) {
 	Net net;
 	TcpSocket tcp;
-	tcp.bind("127.0.0.1", 80);
+	tcp.bind("127.0.0.1", 4312);
 	tcp.listen(50);
 	tcp.listen(50);
 }
@@ -278,7 +278,7 @@ TEST(Tcp, ConnectBadAddress) {
 	Net net;
 	TcpSocket tcp;
 	try {
-		tcp.connect("a.b.c.d", 80);
+		tcp.connect("a.b.c.d", 4312);
 		FAIL() << "should not recognize a.b.c.d";
 	} catch (std::runtime_error&) {}
 }
@@ -287,7 +287,7 @@ TEST(Tcp, ConnectTimeout) {
 	Net net;
 	TcpSocket tcp;
 	try {
-		tcp.connect(default_host, 80);
+		tcp.connect(default_host, 4312);
 		FAIL() << "should timeout";
 	} catch (std::runtime_error&) {}
 }
@@ -295,7 +295,7 @@ TEST(Tcp, ConnectTimeout) {
 static void main_accept(std::vector<std::string> &bt) {
 	try {
 		TcpSocket server;
-		server.bind(default_host, 80);
+		server.bind(default_host, 4312);
 		server.listen(1);
 		SOCKET s = server.accept();
 	} catch (std::runtime_error &e) {
@@ -306,7 +306,7 @@ static void main_accept(std::vector<std::string> &bt) {
 static void main_connect(std::vector<std::string> &bt) {
 	try {
 		TcpSocket client;
-		client.connect(default_host, 80);
+		client.connect(default_host, 4312);
 	} catch (std::runtime_error &e) {
 		bt.emplace_back(std::string("got ") + e.what());
 	}
@@ -316,7 +316,7 @@ static void main_receive_int(std::vector<std::string> &bt, int chk, bool equal) 
 	try {
 		TcpSocket server;
 
-		server.bind(default_host, 80);
+		server.bind(default_host, 4312);
 		server.listen(1);
 
 		SOCKET s = server.accept();
@@ -356,7 +356,7 @@ static void main_send_int(std::vector<std::string> &bt, int v) {
 	try {
 		TcpSocket client;
 
-		client.connect(default_host, 80);
+		client.connect(default_host, 4312);
 		int out = client.send(&v, 1);
 
 		char buf[64];
@@ -374,7 +374,7 @@ static void main_send_short(std::vector<std::string> &bt, short v) {
 	try {
 		TcpSocket client;
 
-		client.connect("127.0.0.1", 80);
+		client.connect("127.0.0.1", 4312);
 		int out = client.send(&v, 1);
 
 		char buf[64];
