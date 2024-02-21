@@ -16,6 +16,15 @@ protected:
 	}
 };
 
+class NoUnixFixture : public ::testing::Test {
+protected:
+	void SetUp() override {
+#if _WIN32 == 0
+		GTEST_SKIP() << "WIN32 only test";
+#endif
+	}
+};
+
 class NoHeadlessFixture : public ::testing::Test {
 protected:
 	void SetUp() override {
