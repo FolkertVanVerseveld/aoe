@@ -10,6 +10,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+    - name: Update dependencies
+      run: sudo apt-get update
     - name: Install dependencies
       run: sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev
     - name: Hack install and configure gtest
