@@ -18,6 +18,9 @@ static bool skip_chk_stall = false;
 class SDLFixture : public ::testing::Test {
 protected:
 	void SetUp() override {
+#if BUILD_TESTS_HEADLESS
+		GTEST_SKIP() << "no ui tests as we are testing in headless environment";
+#else
 #define EXP "test"
 		const char *got;
 
@@ -31,6 +34,7 @@ protected:
 		if (strcmp(got = SDL_GetError(), EXP))
 			GTEST_SKIP() << "expected \"" << EXP << "\", but got \"" << got << "\"";
 #undef EXP
+#endif
 	}
 };
 
