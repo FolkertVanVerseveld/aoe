@@ -2,18 +2,11 @@
 
 #include "../src/engine.hpp"
 
+#include "util.hpp"
+
 #include <gtest/gtest.h>
 
 namespace aoe {
-
-class NoHeadlessFixture : public ::testing::Test {
-protected:
-	void SetUp() override {
-#if BUILD_TESTS_HEADLESS
-		GTEST_SKIP() << "skipping UI engine tests as we are running headless";
-#endif
-	}
-};
 
 TEST_F(NoHeadlessFixture, engineCreateDelete) {
 	Engine eng;
