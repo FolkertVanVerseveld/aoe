@@ -2,7 +2,7 @@ name: unit tests
 
 on:
   push:
-    branches: [ master, 103-github-actions-for-google-test ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
