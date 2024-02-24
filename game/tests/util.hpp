@@ -16,6 +16,24 @@ protected:
 	}
 };
 
+class NoUnixFixture : public ::testing::Test {
+protected:
+	void SetUp() override {
+#if _WIN32 == 0
+		GTEST_SKIP() << "WIN32 only test";
+#endif
+	}
+};
+
+class NoHeadlessFixture : public ::testing::Test {
+protected:
+	void SetUp() override {
+#if BUILD_TESTS_HEADLESS
+		GTEST_SKIP() << "skipping UI engine tests as we are running headless";
+#endif
+	}
+};
+
 static void dump_errors(std::vector<std::string> &bt) {
 	if (bt.empty())
 		return;

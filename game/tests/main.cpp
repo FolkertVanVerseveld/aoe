@@ -2,29 +2,23 @@
 
 #include "../src/engine.hpp"
 
+#include "util.hpp"
+
 #include <gtest/gtest.h>
 
 namespace aoe {
 
-extern void net_runall();
-extern void server_runall();
-
-TEST(Engine, CreateDelete) {
+TEST_F(NoHeadlessFixture, engineCreateDelete) {
 	Engine eng;
 	(void)eng;
 }
 
-TEST(Engine, CreateTwice) {
+TEST_F(NoHeadlessFixture, engineCreateTwice) {
 	Engine eng1;
 	try {
 		Engine eng2;
 		FAIL() << "created twice";
 	} catch (std::runtime_error&) {}
-}
-
-static void runall() {
-	net_runall();
-	server_runall();
 }
 
 }

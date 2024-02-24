@@ -12,8 +12,13 @@ project(${GAME_TARGET}
 )
 
 option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_TESTS_HEADLESS "Only run headless unit tests" OFF)
 
 set(TEST_TARGET "testempires")
+
+if (BUILD_TESTS_HEADLESS)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_TESTS_HEADLESS=1")
+endif()
 
 # dependencies
 
@@ -110,7 +115,7 @@ target_include_directories(${TEST_TARGET} PRIVATE
 	${GAME_INCLUDE_DIRS}
 )
 
-target_link_libraries(${TEST_TARGET} PRIVATE ${GAME_LIBRARIES} GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
+target_link_libraries(${TEST_TARGET} PRIVATE ${GAME_LIBRARIES} GTest::gtest GTest::gtest_main)
 endif()
 
 # some mvsc magic. will be ignored on other platforms

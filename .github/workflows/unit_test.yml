@@ -1,0 +1,27 @@
+name: unit tests
+
+on:
+  push:
+    branches: [ master, 103-github-actions-for-google-test ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Update dependencies
+      run: sudo apt-get update
+    - name: Install dependencies
+      run: sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev
+    - name: Hack install and configure gtest
+      run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+    - name: configure
+      run: mkdir build && cd build && cmake ../ -DBUILD_TESTS_HEADLESS=ON
+    - name: make testempires
+      run: cd build && make testempires
+    - name: run
+      run: ./build/testempires
