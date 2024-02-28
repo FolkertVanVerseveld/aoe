@@ -55,6 +55,11 @@ void UICache::mouse_left_process() {
 		return;
 	}
 
+	// ignore selecting units when mouse is on bottom hud area
+	if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom)) {
+		return;
+	}
+
 	bool select_area = multi_select;
 	multi_select = select_started = false;
 

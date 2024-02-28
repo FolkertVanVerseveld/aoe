@@ -386,8 +386,10 @@ void TcpSocket::bind(const char *address, uint16_t port) {
 	sockaddr_in dst{ 0 };
 
 	dst.sin_family = AF_INET;
-	dst.sin_addr.s_addr = inet_addr(address);
 	dst.sin_port = htons(port);
+
+	if (inet_pton(AF_INET, address, &dst.sin_addr.s_addr) != 1)
+		throw std::runtime_error(std::string("bind failed: invalid address"));
 
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-bind
 	int r = ::bind(sock, (const sockaddr *)&dst, sizeof dst);
