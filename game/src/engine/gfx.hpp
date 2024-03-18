@@ -83,6 +83,16 @@ public:
 	GL();
 
 	static GLint getInt(GLenum);
+
+	static GLuint createVertexShader();
+	static GLuint createFragmentShader();
+
+	static GLint compileShader(GLuint shader, const char *code);
+
+	static GLint getShaderParam(GLuint shader, GLenum pname);
+	static std::string getShaderInfoLog(GLuint shader);
+	static GLint getProgramParam(GLuint program, GLenum pname);
+	static std::string getProgramInfoLog(GLuint program);
 };
 
 class GLprogram final {
@@ -98,7 +108,13 @@ public:
 		return *this;
 	}
 
-	void compile();
+	GLprogram &operator-=(GLuint shader) {
+		glDeleteShader(shader);
+		return *this;
+	}
+
+	void link();
+	void link(GLuint vs, GLuint fs);
 
 	void use();
 };

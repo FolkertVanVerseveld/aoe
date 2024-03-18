@@ -855,72 +855,43 @@ int Engine::mainloop() {
 		cfg.autostart = false;
 	}
 
-	m_gl.reset(new gfx::GL());
+	using namespace gfx;
+
+	m_gl.reset(new GL());
 
 	printf("max texture size: %dx%d\n", m_gl->max_texture_size, m_gl->max_texture_size);
 
-	GLuint vs;
-
 	GLCHK;
 	// https://learnopengl.com/Getting-started/Shaders
-	vs = glCreateShader(GL_VERTEX_SHADER);
+	GLuint vs = GL::createVertexShader();
 
 	const GLchar *src;
-	GLint length;
 
 	src =
 		#include "shaders/shader.vs"
 		;
 
-	length = (GLint)strlen(src);
-
-	glShaderSource(vs, 1, &src, &length);
-	glCompileShader(vs);
-
-	GLint status, log_length;
-
-	glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
-
-	if (status != GL_TRUE) {
-		glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &log_length);
-		std::string buf(log_length + 1, ' ');
-		glGetShaderInfoLog(vs, log_length, NULL, buf.data());
+	if (GL::compileShader(vs, src) != GL_TRUE) {
+		std::string buf(GL::getShaderInfoLog(vs));
 		fprintf(stderr, "%s: vertex shader compile error: %s\n", __func__, buf.c_str());
 		return -1;
 	}
 
-	GLuint fs;
-
-	fs = glCreateShader(GL_FRAGMENT_SHADER);
+	GLuint fs = GL::createFragmentShader();
 
 	src =
 		#include "shaders/shader.fs"
 		;
 
-	length = (GLint)strlen(src);
-
-	glShaderSource(fs, 1, &src, &length);
-	glCompileShader(fs);
-
-	glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
-
-	if (status != GL_TRUE) {
-		glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &log_length);
-		std::string buf(log_length + 1, ' ');
-		glGetShaderInfoLog(fs, log_length, NULL, buf.data());
+	if (GL::compileShader(fs, src) != GL_TRUE) {
+		std::string buf(GL::getShaderInfoLog(vs));
 		fprintf(stderr, "%s: fragment shader compile error: %s\n", __func__, buf.c_str());
 		return -1;
 	}
 
 	gfx::GLprogram prog;
 
-	prog += vs;
-	prog += fs;
-
-	prog.compile();
-
-	glDeleteShader(fs);
-	glDeleteShader(vs);
+	prog.link(vs, fs);
 
 	unsigned int indices[] = {
 		0, 1, 3, // first triangle
