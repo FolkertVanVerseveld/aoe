@@ -83,6 +83,14 @@ std::string GL::getProgramInfoLog(GLuint program) {
 	return s;
 }
 
+void GL::bind2d(GLuint tex, GLint wrapS, GLint wrapT, GLint minFilter, GLint magFilter) {
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
+}
+
 GLprogram::GLprogram() : id(glCreateProgram()) {
 	if (!id)
 		throw std::runtime_error("Failed to create program");

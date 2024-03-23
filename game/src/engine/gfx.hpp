@@ -76,6 +76,7 @@ public:
 	Tileset collect(int w, int h);
 };
 
+/** Helper for safer, more convenient and more consistent OpenGL api. */
 class GL final {
 public:
 	GLint max_texture_size;
@@ -93,6 +94,8 @@ public:
 	static std::string getShaderInfoLog(GLuint shader);
 	static GLint getProgramParam(GLuint program, GLenum pname);
 	static std::string getProgramInfoLog(GLuint program);
+
+	static void bind2d(GLuint tex, GLint wrapS, GLint wrapT, GLint minFilter, GLint magFilter);
 };
 
 class GLprogram final {

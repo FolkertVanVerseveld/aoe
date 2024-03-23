@@ -815,19 +815,12 @@ void Engine::guess_font_paths() {
 	fnt.try_load();
 }
 
-int Engine::mainloop() {
-	ZoneScoped;
-
-	running = true;
-
-	SDL sdl;
-	this->sdl = &sdl;
-	vsync_mode = sdl.gl_context.get_vsync();
-
+static ImGuiIO &imgui_init(SDL &sdl) {
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO(); (void)io;
+
+	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
@@ -840,11 +833,10 @@ int Engine::mainloop() {
 	ImGui_ImplSDL2_InitForOpenGL(sdl.window, sdl.gl_context);
 	ImGui_ImplOpenGL3_Init(sdl.guard.glsl_version);
 
-	guess_font_paths();
+	return io;
+}
 
-	// Our state
-	ImVec4 clear_color(0.45f, 0.55f, 0.60f, 1.00f);
-
+void Engine::cfg_init() {
 	try {
 		cfg.load(cfg.path);
 
@@ -854,6 +846,58 @@ int Engine::mainloop() {
 		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
 		cfg.autostart = false;
 	}
+}
+
+static bool shaders_init(GLuint &vs, GLuint &fs) {
+	using namespace gfx;
+
+	// https://learnopengl.com/Getting-started/Shaders
+	vs = GL::createVertexShader();
+
+	const GLchar *src;
+
+	src =
+#include "shaders/shader.vs"
+		;
+
+	if (GL::compileShader(vs, src) != GL_TRUE) {
+		std::string buf(GL::getShaderInfoLog(vs));
+		fprintf(stderr, "%s: vertex shader compile error: %s\n", __func__, buf.c_str());
+		return false;
+	}
+
+	fs = GL::createFragmentShader();
+
+	src =
+#include "shaders/shader.fs"
+		;
+
+	if (GL::compileShader(fs, src) != GL_TRUE) {
+		std::string buf(GL::getShaderInfoLog(vs));
+		fprintf(stderr, "%s: fragment shader compile error: %s\n", __func__, buf.c_str());
+		return false;
+	}
+
+	return true;
+}
+
+int Engine::mainloop() {
+	ZoneScoped;
+
+	running = true;
+
+	SDL sdl;
+	this->sdl = &sdl;
+	vsync_mode = sdl.gl_context.get_vsync();
+
+	ImGuiIO &io = imgui_init(sdl);
+
+	guess_font_paths();
+
+	// Our state
+	ImVec4 clear_color(0.45f, 0.55f, 0.60f, 1.00f);
+
+	cfg_init();
 
 	using namespace gfx;
 
@@ -862,34 +906,12 @@ int Engine::mainloop() {
 	printf("max texture size: %dx%d\n", m_gl->max_texture_size, m_gl->max_texture_size);
 
 	GLCHK;
-	// https://learnopengl.com/Getting-started/Shaders
-	GLuint vs = GL::createVertexShader();
+	GLuint vs, fs;
 
-	const GLchar *src;
-
-	src =
-		#include "shaders/shader.vs"
-		;
-
-	if (GL::compileShader(vs, src) != GL_TRUE) {
-		std::string buf(GL::getShaderInfoLog(vs));
-		fprintf(stderr, "%s: vertex shader compile error: %s\n", __func__, buf.c_str());
+	if (!shaders_init(vs, fs))
 		return -1;
-	}
 
-	GLuint fs = GL::createFragmentShader();
-
-	src =
-		#include "shaders/shader.fs"
-		;
-
-	if (GL::compileShader(fs, src) != GL_TRUE) {
-		std::string buf(GL::getShaderInfoLog(vs));
-		fprintf(stderr, "%s: fragment shader compile error: %s\n", __func__, buf.c_str());
-		return -1;
-	}
-
-	gfx::GLprogram prog;
+	GLprogram prog;
 
 	prog.link(vs, fs);
 
@@ -927,17 +949,11 @@ int Engine::mainloop() {
 
 	glGenTextures(1, &texture1);
 	tex1 = (ImTextureID)texture1;
-	glBindTexture(GL_TEXTURE_2D, texture1);
-		// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	GL::bind2d(texture1, GL_REPEAT, GL_REPEAT, GL_LINEAR, GL_LINEAR);
 
 	GLCHK;
 
-	ImageCapture ic(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
+	ImageCapture videoRecorder(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 
 	// autoload game data if available
 	if (!cfg.game_dir.empty())
@@ -1025,7 +1041,7 @@ int Engine::mainloop() {
 		glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		ic.step(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+		videoRecorder.step(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 		SDL_GL_SwapWindow(sdl.window);
 		FrameMark;
 	}

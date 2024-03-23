@@ -173,6 +173,8 @@ public:
 private:
 	static constexpr float frame_height = 0.9f, player_height = 0.55f, frame_margin = 0.075f;
 
+	void cfg_init();
+
 	void idle();
 	void idle_async();
 	void idle_game();
