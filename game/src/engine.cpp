@@ -848,8 +848,9 @@ void Engine::cfg_init() {
 	}
 }
 
+using namespace gfx;
+
 static bool shaders_init(GLuint &vs, GLuint &fs) {
-	using namespace gfx;
 
 	// https://learnopengl.com/Getting-started/Shaders
 	vs = GL::createVertexShader();
@@ -899,8 +900,6 @@ int Engine::mainloop() {
 
 	cfg_init();
 
-	using namespace gfx;
-
 	m_gl.reset(new GL());
 
 	printf("max texture size: %dx%d\n", m_gl->max_texture_size, m_gl->max_texture_size);
@@ -915,7 +914,7 @@ int Engine::mainloop() {
 
 	prog.link(vs, fs);
 
-	unsigned int indices[] = {
+	const unsigned int indices[] = {
 		0, 1, 3, // first triangle
 		1, 2, 3  // second triangle
 	};
@@ -953,11 +952,27 @@ int Engine::mainloop() {
 
 	GLCHK;
 
-	ImageCapture videoRecorder(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
-
 	// autoload game data if available
 	if (!cfg.game_dir.empty())
 		verify_game_data(cfg.game_dir);
+
+	eventloop(sdl, prog, vao);
+
+	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &vbo);
+	glDeleteBuffers(1, &ebo);
+
+	// Cleanup
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplSDL2_Shutdown();
+	ImGui::DestroyContext();
+
+	return 0;
+}
+
+void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
+	ImageCapture videoRecorder(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
+	ImGuiIO &io = ImGui::GetIO();
 
 	// Main loop
 	bool done = false;
@@ -974,36 +989,36 @@ int Engine::mainloop() {
 			bool p;
 
 			switch (event.type) {
-				case SDL_QUIT:
+			case SDL_QUIT:
+				done = true;
+				break;
+			case SDL_WINDOWEVENT:
+				ImGui_ImplSDL2_ProcessEvent(&event);
+				if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(sdl.window))
 					done = true;
-					break;
-				case SDL_WINDOWEVENT:
-					ImGui_ImplSDL2_ProcessEvent(&event);
-					if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(sdl.window))
-						done = true;
-					break;
-				case SDL_KEYUP:
-					ImGui_ImplSDL2_ProcessEvent(&event);
-					keyctl.up(event.key);
+				break;
+			case SDL_KEYUP:
+				ImGui_ImplSDL2_ProcessEvent(&event);
+				keyctl.up(event.key);
 
-					switch (event.key.keysym.sym) {
-						case SDLK_BACKQUOTE:
-							m_show_menubar = !m_show_menubar;
-							break;
-						case SDLK_F11:
-							sdl.window.set_fullscreen(!sdl.window.is_fullscreen());
-							break;
-					}
+				switch (event.key.keysym.sym) {
+				case SDLK_BACKQUOTE:
+					m_show_menubar = !m_show_menubar;
 					break;
-				case SDL_KEYDOWN:
-					p = ImGui_ImplSDL2_ProcessEvent(&event);
+				case SDLK_F11:
+					sdl.window.set_fullscreen(!sdl.window.is_fullscreen());
+					break;
+				}
+				break;
+			case SDL_KEYDOWN:
+				p = ImGui_ImplSDL2_ProcessEvent(&event);
 
-					if (!p || (capture_keys() && !io.WantCaptureKeyboard))
-						keyctl.down(event.key);
-					break;
-				default:
-					ImGui_ImplSDL2_ProcessEvent(&event);
-					break;
+				if (!p || (capture_keys() && !io.WantCaptureKeyboard))
+					keyctl.down(event.key);
+				break;
+			default:
+				ImGui_ImplSDL2_ProcessEvent(&event);
+				break;
 			}
 		}
 
@@ -1016,17 +1031,14 @@ int Engine::mainloop() {
 
 		GLCHK;
 
-		glClearColor(0, 0, 0, 1);
-		glClear(GL_COLOR_BUFFER_BIT);
+		GL::clearColor(0, 0, 0, 1);
 
 		if (menu_state != MenuState::multiplayer_game) {
 			// bind textures on corresponding texture units
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, texture1);
-			//GLint tex;
-			//glGetUniformiv(prog, glGetUniformLocation(prog, "texture1"), &tex);
+			GL::bind2d(0, texture1);
+
 			prog.use();
-			glUniform1i(glGetUniformLocation(prog, "texture1"), 0);
+			prog.setUniform("texture1", 0);
 
 			glBindVertexArray(vao);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -1045,17 +1057,6 @@ int Engine::mainloop() {
 		SDL_GL_SwapWindow(sdl.window);
 		FrameMark;
 	}
-
-	glDeleteVertexArrays(1, &vao);
-	glDeleteBuffers(1, &vbo);
-	glDeleteBuffers(1, &ebo);
-
-	// Cleanup
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplSDL2_Shutdown();
-	ImGui::DestroyContext();
-
-	return 0;
 }
 
 }

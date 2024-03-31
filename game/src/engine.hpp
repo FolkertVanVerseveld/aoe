@@ -175,6 +175,8 @@ private:
 
 	void cfg_init();
 
+	void eventloop(SDL&, gfx::GLprogram&, GLuint);
+
 	void idle();
 	void idle_async();
 	void idle_game();

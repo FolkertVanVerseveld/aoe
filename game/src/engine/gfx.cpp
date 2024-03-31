@@ -83,6 +83,11 @@ std::string GL::getProgramInfoLog(GLuint program) {
 	return s;
 }
 
+void GL::bind2d(int idx, GLuint tex) {
+	glActiveTexture(GL_TEXTURE0 + idx);
+	glBindTexture(GL_TEXTURE_2D, tex);
+}
+
 void GL::bind2d(GLuint tex, GLint wrapS, GLint wrapT, GLint minFilter, GLint magFilter) {
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
@@ -91,7 +96,12 @@ void GL::bind2d(GLuint tex, GLint wrapS, GLint wrapT, GLint minFilter, GLint mag
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
 }
 
-GLprogram::GLprogram() : id(glCreateProgram()) {
+void GL::clearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
+	glClearColor(r, g, b, a);
+	glClear(GL_COLOR_BUFFER_BIT);
+}
+
+GLprogram::GLprogram() : id(glCreateProgram()), uniforms() {
 	if (!id)
 		throw std::runtime_error("Failed to create program");
 }
@@ -122,6 +132,24 @@ void GLprogram::link(GLuint vs, GLuint fs) {
 
 	*this -= fs;
 	*this -= vs;
+}
+
+void GLprogram::setUniform(const char *name, GLint v) {
+	auto it = uniforms.find(name);
+	GLint id = -1;
+
+	if (it != uniforms.end()) {
+		id = it->second;
+	} else {
+		id = glGetUniformLocation(this->id, name);
+
+		if (id == -1)
+			return;
+
+		uniforms.emplace(name, id);
+	}
+
+	glUniform1i(id, v);
 }
 
 }

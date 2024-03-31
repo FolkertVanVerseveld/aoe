@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include <map>
+
 #include <idpool.hpp>
 
 #include "../legacy/legacy.hpp"
@@ -95,11 +97,15 @@ public:
 	static GLint getProgramParam(GLuint program, GLenum pname);
 	static std::string getProgramInfoLog(GLuint program);
 
+	static void bind2d(int idx, GLuint tex);
 	static void bind2d(GLuint tex, GLint wrapS, GLint wrapT, GLint minFilter, GLint magFilter);
+
+	static void clearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
 };
 
 class GLprogram final {
 	GLuint id;
+	std::map<const char*, GLint> uniforms;
 public:
 	GLprogram();
 	~GLprogram();
@@ -120,6 +126,9 @@ public:
 	void link(GLuint vs, GLuint fs);
 
 	void use();
+
+	// NOTE const char* must be compile time constant
+	void setUniform(const char *s, GLint v);
 };
 
 }
