@@ -101,16 +101,47 @@ public:
 	static void bind2d(GLuint tex, GLint wrapS, GLint wrapT, GLint minFilter, GLint magFilter);
 
 	static void clearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
+
+	static void viewport(GLint x, GLint y, GLsizei width, GLsizei height);
+};
+
+class GLvertexArray final {
+	GLuint id;
+public:
+	GLvertexArray();
+	~GLvertexArray();
+
+	void bind();
+
+	constexpr operator GLuint() const noexcept { return id; }
+};
+
+class GLbuffer final {
+	GLuint id;
+public:
+	GLbuffer();
+	~GLbuffer();
+
+	/*
+	void glBufferData(	GLenum target,
+ 	GLsizeiptr size,
+ 	const void * data,
+ 	GLenum usage);
+	*/
+	void setData(GLenum target, GLsizeiptr size, const void *data, GLenum usage);
+
+	constexpr operator GLuint() const noexcept { return id; }
 };
 
 class GLprogram final {
 	GLuint id;
 	std::map<const char*, GLint> uniforms;
+	std::map<const char*, GLint> attributes;
 public:
 	GLprogram();
 	~GLprogram();
 
-	operator GLuint() const noexcept { return id; }
+	constexpr operator GLuint() const noexcept { return id; }
 
 	GLprogram &operator+=(GLuint shader) {
 		glAttachShader(id, shader);
@@ -129,6 +160,9 @@ public:
 
 	// NOTE const char* must be compile time constant
 	void setUniform(const char *s, GLint v);
+
+	void setVertexArray(const char *s, GLint size, GLenum type, GLsizei stride, unsigned offset);
+	void setVertexArray(const char *s, GLint size, GLenum type, GLboolean normalized, GLsizei stride, unsigned offset);
 };
 
 }

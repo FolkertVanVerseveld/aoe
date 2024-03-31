@@ -139,7 +139,6 @@ private:
 	bool show_timeline;
 	bool show_diplomacy;
 
-	std::vector<GLfloat> bkg_vertices;
 	GLuint vbo;
 	int vsync_mode, vsync_idx;
 

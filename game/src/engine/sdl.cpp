@@ -96,7 +96,7 @@ Window::Window(const char *title, int x, int y, int w, int h)
 	: flags((SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI))
 #pragma warning(default: 26812)
 	, win(SDL_CreateWindow(title, x, y, w, h, flags), SDL_DestroyWindow)
-	, mode_def{ 0 }, mode_full{ 0 }, pos_def{ 0 }, disp_full(-1) {}
+	, mode_def{ 0 }, mode_full{ 0 }, pos_def{ 0 }, pos_full{ 0 }, disp_full(-1) {}
 
 GLctx::GLctx(SDL_Window *win) : gl_context(SDL_GL_CreateContext(win)) {}
 

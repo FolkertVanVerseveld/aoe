@@ -101,7 +101,36 @@ void GL::clearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
 	glClear(GL_COLOR_BUFFER_BIT);
 }
 
-GLprogram::GLprogram() : id(glCreateProgram()), uniforms() {
+void GL::viewport(GLint x, GLint y, GLsizei width, GLsizei height) {
+	glViewport(x, y, width, height);
+}
+
+GLvertexArray::GLvertexArray() : id(0) {
+	glGenVertexArrays(1, &id);
+}
+
+GLvertexArray::~GLvertexArray() {
+	glDeleteVertexArrays(1, &id);
+}
+
+void GLvertexArray::bind() {
+	glBindVertexArray(id);
+}
+
+GLbuffer::GLbuffer() : id(0) {
+	glGenBuffers(1, &id);
+}
+
+GLbuffer::~GLbuffer() {
+	glDeleteBuffers(1, &id);
+}
+
+void GLbuffer::setData(GLenum target, GLsizeiptr size, const void *data, GLenum usage) {
+	glBindBuffer(target, id);
+	glBufferData(target, size, data, usage);
+}
+
+GLprogram::GLprogram() : id(glCreateProgram()), uniforms(), attributes() {
 	if (!id)
 		throw std::runtime_error("Failed to create program");
 }
@@ -150,6 +179,29 @@ void GLprogram::setUniform(const char *name, GLint v) {
 	}
 
 	glUniform1i(id, v);
+}
+
+void GLprogram::setVertexArray(const char *name, GLint size, GLenum type, GLsizei stride, unsigned offset) {
+	setVertexArray(name, size, type, GL_FALSE, stride, offset);
+}
+
+void GLprogram::setVertexArray(const char *name, GLint size, GLenum type, GLboolean normalized, GLsizei stride, unsigned offset) {
+	auto it = attributes.find(name);
+	GLint id = -1;
+
+	if (it != attributes.end()) {
+		id = it->second;
+	} else {
+		id = glGetAttribLocation(this->id, name);
+
+		if (id == -1)
+			return;
+
+		attributes.emplace(name, id);
+	}
+
+	glVertexAttribPointer(id, size, type, normalized, stride, (void*)(0 + offset));
+	glEnableVertexAttribArray(id);
 }
 
 }

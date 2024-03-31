@@ -28,6 +28,7 @@
 #include "ui/imgui_user.hpp"
 
 #include <cstdio>
+#include <cstddef>
 #include <cstdint>
 
 #include <mutex>
@@ -46,6 +47,18 @@ namespace aoe {
 Engine *eng;
 std::mutex m_eng;
 
+static struct BkgVertex {
+	GLfloat x, y, z;
+	GLfloat r, g, b;
+	GLfloat s, t;
+} bkg_vertices[] = {
+	// positions          // colors          // texture coords
+	{ 1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  1.0f, 0.0f}, // top right
+	{ 1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  1.0f, 1.0f}, // bottom right
+	{-1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f}, // bottom left
+	{-1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  0.0f, 0.0f}, // top left
+};
+
 Engine::Engine()
 	: net(), show_demo(false), show_debug(false), font_scaling(true)
 	, connection_mode(0), connection_port(32768), connection_host("")
@@ -58,13 +71,7 @@ Engine::Engine()
 	, debug()
 	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), m_gl(nullptr), assets(), assets_good(false)
 	, show_chat(false), m_show_achievements(false), show_timeline(false), show_diplomacy(false)
-	, bkg_vertices{
-		// positions          // colors           // texture coords
-		 1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f, // top right
-		 1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f, // bottom right
-		-1.0f, -1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, // bottom left
-		-1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f  // top left
-	}, vbo(0), vsync_mode(0), vsync_idx(0)
+	, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
 	, player_tbl_y(0), ui(), fnt()
 	, texture1(0), tex1(nullptr)
@@ -193,6 +200,9 @@ void Engine::show_menubar() {
 
 /** Load and validate game assets. */
 void Engine::verify_game_data(const std::string &path) {
+	if (path.empty())
+		return;
+
 	assets_good = false;
 
 	if (!fnt.loaded()) {
@@ -495,20 +505,20 @@ void Engine::set_background(io::DrsId id) {
 	const gfx::ImageRef &r = a.at(id);
 	//printf("(%.2f,%.2f), (%.2f,%.2f)\n", r.s0, r.t0, r.s1, r.t1);
 
-	bkg_vertices[0 * 8 + 6] = r.s1;
-	bkg_vertices[1 * 8 + 6] = r.s1;
+	bkg_vertices[0].s = r.s1;
+	bkg_vertices[1].s = r.s1;
 
-	bkg_vertices[2 * 8 + 6] = r.s0;
-	bkg_vertices[3 * 8 + 6] = r.s0;
+	bkg_vertices[2].s = r.s0;
+	bkg_vertices[3].s = r.s0;
 
-	bkg_vertices[0 * 8 + 7] = r.t0;
-	bkg_vertices[3 * 8 + 7] = r.t0;
+	bkg_vertices[0].t = r.t0;
+	bkg_vertices[3].t = r.t0;
 
-	bkg_vertices[1 * 8 + 7] = r.t1;
-	bkg_vertices[2 * 8 + 7] = r.t1;
+	bkg_vertices[1].t = r.t1;
+	bkg_vertices[2].t = r.t1;
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, bkg_vertices.size() * sizeof(GLfloat), bkg_vertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(bkg_vertices), bkg_vertices, GL_STATIC_DRAW);
 
 	GLCHK;
 }
@@ -921,46 +931,31 @@ int Engine::mainloop() {
 
 	GLuint vao, ebo;
 
-	glGenVertexArrays(1, &vao);
-	glGenBuffers(1, &vbo);
-	glGenBuffers(1, &ebo);
+	{
+		GLvertexArray vao;
+		GLbuffer vbo, ebo;
+		this->vbo = vbo;
 
-	glBindVertexArray(vao);
+		vao.bind();
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, bkg_vertices.size() * sizeof(GLfloat), bkg_vertices.data(), GL_STATIC_DRAW);
+		vbo.setData(GL_ARRAY_BUFFER, sizeof(bkg_vertices), bkg_vertices, GL_STATIC_DRAW);
+		ebo.setData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+		prog.setVertexArray("aPos"     , 3, GL_FLOAT, sizeof(BkgVertex), offsetof(BkgVertex, x));
+		prog.setVertexArray("aColor"   , 3, GL_FLOAT, sizeof(BkgVertex), offsetof(BkgVertex, r));
+		prog.setVertexArray("aTexCoord", 2, GL_FLOAT, sizeof(BkgVertex), offsetof(BkgVertex, s));
 
-	// position attribute
-	GLint aPos = glGetAttribLocation(prog, "aPos");
-	glVertexAttribPointer(aPos, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(aPos);
-	// color attribute
-	GLint aColor = glGetAttribLocation(prog, "aColor");
-	glVertexAttribPointer(aColor, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(aColor);
-	// texture coord attribute
-	GLint aTexCoord = glGetAttribLocation(prog, "aTexCoord");
-	glVertexAttribPointer(aTexCoord, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	glEnableVertexAttribArray(aTexCoord);
+		glGenTextures(1, &texture1);
+		tex1 = (ImTextureID)texture1;
+		GL::bind2d(texture1, GL_REPEAT, GL_REPEAT, GL_LINEAR, GL_LINEAR);
 
-	glGenTextures(1, &texture1);
-	tex1 = (ImTextureID)texture1;
-	GL::bind2d(texture1, GL_REPEAT, GL_REPEAT, GL_LINEAR, GL_LINEAR);
+		GLCHK;
 
-	GLCHK;
-
-	// autoload game data if available
-	if (!cfg.game_dir.empty())
+		// autoload game data if available
 		verify_game_data(cfg.game_dir);
 
-	eventloop(sdl, prog, vao);
-
-	glDeleteVertexArrays(1, &vao);
-	glDeleteBuffers(1, &vbo);
-	glDeleteBuffers(1, &ebo);
+		eventloop(sdl, prog, vao);
+	}
 
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();
@@ -1050,7 +1045,7 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 
 		// Rendering
 		ImGui::Render();
-		glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+		GL::viewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		videoRecorder.step(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
