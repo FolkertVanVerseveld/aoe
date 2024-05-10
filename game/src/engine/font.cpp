@@ -56,13 +56,42 @@ bool FontCache::loaded() const noexcept {
 
 static ImFont *try_add_font(ImFontAtlas *a, const char *path, float size) {
 	FILE *f;
+	void *blob = NULL;
+	ImFont *fnt = NULL;
 
 	if (!(f = fopen(path, "rb")))
 		return NULL;
 
+	fseek(f, 0, SEEK_END);
+	long fend = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	long fstart = ftell(f);
+
+	long fsize = fend - fstart;
+	if (fsize < 0)
+		goto fail;
+
+	if (!(blob = malloc(fsize)))
+		goto fail;
+
+	if (fread(blob, fsize, 1, f) != 1) {
+		free(blob);
+		goto fail;
+	}
+
 	fclose(f);
 
-	return a->AddFontFromFileTTF(path, size);
+	ImFontConfig cfg;
+	// make sure it is copied, so we don't leak memory
+	cfg.FontDataOwnedByAtlas = false;
+	fnt = a->AddFontFromMemoryTTF(blob, fsize, size, &cfg);
+	if (fnt)
+		free(blob);
+
+	return fnt;
+fail:
+	fclose(f);
+	return fnt;
 }
 
 bool FontCache::try_load() {
