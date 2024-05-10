@@ -302,28 +302,12 @@ void UICache::show_multiplayer_game() {
 	gmb_top.y = vp->WorkPos.y;
 	gmb_top.h = menubar_h;
 
-	char buf[16];
-	snprintf(buf, sizeof buf, "%d", p.res.wood);
-	buf[(sizeof buf) - 1] = '\0';
-
 	float y = vp->WorkPos.y + 2 * scale;
 
-	str2(ImVec2(menubar_left + 32 * scale, y), buf);
-
-	snprintf(buf, sizeof buf, "%d", p.res.food);
-	buf[(sizeof buf) - 1] = '\0';
-
-	str2(ImVec2(menubar_left + 99 * scale, y), buf);
-
-	snprintf(buf, sizeof buf, "%d", p.res.gold);
-	buf[(sizeof buf) - 1] = '\0';
-
-	str2(ImVec2(menubar_left + 166 * scale, y), buf);
-
-	snprintf(buf, sizeof buf, "%d", p.res.stone);
-	buf[(sizeof buf) - 1] = '\0';
-
-	str2(ImVec2(menubar_left + 234 * scale, y), buf);
+	strnum(ImVec2(menubar_left + 32 * scale, y), p.res.wood);
+	strnum(ImVec2(menubar_left + 99 * scale, y), p.res.food);
+	strnum(ImVec2(menubar_left + 166 * scale, y), p.res.gold);
+	strnum(ImVec2(menubar_left + 234 * scale, y), p.res.stone);
 
 	ImVec2 sz(ImGui::CalcTextSize(age.c_str()));
 
@@ -418,21 +402,9 @@ void UICache::show_multiplayer_game() {
 		e->show_multiplayer_diplomacy();
 
 	if (e->cv.gameover) {
-		FontGuard fg(e->fnt.fnt_copper2);
-
-		const char *txt = e->cv.victory ? "Victory" : "Game Over";
-
-		ImVec2 sz(ImGui::CalcTextSize(txt));
-
-		lst->AddText(ImVec2((io.DisplaySize.x - sz.x) / 2, (io.DisplaySize.y - sz.y) / 2), IM_COL32_WHITE, txt);
+		str_scream(e->cv.victory ? "Victory" : "Game Over");
 	} else if (!e->client->g.running) {
-		FontGuard fg(e->fnt.fnt_copper2);
-
-		const char *txt = "Game Paused";
-
-		ImVec2 sz(ImGui::CalcTextSize(txt));
-
-		lst->AddText(ImVec2((io.DisplaySize.x - sz.x) / 2, (io.DisplaySize.y - sz.y) / 2), IM_COL32_WHITE, txt);
+		str_scream("Game Paused");
 	}
 }
 

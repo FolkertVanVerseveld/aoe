@@ -648,6 +648,21 @@ void UICache::str2(const ImVec2 &pos, const char *text, bool invert) {
 	bkg->AddText(pos, fg, text);
 }
 
+void UICache::strnum(const ImVec2 &pos, int v) {
+	char buf[16];
+	snprintf(buf, sizeof buf, "%d", v);
+	str2(pos, buf);
+}
+
+void UICache::str_scream(const char *txt) {
+	ImGuiIO &io = ImGui::GetIO();
+	FontGuard fg(e->fnt.fnt_copper2);
+
+	ImVec2 sz(ImGui::CalcTextSize(txt));
+
+	bkg->AddText(ImVec2((io.DisplaySize.x - sz.x) / 2, (io.DisplaySize.y - sz.y) / 2), IM_COL32_WHITE, txt);
+}
+
 void UICache::game_mouse_process() {
 	ZoneScoped;
 

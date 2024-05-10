@@ -249,6 +249,9 @@ public:
 	void show_hud_selection(float left, float top, float menubar_h);
 
 	void str2(const ImVec2 &pos, const char *text, bool invert=false);
+	void strnum(const ImVec2 &pos, int v);
+
+	void str_scream(const char *txt);
 
 	const gfx::ImageRef &imgtile(uint8_t v);
 
