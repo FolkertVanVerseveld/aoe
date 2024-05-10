@@ -5,6 +5,7 @@
 In general, if you experience odd or erroneous behavior, you should try building
 from source with debug options enabled. This can be achieved by navigating to
 the root directory and issuing these commands:
+
 ```
 make clean && make
 ```

@@ -1,10 +1,14 @@
 # Contributing
 
-If you are really willing to help improve development, you can try to implement
-missing stuff, start writing/improving documentation or fix a couple of bugs.
-You have to grok basic stuff about POSIX and the C programming language to be
-able to contribute. If you do not know what these things mean nor SDL2 or bash
-then you will have a hard time with contributing.
+Contributions in any shape or form are very much appreciated. Development has
+been on/off for many years, but there's always big and small tasks that need to
+be done. Progress is tracked on the github
+[issue tracker](https://github.com/FolkertVanVerseveld/aoe/issues) as much as
+possible. Some issues are grouped as projects to mark milestone to work towards
+to.
+
+It greatly helps if you are experienced in C++ and OpenGL programming, but
+there's also a lot of work to be done on documenting, playtesting etc.
 
 ## Documentation
 
@@ -29,8 +33,23 @@ See also [this document](CODINGSTYLE.md) for more details.
 
 ### Windows
 
-Just download the official development and binary releases from libsdl.org
-This project is compiled with CMake. It should 'just work' using Visual Studio.
+This project is configured using [vcpkg](https://github.com/microsoft/vcpkg)
+and built in Visual Studio. Install vcpkg, follow their instructions to
+bootstrap. It is recommended to run:
+
+  .\vcpkg integrate install
+
+such that Visual Studio can find any packages you install using vcpkg. Then,
+install the packages:
+
+  .\vcpkg install sdl2 sdl2-image sdl2-mixer sdl2-mixer-mpg123
+
+For the unit tests, also install:
+
+  .\vcpkg install gtest
+
+To disable tests, disable the BUILD_TESTS property in CMakeLists.txt. To only
+build HEADLESS tests, enable BUILD_TESTS_HEADLESS.
 
 ### Ubuntu and variants
 
@@ -42,16 +61,27 @@ libsdl2-dev       | SDL2 development package
 libsdl2-image-dev | SDL2 graphics development package
 libsdl2-mixer-dev | SDL2 audio development package
 
+A typical installation of these packages would be:
+
+  sudo apt-get install gcc make pkg-config libsdl2-{,image-,mixer-}dev
+
+Then, compiling should be as simple as:
+
+  mkdir build && cd build
+  cmake ../
+  make
+
+It may also work in parallel (not tested):
+  make -j8
+
 The following commands are expected to be installed
-(descriptions are taken from their repsective manuals):
+(descriptions are taken from their respective manuals):
 
 Name        | Description
 ------------|--------------------------------------------------
-bash        | GNU Bourne-Again SHell
 pkg-config  | Return metainformation about installed libraries
 gcc         | GNU project C and C++ compiler
 git         | the stupid content tracker
-sed         | stream editor for filtering and transforming text
 make        | GNU make utility to maintain groups of programs
 cmake       | CMake Command-Line Reference
 

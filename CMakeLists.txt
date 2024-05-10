@@ -14,7 +14,13 @@ project(${GAME_TARGET}
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_TESTS_HEADLESS "Only run headless unit tests" OFF)
 
+option(BUILD_PROFILER "Use Tracy Profiler" OFF)
+
 set(TEST_TARGET "testempires")
+
+if (BUILD_PROFILER)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRACY_ENABLE=1")
+endif()
 
 if (BUILD_TESTS_HEADLESS)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_TESTS_HEADLESS=1")
@@ -32,6 +38,10 @@ else()
 	find_package(SDL2_mixer CONFIG REQUIRED)
 endif()
 find_package(OpenGL REQUIRED)
+
+if (BUILD_PROFILER)
+add_subdirectory(tracy)
+endif()
 
 if(BUILD_TESTS)
 enable_testing()
@@ -105,7 +115,11 @@ target_include_directories(${GAME_TARGET} PRIVATE
 	${GAME_INCLUDE_DIRS}
 )
 
+if (BUILD_PROFILER)
+target_link_libraries(${GAME_TARGET} ${GAME_LIBRARIES} TracyClient)
+else()
 target_link_libraries(${GAME_TARGET} ${GAME_LIBRARIES})
+endif()
 
 if(BUILD_TESTS)
 target_include_directories(${TEST_TARGET} PRIVATE
