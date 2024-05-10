@@ -68,29 +68,19 @@ static ImFont *try_add_font(ImFontAtlas *a, const char *path, float size) {
 	long fstart = ftell(f);
 
 	long fsize = fend - fstart;
-	if (fsize < 0)
+	if (fsize < 0 || !(blob = malloc(fsize)) || fread(blob, fsize, 1, f) != 1)
 		goto fail;
-
-	if (!(blob = malloc(fsize)))
-		goto fail;
-
-	if (fread(blob, fsize, 1, f) != 1) {
-		free(blob);
-		goto fail;
-	}
-
-	fclose(f);
 
 	ImFontConfig cfg;
-	// make sure it is copied, so we don't leak memory
+	// make sure it is copied by ImGui, so we can free and don't have to leak memory
 	cfg.FontDataOwnedByAtlas = false;
-	fnt = a->AddFontFromMemoryTTF(blob, fsize, size, &cfg);
-	if (fnt)
-		free(blob);
 
-	return fnt;
+	if (blob)
+		fnt = a->AddFontFromMemoryTTF(blob, fsize, size, &cfg);
+
 fail:
 	fclose(f);
+	free(blob);
 	return fnt;
 }
 
