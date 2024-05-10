@@ -10,10 +10,17 @@
 
 #include "../debug.hpp"
 
+#define DEFAULT_GAME_DIR "C:\\Program Files (x86)\\Microsoft Games\\Age of Empires"
+
 namespace aoe {
 
 Config::Config(Engine &e) : Config(e, "") {}
-Config::Config(Engine &e, const std::string &s) : e(e), bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s), game_dir(), autostart(false), music_volume(SDL_MIX_MAXVOLUME), sfx_volume(SDL_MIX_MAXVOLUME) {}
+
+Config::Config(Engine &e, const std::string &s) : e(e), bnds{ 0, 0, 1, 1 }, display{ 0, 0, 1, 1 }, vp{ 0, 0, 1, 1 }, path(s), game_dir(), autostart(false), music_volume(SDL_MIX_MAXVOLUME), sfx_volume(SDL_MIX_MAXVOLUME) {
+#if _WIN32
+	game_dir = DEFAULT_GAME_DIR;
+#endif
+}
 
 Config::~Config() {
 	if (path.empty())
@@ -85,6 +92,12 @@ void Config::load(const std::string &path) {
 		this->autostart = data["autostart"];
 
 		game_dir = data["original_game_directory"];
+#if _WIN32
+		if (game_dir == "") {
+			// try to autodetect
+			game_dir = DEFAULT_GAME_DIR;
+		}
+#endif
 	} catch (std::exception &e) {
 		throw std::runtime_error(e.what());
 	}
