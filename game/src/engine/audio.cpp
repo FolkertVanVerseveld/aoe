@@ -55,6 +55,10 @@ void Audio::reset() {
 }
 
 void Audio::play_music(const char *file, int loops) {
+	// file may be empty if not configured, just ignore
+	if (!file || !*file)
+		return;
+
 	// always load music even if muted. so when we unmute, it should just work
 	music.reset(Mix_LoadMUS(file));
 	if (!music.get()) {

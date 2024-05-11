@@ -47,16 +47,15 @@ void UICache::mouse_left_process() {
 	if (old == btn_left || io.MouseDownDuration[0] > 0.0f)
 		return;
 
+	// ignore selecting units when mouse is on bottom hud area
+	if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom))
+		return;
+
 	if (io.MouseDown[0]) {
 		select_started = true;
 		multi_select = false;
 		start_x = io.MousePos.x;
 		start_y = io.MousePos.y;
-		return;
-	}
-
-	// ignore selecting units when mouse is on bottom hud area
-	if (point_in_rect(io.MousePos.x, io.MousePos.y, gmb_bottom)) {
 		return;
 	}
 
