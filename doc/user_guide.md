@@ -7,8 +7,23 @@
 This project does not provide binary builds at the moment, which means you have
 to build the project in order to play the game.
 
-Instructions for the game as well as the new launcher and game setup are
-provided in [INSTALL](../INSTALL).
+Install instructions on Linux can be found in [INSTALL](../INSTALL).
+
+On Windows, you can either install the dependencies manually or use Microsoft's
+vcpkg. This is the one we will be using here.
+
+After downloading vcpkg, open an administrator CMD prompt in the vcpkg directory
+and type:
+```
+.\bootstrap-vcpkg.bat -disableMetrics
+vcpkg integrate install
+```
+
+Close the prompt and open a unprivileged one:
+```
+.\bootstrap-vcpkg.bat -disableMetrics
+vcpkg install gtest sdl2 sdl2image sdl2mixer[mpg123]
+```
 
 ## Running the game
 
@@ -17,6 +32,10 @@ should be auto-detected if you start the game after inserting the CD-ROM.
 
 If the CD-ROM is not recognized, make sure you have inserted the Age of Empires
 CD-ROM correctly and that the CD-ROM is mounted properly.
+
+Make sure the original game installer has been run to ensure the game fonts
+are installed or copy the game fonts manually. Eventually, we hope to support
+the game trial edition and automate this process.
 
 ### Creating an ISO image
 
