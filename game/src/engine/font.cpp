@@ -58,6 +58,7 @@ static ImFont *try_add_font(ImFontAtlas *a, const char *path, float size) {
 	FILE *f;
 	void *blob = NULL;
 	ImFont *fnt = NULL;
+	ImFontConfig cfg;
 
 	if (!(f = fopen(path, "rb")))
 		return NULL;
@@ -71,7 +72,6 @@ static ImFont *try_add_font(ImFontAtlas *a, const char *path, float size) {
 	if (fsize < 0 || !(blob = malloc(fsize)) || fread(blob, fsize, 1, f) != 1)
 		goto fail;
 
-	ImFontConfig cfg;
 	// make sure it is copied by ImGui, so we can free and don't have to leak memory
 	cfg.FontDataOwnedByAtlas = false;
 
