@@ -47,6 +47,8 @@ namespace aoe {
 Engine *eng;
 std::mutex m_eng;
 
+ScenarioSettings sp_scn;
+
 static struct BkgVertex {
 	GLfloat x, y, z;
 	GLfloat r, g, b;
@@ -224,44 +226,59 @@ void Engine::verify_game_data(const std::string &path) {
 	}, path);
 }
 
-void Engine::display_ui() {
+void Engine::display() {
 	ZoneScoped;
+	GLCHK;
+	ImGuiIO &io = ImGui::GetIO();
+	if (font_scaling)
+		io.FontGlobalScale = std::max(1.0f / SDL::fnt_scale, io.DisplaySize.y / SDL::max_h);
+	else
+		io.FontGlobalScale = 1.0f / SDL::fnt_scale;
+
 	ui.idle(*this);
 	show_menubar();
 
 	switch (menu_state) {
-		case MenuState::multiplayer_host:
-			show_multiplayer_host();
-			draw_background_border();
-			break;
-		case MenuState::multiplayer_game:
-			ui.show_world();
-			ui.show_multiplayer_game();
-			break;
-		case MenuState::multiplayer_menu:
-			show_multiplayer_menu();
-			draw_background_border();
-			break;
-		case MenuState::start:
-			show_start();
-			draw_background_border();
-			break;
-		case MenuState::defeat:
-		case MenuState::victory:
-			show_gameover();
-			draw_background_border();
-			break;
-		case MenuState::editor_menu:
-			ui.show_editor_menu();
-			draw_background_border();
-			break;
-		case MenuState::editor_scenario:
-			ui.show_world();
-			ui.show_editor_scenario();
-			break;
-		default:
-			show_init();
-			break;
+	case MenuState::multiplayer_host:
+		show_multiplayer_host();
+		draw_background_border();
+		break;
+	case MenuState::multiplayer_game:
+		ui.show_world();
+		ui.show_multiplayer_game();
+		break;
+	case MenuState::singleplayer_menu:
+		show_singleplayer_menu();
+		draw_background_border();
+		break;
+	case MenuState::singleplayer_host:
+		show_singleplayer_host();
+		draw_background_border();
+		break;
+	case MenuState::multiplayer_menu:
+		show_multiplayer_menu();
+		draw_background_border();
+		break;
+	case MenuState::start:
+		show_start();
+		draw_background_border();
+		break;
+	case MenuState::defeat:
+	case MenuState::victory:
+		show_gameover();
+		draw_background_border();
+		break;
+	case MenuState::editor_menu:
+		ui.show_editor_menu();
+		draw_background_border();
+		break;
+	case MenuState::editor_scenario:
+		ui.show_world();
+		ui.show_editor_scenario();
+		break;
+	default:
+		show_init();
+		break;
 	}
 
 	if (show_demo)
@@ -279,16 +296,7 @@ void Engine::display_ui() {
 			popups.pop();
 		}
 	}
-}
 
-void Engine::display() {
-	GLCHK;
-	ImGuiIO &io = ImGui::GetIO();
-	if (font_scaling)
-		io.FontGlobalScale = std::max(1.0f / SDL::fnt_scale, io.DisplaySize.y / SDL::max_h);
-	else
-		io.FontGlobalScale = 1.0f / SDL::fnt_scale;
-	display_ui();
 	//io.FontGlobalScale = 1.0f;
 	GLCHK;
 }
@@ -530,6 +538,10 @@ void Engine::set_background(MenuState s) {
 	case MenuState::multiplayer_host:
 	case MenuState::multiplayer_menu:
 		id = io::DrsId::bkg_multiplayer;
+		break;
+	case MenuState::singleplayer_menu:
+	case MenuState::singleplayer_host:
+		id = io::DrsId::bkg_singleplayer;
 		break;
 	case MenuState::defeat:
 		id = io::DrsId::bkg_defeat;

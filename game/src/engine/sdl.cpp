@@ -93,7 +93,7 @@ void SDL::set_cursor(unsigned idx) {
 
 Window::Window(const char *title, int x, int y, int w, int h)
 #pragma warning(disable: 26812)
-	: flags((SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI))
+	: flags((SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE))
 #pragma warning(default: 26812)
 	, win(SDL_CreateWindow(title, x, y, w, h, flags), SDL_DestroyWindow)
 	, mode_def{ 0 }, mode_full{ 0 }, pos_def{ 0 }, pos_full{ 0 }, disp_full(-1) {}

@@ -52,4 +52,6 @@ public:
 	void remove(IdPoolRef);
 };
 
+extern ScenarioSettings sp_scn;
+
 }

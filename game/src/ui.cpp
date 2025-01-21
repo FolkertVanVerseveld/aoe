@@ -983,10 +983,9 @@ void Engine::show_start() {
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
 
-		f.xbtn("Single Player", TextHalign::center);
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-			FontGuard fg2(fnt.fnt_arial);
-			ImGui::Tooltip("Single player has not been implemented yet. However, you can start a singleplayer game by hosting a multiplayer session. In this multiplayer session, just add computer players.");
+		if (f.btn("Single Player", TextHalign::center)) {
+			sfx.play_sfx(SfxId::sfx_ui_click);
+			next_menu_state = MenuState::singleplayer_menu;
 		}
 
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
@@ -1125,6 +1124,106 @@ void Engine::multiplayer_set_localhost() {
 	strncpy0(connection_host, "127.0.0.1", sizeof(connection_host));
 }
 
+#define SetRelY(ry) ImGui::SetCursorPosY((ry) / 768.0f * vp->WorkSize.y)
+
+void Engine::show_singleplayer_menu() {
+	using namespace ImGui;
+	ZoneScoped;
+	ImGuiViewport *vp = GetMainViewport();
+	SetNextWindowPos(vp->WorkPos);
+
+	Frame f;
+
+	if (!f.begin("singleplayer menu", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
+		return;
+
+	SetWindowSize(vp->WorkSize);
+
+	float old_x = GetCursorPosX();
+
+	{
+		FontGuard fg(fnt.fnt_copper2);
+
+		SetRelY(38.0f);
+		f.str2("Single Player", TextHalign::center);
+	}
+
+	FontGuard fg(fnt.fnt_copper);
+
+	SetRelY(188.0f);
+	if (f.btn("Random Map", TextHalign::center)) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		next_menu_state = MenuState::singleplayer_host;
+	}
+
+	SetRelY(268.0f);
+	f.xbtn("Campaign", TextHalign::center);
+
+	SetRelY(348.0f);
+	if (f.btn("Death Match", TextHalign::center)) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		next_menu_state = MenuState::singleplayer_host;
+	}
+
+	SetRelY(428);
+	f.xbtn("Scenario", TextHalign::center);
+
+	SetRelY(508.0f);
+	f.xbtn("Saved Game", TextHalign::center);
+
+	SetRelY(588.0f);
+	if (f.btn("Cancel", TextHalign::center)) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		next_menu_state = MenuState::start;
+	}
+}
+
+void Engine::show_singleplayer_host() {
+	using namespace ImGui;
+	ZoneScoped;
+
+	ImGuiViewport *vp = GetMainViewport();
+	SetNextWindowPos(vp->WorkPos);
+
+	Frame f;
+
+	if (!f.begin("singleplayer host", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
+		return;
+
+	SetWindowSize(vp->WorkSize);
+
+	{
+		FontGuard fg(fnt.fnt_copper2);
+
+		SetRelY(14.0f);
+		f.str2("Single Player Game", TextHalign::center);
+	}
+
+	unsigned player_count = sp_scn.players.size();
+
+	{
+		Child lf;
+		if (lf.begin("LeftFrame", ImVec2(GetWindowContentRegionWidth() * 0.7f, GetWindowHeight() * (frame_height - 0.05f)))) {
+			Child pf;
+			if (pf.begin("PlayerFrame", ImVec2(GetWindowContentRegionWidth(), GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar))
+				;
+		}
+	}
+
+	f.sl();
+
+	{
+		Child c;
+		if (c.begin("SettingsFrame", ImVec2(GetWindowContentRegionWidth() * 0.3f, GetWindowHeight() * (frame_height - 0.05f)), false, ImGuiWindowFlags_HorizontalScrollbar))
+			;
+	}
+
+	if (f.btn("Cancel")) {
+		sfx.play_sfx(SfxId::sfx_ui_click);
+		next_menu_state = MenuState::singleplayer_menu;
+	}
+}
+
 void Engine::show_multiplayer_menu() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -1142,7 +1241,7 @@ void Engine::show_multiplayer_menu() {
 	{
 		FontGuard fg(fnt.fnt_copper2);
 
-		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
+		SetRelY(38.0f);
 		f.str2("Multiplayer", TextHalign::center);
 	}
 
@@ -1194,6 +1293,10 @@ void Engine::draw_background_border() {
 	case MenuState::multiplayer_host:
 	case MenuState::multiplayer_menu:
 		col = a.bkg_cols.at(io::DrsId::bkg_multiplayer);
+		break;
+	case MenuState::singleplayer_menu:
+	case MenuState::singleplayer_host:
+		col = a.bkg_cols.at(io::DrsId::bkg_singleplayer);
 		break;
 	case MenuState::defeat:
 		col = a.bkg_cols.at(io::DrsId::bkg_defeat);
