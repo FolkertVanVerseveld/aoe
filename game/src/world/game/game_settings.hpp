@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <string>
 #include <vector>
 #include <map>
@@ -13,16 +14,20 @@ namespace aoe {
 
 static constexpr unsigned max_players = UINT8_MAX + 1u;
 
+static constexpr unsigned max_legacy_players = 8 + 1; // gaia
+
 class PlayerSetting final {
 public:
 	std::string name;
+	unsigned color; // player
 	int civ;
 	unsigned team;
 	Resources res;
+	bool active;
 	bool ai;
 
-	PlayerSetting() : name(), civ(0), team(1), res(), ai(false) {}
-	PlayerSetting(const std::string &name, int civ, unsigned team, Resources res) : name(name), civ(civ), team(team), res(res), ai(false) {}
+	PlayerSetting() : name(), color(0), civ(0), team(1), res(), active(false), ai(false) {}
+	PlayerSetting(const std::string &name, int civ, unsigned team, Resources res) : name(name), color(0), civ(civ), team(team), res(res), active(false), ai(false) {}
 	PlayerSetting(const PlayerSetting&) = default;
 };
 
@@ -51,6 +56,8 @@ public:
 
 	void remove(IdPoolRef);
 };
+
+extern std::array<PlayerSetting, max_legacy_players> sp_players;
 
 extern ScenarioSettings sp_scn;
 

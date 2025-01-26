@@ -43,6 +43,8 @@ public:
 	gfx::Image &subimage(unsigned index, unsigned player);
 };
 
+extern io::LanguageData old_lang;
+
 class Assets final {
 	std::map<io::DrsId, ImageSet> drs_gifs;
 public:
@@ -51,7 +53,6 @@ public:
 	std::map<io::DrsId, BackgroundColors> bkg_cols;
 	gfx::Tileset ts_ui;
 	Animation gif_cursors;
-	io::LanguageData old_lang;
 
 	Assets(int id, Engine &e, const std::string &path);
 

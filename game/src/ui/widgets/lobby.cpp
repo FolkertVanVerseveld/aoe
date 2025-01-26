@@ -2,9 +2,36 @@
 
 #include "../../ui.hpp"
 
+#include "../../world/game/game_settings.hpp"
+#include "../../engine/assets.hpp"
+
 namespace aoe {
 
-using namespace ui;
+namespace ui {
+
+void show_player_game_table(ui::Frame &f) {
+	Table t;
+
+	unsigned idx = 0;
+
+	if (!t.begin("PlayerTable", 3))
+		return;
+
+	t.row(-1, { "Name", "Civ", "Team" });
+
+	for (unsigned i = 1; i < sp_players.size(); ++i) {
+		Row r(3, i);
+		PlayerSetting &p = sp_players[i];
+
+		r.text("##0", p.name, ImGuiInputTextFlags_EnterReturnsTrue);
+		f.combo("##1", p.civ, old_lang.civ_names);
+		r.next();
+
+		p.team = std::clamp(p.team, 1u, max_legacy_players);
+		f.scalar("##2", p.team, 1);
+		r.next();
+	}
+}
 
 void UICache::show_mph_tbl(ui::Frame &f) {
 	Table t;
@@ -63,6 +90,8 @@ void UICache::show_mph_tbl(ui::Frame &f) {
 			r.next();
 		}
 	}
+}
+
 }
 
 }

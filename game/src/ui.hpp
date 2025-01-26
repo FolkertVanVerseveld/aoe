@@ -206,6 +206,8 @@ struct VisualTile final {
 	VisualTile(int tx, int ty, const SDL_Rect &bnds) : tx(tx), ty(ty), bnds(bnds) {}
 };
 
+void show_player_game_table(ui::Frame &f);
+
 class UICache final {
 	std::vector<std::string> civs;
 	Engine *e;

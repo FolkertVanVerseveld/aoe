@@ -47,6 +47,7 @@ namespace aoe {
 Engine *eng;
 std::mutex m_eng;
 
+std::array<PlayerSetting, max_legacy_players> sp_players;
 ScenarioSettings sp_scn;
 
 static struct BkgVertex {

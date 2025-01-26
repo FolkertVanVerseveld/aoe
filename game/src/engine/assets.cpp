@@ -12,6 +12,8 @@ namespace aoe {
 using namespace gfx;
 using namespace io;
 
+LanguageData old_lang;
+
 class Background final {
 public:
 	io::DrsBkg drs;
@@ -87,7 +89,7 @@ Image &Animation::subimage(unsigned index, unsigned player) {
 }
 
 Assets::Assets(int id, Engine &eng, const std::string &path)
-	: drs_gifs(), path(path), drs_ids(), bkg_cols(), ts_ui(), gif_cursors(), old_lang()
+	: drs_gifs(), path(path), drs_ids(), bkg_cols(), ts_ui(), gif_cursors()
 {
 	ZoneScoped;
 	// TODO use engine view to prevent crash when closed while ctor is still running

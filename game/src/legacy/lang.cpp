@@ -43,6 +43,9 @@ void LanguageData::collect_civs(std::vector<std::string> &lst) {
 }
 
 void LanguageData::load(PE &dll) {
+	civs.clear();
+	tbl.clear();
+
 #define loadstr(id) tbl[id] = load_string(dll, id)
 	// main menu
 	loadstr(StrId::main_copy1);
@@ -74,6 +77,8 @@ void LanguageData::load(PE &dll) {
 	civ_add(dll, tbl, StrId::civ_yamato);
 	civ_add(dll, tbl, StrId::civ_choson);
 #undef loadstr
+
+	collect_civs(civ_names);
 }
 
 std::string LanguageData::find(StrId id) {
@@ -88,7 +93,7 @@ std::string LanguageData::find(StrId id, const std::string &def) {
 }
 
 std::string Engine::txt(StrId id) {
-	return assets->old_lang.find(id);
+	return old_lang.find(id);
 }
 
 }

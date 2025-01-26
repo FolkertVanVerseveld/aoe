@@ -239,8 +239,8 @@ int Server::mainloop(int, uint16_t port, uint16_t protocol, bool testing) {
 	if (!testing) {
 		Assets &a = eng->gamedata();
 
-		civs = a.old_lang.civs;
-		a.old_lang.collect_civs(civnames);
+		civs = old_lang.civs;
+		old_lang.collect_civs(civnames);
 	}
 
 	m_active = true;

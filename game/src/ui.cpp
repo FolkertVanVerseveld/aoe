@@ -619,8 +619,7 @@ void UICache::show_editor_menu() {
 void UICache::load() {
 	ZoneScoped;
 
-	civs.clear();
-	e->assets->old_lang.collect_civs(civs);
+	old_lang.collect_civs(civs);
 
 	Assets &a = *this->e->assets.get();
 	t_imgs.emplace_back(a.anim_at(io::DrsId::trn_desert));
@@ -1199,14 +1198,12 @@ void Engine::show_singleplayer_host() {
 		f.str2("Single Player Game", TextHalign::center);
 	}
 
-	unsigned player_count = sp_scn.players.size();
-
 	{
 		Child lf;
 		if (lf.begin("LeftFrame", ImVec2(GetWindowContentRegionWidth() * 0.7f, GetWindowHeight() * (frame_height - 0.05f)))) {
 			Child pf;
 			if (pf.begin("PlayerFrame", ImVec2(GetWindowContentRegionWidth(), GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar))
-				;
+				show_player_game_table(f);
 		}
 	}
 
