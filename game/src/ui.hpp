@@ -207,6 +207,7 @@ struct VisualTile final {
 };
 
 void show_player_game_table(ui::Frame &f);
+void show_scenario_settings(ui::Frame &f, ScenarioSettings &scn);
 
 class UICache final {
 	std::vector<std::string> civs;

@@ -182,6 +182,8 @@ private:
 	void idle_async();
 	void idle_game();
 
+	void goto_menu(MenuState);
+
 	void cam_reset();
 
 	void verify_game_data(const std::string &path);

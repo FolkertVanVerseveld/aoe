@@ -45,7 +45,7 @@ public:
 	bool reorder; // allow to move players up and down in the list
 	unsigned width, height;
 	unsigned popcap;
-	unsigned age;
+	int age;
 	unsigned seed;
 	unsigned villagers;
 	TerrainType type;
@@ -57,6 +57,7 @@ public:
 	void remove(IdPoolRef);
 };
 
+extern unsigned sp_player_count, sp_player_ui_count;
 extern std::array<PlayerSetting, max_legacy_players> sp_players;
 
 extern ScenarioSettings sp_scn;

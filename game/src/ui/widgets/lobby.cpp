@@ -19,7 +19,7 @@ void show_player_game_table(ui::Frame &f) {
 
 	t.row(-1, { "Name", "Civ", "Team" });
 
-	for (unsigned i = 1; i < sp_players.size(); ++i) {
+	for (unsigned i = 1, n = std::min<unsigned>(sp_players.size(), sp_player_ui_count) + 1; i < n; ++i) {
 		Row r(3, i);
 		PlayerSetting &p = sp_players[i];
 
@@ -27,7 +27,7 @@ void show_player_game_table(ui::Frame &f) {
 		f.combo("##1", p.civ, old_lang.civ_names);
 		r.next();
 
-		p.team = std::clamp(p.team, 1u, max_legacy_players);
+		p.team = std::clamp(p.team, 1u, max_legacy_players - 1);
 		f.scalar("##2", p.team, 1);
 		r.next();
 	}

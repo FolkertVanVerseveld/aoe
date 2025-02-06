@@ -47,6 +47,7 @@ namespace aoe {
 Engine *eng;
 std::mutex m_eng;
 
+unsigned sp_player_count = 5, sp_player_ui_count = sp_player_count - 1;
 std::array<PlayerSetting, max_legacy_players> sp_players;
 ScenarioSettings sp_scn;
 
@@ -603,32 +604,35 @@ void Engine::cam_reset() {
 	cam_x = cam_y = 0.0f;
 }
 
+void Engine::goto_menu(MenuState state) {
+	menu_state = state;
+	set_background(menu_state);
+
+	switch (menu_state) {
+	case MenuState::start:
+		sfx.play_music(MusicId::menu);
+		break;
+	case MenuState::multiplayer_game:
+		sfx.play_music(MusicId::game, -1);
+		break;
+	case MenuState::editor_scenario:
+		sfx.stop_music();
+		break;
+	case MenuState::defeat:
+		sfx.play_music(MusicId::fail);
+		break;
+	case MenuState::victory:
+		sfx.play_music(MusicId::success);
+		break;
+	}
+}
+
 void Engine::idle() {
 	ZoneScoped;
 	idle_async();
 
-	if (menu_state != next_menu_state) {
-		menu_state = next_menu_state;
-		set_background(menu_state);
-
-		switch (menu_state) {
-		case MenuState::start:
-			sfx.play_music(MusicId::menu);
-			break;
-		case MenuState::multiplayer_game:
-			sfx.play_music(MusicId::game, -1);
-			break;
-		case MenuState::editor_scenario:
-			sfx.stop_music();
-			break;
-		case MenuState::defeat:
-			sfx.play_music(MusicId::fail);
-			break;
-		case MenuState::victory:
-			sfx.play_music(MusicId::success);
-			break;
-		}
-	}
+	if (menu_state != next_menu_state)
+		goto_menu(next_menu_state);
 
 	Client *c = client.get();
 

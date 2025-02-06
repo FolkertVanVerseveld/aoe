@@ -417,6 +417,7 @@ public:
 	std::map<std::string, std::vector<std::string>> civs;
 	std::map<StrId, std::string> tbl;
 	std::vector<std::string> civ_names;
+	std::vector<std::string> age_names;
 
 	void load(PE &dll);
 

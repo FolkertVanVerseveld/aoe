@@ -45,6 +45,7 @@ void LanguageData::collect_civs(std::vector<std::string> &lst) {
 void LanguageData::load(PE &dll) {
 	civs.clear();
 	tbl.clear();
+	age_names.clear();
 
 #define loadstr(id) tbl[id] = load_string(dll, id)
 	// main menu
@@ -54,12 +55,12 @@ void LanguageData::load(PE &dll) {
 	loadstr(StrId::main_copy3);
 
 	// ages
-	loadstr(StrId::age_nomad);
-	loadstr(StrId::age_stone);
-	loadstr(StrId::age_tool);
-	loadstr(StrId::age_bronze);
-	loadstr(StrId::age_iron);
-	loadstr(StrId::age_postiron);
+	age_names.emplace_back(loadstr(StrId::age_nomad));
+	age_names.emplace_back(loadstr(StrId::age_stone));
+	age_names.emplace_back(loadstr(StrId::age_tool));
+	age_names.emplace_back(loadstr(StrId::age_bronze));
+	age_names.emplace_back(loadstr(StrId::age_iron));
+	age_names.emplace_back(loadstr(StrId::age_postiron));
 
 	// civilizations
 	res_id tbl = (res_id)StrId::btn_civtbl;

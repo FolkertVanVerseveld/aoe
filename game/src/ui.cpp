@@ -931,7 +931,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 		//if (scn.hosting)
 		//	changed |= f.chkbox("Host makes settings", scn.restricted);
 
-		changed |= f.scalar("Age", scn.age, 1, 1, 4);
+		changed |= f.combo("Age", scn.age, old_lang.age_names);
 		changed |= f.scalar("Max pop.", scn.popcap, 50, 5, 1000);
 
 		f.str("Resources:");
@@ -1205,6 +1205,8 @@ void Engine::show_singleplayer_host() {
 			if (pf.begin("PlayerFrame", ImVec2(GetWindowContentRegionWidth(), GetWindowHeight() * player_height), false, ImGuiWindowFlags_HorizontalScrollbar))
 				show_player_game_table(f);
 		}
+		SetRelY(515);
+		f.scalar("Player count", sp_player_ui_count, 1, 1, max_legacy_players - 1);
 	}
 
 	f.sl();
@@ -1212,7 +1214,7 @@ void Engine::show_singleplayer_host() {
 	{
 		Child c;
 		if (c.begin("SettingsFrame", ImVec2(GetWindowContentRegionWidth() * 0.3f, GetWindowHeight() * (frame_height - 0.05f)), false, ImGuiWindowFlags_HorizontalScrollbar))
-			;
+			show_scenario_settings(f, sp_scn);
 	}
 
 	if (f.btn("Cancel")) {
