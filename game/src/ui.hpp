@@ -72,6 +72,7 @@ public:
 	bool scalar(const char *label, int32_t &v, int32_t step=0);
 	bool scalar(const char *label, uint32_t &v, uint32_t step=0);
 	// like scalar but clamps the passed v
+	bool scalar(const char *label, int32_t &v, int32_t step, int32_t min, int32_t max);
 	bool scalar(const char *label, uint32_t &v, uint32_t step, uint32_t min, uint32_t max);
 	bool text(const char *label, std::string &buf, ImGuiInputTextFlags flags=0);
 

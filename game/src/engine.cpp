@@ -214,18 +214,41 @@ void Engine::verify_game_data(const std::string &path) {
 		return;
 	}
 
-	tp.push([this](int id, std::string path) {
+	std::thread t([this](const char *func, std::string path) {
 		ZoneScoped;
 		using namespace io;
 
 		try {
-			assets.reset(new Assets(id, *this, path));
+			assets.reset(new Assets(*this, path));
 			trigger_async_flags(EngineAsyncTask::new_game_data);
 		} catch (std::exception &e) {
-			fprintf(stderr, "%s: game data verification failed: %s\n", __func__, e.what());
+			fprintf(stderr, "%s: game data verification failed: %s\n", func, e.what());
 			push_error(std::string("Game data verification failed: ") + e.what());
 		}
-	}, path);
+	}, __func__, path);
+
+	t.detach();
+}
+
+void Engine::start_singleplayer_game() {
+	std::thread t([this](const char *func) {
+		ZoneScoped;
+		using namespace io;
+
+		try {
+			UI_TaskInfo info(ui_async("Starting single player game", "Initializing player settings", 1));
+
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(2s);
+
+			info.next();
+		} catch (std::exception &e) {
+			fprintf(stderr, "%s: cannot start single player game: %s\n", func, e.what());
+			push_error(std::string("Failed to start game: ") + e.what());
+		}
+	}, __func__);
+
+	t.detach();
 }
 
 void Engine::display() {
@@ -370,11 +393,11 @@ void Engine::start_client(const char *host, uint16_t port) {
 	ZoneScoped;
 
 	reserve_threads(1);
-	tp.push([this](int id, const char *host, uint16_t port) {
+	std::thread t([this](const char *func, const char *host, uint16_t port) {
 		ZoneScoped;
 
 		try {
-			UI_TaskInfo info(ui_async("Starting client", "Creating network area", id, 2));
+			UI_TaskInfo info(ui_async("Starting client", "Creating network area", 2));
 
 			client.reset(new Client());
 
@@ -384,10 +407,11 @@ void Engine::start_client(const char *host, uint16_t port) {
 
 			trigger_client_connected();
 		} catch (std::exception &e) {
-			fprintf(stderr, "%s: cannot connect to server: %s\n", __func__, e.what());
+			fprintf(stderr, "%s: cannot connect to server: %s\n", func, e.what());
 			push_error(std::string("cannot connect to server: ") + e.what());
 		}
-	}, host, port);
+	}, __func__, host, port);
+	t.detach();
 }
 
 void Engine::stop_server_now(IdPoolRef ref) {
@@ -403,23 +427,22 @@ void Engine::stop_server_now(IdPoolRef ref) {
 void Engine::stop_server() {
 	ZoneScoped;
 
-	reserve_threads(1);
-	tp.push([this](int id) {
+	std::thread t([this]() {
 		std::lock_guard<std::mutex> lk(m_eng);
 		if (eng)
 			stop_server_now();
 	});
+	t.detach();
 }
 
 void Engine::start_server(uint16_t port) {
 	ZoneScoped;
 
-	reserve_threads(2);
-	tp.push([this](int id, uint16_t port) {
+	std::thread t1([this](const char *func, uint16_t port) {
 		ZoneScoped;
 
 		try {
-			UI_TaskInfo info(ui_async("Starting server", "Creating network area", id, 2));
+			UI_TaskInfo info(ui_async("Starting server", "Creating network area", 2));
 
 			// ensures that tsk_start_server is always in a reliable state
 			class TskGuard final {
@@ -453,10 +476,10 @@ void Engine::start_server(uint16_t port) {
 				server.reset(new Server);
 			}
 
-			reserve_threads(1);
-			tp.push([this](int id, uint16_t port) {
-				server->mainloop(id, port, 1);
+			std::thread t2([this](uint16_t port) {
+				server->mainloop(port, 1);
 			}, port);
+			t2.detach();
 
 			info.next("Connecting to host");
 
@@ -464,9 +487,10 @@ void Engine::start_server(uint16_t port) {
 
 			guard.good = true;
 		} catch (std::exception &e) {
-			fprintf(stderr, "%s: cannot start server: %s\n", __func__, e.what());
+			fprintf(stderr, "%s: cannot start server: %s\n", func, e.what());
 		}
-	}, port);
+	}, __func__, port);
+	t1.detach();
 }
 
 void Engine::trigger_async_flags(unsigned f) {
@@ -484,10 +508,6 @@ void Engine::trigger_client_connected() {
 
 void Engine::trigger_multiplayer_stop() {
 	trigger_async_flags(EngineAsyncTask::multiplayer_stopped);
-}
-
-void Engine::trigger_multiplayer_started() {
-	trigger_async_flags(EngineAsyncTask::multiplayer_started);
 }
 
 void Engine::trigger_username(const std::string &s) {
@@ -769,7 +789,7 @@ void Engine::cancel_multiplayer_host(MenuState next) {
 	}
 }
 
-UI_TaskInfo Engine::ui_async(const std::string &title, const std::string &desc, int thread_id, unsigned steps, TaskFlags flags) {
+UI_TaskInfo Engine::ui_async(const std::string &title, const std::string &desc, unsigned steps, TaskFlags flags) {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_ui);
 	auto ref = ui_tasks.emplace(flags, title, desc, 0, steps);

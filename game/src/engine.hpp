@@ -219,14 +219,18 @@ private:
 	void stop_server();
 	void stop_server_now(IdPoolRef ref=invalid_ref);
 
+	void start_singleplayer_game();
+
 	void start_client(const char *host, uint16_t port);
 	void start_client_now(const char *host, uint16_t port);
 
 	void reserve_threads(int n);
 
+public:
 	void trigger_async_flags(unsigned f);
 	void trigger_async_flags(EngineAsyncTask t) { trigger_async_flags((unsigned)t); }
 
+private:
 	void goto_multiplayer_menu();
 	void start_multiplayer_game();
 
@@ -244,7 +248,7 @@ public:
 	void push_error(const std::string &msg);
 
 	// API for asynchronous tasks
-	UI_TaskInfo ui_async(const std::string &title, const std::string &desc, int thread_id, unsigned steps, TaskFlags flags=TaskFlags::all);
+	UI_TaskInfo ui_async(const std::string &title, const std::string &desc, unsigned steps, TaskFlags flags=TaskFlags::all);
 	bool ui_async_stop(IdPoolRef);
 	bool ui_async_stop(UI_TaskInfo &tsk) { return ui_async_stop(tsk.get_ref()); }
 
@@ -256,7 +260,6 @@ public:
 	void trigger_server_started();
 	void trigger_client_connected();
 	void trigger_multiplayer_stop();
-	void trigger_multiplayer_started();
 	void trigger_username(const std::string&);
 	void trigger_playermod(const NetPlayerControl&);
 

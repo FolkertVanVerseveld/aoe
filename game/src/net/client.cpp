@@ -228,7 +228,7 @@ void Client::start_game() {
 
 	puts("start game");
 	if (eng)
-		eng->trigger_multiplayer_started();
+		eng->trigger_async_flags(EngineAsyncTask::multiplayer_started);
 }
 
 void Client::entity_kill(IdPoolRef ref) {

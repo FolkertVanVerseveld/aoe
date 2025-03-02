@@ -88,12 +88,12 @@ Image &Animation::subimage(unsigned index, unsigned player) {
 	return dynamic ? images[(player % MAX_PLAYERS) * image_count + index % image_count] : images[index % image_count];
 }
 
-Assets::Assets(int id, Engine &eng, const std::string &path)
+Assets::Assets(Engine &eng, const std::string &path)
 	: drs_gifs(), path(path), drs_ids(), bkg_cols(), ts_ui(), gif_cursors()
 {
 	ZoneScoped;
 	// TODO use engine view to prevent crash when closed while ctor is still running
-	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", id, 7));
+	UI_TaskInfo info(eng.ui_async("Verifying game data", "Loading interface data", 7));
 
 	eng.sfx.reset();
 

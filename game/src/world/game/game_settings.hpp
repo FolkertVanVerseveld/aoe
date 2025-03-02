@@ -16,6 +16,11 @@ static constexpr unsigned max_players = UINT8_MAX + 1u;
 
 static constexpr unsigned max_legacy_players = 8 + 1; // gaia
 
+static constexpr unsigned min_map_size = 8, max_map_size = 250;
+static constexpr int max_resource_value = 99999;
+static constexpr unsigned min_popcap = 5, max_popcap = 500;
+static constexpr unsigned min_villagers = 1, max_villagers = 20;
+
 class PlayerSetting final {
 public:
 	std::string name;
@@ -59,6 +64,8 @@ public:
 
 extern unsigned sp_player_count, sp_player_ui_count;
 extern std::array<PlayerSetting, max_legacy_players> sp_players;
+
+void sp_game_settings_randomize();
 
 extern ScenarioSettings sp_scn;
 

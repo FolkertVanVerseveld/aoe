@@ -1,6 +1,10 @@
 #include "../../ui.hpp"
 #include "../../world/game/game_settings.hpp"
 
+#define POPULATION_STEP 5
+#define RESOURCES_STEP 10
+#define MAPSIZE_STEP 4
+
 namespace aoe {
 
 namespace ui {
@@ -21,10 +25,10 @@ void show_scenario_settings(ui::Frame &f, ScenarioSettings &scn) {
 	f.sl();
 	f.chkbox("wrap", scn.wrap);
 
-	f.scalar("Width", scn.width, 1, 8, 65536);
+	f.scalar("Width", scn.width, MAPSIZE_STEP, Terrain::min_size, Terrain::max_size);
 	if (scn.square)
 		scn.height = scn.width;
-	f.scalar("Height", scn.height, 1, 8, 65536);
+	f.scalar("Height", scn.height, MAPSIZE_STEP, Terrain::min_size, Terrain::max_size);
 	if (scn.square)
 		scn.width = scn.height;
 
@@ -34,15 +38,15 @@ void show_scenario_settings(ui::Frame &f, ScenarioSettings &scn) {
 	f.chkbox("Enable cheating", scn.cheating);
 
 	f.combo("Age", scn.age, old_lang.age_names);
-	f.scalar("Max pop.", scn.popcap);
+	f.scalar("Max pop.", scn.popcap, POPULATION_STEP, min_popcap, max_popcap);
 
 	f.str("Resources:");
-	f.scalar("food", scn.res.food, 10);
-	f.scalar("wood", scn.res.wood, 10);
-	f.scalar("gold", scn.res.gold, 10);
-	f.scalar("stone", scn.res.stone, 10);
+	f.scalar("food", scn.res.food, RESOURCES_STEP, 0, max_resource_value);
+	f.scalar("wood", scn.res.wood, RESOURCES_STEP, 0, max_resource_value);
+	f.scalar("gold", scn.res.gold, RESOURCES_STEP, 0, max_resource_value);
+	f.scalar("stone", scn.res.stone, RESOURCES_STEP, 0, max_resource_value);
 
-	f.scalar("villagers", scn.villagers, 1, 1, scn.popcap);
+	f.scalar("villagers", scn.villagers, 1, min_villagers, max_villagers);
 }
 
 }

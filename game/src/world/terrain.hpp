@@ -55,7 +55,7 @@ public:
 	TerrainType type;
 
 	// TODO increase max_size on demand
-	static constexpr unsigned min_size = 48, max_size = 500;
+	static constexpr unsigned min_size = 48, max_size = 250;
 
 	Terrain();
 

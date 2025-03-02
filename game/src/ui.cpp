@@ -19,6 +19,13 @@ namespace aoe {
 
 namespace ui {
 
+bool btn(Frame &f, const char *str, Audio &sfx) {
+	bool b = f.btn(str);
+	if (b)
+		sfx.play_sfx(SfxId::sfx_ui_click);
+	return b;
+}
+
 void str(const char *s, TextHalign ha, bool wrap) {
 	ImGui::TextUnformatted(s, (int)ha, wrap);
 }
@@ -168,6 +175,14 @@ bool Frame::scalar(const char *label, int32_t &v, int32_t step) {
 
 bool Frame::scalar(const char *label, uint32_t &v, uint32_t step) {
 	return ui::scalar(label, v, step);
+}
+
+bool Frame::scalar(const char *label, int32_t &v, int32_t step, int32_t min, int32_t max) {
+	v = std::clamp(v, min, max);
+	int32_t v_old = v;
+	bool b = ui::scalar(label, v, step);
+	v = std::clamp(v, min, max);
+	return b && v != v_old;
 }
 
 bool Frame::scalar(const char *label, uint32_t &v, uint32_t step, uint32_t min, uint32_t max) {
@@ -1207,6 +1222,11 @@ void Engine::show_singleplayer_host() {
 		}
 		SetRelY(515);
 		f.scalar("Player count", sp_player_ui_count, 1, 1, max_legacy_players - 1);
+
+		if (btn(f, "Randomize", sfx)) {
+			sp_player_count = sp_player_ui_count + 1;
+			sp_game_settings_randomize();
+		}
 	}
 
 	f.sl();
@@ -1217,10 +1237,15 @@ void Engine::show_singleplayer_host() {
 			show_scenario_settings(f, sp_scn);
 	}
 
-	if (f.btn("Cancel")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
-		next_menu_state = MenuState::singleplayer_menu;
+	if (btn(f, "Start Game", sfx)) {
+		sp_player_count = sp_player_ui_count + 1;
+		start_singleplayer_game();
 	}
+
+	f.sl();
+
+	if (btn(f, "Cancel", sfx))
+		next_menu_state = MenuState::singleplayer_menu;
 }
 
 void Engine::show_multiplayer_menu() {
@@ -1273,10 +1298,8 @@ void Engine::show_multiplayer_menu() {
 
 	ImGui::SameLine();
 
-	if (f.btn("cancel")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "Cancel", sfx))
 		next_menu_state = MenuState::start;
-	}
 
 	ImGui::SetCursorPosX(old_x);
 }

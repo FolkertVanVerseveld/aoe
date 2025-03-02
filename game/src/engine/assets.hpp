@@ -54,7 +54,7 @@ public:
 	gfx::Tileset ts_ui;
 	Animation gif_cursors;
 
-	Assets(int id, Engine &e, const std::string &path);
+	Assets(Engine &e, const std::string &path);
 
 	const gfx::ImageRef &at(io::DrsId) const;
 	const gfx::ImageRef &at(IdPoolRef) const;
