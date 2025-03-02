@@ -91,7 +91,7 @@ void Client::mainloop() {
 					resource_ctl(pkg);
 					break;
 				default:
-					printf("%s: unknown type %u\n", __func__, pkg.type());
+					printf("%s: unknown type %u\n", __func__, (unsigned)pkg.type());
 					break;
 			}
 		}
