@@ -8,13 +8,93 @@ IClient::IClient()
 	: m(), me(invalid_ref), scn(), modflags(-1), playerindex(0), team_me(0)
 	, victory(false), gameover(false), m_connected(false) {}
 
+LocalClient::LocalClient()
+	: IClient() {}
+
+void LocalClient::stop() {
+	lock lk(m);
+	m_connected = false;
+}
+
+void LocalClient::create_game(const ScenarioSettings &scn, UI_TaskInfo &info) {
+	ZoneScoped;
+
+	w.load_scn(scn);
+
+	info.next("Creating terrain data");
+
+	// TODO stub
+}
+
+void LocalClient::claim_player(unsigned idx) {
+	// TODO do we need this?
+}
+
+void LocalClient::cam_move(float x, float y, float w, float h) {
+	// TODO use this
+}
+
+void LocalClient::send_gamespeed_control(NetGamespeedType type) {
+	// TODO use this
+}
+
+void LocalClient::send_chat_text(const std::string &s) {
+	// TODO stub
+	puts(s.c_str());
+}
+
+void LocalClient::send_start_game() {
+	// TODO do we need this?
+}
+
+void LocalClient::send_ready(bool) {
+	// TODO do ne need this?
+}
+
+void LocalClient::send_players_resize(unsigned n) {
+	// TODO use this
+	//sp_scn.players.resize(n);
+}
+
+void LocalClient::send_set_player_name(unsigned idx, const std::string &s) {
+	// TODO use this
+}
+
+void LocalClient::send_set_player_civ(unsigned idx, unsigned civ) {
+	// TODO use this
+}
+
+void LocalClient::send_set_player_team(unsigned idx, unsigned team) {
+	// TODO use this
+}
+
+void LocalClient::send_scn_vars(const ScenarioSettings &scn) {
+	// TODO use this
+}
+
+void LocalClient::send_username(const std::string &s) {
+	// TODO do we need this?
+}
+
+void LocalClient::entity_move(IdPoolRef ref, float x, float y) {
+	// TODO use this
+}
+
+void LocalClient::entity_infer(IdPoolRef r1, IdPoolRef r2) {
+	// TODO use this
+}
+
+void LocalClient::entity_train(IdPoolRef ref, EntityType type) {
+	// TODO use this
+}
+
+void LocalClient::entity_kill(IdPoolRef ref) {
+	// TODO use this
+}
+
 Client::Client()
 	: IClient()
 	, s(), port(0), starting(false), peers(), g() {}
-
-Client::~Client() {
-	stop();
-}
 
 void Client::mainloop() {
 	send_protocol(1);

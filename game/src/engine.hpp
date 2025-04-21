@@ -155,8 +155,6 @@ private:
 
 	float player_tbl_y;
 	ui::UICache ui;
-	World *sp_world;
-	std::atomic<bool> sp_running;
 
 	friend Debug;
 	friend Config;
@@ -270,8 +268,6 @@ public:
 	void add_chat_text(const std::string &s);
 
 	std::string txt(StrId id);
-
-	void set_sp_world(World *w);
 };
 
 extern Engine *eng;
@@ -283,7 +279,6 @@ public:
 	EngineView();
 
 	void play_sfx(SfxId id, int loops=0);
-	void set_sp_world(World *w);
 };
 
 }

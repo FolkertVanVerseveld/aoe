@@ -301,6 +301,40 @@ public:
 	virtual void entity_kill(IdPoolRef) =0;
 };
 
+class LocalClient final : public IClient {
+public:
+	World w;
+
+	LocalClient();
+
+	bool is_running() const noexcept override { return w.running; }
+	void stop() override;
+
+	void create_game(const ScenarioSettings &scn, UI_TaskInfo &info);
+
+	void send_chat_text(const std::string&) override;
+	void send_start_game() override;
+	void send_ready(bool) override;
+	void send_players_resize(unsigned n) override;
+	void send_set_player_name(unsigned idx, const std::string&) override;
+	void send_set_player_civ(unsigned idx, unsigned civ) override;
+	void send_set_player_team(unsigned idx, unsigned team) override;
+
+	void send_scn_vars(const ScenarioSettings &scn) override;
+	void send_username(const std::string&) override;
+
+	void claim_player(unsigned) override;
+	void cam_move(float x, float y, float w, float h) override;
+	void send_gamespeed_control(NetGamespeedType type) override;
+
+	void entity_move(IdPoolRef, float x, float y) override;
+	void entity_infer(IdPoolRef, IdPoolRef) override;
+	void entity_train(IdPoolRef, EntityType) override;
+
+	/** Try to destroy entity. */
+	void entity_kill(IdPoolRef) override;
+};
+
 class Client final : public IClient {
 	TcpSocket s;
 	std::string host;
@@ -313,9 +347,11 @@ public:
 	Game g;
 
 	Client();
-	~Client() override;
+	~Client() override {
+		stop();
+	}
 
-	bool is_running() const noexcept override { return g.running; };
+	bool is_running() const noexcept override { return g.running; }
 
 	void start(const char *host, uint16_t port, bool run=true);
 	void stop() override;

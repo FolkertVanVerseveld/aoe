@@ -78,7 +78,7 @@ Engine::Engine()
 	, show_chat(false), m_show_achievements(false), show_timeline(false), show_diplomacy(false)
 	, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
-	, player_tbl_y(0), ui(), sp_world(nullptr), sp_running(false)
+	, player_tbl_y(0), ui()
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
@@ -231,40 +231,22 @@ void Engine::verify_game_data(const std::string &path) {
 	t.detach();
 }
 
-void Engine::set_sp_world(World *w) {
-	std::lock_guard<std::mutex> lk(m);
-	sp_world = w;
-}
-
 void Engine::start_singleplayer_game() {
-	class WorldGuard {
-	public:
-		WorldGuard(World *w) {
-			EngineView ev;
-			ev.set_sp_world(w);
-		}
-		~WorldGuard() {
-			EngineView ev;
-			ev.set_sp_world(nullptr);
-		}
-	};
-
 	std::thread t([this](const char *func) {
 		ZoneScoped;
 		using namespace io;
-
-		World world;
 
 		try {
 			ZoneScopedN("starting single player game");
 			UI_TaskInfo info(ui_async("Starting single player game", "Initializing player settings", 2));
 
-			world.load_scn(sp_scn);
-			info.next("Creating terrain data");
+			LocalClient *lc = new LocalClient();
+			client.reset(lc);
 
-			WorldGuard wg(&world);
+			lc->create_game(sp_scn, info);
+
 			// TODO
-			//world.eventloop(nullptr, &info);
+			//lc->eventloop(nullptr, &info);
 
 			using namespace std::chrono_literals;
 			std::this_thread::sleep_for(1s);
@@ -275,20 +257,6 @@ void Engine::start_singleplayer_game() {
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: cannot start single player game: %s\n", func, e.what());
 			push_error(std::string("Failed to start game: ") + e.what());
-		}
-
-		try {
-			ZoneScopedN("single player gameloop");
-
-			puts("todo stub");
-
-			using namespace std::chrono_literals;
-			std::this_thread::sleep_for(2s);
-
-			puts("cleanup");
-		} catch (std::exception &e) {
-			fprintf(stderr, "%s: error while running single player game: %s\n", func, e.what());
-			push_error(std::string("Fatal game error: ") + e.what());
 		}
 	}, __func__);
 
