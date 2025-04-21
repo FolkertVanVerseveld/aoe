@@ -11,4 +11,8 @@ void EngineView::play_sfx(SfxId id, int loops) {
 	eng->sfx.play_sfx(id, loops);
 }
 
+void EngineView::set_sp_world(World *w) {
+	eng->set_sp_world(w);
+}
+
 }

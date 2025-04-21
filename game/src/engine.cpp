@@ -77,7 +77,7 @@ Engine::Engine()
 	, show_chat(false), m_show_achievements(false), show_timeline(false), show_diplomacy(false)
 	, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
-	, player_tbl_y(0), ui(), fnt()
+	, player_tbl_y(0), ui(), fnt(), sp_world(nullptr)
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
@@ -230,21 +230,61 @@ void Engine::verify_game_data(const std::string &path) {
 	t.detach();
 }
 
+void Engine::set_sp_world(World *w) {
+	std::lock_guard<std::mutex> lk(m);
+	sp_world = w;
+}
+
 void Engine::start_singleplayer_game() {
+	class WorldGuard {
+	public:
+		WorldGuard(World *w) {
+			EngineView ev;
+			ev.set_sp_world(w);
+		}
+		~WorldGuard() {
+			EngineView ev;
+			ev.set_sp_world(nullptr);
+		}
+	};
+
 	std::thread t([this](const char *func) {
 		ZoneScoped;
 		using namespace io;
 
+		World world;
+
 		try {
-			UI_TaskInfo info(ui_async("Starting single player game", "Initializing player settings", 1));
+			ZoneScopedN("starting single player game");
+			UI_TaskInfo info(ui_async("Starting single player game", "Initializing player settings", 2));
+
+			world.load_scn(sp_scn);
+			info.next("Creating terrain data");
+
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(1s);
+
+			info.next();
+
+			next_menu_state = MenuState::singleplayer_game;
+		} catch (std::exception &e) {
+			fprintf(stderr, "%s: cannot start single player game: %s\n", func, e.what());
+			push_error(std::string("Failed to start game: ") + e.what());
+		}
+
+		try {
+			ZoneScopedN("single player gameloop");
+			WorldGuard wg(&world);
+
+			puts("todo stub");
 
 			using namespace std::chrono_literals;
 			std::this_thread::sleep_for(2s);
 
-			info.next();
+			puts("cleanup");
 		} catch (std::exception &e) {
-			fprintf(stderr, "%s: cannot start single player game: %s\n", func, e.what());
-			push_error(std::string("Failed to start game: ") + e.what());
+			fprintf(stderr, "%s: error while running single player game: %s\n", func, e.what());
+			push_error(std::string("Fatal game error: ") + e.what());
 		}
 	}, __func__);
 
@@ -280,6 +320,8 @@ void Engine::display() {
 		show_singleplayer_host();
 		draw_background_border();
 		break;
+	case MenuState::singleplayer_game:
+		break;
 	case MenuState::multiplayer_menu:
 		show_multiplayer_menu();
 		draw_background_border();
@@ -301,9 +343,11 @@ void Engine::display() {
 		ui.show_world();
 		ui.show_editor_scenario();
 		break;
-	default:
+	case MenuState::init:
 		show_init();
 		break;
+	default:
+		throw "invalid menu state";
 	}
 
 	if (show_demo)

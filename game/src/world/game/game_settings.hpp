@@ -14,10 +14,11 @@ namespace aoe {
 
 static constexpr unsigned max_players = UINT8_MAX + 1u;
 
-static constexpr unsigned max_legacy_players = 8 + 1; // gaia
+static constexpr unsigned first_player_idx = 1, first_team_idx = 1;
+
+static constexpr unsigned max_legacy_players = 8 + first_player_idx; // gaia
 
 static constexpr unsigned min_map_size = 8, max_map_size = 250;
-static constexpr int max_resource_value = 99999;
 static constexpr unsigned min_popcap = 5, max_popcap = 500;
 static constexpr unsigned min_villagers = 1, max_villagers = 20;
 

@@ -30,6 +30,7 @@ enum class MenuState {
 	start,
 	singleplayer_menu,
 	singleplayer_host,
+	singleplayer_game,
 	multiplayer_menu,
 	multiplayer_host,
 	multiplayer_settings,
@@ -155,6 +156,7 @@ private:
 	float player_tbl_y;
 	ui::UICache ui;
 	FontCache fnt;
+	World *sp_world;
 
 	friend Debug;
 	friend Config;
@@ -268,18 +270,20 @@ public:
 	void add_chat_text(const std::string &s);
 
 	std::string txt(StrId id);
+
+	void set_sp_world(World *w);
 };
 
 extern Engine *eng;
 extern std::mutex m_eng;
 
-// TODO use this
 class EngineView final {
 	std::lock_guard<std::mutex> lk;
 public:
 	EngineView();
 
 	void play_sfx(SfxId id, int loops=0);
+	void set_sp_world(World *w);
 };
 
 }

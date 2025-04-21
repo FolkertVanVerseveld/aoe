@@ -5,6 +5,7 @@
 #include <array>
 #include <chrono>
 #include <random>
+#include <algorithm>
 
 #include <tracy/Tracy.hpp>
 
@@ -67,15 +68,16 @@ World::World()
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
 
-	// TODO filter bogus settings
-	this->scn.width = scn.width;
-	this->scn.height = scn.height;
-	this->scn.popcap = scn.popcap;
+	// filter bogus settings
+	this->scn.width = std::clamp(scn.width, Terrain::min_size, Terrain::max_size);
+	this->scn.height = std::clamp(scn.height, Terrain::min_size, Terrain::max_size);
+	this->scn.popcap = std::clamp(scn.popcap, min_popcap, max_popcap);
 	this->scn.age = scn.age;
 	this->scn.seed = scn.seed;
 	this->scn.villagers = scn.villagers;
 
 	this->scn.res = scn.res;
+	this->scn.res.clamp();
 
 	this->scn.fixed_start = scn.fixed_start;
 	this->scn.explored = scn.explored;
@@ -816,7 +818,7 @@ void World::create_entities() {
 	const double villager_radius = 4.0;
 
 	// create player stuff
-	for (unsigned pid = 1; pid < this->players.size(); ++pid) {
+	for (unsigned pid = first_player_idx; pid < this->players.size(); ++pid) {
 		double angle = angle_offset + pid * angle_step + unif_ang(re);
 
 		int t_x = (int)(eps_x + eps_hw * cos(angle) + unif_jx(re));
@@ -919,9 +921,9 @@ void World::startup() {
 	// send initial terrain chunk
 	// TODO this is buggy if the map is too small...
 
-	for (unsigned y = 0; y < 48; y += 16) {
-		for (unsigned x = 0; x < 48; x += 16) {
-			unsigned w = 16, h = 16;
+	for (unsigned y = 0; y < Terrain::min_size; y += Terrain::chunk_size) {
+		for (unsigned x = 0; x < Terrain::min_size; x += Terrain::chunk_size) {
+			unsigned w = Terrain::chunk_size, h = Terrain::chunk_size;
 			NetTerrainMod tm(fetch_terrain(x, y, w, h));
 
 			pkg.set_terrain_mod(tm);

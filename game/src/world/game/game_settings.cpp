@@ -16,9 +16,9 @@ void sp_game_settings_randomize() {
 	std::mt19937 gen(rd());
 
 	std::uniform_int_distribution<> rngCiv(0, civs - 1);
-	std::uniform_int_distribution<> rngTeam(1, sp_player_count - 1);
+	std::uniform_int_distribution<> rngTeam(first_team_idx, sp_player_count - first_team_idx);
 
-	for (unsigned i = 1; i < sp_player_count; ++i) {
+	for (unsigned i = first_player_idx; i < sp_player_count; ++i) {
 		PlayerSetting &ps = sp_players[i];
 
 		ps.civ = rngCiv(gen);

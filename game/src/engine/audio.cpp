@@ -313,7 +313,8 @@ void Audio::play_sfx(SfxId id, int loops) {
 		return;
 	}
 
-	Mix_PlayChannel(-1, it->second.get(), loops);
+	Mix_Chunk *chunk = it->second.get(); // Mix_PlayChannel used to be a macro, so just in case
+	Mix_PlayChannel(-1, chunk, loops);
 }
 
 }

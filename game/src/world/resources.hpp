@@ -1,6 +1,10 @@
 #pragma once
 
+#include <algorithm>
+
 namespace aoe {
+
+static constexpr int max_resource_value = 99999;
 
 struct Resources final {
 	int wood, food, gold, stone;
@@ -37,6 +41,13 @@ struct Resources final {
 	friend Resources operator-(Resources lhs, const Resources &rhs) {
 		lhs -= rhs;
 		return lhs;
+	}
+
+	void clamp() noexcept {
+		wood = std::clamp(0, wood, max_resource_value);
+		food = std::clamp(0, food, max_resource_value);
+		gold = std::clamp(0, gold, max_resource_value);
+		stone = std::clamp(0, stone, max_resource_value);
 	}
 };
 
