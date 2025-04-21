@@ -1,6 +1,6 @@
 #pragma once
 
-#include "idpool.hpp"
+#include <idpool.hpp>
 
 namespace aoe {
 

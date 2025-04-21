@@ -112,7 +112,7 @@ void Server::start_game(const Peer &p) {
 	m_running = true;
 
 	std::thread t([this]() {
-		w.eventloop(*this);
+		w.eventloop(*this, nullptr);
 	});
 	t.detach();
 }

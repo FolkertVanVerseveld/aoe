@@ -30,6 +30,8 @@
 
 #include "world/world.hpp"
 
+#include "async.hpp"
+
 namespace aoe {
 
 typedef std::lock_guard<std::mutex> lock; // easier to read
@@ -71,7 +73,7 @@ public:
 	void collect(unsigned player, const Resources &res);
 };
 
-class Server;
+class IServer;
 
 class World final {
 	std::mutex m, m_events;
@@ -85,7 +87,7 @@ class World final {
 	std::deque<WorldEvent> events_in, events_out;
 	std::map<IdPoolRef, NetCamSet> views; // display area for each peer
 	std::set<unsigned> resources_out;
-	Server *s;
+	IServer *s;
 	bool gameover;
 	friend WorldView;
 public:
@@ -103,14 +105,14 @@ public:
 
 	NetTerrainMod fetch_terrain(int x, int y, unsigned &w, unsigned &h);
 
-	void eventloop(Server &s);
+	void eventloop(IServer &s, UI_TaskInfo *info);
 
 	template<class... Args> void add_event(IdPoolRef src, WorldEventType type, Args&&... data) {
 		std::lock_guard<std::mutex> lk(m_events);
 		events_in.emplace_back(src, type, data...);
 	}
 
-	int non_gaia_players() const noexcept { return this->players.size() - 1; }
+	int non_gaia_players() const noexcept { return this->players.size() - first_player_idx; }
 private:
 	void startup();
 	void create_terrain();
@@ -169,7 +171,16 @@ private:
 	std::optional<unsigned> ref2idx(IdPoolRef) const noexcept;
 };
 
-class Server final : public ServerSocketController {
+class IServer {
+public:
+	virtual ~IServer() = default;
+
+	virtual bool is_running() const noexcept =0;
+
+	virtual void broadcast(NetPkg &pkg, bool include_host=true) =0;
+};
+
+class Server final : public ServerSocketController, public IServer {
 	ServerSocket s;
 	std::atomic<bool> m_active, m_running;
 	std::mutex m_peers;
@@ -185,7 +196,7 @@ class Server final : public ServerSocketController {
 	friend World;
 public:
 	Server();
-	~Server();
+	~Server() override;
 
 	void stop();
 	void close(); // this will block till everything is stopped
@@ -203,6 +214,8 @@ public:
 
 	int proper_packet(ServerSocket &s, const std::deque<uint8_t> &q) override;
 	bool process_packet(ServerSocket &s, const Peer &p, std::deque<uint8_t> &in, std::deque<uint8_t> &out, int processed) override;
+
+	bool is_running() const noexcept override { return m_running.load(); }
 private:
 	bool chk_protocol(const Peer &p, std::deque<uint8_t> &out, NetPkg &pkg);
 	bool chk_username(const Peer &p, std::deque<uint8_t> &out, const std::string &name);
@@ -223,7 +236,7 @@ private:
 	const Peer *try_peer(IdPoolRef);
 	ClientInfo &get_ci(IdPoolRef);
 
-	void broadcast(NetPkg &pkg, bool include_host=true);
+	void broadcast(NetPkg &pkg, bool include_host=true) override;
 	void broadcast(NetPkg &pkg, const Peer &exclude);
 	void send(const Peer &p, NetPkg &pkg);
 

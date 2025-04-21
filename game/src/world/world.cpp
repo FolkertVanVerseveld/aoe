@@ -625,9 +625,9 @@ void World::entity_task(WorldEvent &ev) {
 
 bool World::single_team() const noexcept {
 	// skip gaia as gaia is not part of any team
-	unsigned team = scn.players.at(1).team;
+	unsigned team = scn.players.at(first_player_idx).team;
 
-	for (unsigned i = 2; i < scn.players.size(); ++i)
+	for (unsigned i = first_player_idx + 1; i < scn.players.size(); ++i)
 		if (scn.players[i].team != team)
 			return false;
 
@@ -637,18 +637,26 @@ bool World::single_team() const noexcept {
 void World::send_player(unsigned i, NetPkg &pkg) {
 	ZoneScoped;
 
+	Server *ss = dynamic_cast<Server*>(this->s);
+	if (!ss)
+		return;
+
 	for (auto kv : scn.owners) {
 		if (kv.second != i)
 			continue;
 
-		const Peer *p = s->try_peer(kv.first);
+		const Peer *p = ss->try_peer(kv.first);
 		if (p)
-			s->send(*p, pkg);
+			ss->send(*p, pkg);
 	}
 }
 
 void World::create_players() {
 	ZoneScoped;
+
+	Server *ss = dynamic_cast<Server*>(this->s);
+	if (!ss)
+		return;
 
 	NetPkg pkg;
 
@@ -676,8 +684,8 @@ void World::create_players() {
 			for (auto kv : scn.owners) {
 				if (kv.second == i) {
 					++owners;
-					std::lock_guard<std::mutex> lk(s->m_peers);
-					alias = s->get_ci(kv.first).username;
+					std::lock_guard<std::mutex> lk(ss->m_peers);
+					alias = ss->get_ci(kv.first).username;
 				}
 			}
 
@@ -687,8 +695,8 @@ void World::create_players() {
 				p.name = "Oerkneus de Eerste";
 				p.ai = true;
 
-				if (p.civ >= 0 && p.civ < s->civs.size()) {
-					auto &names = s->civs[s->civnames[p.civ]];
+				if (p.civ >= 0 && p.civ < ss->civs.size()) {
+					auto &names = ss->civs[ss->civnames[p.civ]];
 					p.name = names[rand() % names.size()];
 				}
 			}
@@ -708,7 +716,7 @@ void World::create_players() {
 		players.emplace_back(ps, size);
 
 	// create player views
-	for (auto kv : s->peers)
+	for (auto kv : ss->peers)
 		views.emplace(kv.second.ref, NetCamSet());
 		// TODO send view to client
 }
@@ -959,7 +967,7 @@ std::optional<unsigned> World::ref2idx(IdPoolRef ref) const noexcept {
 	return std::nullopt;
 }
 
-void World::eventloop(Server &s) {
+void World::eventloop(IServer &s, UI_TaskInfo *info) {
 	ZoneScoped;
 
 	this->s = &s;
@@ -968,7 +976,7 @@ void World::eventloop(Server &s) {
 	auto last = std::chrono::steady_clock::now();
 	double dt = 0;
 
-	while (s.m_running.load() && !gameover) {
+	while (s.is_running() && !gameover) {
 		// recompute as logic_gamespeed may change
 		double interval_inv = logic_gamespeed * DEFAULT_TICKS_PER_SECOND;
 		double interval = 1 / std::max(0.01, interval_inv);

@@ -81,6 +81,7 @@ static ImFont *try_add_font(ImFontAtlas *a, const char *path, float size) {
 fail:
 	fclose(f);
 	free(blob);
+
 	return fnt;
 }
 
@@ -100,8 +101,10 @@ bool FontCache::try_load() {
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
 	//ImFont *font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 	//IM_ASSERT(font != NULL);
-#if _WIN32
+
 	float f = SDL::fnt_scale;
+
+#if _WIN32
 	fnt_arial = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\arial.ttf", ceil(13.0f * f));
 
 	if (!(fnt_copper = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\COPRGTB.TTF", ceil(18.0f * f)))) {
@@ -116,8 +119,6 @@ bool FontCache::try_load() {
 		fnt_copper2 = try_add_font(io.Fonts, localpath.c_str(), ceil(30.0f * f));
 	}
 #else
-	float f = SDL::fnt_scale;
-
 	#define FONT_DIR "/usr/share/fonts/truetype/"
 
 	fnt_arial = try_add_font(io.Fonts, FONT_DIR "liberation/LiberationSans-Regular.ttf", ceil(15.0f * f));

@@ -158,7 +158,7 @@ public:
 class ServerSocketController {
 public:
 	ServerSocketController() {}
-	virtual ~ServerSocketController() {}
+	virtual ~ServerSocketController() = default;
 
 	/* A peer has just connected to this server. */
 	virtual bool incoming(ServerSocket &s, const Peer &p) = 0;

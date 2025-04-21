@@ -155,8 +155,9 @@ private:
 
 	float player_tbl_y;
 	ui::UICache ui;
-	FontCache fnt;
+	FontCache fnt; // TODO extract
 	World *sp_world;
+	std::atomic<bool> sp_running;
 
 	friend Debug;
 	friend Config;

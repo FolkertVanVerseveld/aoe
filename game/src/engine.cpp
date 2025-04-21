@@ -71,13 +71,14 @@ Engine::Engine()
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
 	, tsk_start_server{ invalid_ref }, chat_async(), async_tasks(0)
-	, running(false), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory), sfx(), music_id(0), music_on(true), music_volume(100.0f), sfx_on(true), sfx_volume(100.0f), game_dir()
+	, running(false), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory)
+	, sfx(), music_id(0), music_on(true), music_volume(100.0f), sfx_on(true), sfx_volume(100.0f), game_dir()
 	, debug()
 	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), m_gl(nullptr), assets(), assets_good(false)
 	, show_chat(false), m_show_achievements(false), show_timeline(false), show_diplomacy(false)
 	, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
-	, player_tbl_y(0), ui(), fnt(), sp_world(nullptr)
+	, player_tbl_y(0), ui(), fnt(), sp_world(nullptr), sp_running(false)
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
@@ -261,6 +262,10 @@ void Engine::start_singleplayer_game() {
 			world.load_scn(sp_scn);
 			info.next("Creating terrain data");
 
+			WorldGuard wg(&world);
+			// TODO
+			//world.eventloop(nullptr, &info);
+
 			using namespace std::chrono_literals;
 			std::this_thread::sleep_for(1s);
 
@@ -274,7 +279,6 @@ void Engine::start_singleplayer_game() {
 
 		try {
 			ZoneScopedN("single player gameloop");
-			WorldGuard wg(&world);
 
 			puts("todo stub");
 
