@@ -403,7 +403,7 @@ void UICache::show_multiplayer_game() {
 
 	if (e->cv.gameover) {
 		str_scream(e->cv.victory ? "Victory" : "Game Over");
-	} else if (!e->client->g.running) {
+	} else if (!e->client->is_running()) {
 		str_scream("Game Paused");
 	}
 }

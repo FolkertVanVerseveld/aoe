@@ -433,9 +433,12 @@ void Engine::push_error(const std::string &msg) {
 void Engine::start_client_now(const char *host, uint16_t port, UI_TaskInfo &info) {
 	ZoneScoped;
 
-	client.reset(new Client());
+	Client *c = new Client();
+	client.reset(c);
+
 	info.next("Connecting to host");
-	client->start(host, port);
+
+	c->start(host, port);
 }
 
 void Engine::start_client(const char *host, uint16_t port) {
@@ -695,7 +698,7 @@ void Engine::idle() {
 	if (menu_state != next_menu_state)
 		goto_menu(next_menu_state);
 
-	Client *c = client.get();
+	IClient *c = client.get();
 
 	if (c)
 		cv.try_read(*c);
@@ -733,10 +736,16 @@ void Engine::idle_game() {
 	if (menu_state != MenuState::editor_scenario) {
 		std::lock_guard<std::mutex> lk(m);
 		if (client) {
-			if (cam_move)
-				client->cam_move(cam_x - io.DisplaySize.x / 2, cam_y - io.DisplaySize.y / 2, io.DisplaySize.x, io.DisplaySize.y);
+			IClient *ic = client.get();
 
-			gv.try_read(client->g);
+			if (cam_move)
+				ic->cam_move(cam_x - io.DisplaySize.x / 2, cam_y - io.DisplaySize.y / 2, io.DisplaySize.x, io.DisplaySize.y);
+
+			Client *c = dynamic_cast<Client*>(ic);
+			if (c)
+				gv.try_read(c->g);
+			else
+				fprintf(stderr, "%s: todo stub\n", __func__);
 		}
 	} else {
 		std::lock_guard<std::mutex> lk(m);

@@ -160,29 +160,31 @@ void Debug::show(bool &open) {
 		f.fmt("Client running: %s", has_client ? "yes" : "no");
 
 		if (has_client) {
-			Client &c = *e.client.get();
+			IClient *ic = e.client.get();
 
-			f.fmt("connected: %s", c.m_connected ? "yes" : "no");
-			f.fmt("host: %s", c.host.c_str());
+			f.fmt("connected: %s", ic->connected()  ? "yes" : "no");
 
-			f.fmt("ref: (%u,%u)", c.me.first, c.me.second);
+			Client *c = dynamic_cast<Client*>(ic);
+			if (c) {
+				f.fmt("host: %s", c->host.c_str());
+				f.fmt("ref: (%u,%u)", c->me.first, c->me.second);
+				f.fmt("connected peers: %llu", (unsigned long long)c->peers.size());
 
-			f.fmt("connected peers: %llu", (unsigned long long)c.peers.size());
+				size_t i = 0;
 
-			size_t i = 0;
+				for (auto kv : c->peers) {
+					ClientInfo &ci = kv.second;
 
-			for (auto kv : c.peers) {
-				ClientInfo &ci = kv.second;
+					if (ImGui::TreeNode(ci.username.c_str())) {
+						IdPoolRef ref = ci.ref;
 
-				if (ImGui::TreeNode(ci.username.c_str())) {
-					IdPoolRef ref = ci.ref;
+						f.fmt("ref (%u,%u)", ref.first, ref.second);
 
-					f.fmt("ref (%u,%u)", ref.first, ref.second);
+						ImGui::TreePop();
+					}
 
-					ImGui::TreePop();
+					++i;
 				}
-
-				++i;
 			}
 		}
 	}

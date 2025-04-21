@@ -95,7 +95,7 @@ class Engine final {
 	std::deque<std::string> chat;
 	std::mutex m, m_async, m_ui;
 	std::unique_ptr<IServer> server;
-	std::unique_ptr<Client> client;
+	std::unique_ptr<IClient> client;
 	std::condition_variable cv_server_start;
 	ctpl::thread_pool tp;
 

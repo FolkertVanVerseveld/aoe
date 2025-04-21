@@ -256,30 +256,69 @@ enum class ClientModFlags {
 	terrain = 1 << 2,
 };
 
-class Client final {
-	TcpSocket s;
-	std::string host;
-	uint16_t port;
-	std::atomic<bool> m_connected, starting;
+class IClient {
+protected:
 	std::mutex m;
 
-	std::map<IdPoolRef, ClientInfo> peers;
 	IdPoolRef me;
 	ScenarioSettings scn;
 	unsigned modflags;
+
 	unsigned playerindex, team_me;
 	bool victory;
 	std::atomic<bool> gameover;
-	friend Debug;
+	std::atomic<bool> m_connected;
+
 	friend ClientView;
+public:
+	IClient();
+	virtual ~IClient() = default;
+
+	virtual bool is_running() const noexcept =0;
+	bool connected() const noexcept { return m_connected; }
+
+	virtual void stop() =0;
+
+	virtual void claim_player(unsigned) =0;
+	virtual void cam_move(float x, float y, float w, float h) =0;
+	virtual void send_gamespeed_control(NetGamespeedType type) =0;
+
+	virtual void send_chat_text(const std::string&) =0;
+	virtual void send_start_game() =0;
+	virtual void send_ready(bool) =0;
+	virtual void send_players_resize(unsigned n) =0;
+
+	virtual void send_set_player_name(unsigned idx, const std::string&) =0;
+	virtual void send_set_player_civ(unsigned idx, unsigned civ) =0;
+	virtual void send_set_player_team(unsigned idx, unsigned team) =0;
+
+	virtual void send_scn_vars(const ScenarioSettings &scn) =0;
+	virtual void send_username(const std::string&) =0;
+
+	virtual void entity_move(IdPoolRef, float x, float y) =0;
+	virtual void entity_infer(IdPoolRef, IdPoolRef) =0;
+	virtual void entity_train(IdPoolRef, EntityType) =0;
+	virtual void entity_kill(IdPoolRef) =0;
+};
+
+class Client final : public IClient {
+	TcpSocket s;
+	std::string host;
+	uint16_t port;
+	std::atomic<bool> starting;
+
+	std::map<IdPoolRef, ClientInfo> peers;
+	friend Debug;
 public:
 	Game g;
 
 	Client();
-	~Client();
+	~Client() override;
+
+	bool is_running() const noexcept override { return g.running; };
 
 	void start(const char *host, uint16_t port, bool run=true);
-	void stop();
+	void stop() override;
 private:
 	void mainloop();
 
@@ -298,8 +337,6 @@ private:
 
 	void set_me(IdPoolRef);
 public:
-	bool connected() const noexcept { return m_connected; }
-
 	template<typename T> void send(T *ptr, int len=1) {
 		s.send_fully(ptr, len);
 	}
@@ -316,29 +353,27 @@ public:
 	void send_protocol(uint16_t version);
 	uint16_t recv_protocol();
 
-	void send_chat_text(const std::string&);
-	void send_start_game();
-	void send_ready(bool);
-	void send_players_resize(unsigned n);
-	void send_set_player_name(unsigned idx, const std::string&);
-	void send_set_player_civ(unsigned idx, unsigned civ);
-	void send_set_player_team(unsigned idx, unsigned team);
+	void send_chat_text(const std::string&) override;
+	void send_start_game() override;
+	void send_ready(bool) override;
+	void send_players_resize(unsigned n) override;
+	void send_set_player_name(unsigned idx, const std::string&) override;
+	void send_set_player_civ(unsigned idx, unsigned civ) override;
+	void send_set_player_team(unsigned idx, unsigned team) override;
 
-	void send_scn_vars(const ScenarioSettings &scn);
-	void send_username(const std::string&);
+	void send_scn_vars(const ScenarioSettings &scn) override;
+	void send_username(const std::string&) override;
 
-	void claim_player(unsigned);
+	void claim_player(unsigned) override;
+	void cam_move(float x, float y, float w, float h) override;
+	void send_gamespeed_control(NetGamespeedType type) override;
 
-	void cam_move(float x, float y, float w, float h);
-
-	void send_gamespeed_control(NetGamespeedType type);
-
-	void entity_move(IdPoolRef, float x, float y);
-	void entity_infer(IdPoolRef, IdPoolRef);
-	void entity_train(IdPoolRef, EntityType);
+	void entity_move(IdPoolRef, float x, float y) override;
+	void entity_infer(IdPoolRef, IdPoolRef) override;
+	void entity_train(IdPoolRef, EntityType) override;
 
 	/** Try to destroy entity. */
-	void entity_kill(IdPoolRef);
+	void entity_kill(IdPoolRef) override;
 };
 
 class ClientView final {
@@ -350,7 +385,7 @@ public:
 
 	ClientView();
 
-	bool try_read(Client&);
+	bool try_read(IClient&);
 };
 
 /*

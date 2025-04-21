@@ -4,7 +4,13 @@
 
 namespace aoe {
 
-Client::Client() : s(), port(0), m_connected(false), starting(false), m(), peers(), me(invalid_ref), scn(), g(), modflags(-1), playerindex(0), team_me(0), victory(false), gameover(false) {}
+IClient::IClient()
+	: m(), me(invalid_ref), scn(), modflags(-1), playerindex(0), team_me(0)
+	, victory(false), gameover(false), m_connected(false) {}
+
+Client::Client()
+	: IClient()
+	, s(), port(0), starting(false), peers(), g() {}
 
 Client::~Client() {
 	stop();
