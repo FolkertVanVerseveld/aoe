@@ -40,6 +40,8 @@ static std::string get_username() {
 
 namespace aoe {
 
+FontCache fnt;
+
 FontGuard::FontGuard(ImFont *fnt) {
 	ImGui::PushFont(fnt);
 }

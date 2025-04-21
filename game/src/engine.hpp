@@ -94,7 +94,7 @@ class Engine final {
 	std::string chat_line;
 	std::deque<std::string> chat;
 	std::mutex m, m_async, m_ui;
-	std::unique_ptr<Server> server;
+	std::unique_ptr<IServer> server;
 	std::unique_ptr<Client> client;
 	std::condition_variable cv_server_start;
 	ctpl::thread_pool tp;
@@ -155,7 +155,6 @@ private:
 
 	float player_tbl_y;
 	ui::UICache ui;
-	FontCache fnt; // TODO extract
 	World *sp_world;
 	std::atomic<bool> sp_running;
 
@@ -225,7 +224,7 @@ private:
 	void start_singleplayer_game();
 
 	void start_client(const char *host, uint16_t port);
-	void start_client_now(const char *host, uint16_t port);
+	void start_client_now(const char *host, uint16_t port, UI_TaskInfo &info);
 
 	void reserve_threads(int n);
 

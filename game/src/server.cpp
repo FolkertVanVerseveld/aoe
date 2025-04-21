@@ -5,7 +5,9 @@
 
 namespace aoe {
 
-Server::Server() : ServerSocketController(), s(), m_active(false), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), w(), civs() {}
+Server::Server()
+	: ServerSocketController(), IServer()
+	, s(), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), w(), civs() {}
 
 Server::~Server() {
 	stop();

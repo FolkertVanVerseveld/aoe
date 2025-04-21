@@ -172,17 +172,24 @@ private:
 };
 
 class IServer {
+protected:
+	std::atomic<bool> m_active;
 public:
+	IServer() : m_active(false) {}
+
 	virtual ~IServer() = default;
 
+	bool active() const noexcept { return m_active; }
+
 	virtual bool is_running() const noexcept =0;
+	virtual void close() =0;
 
 	virtual void broadcast(NetPkg &pkg, bool include_host=true) =0;
 };
 
 class Server final : public ServerSocketController, public IServer {
 	ServerSocket s;
-	std::atomic<bool> m_active, m_running;
+	std::atomic<bool> m_running;
 	std::mutex m_peers;
 	uint16_t port, protocol;
 	std::map<Peer, ClientInfo> peers;
@@ -199,9 +206,7 @@ public:
 	~Server() override;
 
 	void stop();
-	void close(); // this will block till everything is stopped
-
-	bool active() const noexcept { return m_active; }
+	void close() override; // this will block till everything is stopped
 
 	int mainloop(uint16_t port, uint16_t protocol, bool testing=false);
 

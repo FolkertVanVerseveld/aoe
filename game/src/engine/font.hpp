@@ -20,4 +20,6 @@ public:
 	bool try_load();
 };
 
+extern FontCache fnt;
+
 }

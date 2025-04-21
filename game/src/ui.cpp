@@ -597,13 +597,13 @@ void UICache::show_editor_menu() {
 	float old_x = ImGui::GetCursorPosX();
 
 	{
-		FontGuard fg(e->fnt.fnt_copper2);
+		FontGuard fg(fnt.fnt_copper2);
 
 		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
 		f.str2("Scenario Editor", TextHalign::center);
 	}
 
-	FontGuard fg(e->fnt.fnt_copper);
+	FontGuard fg(fnt.fnt_copper);
 
 	ImGui::SetCursorPosY(272.0f / 768.0f * vp->WorkSize.y);
 
@@ -670,7 +670,7 @@ void UICache::strnum(const ImVec2 &pos, int v) {
 
 void UICache::str_scream(const char *txt) {
 	ImGuiIO &io = ImGui::GetIO();
-	FontGuard fg(e->fnt.fnt_copper2);
+	FontGuard fg(fnt.fnt_copper2);
 
 	ImVec2 sz(ImGui::CalcTextSize(txt));
 

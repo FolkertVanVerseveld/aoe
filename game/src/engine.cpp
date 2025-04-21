@@ -78,7 +78,7 @@ Engine::Engine()
 	, show_chat(false), m_show_achievements(false), show_timeline(false), show_diplomacy(false)
 	, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
-	, player_tbl_y(0), ui(), fnt(), sp_world(nullptr), sp_running(false)
+	, player_tbl_y(0), ui(), sp_world(nullptr), sp_running(false)
 	, texture1(0), tex1(nullptr)
 {
 	ZoneScoped;
@@ -430,10 +430,11 @@ void Engine::push_error(const std::string &msg) {
 	popups_async.emplace(msg, ui::PopupType::error);
 }
 
-void Engine::start_client_now(const char *host, uint16_t port) {
+void Engine::start_client_now(const char *host, uint16_t port, UI_TaskInfo &info) {
 	ZoneScoped;
 
 	client.reset(new Client());
+	info.next("Connecting to host");
 	client->start(host, port);
 }
 
@@ -447,12 +448,7 @@ void Engine::start_client(const char *host, uint16_t port) {
 		try {
 			UI_TaskInfo info(ui_async("Starting client", "Creating network area", 2));
 
-			client.reset(new Client());
-
-			info.next("Connecting to host");
-
-			client->start(host, port);
-
+			start_client_now(host, port, info);
 			trigger_client_connected();
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: cannot connect to server: %s\n", func, e.what());
@@ -525,14 +521,11 @@ void Engine::start_server(uint16_t port) {
 			}
 
 			std::thread t2([this](uint16_t port) {
-				server->mainloop(port, 1);
+				((Server*)server.get())->mainloop(port, 1);
 			}, port);
 			t2.detach();
 
-			info.next("Connecting to host");
-
-			start_client_now("127.0.0.1", port);
-
+			start_client_now("127.0.0.1", port, info);
 			guard.good = true;
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: cannot start server: %s\n", func, e.what());

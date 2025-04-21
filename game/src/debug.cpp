@@ -108,90 +108,52 @@ void Debug::show(bool &open) {
 		f.fmt("Server active: %s", has_server ? "yes" : "no");
 
 		if (has_server) {
-			Server &s = *e.server.get();
+			IServer *is = e.server.get();
 
-			f.fmt("running: %s", s.active() ? "yes" : "no");
-			f.fmt("port: %u", s.port);
-			f.fmt("protocol: %u", s.protocol);
+			f.fmt("running: %s", is->active() ? "yes" : "no");
 
-			f.fmt("connected peers: %llu", (unsigned long long)s.peers.size());
+			Server *s = dynamic_cast<Server*>(is);
+			if (s) {
+				f.fmt("port: %u", s->port);
+				f.fmt("protocol: %u", s->protocol);
 
-			size_t i = 0;
-			std::string name;
+				f.fmt("connected peers: %llu", (unsigned long long)s->peers.size());
 
-			for (auto kv : s.peers) {
-				const Peer &p = kv.first;
-				ClientInfo &ci = kv.second;
+				size_t i = 0;
+				std::string name;
 
-				//f.fmt("%3llu: %s:%s", i, p.host.c_str(), p.server.c_str());
-				name = std::to_string(i) + ": " + p.host + ":" + p.server;
+				for (auto kv : s->peers) {
+					const Peer &p = kv.first;
+					ClientInfo &ci = kv.second;
 
-				if (!ci.username.empty())
-					name += " " + ci.username;
+					//f.fmt("%3llu: %s:%s", i, p.host.c_str(), p.server.c_str());
+					name = std::to_string(i) + ": " + p.host + ":" + p.server;
 
-				if (ImGui::TreeNode(name.c_str())) {
-#if 0
-					std::unique_lock<std::mutex> lkp(s.s.peer_ev_lock, std::defer_lock), lkd(s.s.data_lock, std::defer_lock);
+					if (!ci.username.empty())
+						name += " " + ci.username;
 
-					SOCKET sock = p.sock;
-					ServerSocket &ss = s.s;
+					if (ImGui::TreeNode(name.c_str())) {
+						IdPoolRef ref = ci.ref;
 
-					std::lock(lkp, lkd);
-					{
-						size_t in = 0, out = 0;
+						f.fmt("ref (%u,%u)", ref.first, ref.second);
 
-						auto it = ss.data_in.find(sock);
-						if (it != ss.data_in.end()) {
-							in = it->second.size();
-							f.fmt("incoming data: %zu", in);
-							auto &data = it->second;
-							mem_edit.ReadFn = read_incoming;
-							mem_edit.DrawContents(&data, data.size());
-						}
+						unsigned flags = ci.flags;
+						bool ready = !!(flags & (unsigned)ClientInfoFlags::ready);
 
-						it = ss.data_out.find(sock);
-						if (it != ss.data_out.end())
-							out = it->second.size();
+						f.chkbox("ready", ready);
 
-						f.fmt("outcoming data: %zu", out);
-					}
-					lkd.unlock();
+						if (ready)
+							flags |= (unsigned)ClientInfoFlags::ready;
+						else
+							flags &= ~(unsigned)ClientInfoFlags::ready;
 
-					{
-						std::unique_lock<std::mutex> m_pending;
+						ci.flags = flags;
 
-						size_t out = 0;
-
-						auto it = ss.send_pending.find(sock);
-						if (it != ss.send_pending.end())
-							out = it->second.size();
-
-						f.fmt("pending data: %zu", out);
+						ImGui::TreePop();
 					}
 
-					lkp.unlock();
-#else
-					IdPoolRef ref = ci.ref;
-
-					f.fmt("ref (%u,%u)", ref.first, ref.second);
-
-					unsigned flags = ci.flags;
-					bool ready = !!(flags & (unsigned)ClientInfoFlags::ready);
-
-					f.chkbox("ready", ready);
-
-					if (ready)
-						flags |= (unsigned)ClientInfoFlags::ready;
-					else
-						flags &= ~(unsigned)ClientInfoFlags::ready;
-
-					ci.flags = flags;
-#endif
-
-					ImGui::TreePop();
+					++i;
 				}
-
-				++i;
 			}
 		}
 
