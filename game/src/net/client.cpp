@@ -9,7 +9,7 @@ IClient::IClient()
 	, victory(false), gameover(false), m_connected(false) {}
 
 LocalClient::LocalClient()
-	: IClient() {}
+	: IClient(), w() {}
 
 void LocalClient::stop() {
 	lock lk(m);
@@ -22,8 +22,13 @@ void LocalClient::create_game(const ScenarioSettings &scn, UI_TaskInfo &info) {
 	w.load_scn(scn);
 
 	info.next("Creating terrain data");
+	w.create_terrain();
 
-	// TODO stub
+	info.next("Creating players");
+	w.create_players();
+
+	info.next("Creating entities");
+	w.create_entities();
 }
 
 void LocalClient::claim_player(unsigned idx) {
@@ -48,7 +53,7 @@ void LocalClient::send_start_game() {
 }
 
 void LocalClient::send_ready(bool) {
-	// TODO do ne need this?
+	// TODO do we need this?
 }
 
 void LocalClient::send_players_resize(unsigned n) {

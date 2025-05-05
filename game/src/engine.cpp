@@ -238,7 +238,7 @@ void Engine::start_singleplayer_game() {
 
 		try {
 			ZoneScopedN("starting single player game");
-			UI_TaskInfo info(ui_async("Starting single player game", "Initializing player settings", 2));
+			UI_TaskInfo info(ui_async("Starting single player game", "Initializing player settings", 5));
 
 			LocalClient *lc = new LocalClient();
 			client.reset(lc);
@@ -250,7 +250,6 @@ void Engine::start_singleplayer_game() {
 
 			using namespace std::chrono_literals;
 			std::this_thread::sleep_for(1s);
-
 			info.next();
 
 			next_menu_state = MenuState::singleplayer_game;
@@ -850,10 +849,13 @@ void Engine::ui_async_next(UI_TaskInfo &info) {
 	ZoneScoped;
 	std::lock_guard<std::mutex> lock(m_ui);
 	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
-	if (tsk)
+	if (tsk) {
+		if (tsk->steps >= tsk->total)
+			fprintf(stderr, "ui_taskinfo: too many steps: total=%u\n", tsk->total);
 		tsk->steps = std::min(tsk->steps + 1u, tsk->total);
-	else
+	} else {
 		tsk_check_throw(info);
+	}
 }
 
 void Engine::ui_async_next(UI_TaskInfo &info, const std::string &s) {
@@ -861,6 +863,8 @@ void Engine::ui_async_next(UI_TaskInfo &info, const std::string &s) {
 	std::lock_guard<std::mutex> lock(m_ui);
 	UI_Task *tsk = ui_tasks.try_get(info.get_ref());
 	if (tsk) {
+		if (tsk->steps >= tsk->total)
+			fprintf(stderr, "ui_taskinfo: too many steps: total=%u\n", tsk->total);
 		tsk->steps = std::min(tsk->steps + 1u, tsk->total);
 		tsk->desc = s;
 	} else {

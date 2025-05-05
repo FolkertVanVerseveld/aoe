@@ -54,6 +54,8 @@ void LanguageData::load(PE &dll) {
 	loadstr(StrId::main_copy2b);
 	loadstr(StrId::main_copy3);
 
+	loadstr(StrId::btn_cancel);
+
 	// ages
 	age_names.emplace_back(loadstr(StrId::age_nomad));
 	age_names.emplace_back(loadstr(StrId::age_stone));

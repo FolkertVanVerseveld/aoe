@@ -74,6 +74,7 @@ public:
 };
 
 class IServer;
+class Server;
 
 class World final {
 	std::mutex m, m_events;
@@ -113,11 +114,13 @@ public:
 	}
 
 	int non_gaia_players() const noexcept { return this->players.size() - first_player_idx; }
-private:
-	void startup();
+
 	void create_terrain();
 	void create_players();
 	void create_entities();
+private:
+	void startup();
+	void sanitize_player_settings(Server&);
 
 	void add_building(EntityType t, unsigned player, int x, int y);
 	void add_unit(EntityType t, unsigned player, float x, float y);

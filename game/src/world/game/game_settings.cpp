@@ -6,6 +6,8 @@
 
 namespace aoe {
 
+bool sp_randomize_teams = true;
+
 void sp_game_settings_randomize() {
 	unsigned civs = old_lang.civ_names.size();
 
@@ -18,7 +20,7 @@ void sp_game_settings_randomize() {
 	std::uniform_int_distribution<> rngCiv(0, civs - 1);
 	std::uniform_int_distribution<> rngTeam(first_team_idx, sp_player_count - first_team_idx);
 
-	for (unsigned i = first_player_idx; i < sp_player_count; ++i) {
+	for (unsigned i = first_player_idx, j = 1; i < sp_player_count; ++i, ++j) {
 		PlayerSetting &ps = sp_players[i];
 
 		ps.civ = rngCiv(gen);
@@ -27,7 +29,8 @@ void sp_game_settings_randomize() {
 
 		std::uniform_int_distribution<> rngName(0, names.size() - 1);
 		ps.name = names[rngName(gen)];
-		ps.team = rngTeam(gen);
+
+		ps.team = sp_randomize_teams ? rngTeam(gen) : j;
 	}
 }
 

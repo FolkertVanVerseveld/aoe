@@ -18,9 +18,7 @@ static constexpr unsigned first_player_idx = 1, first_team_idx = 1;
 
 static constexpr unsigned max_legacy_players = 8 + first_player_idx; // gaia
 
-static constexpr unsigned min_map_size = 8, max_map_size = 250;
 static constexpr unsigned min_popcap = 5, max_popcap = 500;
-static constexpr unsigned min_villagers = 1, max_villagers = 20;
 
 class PlayerSetting final {
 public:
@@ -58,6 +56,8 @@ public:
 
 	Resources res;
 
+	static constexpr unsigned min_villagers = 1, max_villagers = 20;
+
 	ScenarioSettings();
 
 	void remove(IdPoolRef);
@@ -65,6 +65,7 @@ public:
 
 extern unsigned sp_player_count, sp_player_ui_count;
 extern std::array<PlayerSetting, max_legacy_players> sp_players;
+extern bool sp_randomize_teams;
 
 void sp_game_settings_randomize();
 

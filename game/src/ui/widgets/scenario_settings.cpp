@@ -25,11 +25,9 @@ void show_scenario_settings(ui::Frame &f, ScenarioSettings &scn) {
 	f.sl();
 	f.chkbox("wrap", scn.wrap);
 
-	f.scalar("Width", scn.width, MAPSIZE_STEP, Terrain::min_size, Terrain::max_size);
-	if (scn.square)
+	if (f.scalar("Width", scn.width, MAPSIZE_STEP, Terrain::min_size, Terrain::max_size) && scn.square)
 		scn.height = scn.width;
-	f.scalar("Height", scn.height, MAPSIZE_STEP, Terrain::min_size, Terrain::max_size);
-	if (scn.square)
+	if (f.scalar("Height", scn.height, MAPSIZE_STEP, Terrain::min_size, Terrain::max_size) && scn.square)
 		scn.width = scn.height;
 
 	f.chkbox("Fixed position", scn.fixed_start);
@@ -46,7 +44,7 @@ void show_scenario_settings(ui::Frame &f, ScenarioSettings &scn) {
 	f.scalar("gold", scn.res.gold, RESOURCES_STEP, 0, max_resource_value);
 	f.scalar("stone", scn.res.stone, RESOURCES_STEP, 0, max_resource_value);
 
-	f.scalar("villagers", scn.villagers, 1, min_villagers, max_villagers);
+	f.scalar("villagers", scn.villagers, 1, ScenarioSettings::min_villagers, ScenarioSettings::max_villagers);
 }
 
 }

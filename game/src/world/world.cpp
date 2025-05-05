@@ -235,7 +235,7 @@ void World::tick_players() {
 	ZoneScoped;
 
 	// collect dead players, skip gaia cuz gaia is immortal
-	for (unsigned i = 1; i < players.size(); ++i) {
+	for (unsigned i = first_player_idx; i < players.size(); ++i) {
 		Player &p = players[i];
 
 		// players may have additional rules to resign, but this always applies
@@ -651,20 +651,13 @@ void World::send_player(unsigned i, NetPkg &pkg) {
 	}
 }
 
-void World::create_players() {
+void World::sanitize_player_settings(Server &ss) {
 	ZoneScoped;
 
-	Server *ss = dynamic_cast<Server*>(this->s);
-	if (!ss)
-		return;
-
 	NetPkg pkg;
-
-	// force Gaia as special player
-	PlayerSetting &gaia = scn.players.at(0);
-	gaia.team = 0;
-
 	bool one_team = single_team();
+
+	std::unique_lock<std::mutex> lk{ ss.m_peers, std::defer_lock };
 
 	// sanitize players: change team if one_team and check civ and name
 	for (unsigned i = 0; i < scn.players.size(); ++i) {
@@ -684,8 +677,9 @@ void World::create_players() {
 			for (auto kv : scn.owners) {
 				if (kv.second == i) {
 					++owners;
-					std::lock_guard<std::mutex> lk(ss->m_peers);
-					alias = ss->get_ci(kv.first).username;
+					if (!lk.owns_lock())
+						lk.lock();
+					alias = ss.get_ci(kv.first).username;
 				}
 			}
 
@@ -695,13 +689,14 @@ void World::create_players() {
 				p.name = "Oerkneus de Eerste";
 				p.ai = true;
 
-				if (p.civ >= 0 && p.civ < ss->civs.size()) {
-					auto &names = ss->civs[ss->civnames[p.civ]];
+				if (p.civ >= 0 && p.civ < ss.civs.size()) {
+					auto &names = ss.civs[ss.civnames[p.civ]];
 					p.name = names[rand() % names.size()];
 				}
 			}
 		}
 
+		// TODO combine messages?
 		pkg.set_player_name(i, p.name);
 		s->broadcast(pkg);
 		pkg.set_player_civ(i, p.civ);
@@ -709,16 +704,30 @@ void World::create_players() {
 		pkg.set_player_team(i, p.team);
 		s->broadcast(pkg);
 	}
+}
+
+void World::create_players() {
+	ZoneScoped;
+
+	// force Gaia as special player
+	PlayerSetting &gaia = scn.players.at(0);
+	gaia.team = 0;
+
+	Server *ss = dynamic_cast<Server*>(this->s);
+	if (ss)
+		sanitize_player_settings(*ss);
 
 	size_t size = (size_t)scn.width * scn.height;
 	players.clear();
 	for (const PlayerSetting &ps : scn.players)
 		players.emplace_back(ps, size);
 
-	// create player views
-	for (auto kv : ss->peers)
-		views.emplace(kv.second.ref, NetCamSet());
+	if (ss) {
+		// create player views
+		for (auto kv : ss->peers)
+			views.emplace(kv.second.ref, NetCamSet());
 		// TODO send view to client
+	}
 }
 
 void World::add_building(EntityType t, unsigned player, int x, int y) {

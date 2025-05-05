@@ -14,16 +14,30 @@
 #include "ui.hpp"
 #include "string.hpp"
 #include "world/entity_info.hpp"
+#include "world/terrain.hpp"
+
+#include "../legacy/strings.hpp"
 
 namespace aoe {
 
 namespace ui {
 
-bool btn(Frame &f, const char *str, Audio &sfx) {
-	bool b = f.btn(str);
-	if (b)
+static inline bool sfx_process(bool v, Audio &sfx) {
+	if (v)
 		sfx.play_sfx(SfxId::sfx_ui_click);
-	return b;
+	return v;
+}
+
+bool btn(Frame &f, const char *str, Audio &sfx) {
+	return sfx_process(f.btn(str), sfx);
+}
+
+bool btn(Frame &f, StrId id, Audio &sfx) {
+	return btn(f, old_lang.find(id).c_str(), sfx);
+}
+
+bool chkbox(Frame &f, const char *str, bool &b, Audio &sfx) {
+	return sfx_process(f.chkbox(str, b), sfx);
 }
 
 void str(const char *s, TextHalign ha, bool wrap) {
@@ -894,6 +908,9 @@ void UICache::show_entities() {
 	}
 }
 
+#define MAPSIZE_STEP 4
+
+// TODO extract to ui/widgets/scenario_settings.cpp
 void Engine::show_mph_cfg(ui::Frame &f) {
 	ZoneScoped;
 	ScenarioSettings &scn = cv.scn;
@@ -928,15 +945,15 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 
 		f.str("Size:");
 		f.sl();
-		if (changed |= f.chkbox("squared", scn.square) && scn.square)
+		if (changed |= f.chkbox("square", scn.square) && scn.square)
 			scn.width = scn.height;
 
 		f.sl();
-		changed |= f.chkbox("wrap", scn.wrap);
+		changed |= f.chkbox("wrap around", scn.wrap);
 
-		if (changed |= f.scalar("Width", scn.width, 1, 8, 65536) && scn.square)
+		if (changed |= f.scalar("Width", scn.width, MAPSIZE_STEP, Terrain::min_size, Terrain::max_size) && scn.square)
 			scn.height = scn.width;
-		if (changed |= f.scalar("Height", scn.height, 1, 8, 65536) && scn.square)
+		if (changed |= f.scalar("Height", scn.height, MAPSIZE_STEP, Terrain::min_size, Terrain::max_size) && scn.square)
 			scn.width = scn.height;
 
 		changed |= f.chkbox("Fixed position", scn.fixed_start);
@@ -955,7 +972,7 @@ void Engine::show_mph_cfg(ui::Frame &f) {
 		changed |= f.scalar("gold", scn.res.gold, 10);
 		changed |= f.scalar("stone", scn.res.stone, 10);
 
-		changed |= f.scalar("villagers", scn.villagers, 1, 1, scn.popcap);
+		changed |= f.scalar("villagers", scn.villagers, 1, ScenarioSettings::min_villagers, std::min(scn.popcap, ScenarioSettings::max_villagers));
 
 		if (changed)
 			client->send_scn_vars(scn);
@@ -1227,6 +1244,9 @@ void Engine::show_singleplayer_host() {
 			sp_player_count = sp_player_ui_count + 1;
 			sp_game_settings_randomize();
 		}
+
+		f.sl();
+		chkbox(f, "teams as well", sp_randomize_teams, sfx);
 	}
 
 	f.sl();
@@ -1244,7 +1264,7 @@ void Engine::show_singleplayer_host() {
 
 	f.sl();
 
-	if (btn(f, "Cancel", sfx))
+	if (btn(f, StrId::btn_cancel, sfx))
 		next_menu_state = MenuState::singleplayer_menu;
 }
 
