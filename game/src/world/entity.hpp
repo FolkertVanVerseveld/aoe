@@ -90,6 +90,22 @@ public:
 		return lhs.ref < rhs.ref;
 	}
 
+	friend bool operator==(const Entity &lhs, const EntityType type) noexcept {
+		return lhs.is_type(type);
+	}
+
+	constexpr bool is_type(EntityType type) const noexcept {
+		if (this->type == type)
+			return true;
+
+		if (is_resource(type)) {
+			if (is_tree(type) && is_tree(this->type))
+				return true;
+		}
+
+		return false;
+	}
+
 	bool die() noexcept;
 	void decay() noexcept;
 

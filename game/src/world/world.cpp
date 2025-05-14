@@ -24,7 +24,7 @@ Entity *WorldView::try_get_alive(float x, float y, EntityType t) {
 	double d = DBL_MAX;
 
 	// special case for trees
-	if (t == EntityType::desert_tree1) {
+	if (is_tree(t)) {
 		for (auto it = w.entities.begin(); it != w.entities.end(); ++it) {
 			Entity &e = it->second;
 			if (e.is_alive() && is_tree(e.type)) {

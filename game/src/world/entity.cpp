@@ -251,7 +251,7 @@ bool Entity::task_move(float x, float y) noexcept {
 	if (!is_alive() || is_building(type) || is_resource(type))
 		return false;
 
-	// TODO start movement stuff
+	// TODO start pathfinding stuff
 	this->target_ref = invalid_ref;
 	this->target_x = x;
 	this->target_y = y;

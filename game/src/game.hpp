@@ -91,6 +91,7 @@ public:
 
 	void tick(WorldView&);
 private:
+	void ai_gather(WorldView &wv, unsigned n, EntityType type);
 	void tick_autotask(WorldView&);
 };
 
