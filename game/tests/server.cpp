@@ -63,7 +63,7 @@ TEST_F(ServerFixture, clientStopEarly) {
 
 static void connect_test(bool close) {
 	Server s;
-	std::thread t1([&] { s.mainloop(1, default_port, 0, true); if (close) s.close(); });
+	std::thread t1([&] { s.mainloop(default_port, 0, true); if (close) s.close(); });
 
 	Client c;
 	c.start(default_host, default_port, false);
