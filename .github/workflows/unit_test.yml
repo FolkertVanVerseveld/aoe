@@ -28,7 +28,7 @@ jobs:
         submodules: true
     - name: configure and build
       run: |
-        cmake -S . -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DBUILD_TESTS=ON
+        cmake -S . -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DBUILD_TESTS=ON -DBUILD_TESTS_HEADLESS=ON
         pushd build
         make -j4 testempires
         popd
