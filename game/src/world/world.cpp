@@ -440,7 +440,7 @@ void World::push_resources() {
 void World::send_scores() {
 	NetPkg pkg;
 
-	for (unsigned i = 1; i < players.size(); ++i) {
+	for (unsigned i = first_player_idx; i < players.size(); ++i) {
 		pkg.set_player_score(i, players[i].get_score());
 		s->broadcast(pkg);
 	}
@@ -449,7 +449,7 @@ void World::send_scores() {
 void World::send_resources() {
 	NetPkg pkg;
 
-	for (unsigned i = 1; i < players.size(); ++i) {
+	for (unsigned i = first_player_idx; i < players.size(); ++i) {
 		Player &p = players[i];
 
 		pkg.set_resources(p.res);
@@ -912,20 +912,23 @@ void World::create_entities() {
 	}
 }
 
-void World::startup() {
+void World::startup(UI_TaskInfo *info) {
 	ZoneScoped;
 
 	NetPkg pkg;
 
 	// announce server is starting
-	pkg.set_start_game();
+	pkg.set_start_game(NetStartGameType::announce);
 	s->broadcast(pkg);
 
 	pkg.set_scn_vars(scn);
 	s->broadcast(pkg);
 
+	if (info) info->next("Creating terrain data");
 	create_terrain();
+	if (info) info->next("Creating players");
 	create_players();
+	if (info) info->next("Creating entities");
 	create_entities();
 
 	// now send all entities to each client
@@ -951,7 +954,8 @@ void World::startup() {
 	this->running = true;
 
 	// start!
-	pkg.set_start_game();
+	if (info) info->next("Starting up");
+	pkg.set_start_game(NetStartGameType::now);
 	s->broadcast(pkg);
 
 	send_resources();
@@ -980,7 +984,7 @@ void World::eventloop(IServer &s, UI_TaskInfo *info) {
 	ZoneScoped;
 
 	this->s = &s;
-	startup();
+	startup(info);
 
 	auto last = std::chrono::steady_clock::now();
 	double dt = 0;

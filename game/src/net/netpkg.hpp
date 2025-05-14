@@ -40,7 +40,9 @@ public:
 	void set_username(const std::string&);
 	std::string username();
 
-	void set_start_game();
+	void set_start_game(NetStartGameType);
+	NetStartGameType get_start_type();
+
 	void set_gameover(unsigned);
 	unsigned get_gameover();
 

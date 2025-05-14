@@ -138,9 +138,14 @@ void NetPkg::set_hdr(NetPkgType type) {
 	hdr.payload = (uint16_t)data.size();
 }
 
-void NetPkg::set_start_game() {
-	data.clear();
-	set_hdr(NetPkgType::start_game);
+void NetPkg::set_start_game(NetStartGameType type) {
+	PkgWriter out(*this, NetPkgType::start_game);
+	write("B", pkgargs{ type }, false);
+}
+
+NetStartGameType NetPkg::get_start_type() {
+	read(NetPkgType::start_game, "B");
+	return (NetStartGameType)u8(0);
 }
 
 NetPkgType NetPkg::type() {
@@ -149,6 +154,7 @@ NetPkgType NetPkg::type() {
 }
 
 void Client::send(NetPkg &pkg) {
+	ZoneScoped;
 	pkg.hton();
 
 	// prepare header
@@ -156,11 +162,13 @@ void Client::send(NetPkg &pkg) {
 	v[0] = pkg.hdr.type;
 	v[1] = pkg.hdr.payload;
 
+	// TODO merge into one send
 	send(v, 2);
 	send(pkg.data.data(), (int)pkg.data.size());
 }
 
 NetPkg Client::recv() {
+	ZoneScoped;
 	NetPkg pkg;
 	unsigned payload;
 

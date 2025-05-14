@@ -119,7 +119,7 @@ public:
 	void create_players();
 	void create_entities();
 private:
-	void startup();
+	void startup(UI_TaskInfo *info);
 	void sanitize_player_settings(Server&);
 
 	void add_building(EntityType t, unsigned player, int x, int y);
@@ -274,6 +274,8 @@ protected:
 
 	friend ClientView;
 public:
+	Game g;
+
 	IClient();
 	virtual ~IClient() = default;
 
@@ -304,16 +306,22 @@ public:
 	virtual void entity_kill(IdPoolRef) =0;
 };
 
-class LocalClient final : public IClient {
+class LocalClient final : public IClient, IServer {
 public:
 	World w;
 
 	LocalClient();
 
+	// IServer
+	void close() override;
+	void broadcast(NetPkg &pkg, bool include_host=true) override;
+
+	// IClient
+
 	bool is_running() const noexcept override { return w.running; }
 	void stop() override;
 
-	void create_game(const ScenarioSettings &scn, UI_TaskInfo &info);
+	void event_loop(const ScenarioSettings &scn, UI_TaskInfo &info);
 
 	void send_chat_text(const std::string&) override;
 	void send_start_game() override;
@@ -336,6 +344,8 @@ public:
 
 	/** Try to destroy entity. */
 	void entity_kill(IdPoolRef) override;
+private:
+	void set_scn_vars(const ScenarioSettings &scn);
 };
 
 class Client final : public IClient {
@@ -347,8 +357,6 @@ class Client final : public IClient {
 	std::map<IdPoolRef, ClientInfo> peers;
 	friend Debug;
 public:
-	Game g;
-
 	Client();
 	~Client() override {
 		stop();

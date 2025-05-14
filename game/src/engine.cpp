@@ -243,16 +243,7 @@ void Engine::start_singleplayer_game() {
 			LocalClient *lc = new LocalClient();
 			client.reset(lc);
 
-			lc->create_game(sp_scn, info);
-
-			// TODO
-			//lc->eventloop(nullptr, &info);
-
-			using namespace std::chrono_literals;
-			std::this_thread::sleep_for(1s);
-			info.next();
-
-			next_menu_state = MenuState::singleplayer_game;
+			lc->event_loop(sp_scn, info);
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: cannot start single player game: %s\n", func, e.what());
 			push_error(std::string("Failed to start game: ") + e.what());
@@ -280,6 +271,7 @@ void Engine::display() {
 		draw_background_border();
 		break;
 	case MenuState::multiplayer_game:
+	case MenuState::singleplayer_game:
 		ui.show_world();
 		ui.show_multiplayer_game();
 		break;
@@ -290,8 +282,6 @@ void Engine::display() {
 	case MenuState::singleplayer_host:
 		show_singleplayer_host();
 		draw_background_border();
-		break;
-	case MenuState::singleplayer_game:
 		break;
 	case MenuState::multiplayer_menu:
 		show_multiplayer_menu();
@@ -675,7 +665,9 @@ void Engine::idle() {
 }
 
 bool Engine::capture_keys() const noexcept {
-	return menu_state == MenuState::multiplayer_game || menu_state == MenuState::editor_scenario;
+	return menu_state == MenuState::singleplayer_game
+		|| menu_state == MenuState::multiplayer_game
+		|| menu_state == MenuState::editor_scenario;
 }
 
 void Engine::idle_game() {
@@ -708,11 +700,7 @@ void Engine::idle_game() {
 			if (cam_move)
 				ic->cam_move(cam_x - io.DisplaySize.x / 2, cam_y - io.DisplaySize.y / 2, io.DisplaySize.x, io.DisplaySize.y);
 
-			Client *c = dynamic_cast<Client*>(ic);
-			if (c)
-				gv.try_read(c->g);
-			else
-				fprintf(stderr, "%s: todo stub\n", __func__);
+			gv.try_read(ic->g);
 		}
 	} else {
 		std::lock_guard<std::mutex> lk(m);

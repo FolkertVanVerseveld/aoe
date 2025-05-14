@@ -32,6 +32,8 @@ void NetPkg::chktype(NetPkgType type) {
 		throw std::runtime_error("not a peer control packet");
 	case NetPkgType::client_info:
 		throw std::runtime_error("not a client info packet");
+	case NetPkgType::start_game:
+		throw std::runtime_error("not a start game packet");
 	default:
 		throw std::runtime_error("invalid network packet type");
 	}

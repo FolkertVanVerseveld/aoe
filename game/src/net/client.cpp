@@ -6,29 +6,67 @@ namespace aoe {
 
 IClient::IClient()
 	: m(), me(invalid_ref), scn(), modflags(-1), playerindex(0), team_me(0)
-	, victory(false), gameover(false), m_connected(false) {}
+	, victory(false), gameover(false), m_connected(false), g() {}
 
 LocalClient::LocalClient()
-	: IClient(), w() {}
+	: IClient(), IServer(), w() {}
+
+void LocalClient::close() {
+	m_active = false;
+	stop();
+}
+
+void LocalClient::set_scn_vars(const ScenarioSettings &scn) {
+	lock lk(m);
+
+	this->scn.fixed_start = scn.fixed_start;
+	this->scn.explored = scn.explored;
+	this->scn.all_technologies = scn.all_technologies;
+	this->scn.cheating = scn.cheating;
+	this->scn.square = scn.square;
+	this->scn.wrap = scn.wrap;
+
+	// scn.restricted is not copied for obvious reasons
+
+	this->scn.width = scn.width;
+	this->scn.height = scn.height;
+	this->scn.popcap = scn.popcap;
+	this->scn.age = scn.age;
+	this->scn.villagers = scn.villagers;
+
+	this->scn.res = scn.res;
+	this->modflags |= (unsigned)ClientModFlags::scn;
+
+	g.resize(scn);
+}
+
+void LocalClient::broadcast(NetPkg &pkg, bool include_host) {
+	switch (pkg.type()) {
+	case NetPkgType::start_game:
+		if (pkg.get_start_type() == NetStartGameType::now)
+		{
+			EngineView ev;
+			ev.goto_menu(MenuState::singleplayer_game);
+		}
+		break;
+	case NetPkgType::set_scn_vars:
+		set_scn_vars(pkg.get_scn_vars());
+		break;
+	default:
+		break;
+	}
+}
 
 void LocalClient::stop() {
 	lock lk(m);
 	m_connected = false;
 }
 
-void LocalClient::create_game(const ScenarioSettings &scn, UI_TaskInfo &info) {
+void LocalClient::event_loop(const ScenarioSettings &scn, UI_TaskInfo &info) {
 	ZoneScoped;
 
 	w.load_scn(scn);
-
-	info.next("Creating terrain data");
-	w.create_terrain();
-
-	info.next("Creating players");
-	w.create_players();
-
-	info.next("Creating entities");
-	w.create_entities();
+	w.eventloop(*this, &info);
 }
 
 void LocalClient::claim_player(unsigned idx) {
@@ -99,7 +137,7 @@ void LocalClient::entity_kill(IdPoolRef ref) {
 
 Client::Client()
 	: IClient()
-	, s(), port(0), starting(false), peers(), g() {}
+	, s(), port(0), starting(false), peers() {}
 
 void Client::mainloop() {
 	send_protocol(1);
@@ -120,11 +158,14 @@ void Client::mainloop() {
 					break;
 				}
 				case NetPkgType::start_game: {
-					if (starting) {
+					switch (pkg.get_start_type()) {
+					case NetStartGameType::now:
 						start_game();
-					} else {
+						break;
+					case NetStartGameType::announce:
 						starting = true;
 						add_chat_text(invalid_ref, "game starting now");
+						break;
 					}
 					break;
 				}
@@ -353,7 +394,7 @@ void Client::send_ready(bool v) {
 
 void Client::send_start_game() {
 	NetPkg pkg;
-	pkg.set_start_game();
+	pkg.set_start_game(NetStartGameType::now);
 	send(pkg);
 }
 

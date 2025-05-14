@@ -274,10 +274,12 @@ extern Engine *eng;
 extern std::mutex m_eng;
 
 class EngineView final {
-	std::lock_guard<std::mutex> lk;
+	std::unique_lock<std::mutex> lk;
 public:
 	EngineView();
 
+	void trigger_async_flags(EngineAsyncTask t);
+	void goto_menu(MenuState ms);
 	void play_sfx(SfxId id, int loops=0);
 };
 

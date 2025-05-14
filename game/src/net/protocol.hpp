@@ -24,6 +24,11 @@ enum class NetPkgType {
 	client_info,
 };
 
+enum NetStartGameType {
+	announce,
+	now,
+};
+
 struct NetPkgHdr final {
 	uint16_t type, payload;
 	bool native_ordering;
