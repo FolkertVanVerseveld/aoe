@@ -155,7 +155,7 @@ static void echo_test(std::vector<std::string> &bt, bool close) {
 #endif
 	Net net;
 	Server s;
-	std::thread t1([&] { s.mainloop(1, default_port, 1, true); if (close) s.close(); });
+	std::thread t1([&] { s.mainloop(default_port, 1, true); if (close) s.close(); });
 
 	Client c;
 	c.start(default_host, default_port, false);
@@ -181,7 +181,7 @@ TEST_F(ServerFixture, protocol) {
 #endif
 	std::vector<std::string> bt;
 	Server s;
-	std::thread t1([&] { s.mainloop(1, default_port, 1, true); s.close(); });
+	std::thread t1([&] { s.mainloop(default_port, 1, true); s.close(); });
 
 	Client c;
 	uint16_t prot;

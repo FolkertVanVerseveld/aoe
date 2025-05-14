@@ -26,7 +26,9 @@ if (BUILD_TESTS_HEADLESS)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_TESTS_HEADLESS=1")
 endif()
 
+if (UNIX)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-narrowing")
+endif()
 
 # dependencies
 
