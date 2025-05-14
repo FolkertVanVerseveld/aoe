@@ -45,6 +45,7 @@ void LocalClient::broadcast(NetPkg &pkg, bool include_host) {
 	case NetPkgType::start_game:
 		if (pkg.get_start_type() == NetStartGameType::now)
 		{
+			g.set_players(sp_scn.players); // FIXME players not set properly
 			EngineView ev;
 			ev.goto_menu(MenuState::singleplayer_game);
 		}
@@ -64,7 +65,9 @@ void LocalClient::stop() {
 
 void LocalClient::event_loop(const ScenarioSettings &scn, UI_TaskInfo &info) {
 	ZoneScoped;
+	m_connected = true;
 
+	w.load_sp_players();
 	w.load_scn(scn);
 	w.eventloop(*this, &info);
 }

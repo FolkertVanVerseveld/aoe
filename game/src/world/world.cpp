@@ -65,6 +65,13 @@ World::World()
 	, players(), player_achievements(), events_in(), events_out(), views()
 	, resources_out(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
 
+void World::load_sp_players() {
+	this->scn.players.clear();
+
+	for (unsigned i = 0; i < sp_player_count; ++i)
+		scn.players.emplace_back(sp_players.at(i));
+}
+
 void World::load_scn(const ScenarioSettings &scn) {
 	ZoneScoped;
 
@@ -651,6 +658,18 @@ void World::send_player(unsigned i, NetPkg &pkg) {
 	}
 }
 
+void World::send_initial_player_data(unsigned i, PlayerSetting &p) {
+	NetPkg pkg;
+
+	// TODO combine messages?
+	pkg.set_player_name(i, p.name);
+	s->broadcast(pkg);
+	pkg.set_player_civ(i, p.civ);
+	s->broadcast(pkg);
+	pkg.set_player_team(i, p.team);
+	s->broadcast(pkg);
+}
+
 void World::sanitize_player_settings(Server &ss) {
 	ZoneScoped;
 
@@ -696,13 +715,7 @@ void World::sanitize_player_settings(Server &ss) {
 			}
 		}
 
-		// TODO combine messages?
-		pkg.set_player_name(i, p.name);
-		s->broadcast(pkg);
-		pkg.set_player_civ(i, p.civ);
-		s->broadcast(pkg);
-		pkg.set_player_team(i, p.team);
-		s->broadcast(pkg);
+		send_initial_player_data(i, p);
 	}
 }
 
@@ -714,8 +727,24 @@ void World::create_players() {
 	gaia.team = 0;
 
 	Server *ss = dynamic_cast<Server*>(this->s);
-	if (ss)
+	if (ss) {
 		sanitize_player_settings(*ss);
+	} else {
+		NetPkg pkg;
+		bool one_team = single_team();
+
+		for (unsigned i = 0; i < scn.players.size(); ++i) {
+			PlayerSetting &p = scn.players[i];
+
+			if (one_team)
+				// change team
+				p.team = i;
+
+			p.res = scn.res;
+
+			send_initial_player_data(i, p);
+		}
+	}
 
 	size_t size = (size_t)scn.width * scn.height;
 	players.clear();
@@ -960,6 +989,8 @@ void World::startup(UI_TaskInfo *info) {
 
 	send_resources();
 	send_scores();
+
+	if (info) info->dispose();
 }
 
 void World::send_gameticks(unsigned n) {

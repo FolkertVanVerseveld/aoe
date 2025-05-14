@@ -1,22 +1,12 @@
 BUILDING THE GAME
 
-Change directory to game and make a CMake build directory:
+Open a shell/terminal and after navigating to the directory:
 
-  cd game/
-  mkdir build/
-  cd build/
+  cmake -S . -B build
+  cd build
+  make -j4
 
-You can build the game using:
-
-  cmake ../
-  make
-
-Or if you prefer running it in parallel:
-
-  cmake ../
-  make -j8
-
-Where `-j8' means `use 8 cores'.
+Where `-j4' means `use 4 cores'.
 
 There used to be a standalone headless server. This has been removed, this may
 be reimplemented after a playable prototype has been released.
@@ -41,7 +31,7 @@ make this work, or cross-compile and install and run the game using Wine.
 This project has been built primarly on Xubuntu 22 and Windows. The following
 packages are needed:
 
-  gcc make libssl-dev pkg-config libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev
+  clang cmake pkg-config libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev
 
 Windows:
 

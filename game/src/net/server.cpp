@@ -83,10 +83,7 @@ void Server::gamespeed_control(const Peer &p, const NetGamespeedControl &control
 }
 
 void Server::start_game(const Peer &p) {
-	if (m_running)
-		return;
-
-	if (!p.is_host)
+	if (m_running || !p.is_host)
 		return;
 
 	// only start if all clients are ready
@@ -109,9 +106,8 @@ void Server::start_game(const Peer &p) {
 		return;
 	}
 
-	m_running = true;
-
 	std::thread t([this]() {
+		m_running = true;
 		w.eventloop(*this, nullptr);
 	});
 	t.detach();

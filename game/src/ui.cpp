@@ -560,10 +560,8 @@ void Engine::show_multiplayer_host() {
 		}
 		show_mph_chat(f);
 
-		if (f.btn("Cancel")) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
-			cancel_multiplayer_host(MenuState::start);
-		}
+		if (btn(f, "Cancel", sfx))
+			quit_game(MenuState::start);
 
 		if (server.get()) {
 			f.sl();
@@ -576,8 +574,7 @@ void Engine::show_multiplayer_host() {
 					else
 						ImGui::Tooltip("Click \"I'm Ready\" in order to start the game");
 				}
-			} else if (f.btn("Start Game")) {
-				sfx.play_sfx(SfxId::sfx_ui_click);
+			} else if (btn(f, "Start Game", sfx)) {
 				client->send_start_game();
 			}
 		}

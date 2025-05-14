@@ -46,6 +46,8 @@ public:
 	void set_desc(const std::string &s);
 	void next();
 	void next(const std::string &s);
+
+	void dispose(); // early exit or stop manually
 };
 
 }

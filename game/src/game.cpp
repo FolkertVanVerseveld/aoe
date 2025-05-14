@@ -8,13 +8,6 @@
 
 namespace aoe {
 
-enum class GameMod {
-	terrain   = 1 << 0,
-	entities  = 1 << 1,
-	players   = 1 << 2,
-	particles = 1 << 3,
-};
-
 Game::Game()
 	: m(), t(), players(), entities(), entities_spawned(), entities_killed()
 	, particles(), particles_spawned()
@@ -239,6 +232,7 @@ GameView::GameView()
 	, players(), players_died() {}
 
 bool GameView::try_read(Game &g, bool reset) {
+	ZoneScoped;
 	std::unique_lock lk(g.m, std::defer_lock);
 
 	if (!lk.try_lock())

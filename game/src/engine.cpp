@@ -241,7 +241,11 @@ void Engine::start_singleplayer_game() {
 			UI_TaskInfo info(ui_async("Starting single player game", "Initializing player settings", 5));
 
 			LocalClient *lc = new LocalClient();
-			client.reset(lc);
+			{
+				lock lk(m);
+				assert(!client || !client->connected());
+				client.reset(lc);
+			}
 
 			lc->event_loop(sp_scn, info);
 		} catch (std::exception &e) {
@@ -382,6 +386,11 @@ void Engine::display_ui_tasks() {
 	}
 }
 
+void Engine::push_error(const char *func, const std::string &msg) {
+	fprintf(stderr, "%s: %s\n", func, msg.c_str());
+	push_error(msg);
+}
+
 void Engine::push_error(const std::string &msg) {
 	std::lock_guard<std::mutex> lock(m_async);
 	popups_async.emplace(msg, ui::PopupType::error);
@@ -411,8 +420,7 @@ void Engine::start_client(const char *host, uint16_t port) {
 			start_client_now(host, port, info);
 			trigger_client_connected();
 		} catch (std::exception &e) {
-			fprintf(stderr, "%s: cannot connect to server: %s\n", func, e.what());
-			push_error(std::string("cannot connect to server: ") + e.what());
+			push_error(func, std::string("cannot connect to server: ") + e.what());
 		}
 	}, __func__, host, port);
 	t.detach();
@@ -508,7 +516,7 @@ void Engine::trigger_client_connected() {
 }
 
 void Engine::trigger_multiplayer_stop() {
-	trigger_async_flags(EngineAsyncTask::multiplayer_stopped);
+	trigger_async_flags(EngineAsyncTask::game_stopped);
 }
 
 void Engine::trigger_username(const std::string &s) {
@@ -725,8 +733,8 @@ void Engine::idle_async() {
 		if (async_tasks & (unsigned)EngineAsyncTask::client_connected)
 			goto_multiplayer_menu();
 
-		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_stopped)
-			cancel_multiplayer_host(MenuState::start);
+		if (async_tasks & (unsigned)EngineAsyncTask::game_stopped)
+			quit_game(MenuState::start);
 
 		if (async_tasks & (unsigned)EngineAsyncTask::multiplayer_started)
 			start_multiplayer_game();
@@ -771,7 +779,7 @@ void Engine::add_chat_text(const std::string &s) {
 	chat_async.emplace(s);
 }
 
-void Engine::cancel_multiplayer_host(MenuState next) {
+void Engine::quit_game(MenuState next) {
 	try {
 		if (server) {
 			if (!server->active())

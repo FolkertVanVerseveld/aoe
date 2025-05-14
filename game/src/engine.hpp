@@ -66,7 +66,7 @@ public:
 enum class EngineAsyncTask {
 	server_started = 1 << 0,
 	client_connected = 1 << 1,
-	multiplayer_stopped = 1 << 2,
+	game_stopped = 1 << 2,
 	multiplayer_started = 1 << 3,
 	set_username = 1 << 5,
 	player_mod = 1 << 6,
@@ -206,7 +206,7 @@ private:
 	void show_mph_chat(ui::Frame&);
 	void show_chat_line(ui::Frame&);
 
-	void cancel_multiplayer_host(MenuState next);
+	void quit_game(MenuState next);
 
 	void show_multiplayer_achievements();
 	void show_multiplayer_diplomacy();
@@ -245,6 +245,7 @@ private:
 
 	ImVec2 tilepos(float x, float y, float left=0, float top=0, int h=0);
 public:
+	void push_error(const char *func, const std::string &msg);
 	void push_error(const std::string &msg);
 
 	// API for asynchronous tasks

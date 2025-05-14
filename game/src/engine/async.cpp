@@ -4,12 +4,22 @@
 
 namespace aoe {
 
-UI_TaskInfo::~UI_TaskInfo() {
-	ZoneScoped;
+static void taskinfo_dispose(UI_TaskInfo &info) {
 	// just tell engine task has completed, we don't care if it succeeds
 	std::lock_guard<std::mutex> lock(m_eng);
 	if (eng)
-		(void)eng->ui_async_stop(*this);
+		(void)eng->ui_async_stop(info);
+}
+
+UI_TaskInfo::~UI_TaskInfo() {
+	ZoneScoped;
+	if (this->ref != invalid_ref)
+		taskinfo_dispose(*this);
+}
+
+void UI_TaskInfo::dispose() {
+	taskinfo_dispose(*this);
+	this->ref = invalid_ref;
 }
 
 void UI_TaskInfo::set_total(unsigned total) {

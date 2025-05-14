@@ -103,6 +103,7 @@ public:
 	World();
 
 	void load_scn(const ScenarioSettings &scn);
+	void load_sp_players();
 
 	NetTerrainMod fetch_terrain(int x, int y, unsigned &w, unsigned &h);
 
@@ -120,6 +121,7 @@ public:
 	void create_entities();
 private:
 	void startup(UI_TaskInfo *info);
+	void send_initial_player_data(unsigned i, PlayerSetting &p);
 	void sanitize_player_settings(Server&);
 
 	void add_building(EntityType t, unsigned player, int x, int y);
@@ -318,7 +320,7 @@ public:
 
 	// IClient
 
-	bool is_running() const noexcept override { return w.running; }
+	bool is_running() const noexcept override { return m_connected; }
 	void stop() override;
 
 	void event_loop(const ScenarioSettings &scn, UI_TaskInfo &info);

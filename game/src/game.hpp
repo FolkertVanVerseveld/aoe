@@ -109,6 +109,14 @@ public:
 
 class GameView;
 struct NetPlayerScore;
+class LocalClient;
+
+enum class GameMod {
+	terrain = 1 << 0,
+	entities = 1 << 1,
+	players = 1 << 2,
+	particles = 1 << 3,
+};
 
 /**
  * Client side game state. Some vars are duplicated from World,
@@ -128,6 +136,7 @@ class Game final {
 	unsigned modflags, ticks;
 	unsigned team_won;
 	friend GameView;
+	friend LocalClient;
 public:
 	std::atomic<bool> running;
 

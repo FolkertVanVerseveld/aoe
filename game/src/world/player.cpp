@@ -112,9 +112,6 @@ void Player::ai_gather(WorldView &wv, unsigned n, EntityType type) {
 		if (target && e.task_attack(*target))
 			--n;
 	}
-
-	if (n)
-		printf("%s: need %u more %s\n", __func__, n, n == 1 ? "worker" : "workers");
 }
 
 void Player::tick(WorldView &wv) {
@@ -136,8 +133,6 @@ void Player::tick(WorldView &wv) {
 			ai_workers.emplace_back(ref);
 	}
 
-	printf("%s: i've got %u workers\n", __func__, (unsigned)ai_workers.size());
-
 	// count worker tasks
 	unsigned idle = 0, food = 0, wood = 0;
 
@@ -158,16 +153,12 @@ void Player::tick(WorldView &wv) {
 		}
 	}
 
-	printf("%s: %u for wood, %u for food, %u idle\n", __func__, wood, food, idle);
-
 	// TODO assign 2/3 to food (round up), 1/3 to wood (round down)
 
 	const float p_food = 2.0 / 3, p_wood = 1.0 - p_food;
 
 	double need_food = ai_workers.size() * p_food;
 	double need_wood = ai_workers.size() * p_wood;
-
-	printf("%s: i want %.2f food and %.2f wood workers\n", __func__, need_food, need_wood);
 
 	// use idle workers to balance tasks out
 	if (idle) {

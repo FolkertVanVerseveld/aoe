@@ -331,7 +331,7 @@ void UICache::show_multiplayer_game() {
 			e->m_show_achievements = !e->m_show_achievements;
 
 		if (ImGui::MenuItem("Quit")) {
-			e->cancel_multiplayer_host(e->cv.victory ? MenuState::victory : MenuState::defeat);
+			e->quit_game(e->cv.victory ? MenuState::victory : MenuState::defeat);
 			ImGui::CloseCurrentPopup();
 		}
 
