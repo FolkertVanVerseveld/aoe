@@ -332,7 +332,7 @@ void World::pump_events() {
 				gamespeed_control(ev);
 				break;
 			default:
-				printf("%s: todo: process event: %u\n", __func__, (unsigned)ev.type);
+				LOGF("%s: todo: process event: %u\n", __func__, (unsigned)ev.type);
 				break;
 			}
 		} catch (const std::runtime_error &e) {
@@ -418,7 +418,7 @@ void World::push_scores() {
 	assert(player_achievements.empty() || player_achievements.size() == players.size());
 
 	// skip gaia
-	for (unsigned i = 1; i < players.size(); ++i) {
+	for (unsigned i = first_player_idx; i < players.size(); ++i) {
 		PlayerAchievements pa(players[i].get_score());
 
 		if (i >= player_achievements.size() || player_achievements[i].score != pa.score) {

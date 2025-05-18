@@ -223,8 +223,7 @@ void Engine::verify_game_data(const std::string &path) {
 			assets.reset(new Assets(*this, path));
 			trigger_async_flags(EngineAsyncTask::new_game_data);
 		} catch (std::exception &e) {
-			fprintf(stderr, "%s: game data verification failed: %s\n", func, e.what());
-			push_error(std::string("Game data verification failed: ") + e.what());
+			push_error(func, std::string("Game data verification failed: ") + e.what());
 		}
 	}, __func__, path);
 

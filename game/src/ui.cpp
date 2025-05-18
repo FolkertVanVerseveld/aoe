@@ -324,7 +324,6 @@ void Row::strs(std::initializer_list<const char*> lst) {
 
 	for (const char *s : lst)
 		str(s);
-
 }
 
 void Row::fmt(const char *s, ...) {
@@ -472,7 +471,6 @@ void Engine::show_multiplayer_diplomacy() {
 
 	{
 		Table t;
-
 		f.str("Work in progress...");
 
 		if (t.begin("DiplomacyTable", 9)) {
@@ -497,24 +495,19 @@ void Engine::show_multiplayer_diplomacy() {
 		}
 	}
 
-	if (f.btn("OK")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "OK", sfx))
 		show_diplomacy = false;
-	}
 
 	f.sl();
 
-	if (f.btn("Clear Tributes")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "Clear Tributes", sfx)) {
 		// TODO clear fields
 	}
 
 	f.sl();
 
-	if (f.btn("Cancel")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "Cancel", sfx))
 		show_diplomacy = false;
-	}
 }
 
 bool Engine::locked_settings() const noexcept {
@@ -1024,7 +1017,6 @@ void Engine::show_start() {
 	{
 		FontGuard fg(fnt.fnt_copper);
 
-		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
 
 		if (f.btn("Single Player", TextHalign::center)) {
@@ -1032,7 +1024,6 @@ void Engine::show_start() {
 			next_menu_state = MenuState::singleplayer_menu;
 		}
 
-		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
 
 		if (f.btn("Multiplayer", TextHalign::center)) {
@@ -1040,35 +1031,27 @@ void Engine::show_start() {
 			next_menu_state = MenuState::multiplayer_menu;
 		}
 
-		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
 #if _WIN32
 		if (btn(f, "Help", TextHalign::center, sfx))
 			open_help();
-
 #else
 		f.xbtn("Help", TextHalign::center);
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
 			FontGuard fg2(fnt.fnt_arial);
-			ImGui::Tooltip("The original help is using a subsystem on Windows that has been removed in Windows 8. Consult the Github page or an Age of Empires forum if you need help.");
+			ImGui::Tooltip("The original help is using a subsystem on Windows that is not supported. Consult the Github page or an Age of Empires forum if you need help.");
 		}
 #endif
 
-		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
 
-		if (f.btn("Scenario Builder", TextHalign::center)) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
+		if (btn(f, "Scenario Builder", TextHalign::center, sfx))
 			next_menu_state = MenuState::editor_menu;
-		}
 
-		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(604.0f / 768.0f * vp->WorkSize.y);
 
-		if (f.btn("Exit", TextHalign::center)) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
+		if (btn(f, "Exit", TextHalign::center, sfx))
 			throw 0;
-		}
 	}
 
 	ImGui::SetCursorPosX(old_x);
@@ -1094,7 +1077,6 @@ void Engine::show_init() {
 	f.str("Age of Empires game setup");
 
 	ImGui::TextWrapped("%s", "In this menu, you can change general settings how the game behaves and where the game assets will be loaded from.");
-
 	ImGui::TextWrapped("%s", "This game is free software. If you have paid for this free software remake, you have been scammed! If you like Age of Empires, please support Microsoft by buying the original game on Steam");
 
 

@@ -8,7 +8,6 @@
 
 namespace aoe {
 
-// TODO extract as keyboard controller
 enum class GameKey {
 	key_left,
 	key_right,

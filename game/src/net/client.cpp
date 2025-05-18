@@ -1,6 +1,7 @@
 #include "../server.hpp"
 
 #include "../engine.hpp"
+#include "../debug.hpp"
 
 namespace aoe {
 
@@ -153,7 +154,7 @@ void Client::mainloop() {
 
 			switch (pkg.type()) {
 				case NetPkgType::set_protocol:
-					printf("prot=%u\n", pkg.protocol_version());
+					LOGF("prot=%u\n", pkg.protocol_version());
 					break;
 				case NetPkgType::chat_text: {
 					auto p = pkg.chat_text();
@@ -176,12 +177,13 @@ void Client::mainloop() {
 					std::lock_guard<std::mutex> lk(m);
 					g.gameover(pkg.get_gameover());
 
+					// TODO this is racey, victory may be determined later
 					auto maybe_pv = g.try_pv(playerindex);
 					if (maybe_pv.has_value()) {
 						unsigned me_team = maybe_pv.value().init.team;
 						victory = me_team == g.winning_team();
 					} else {
-						fprintf(stderr, "%s: unable to determine winning team: playerindex=%u\n", __func__, playerindex);
+						LOGF(stderr, "%s: unable to determine winning team: playerindex=%u\n", __func__, playerindex);
 						victory = false;
 					}
 					gameover = true;
@@ -226,21 +228,20 @@ void Client::mainloop() {
 					resource_ctl(pkg);
 					break;
 				default:
-					printf("%s: unknown type %u\n", __func__, (unsigned)pkg.type());
+					LOGF("%s: unknown type %u\n", __func__, (unsigned)pkg.type());
 					break;
 			}
 		}
 	} catch (std::runtime_error &e) {
 		if (m_connected)
-			fprintf(stderr, "%s: client stopped: %s\n", __func__, e.what());
+			LOGF(stderr, "%s: client stopped: %s\n", __func__, e.what());
 	}
 
 	std::lock_guard<std::mutex> lk(m_eng);
 	if (eng) {
 		eng->trigger_multiplayer_stop();
-		if (m_connected && !eng->is_hosting()) {
+		if (m_connected && !eng->is_hosting())
 			eng->push_error("Game session aborted");
-		}
 	}
 }
 
@@ -481,7 +482,7 @@ void Client::add_chat_text(IdPoolRef ref, const std::string &s) {
 			txt = ci->username + ": " + s;
 	}
 
-	printf("(%u::%u) says: \"%s\"\n", ref.first, ref.second, s.c_str());
+	LOGF("(%u::%u) says: \"%s\"\n", ref.first, ref.second, s.c_str());
 	if (eng) {
 		eng->add_chat_text(txt);
 
@@ -553,7 +554,7 @@ void Client::peermod(const NetPeerControl &ctl) {
 			peers.erase(ref);
 
 			if (me == ref)
-				fprintf(stderr, "%s: dropping myself. ref (%u,%u)\n", __func__, ref.first, ref.second);
+				LOGF(stderr, "%s: dropping myself. ref (%u,%u)\n", __func__, ref.first, ref.second);
 			break;
 		}
 		case NetPeerControlType::set_username: {
