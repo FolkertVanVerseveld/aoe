@@ -249,8 +249,7 @@ void Engine::start_singleplayer_game() {
 
 			lc->event_loop(sp_scn, info);
 		} catch (std::exception &e) {
-			fprintf(stderr, "%s: cannot start single player game: %s\n", func, e.what());
-			push_error(std::string("Failed to start game: ") + e.what());
+			push_error(func, std::string("Failed to start game: ") + e.what());
 		}
 	}, __func__);
 
@@ -1020,6 +1019,25 @@ int Engine::mainloop() {
 	return 0;
 }
 
+void Engine::key_tapped(SDL &sdl, GameKey k) {
+	ZoneScoped;
+
+	if (k == GameKey::max)
+		return;
+
+	switch (k) {
+	case GameKey::toggle_debug_window:
+		m_show_menubar = !m_show_menubar;
+		break;
+	case GameKey::open_help:
+		open_help();
+		break;
+	case GameKey::toggle_fullscreen:
+		sdl.window.set_fullscreen(!sdl.window.is_fullscreen());
+		break;
+	}
+}
+
 void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 	ImageCapture videoRecorder(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 	ImGuiIO &io = ImGui::GetIO();
@@ -1049,16 +1067,7 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 				break;
 			case SDL_KEYUP:
 				ImGui_ImplSDL2_ProcessEvent(&event);
-				keyctl.up(event.key);
-
-				switch (event.key.keysym.sym) {
-				case SDLK_BACKQUOTE:
-					m_show_menubar = !m_show_menubar;
-					break;
-				case SDLK_F11:
-					sdl.window.set_fullscreen(!sdl.window.is_fullscreen());
-					break;
-				}
+				key_tapped(sdl, keyctl.up(event.key));
 				break;
 			case SDL_KEYDOWN:
 				p = ImGui_ImplSDL2_ProcessEvent(&event);
@@ -1100,10 +1109,12 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 
 		// Rendering
 		ImGui::Render();
-		GL::viewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+		int w = (int)io.DisplaySize.x, h = (int)io.DisplaySize.y;
+
+		GL::viewport(0, 0, w, h);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		videoRecorder.step(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+		videoRecorder.step(0, 0, w, h);
 		SDL_GL_SwapWindow(sdl.window);
 		FrameMark;
 	}

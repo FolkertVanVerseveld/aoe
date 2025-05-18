@@ -18,6 +18,10 @@
 
 #include "../legacy/strings.hpp"
 
+#if _WIN32
+#include <shellapi.h>
+#endif
+
 namespace aoe {
 
 namespace ui {
@@ -34,6 +38,10 @@ bool btn(Frame &f, const char *str, Audio &sfx) {
 
 bool btn(Frame &f, StrId id, Audio &sfx) {
 	return btn(f, old_lang.find(id).c_str(), sfx);
+}
+
+bool btn(Frame &f, const char *str, TextHalign ha, Audio &sfx) {
+	return sfx_process(f.btn(str, ha), sfx);
 }
 
 bool chkbox(Frame &f, const char *str, bool &b, Audio &sfx) {
@@ -991,6 +999,14 @@ void Engine::show_gameover() {
 		next_menu_state = MenuState::start;
 }
 
+void Engine::open_help() {
+	ZoneScoped;
+#if _WIN32
+	sdl->window.set_fullscreen(false);
+	ShellExecute(NULL, NULL, "https://github.com/FolkertVanVerseveld/aoe", NULL, NULL, SW_SHOW);
+#endif
+}
+
 void Engine::show_start() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -1026,12 +1042,17 @@ void Engine::show_start() {
 
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
+#if _WIN32
+		if (btn(f, "Help", TextHalign::center, sfx))
+			open_help();
 
+#else
 		f.xbtn("Help", TextHalign::center);
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
 			FontGuard fg2(fnt.fnt_arial);
 			ImGui::Tooltip("The original help is using a subsystem on Windows that has been removed in Windows 8. Consult the Github page or an Age of Empires forum if you need help.");
 		}
+#endif
 
 		//ImGui::SetCursorPosX(429.0f / 1024.0f * vp->WorkSize.x);
 		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);

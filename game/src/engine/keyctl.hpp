@@ -19,6 +19,9 @@ enum class GameKey {
 	toggle_pause,
 	gamespeed_increase,
 	gamespeed_decrease,
+	toggle_fullscreen,
+	open_help,
+	toggle_debug_window,
 	max,
 };
 

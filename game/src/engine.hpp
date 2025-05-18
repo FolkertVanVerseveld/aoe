@@ -176,6 +176,7 @@ private:
 
 	void cfg_init();
 
+	void key_tapped(SDL &sdl, GameKey k);
 	void eventloop(SDL&, gfx::GLprogram&, GLuint);
 
 	void idle();
@@ -231,6 +232,8 @@ public:
 	void trigger_async_flags(EngineAsyncTask t) { trigger_async_flags((unsigned)t); }
 
 private:
+	void open_help();
+
 	void goto_multiplayer_menu();
 	void start_multiplayer_game();
 

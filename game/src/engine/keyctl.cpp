@@ -14,6 +14,9 @@ KeyboardController::KeyboardController() : state((size_t)GameKey::max, false), s
 	keys[SDLK_F3] = GameKey::toggle_pause;
 	keys[SDLK_KP_PLUS] = GameKey::gamespeed_increase;
 	keys[SDLK_KP_MINUS] = GameKey::gamespeed_decrease;
+	keys[SDLK_F11] = GameKey::toggle_fullscreen;
+	keys[SDLK_F1] = GameKey::open_help;
+	keys[SDLK_BACKQUOTE] = GameKey::toggle_debug_window;
 }
 
 void KeyboardController::clear() {
@@ -23,26 +26,30 @@ void KeyboardController::clear() {
 	state_tapped.resize((size_t)GameKey::max, false);
 }
 
-GameKey KeyboardController::down(const SDL_KeyboardEvent &k) {
-	auto it = keys.find(k.keysym.sym);
+GameKey KeyboardController::down(const SDL_KeyboardEvent &e) {
+	auto it = keys.find(e.keysym.sym);
 
 	if (it == keys.end())
 		return GameKey::max;
 
-	state[(size_t)it->second] = true;
-	state_tapped[(size_t)it->second] = false;
-	return it->second;
+	GameKey k = it->second;
+
+	state[(size_t)k] = true;
+	state_tapped[(size_t)k] = false;
+	return k;
 }
 
-GameKey KeyboardController::up(const SDL_KeyboardEvent &k) {
-	auto it = keys.find(k.keysym.sym);
+GameKey KeyboardController::up(const SDL_KeyboardEvent &e) {
+	auto it = keys.find(e.keysym.sym);
 
 	if (it == keys.end())
 		return GameKey::max;
 
-	state[(size_t)it->second] = false;
-	state_tapped[(size_t)it->second] = true;
-	return it->second;
+	GameKey k = it->second;
+
+	state[(size_t)k] = false;
+	state_tapped[(size_t)k] = true;
+	return k;
 }
 
 bool KeyboardController::is_down(GameKey k) {
