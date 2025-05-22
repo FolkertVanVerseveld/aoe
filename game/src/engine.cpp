@@ -957,10 +957,6 @@ int Engine::mainloop() {
 	ImGuiIO &io = imgui_init(sdl);
 
 	guess_font_paths();
-
-	// Our state
-	ImVec4 clear_color(0.45f, 0.55f, 0.60f, 1.00f);
-
 	cfg_init();
 
 	m_gl.reset(new GL());
@@ -974,7 +970,6 @@ int Engine::mainloop() {
 		return -1;
 
 	GLprogram prog;
-
 	prog.link(vs, fs);
 
 	const unsigned int indices[] = {
@@ -983,7 +978,6 @@ int Engine::mainloop() {
 	};
 
 	GLuint vao, ebo;
-
 	{
 		GLvertexArray vao;
 		GLbuffer vbo, ebo;
@@ -1018,12 +1012,62 @@ int Engine::mainloop() {
 	return 0;
 }
 
+void Engine::kbp_game(GameKey k) {
+	switch (k) {
+	case GameKey::toggle_chat:
+		show_chat = true;
+		break;
+	case GameKey::toggle_pause:
+		client->send_gamespeed_control(NetGamespeedType::toggle_pause);
+		return;
+	case GameKey::gamespeed_increase:
+		client->send_gamespeed_control(NetGamespeedType::increase);
+		return;
+	case GameKey::gamespeed_decrease:
+		client->send_gamespeed_control(NetGamespeedType::decrease);
+		return;
+	}
+
+	// focus hotkeys take priority over remaining HUD hotkeys
+	switch (k) {
+	case GameKey::focus_towncenter:
+		// TODO focus towncenter if we have any
+		if (ui.try_select(EntityType::town_center, cv.playerindex))
+			sfx.play_sfx(SfxId::towncenter);
+		return;
+	case GameKey::focus_idle_villager:
+		// TODO focus villagers if we have any
+		if (ui.find_idle_villager(cv.playerindex))
+			sfx.play_sfx(SfxId::villager_random);
+		else
+			sfx.play_sfx(SfxId::invalid_select);
+		return;
+	}
+
+	std::optional<Entity> ent{ ui.first_selected_entity() };
+
+	if (ent.has_value() && ent == cv.playerindex) {
+		// if first entity is ours, all selected entities belong to us
+		switch (k) {
+		case GameKey::train_villager:
+			if ((ent = ui.first_selected_building()) == EntityType::town_center)
+				client->entity_train(ent->ref, EntityType::villager);
+			break;
+		case GameKey::train_melee1:
+			if ((ent = ui.first_selected_building()) == EntityType::barracks)
+				client->entity_train(ent->ref, EntityType::melee1);
+			break;
+		}
+	}
+}
+
 void Engine::key_tapped(SDL &sdl, GameKey k) {
 	ZoneScoped;
 
 	if (k == GameKey::max)
 		return;
 
+	// any menu keys
 	switch (k) {
 	case GameKey::toggle_debug_window:
 		m_show_menubar = !m_show_menubar;
@@ -1035,6 +1079,17 @@ void Engine::key_tapped(SDL &sdl, GameKey k) {
 		sdl.window.set_fullscreen(!sdl.window.is_fullscreen());
 		break;
 	}
+
+	// menu specific
+	switch (menu_state) {
+	case MenuState::singleplayer_game:
+	case MenuState::multiplayer_game:
+		kbp_game(k);
+		break;
+	}
+
+	// reset key to prevent 'saving up' key presses
+	keyctl.is_tapped(k);
 }
 
 void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {

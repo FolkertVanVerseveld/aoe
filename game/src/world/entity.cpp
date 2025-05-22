@@ -29,7 +29,7 @@ bool Entity::die() noexcept {
 
 	stats.hp = 0;
 	// prevent endless dying buildings
-	set_state(is_building(type) ? EntityState::decaying : EntityState::dying);
+	set_state(is_building() ? EntityState::decaying : EntityState::dying);
 
 	return true;
 }
@@ -147,7 +147,7 @@ void Entity::set_type(EntityType type, bool resethp) {
 }
 
 unsigned Entity::get_atk(const EntityStats &stats) noexcept {
-	return std::min(stats.hp, is_building(type) ? stats.attack_bld : stats.attack);
+	return std::min(stats.hp, is_building() ? stats.attack_bld : stats.attack);
 }
 
 bool Entity::hit(WorldView &wv, Entity &aggressor) noexcept {
@@ -248,7 +248,7 @@ bool Entity::task_cancel(bool user) noexcept {
 }
 
 bool Entity::task_move(float x, float y) noexcept {
-	if (!is_alive() || is_building(type) || is_resource(type))
+	if (!is_alive() || is_building() || is_resource(type))
 		return false;
 
 	// TODO start pathfinding stuff
@@ -267,7 +267,7 @@ bool Entity::task_attack(Entity &e) noexcept {
 		return false;
 
 	// TODO add buildings that can attack
-	if (!is_alive() || is_building(type) || is_resource(type) || !e.is_alive() || playerid == e.playerid)
+	if (!is_alive() || is_building() || is_resource(type) || !e.is_alive() || playerid == e.playerid)
 		return false;
 
 	this->target_ref = e.ref;
@@ -317,7 +317,7 @@ bool Entity::task_attack(Entity &e) noexcept {
 }
 
 bool Entity::task_train_unit(EntityType type) noexcept {
-	if (!is_alive() || !is_building(this->type) || is_resource(type))
+	if (!is_alive() || !is_building() || is_resource(type))
 		return false;
 
 	switch (this->type) {
@@ -331,7 +331,7 @@ bool Entity::task_train_unit(EntityType type) noexcept {
 }
 
 const EntityBldInfo &Entity::bld_info() const {
-	assert(is_building(type));
+	assert(is_building());
 	return entity_bld_info.at((unsigned)type - (unsigned)entity_bld_info[0].type);
 }
 
@@ -377,19 +377,19 @@ std::optional<SfxId> Entity::sfxtick() noexcept {
 
 bool Entity::in_range(const Entity &e) const noexcept {
 	const EntityInfo &info1 = entity_info.at((unsigned)type);
-	float size1 = is_building(type) ? info1.size / 2 : info1.size / 20;
+	float size1 = is_building() ? info1.size / 2 : info1.size / 20;
 
 	const EntityInfo &info2 = entity_info.at((unsigned)e.type);
-	float size2 = is_building(e.type) ? info2.size / 2 : info2.size / 20;
+	float size2 = aoe::is_building(e.type) ? info2.size / 2 : info2.size / 20;
 
 	float x1 = x, x2 = e.x, y1 = y, y2 = e.y;
 
-	if (is_building(type)) {
+	if (is_building()) {
 		x1 += 0.5f;
 		y1 += 0.5f;
 	}
 
-	if (is_building(e.type)) {
+	if (aoe::is_building(e.type)) {
 		x2 += 0.5f;
 		y2 += 0.5f;
 	}
@@ -446,7 +446,7 @@ bool Entity::imgtick(unsigned n) noexcept {
 			subimage = fmodf(subimage + n, mult) + face * mult;
 			break;
 		}
-	} else if (is_building(type) && is_alive()) {
+	} else if (is_building() && is_alive()) {
 		mult = 20;
 		more = true;
 		float hper = (float)stats.hp / stats.maxhp;

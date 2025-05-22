@@ -54,9 +54,8 @@ enum class TauntId {
 };
 
 enum class SfxId {
-	// TODO /sfx_//g
-	sfx_ui_click,
-	sfx_chat,
+	ui_click,
+	chat,
 	towncenter,
 	barracks,
 	bld_die_random,
@@ -98,6 +97,8 @@ enum class SfxId {
 	priest_attack_random,
 	priest_attack1,
 	priest_attack2,
+	queue_error,
+	invalid_select,
 };
 
 class Audio final {

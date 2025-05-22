@@ -61,18 +61,11 @@ void UICache::idle_game() {
 			continue;
 
 		const Entity &ent = *it;
-
-		switch (ent.type) {
-		case EntityType::villager:
-			e->sfx.play_sfx(SfxId::villager_spawn);
-			break;
-		case EntityType::melee1:
-			e->sfx.play_sfx(SfxId::melee_spawn);
-			break;
-		default:
-			fprintf(stderr, "%s: unknown spawn sfx for entity %u\n", __func__, (unsigned)ent.type);
-			break;
-		}
+		auto sfx = spawn_sfx.find(ent.type);
+		if (sfx == spawn_sfx.end())
+			LOGF(stderr, "%s: unknown spawn sfx for entity %u\n", __func__, (unsigned)ent.type);
+		else
+			e->sfx.play_sfx(sfx->second);
 	}
 
 	spawned.clear();
@@ -115,14 +108,65 @@ void UICache::image(const gfx::ImageRef &ref, float x, float y, float scale) {
 	bkg->AddImage(e->tex1, ImVec2(x, y), ImVec2(x + ref.bnds.w * scale, y + ref.bnds.h * scale), ImVec2(ref.s0, ref.t0), ImVec2(ref.s1, ref.t1));
 }
 
-void UICache::show_hud_selection(float menubar_left, float top, float menubar_h) {
+std::optional<Entity> UICache::first_selected_entity() {
 	ZoneScoped;
 	if (selected.empty())
-		return;
+		return std::nullopt;
 
 	IdPoolRef ref = *selected.begin();
 	Entity *ent = e->gv.try_get(ref);
-	if (!ent)
+	return ent ? *ent : std::optional<Entity>(std::nullopt);
+}
+
+std::optional<Entity> UICache::first_selected_building() {
+	auto v = first_selected_entity();
+	if (!v.has_value())
+		return std::nullopt;
+
+	const EntityInfo &info = entity_info.at((unsigned)v->type);
+	return is_building(info.type) ? v : std::nullopt;
+}
+
+bool UICache::try_select(EntityType type, unsigned playerid) {
+	for (VisualEntity &v : entities) {
+		Entity *ent = e->gv.try_get(v.ref);
+		if (!ent || ent->playerid != playerid || !ent->is_alive())
+			continue;
+
+		if (ent->is_type(type)) {
+			selected.clear();
+			selected.emplace_back(ent->ref);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UICache::find_idle_villager(unsigned playerid) {
+	bool changed = false;
+
+	for (VisualEntity &v : entities) {
+		Entity *ent = e->gv.try_get(v.ref);
+		if (!ent || ent->playerid != playerid || !is_worker(ent->type))
+			continue;
+
+		if (ent->state == EntityState::alive) {
+			if (!changed) {
+				changed = true;
+				selected.clear();
+			}
+			selected.emplace_back(ent->ref);
+		}
+	}
+
+	return changed;
+}
+
+void UICache::show_hud_selection(float menubar_left, float top, float menubar_h) {
+	ZoneScoped;
+	std::optional<Entity> ent = first_selected_entity();
+	if (!ent.has_value())
 		return;
 
 	// 5, 649 -> 5, 7

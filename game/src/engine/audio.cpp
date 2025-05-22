@@ -270,6 +270,9 @@ void Audio::play_sfx(SfxId id, int loops) {
 		case SfxId::priest_attack_random:
 			id = (SfxId)((unsigned)SfxId::priest_attack1 + rand() % 2);
 			break;
+		case SfxId::invalid_select:
+			id = SfxId::queue_error;
+			break;
 	}
 
 	auto it = sfx.find(id);

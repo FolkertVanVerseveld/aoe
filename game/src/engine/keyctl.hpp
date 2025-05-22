@@ -14,13 +14,20 @@ enum class GameKey {
 	key_up,
 	key_down,
 	kill_entity,
+	focus_idle_villager,
+	// general hud stuff
 	toggle_chat,
 	toggle_pause,
 	gamespeed_increase,
 	gamespeed_decrease,
+	// engine general stuff
 	toggle_fullscreen,
 	open_help,
 	toggle_debug_window,
+	// hotkeys for logistics
+	focus_towncenter,
+	train_villager,
+	train_melee1,
 	max,
 };
 

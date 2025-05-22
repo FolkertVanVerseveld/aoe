@@ -33,6 +33,7 @@ enum class EntityType {
 	grass_tree4,
 	dead_tree1,
 	dead_tree2,
+	max,
 };
 
 static inline EntityType desert_tree(unsigned pos) {

@@ -22,7 +22,11 @@
 #include "world/game/game_settings.hpp"
 #include "world/entity.hpp"
 
+#include "engine/audio.hpp"
+
 namespace aoe {
+
+extern std::map<EntityType, SfxId> spawn_sfx;
 
 class PlayerAchievements final {
 public:

@@ -235,6 +235,12 @@ class UICache final {
 public:
 	UICache();
 
+	std::optional<Entity> first_selected_entity();
+	std::optional<Entity> first_selected_building();
+
+	bool try_select(EntityType type, unsigned playerid);
+	bool find_idle_villager(unsigned playerid);
+
 	void load();
 
 	void idle(Engine &e);

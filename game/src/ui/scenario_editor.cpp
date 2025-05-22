@@ -93,7 +93,7 @@ void UICache::show_editor_scenario() {
 		const ScnBtn &btn = scn_btns[i];
 
 		if (frame_btn(col, btn.lbl.c_str(), btn_x + (btn_w + padding) * btn.x * scale, btn_y + (btn_h + padding) * btn.y * scale, btn_w, btn_h, scale, scn_edit.top_btn_idx == i)) {
-			e->sfx.play_sfx(SfxId::sfx_ui_click);
+			e->sfx.play_sfx(SfxId::ui_click);
 			scn_edit.top_btn_idx = i;
 		}
 	}
@@ -114,7 +114,7 @@ void UICache::show_editor_scenario() {
 	}
 
 	if (frame_btn(col, "Menu", menubar_right - (60 + 3) * scale, btn_y + 3 * scale, 60, 40, scale)) {
-		e->sfx.play_sfx(SfxId::sfx_ui_click);
+		e->sfx.play_sfx(SfxId::ui_click);
 		ImGui::OpenPopup("EditMenuPopup");
 	}
 
@@ -208,7 +208,7 @@ void UICache::show_editor_scenario() {
 		ImGui::Input("default terrain", scn_edit.map_gen_terrain_type);
 
 		if (f.btn("Generate Map")) {
-			e->sfx.play_sfx(SfxId::sfx_ui_click);
+			e->sfx.play_sfx(SfxId::ui_click);
 			scn_edit.create_map(scn_game);
 		}
 		break;

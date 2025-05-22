@@ -139,7 +139,7 @@ void UICache::mouse_left_process() {
 	Entity *ent = e->gv.try_get(ref);
 	assert(ent);
 
-	SfxId sfx = SfxId::sfx_ui_click;
+	SfxId sfx = SfxId::ui_click;
 
 	if (ent) {
 		switch (ent->type) {
@@ -158,7 +158,7 @@ void UICache::mouse_left_process() {
 	}
 
 	// only play if valid and we can control the entity
-	if (sfx != SfxId::sfx_ui_click && player_index() == ent->playerid)
+	if (sfx != SfxId::ui_click && player_index() == ent->playerid)
 		e->sfx.play_sfx(sfx);
 }
 

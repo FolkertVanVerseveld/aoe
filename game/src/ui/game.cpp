@@ -276,19 +276,6 @@ void UICache::show_multiplayer_game() {
 	if (vp->WorkSize.x > menubar_w)
 		menubar_left = vp->WorkPos.x + (vp->WorkSize.x - menubar_w) / 2;
 
-	if (e->keyctl.is_tapped(GameKey::toggle_chat) && !e->show_chat)
-		e->show_chat = true;
-
-	// gamespeed control
-	if (e->keyctl.is_tapped(GameKey::toggle_pause))
-		e->client->send_gamespeed_control(NetGamespeedType::toggle_pause);
-
-	if (e->keyctl.is_tapped(GameKey::gamespeed_increase))
-		e->client->send_gamespeed_control(NetGamespeedType::increase);
-
-	if (e->keyctl.is_tapped(GameKey::gamespeed_decrease))
-		e->client->send_gamespeed_control(NetGamespeedType::decrease);
-
 	// TODO fetch from player view
 	PlayerView &p = e->gv.players.at(e->cv.playerindex);
 
@@ -339,19 +326,19 @@ void UICache::show_multiplayer_game() {
 	}
 
 	if (menu_btn(e->tex1, a, "Menu", btn_left, scale, true)) {
-		e->sfx.play_sfx(SfxId::sfx_ui_click);
+		e->sfx.play_sfx(SfxId::ui_click);
 		ImGui::OpenPopup("MenuPopup");
 	}
 
 	btn_left -= rbtnm.bnds.w * scale;
 	if (menu_btn(e->tex1, a, "Diplomacy", btn_left, scale, false)) {
-		e->sfx.play_sfx(SfxId::sfx_ui_click);
+		e->sfx.play_sfx(SfxId::ui_click);
 		e->show_diplomacy = !e->show_diplomacy;
 	}
 
 	btn_left -= rbtns.bnds.w * scale;
 	if (menu_btn(e->tex1, a, "Chat", btn_left, scale, true)) {
-		e->sfx.play_sfx(SfxId::sfx_ui_click);
+		e->sfx.play_sfx(SfxId::ui_click);
 		e->show_chat = !e->show_chat;
 	}
 

@@ -94,6 +94,10 @@ public:
 		return lhs.is_type(type);
 	}
 
+	friend bool operator==(const Entity &lhs, unsigned playerid) noexcept {
+		return lhs.playerid == playerid;
+	}
+
 	constexpr bool is_type(EntityType type) const noexcept {
 		if (this->type == type)
 			return true;
@@ -104,6 +108,10 @@ public:
 		}
 
 		return false;
+	}
+
+	bool is_building() const {
+		return aoe::is_building(type);
 	}
 
 	bool die() noexcept;

@@ -123,10 +123,10 @@ public:
 	~GLbuffer();
 
 	/*
-	void glBufferData(	GLenum target,
- 	GLsizeiptr size,
- 	const void * data,
- 	GLenum usage);
+	void glBufferData(GLenum target,
+ 		GLsizeiptr size,
+ 		const void *data,
+ 		GLenum usage);
 	*/
 	void setData(GLenum target, GLsizeiptr size, const void *data, GLenum usage);
 

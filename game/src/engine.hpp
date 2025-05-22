@@ -179,6 +179,8 @@ private:
 	void key_tapped(SDL &sdl, GameKey k);
 	void eventloop(SDL&, gfx::GLprogram&, GLuint);
 
+	void kbp_game(GameKey k);
+
 	void idle();
 	void idle_async();
 	void idle_game();

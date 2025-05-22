@@ -17,6 +17,10 @@ KeyboardController::KeyboardController() : state((size_t)GameKey::max, false), s
 	keys[SDLK_F11] = GameKey::toggle_fullscreen;
 	keys[SDLK_F1] = GameKey::open_help;
 	keys[SDLK_BACKQUOTE] = GameKey::toggle_debug_window;
+	keys['c'] = keys['C'] = GameKey::train_villager;
+	keys['h'] = keys['H'] = GameKey::focus_towncenter;
+	keys['t'] = keys['T'] = GameKey::train_melee1;
+	keys['.'] = GameKey::focus_idle_villager;
 }
 
 void KeyboardController::clear() {

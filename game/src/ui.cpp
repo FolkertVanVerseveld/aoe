@@ -28,7 +28,7 @@ namespace ui {
 
 static inline bool sfx_process(bool v, Audio &sfx) {
 	if (v)
-		sfx.play_sfx(SfxId::sfx_ui_click);
+		sfx.play_sfx(SfxId::ui_click);
 	return v;
 }
 
@@ -619,10 +619,8 @@ void UICache::show_editor_menu() {
 
 	ImGui::SetCursorPosY(272.0f / 768.0f * vp->WorkSize.y);
 
-	if (f.btn("Create Scenario", TextHalign::center)) {
-		e->sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "Create Scenario", TextHalign::center, e->sfx))
 		e->next_menu_state = MenuState::editor_scenario;
-	}
 
 	ImGui::SetCursorPosY(352.0f / 768.0f * vp->WorkSize.y);
 
@@ -634,10 +632,8 @@ void UICache::show_editor_menu() {
 
 	ImGui::SetCursorPosY(512.0f / 768.0f * vp->WorkSize.y);
 
-	if (f.btn("Cancel", TextHalign::center)) {
-		e->sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "Cancel", TextHalign::center, e->sfx))
 		e->next_menu_state = MenuState::start;
-	}
 
 	ImGui::SetCursorPosX(old_x);
 }
@@ -1019,17 +1015,13 @@ void Engine::show_start() {
 
 		ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
 
-		if (f.btn("Single Player", TextHalign::center)) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
+		if (btn(f, "Single Player", TextHalign::center, sfx))
 			next_menu_state = MenuState::singleplayer_menu;
-		}
 
 		ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
 
-		if (f.btn("Multiplayer", TextHalign::center)) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
+		if (btn(f, "Multiplayer", TextHalign::center, sfx))
 			next_menu_state = MenuState::multiplayer_menu;
-		}
 
 		ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
 #if _WIN32
@@ -1182,19 +1174,15 @@ void Engine::show_singleplayer_menu() {
 	FontGuard fg(fnt.fnt_copper);
 
 	SetRelY(188.0f);
-	if (f.btn("Random Map", TextHalign::center)) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "Random Map", TextHalign::center, sfx))
 		next_menu_state = MenuState::singleplayer_host;
-	}
 
 	SetRelY(268.0f);
 	f.xbtn("Campaign", TextHalign::center);
 
 	SetRelY(348.0f);
-	if (f.btn("Death Match", TextHalign::center)) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "Death Match", TextHalign::center, sfx))
 		next_menu_state = MenuState::singleplayer_host;
-	}
 
 	SetRelY(428);
 	f.xbtn("Scenario", TextHalign::center);
@@ -1203,10 +1191,8 @@ void Engine::show_singleplayer_menu() {
 	f.xbtn("Saved Game", TextHalign::center);
 
 	SetRelY(588.0f);
-	if (f.btn("Cancel", TextHalign::center)) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "Cancel", TextHalign::center, sfx))
 		next_menu_state = MenuState::start;
-	}
 }
 
 void Engine::show_singleplayer_host() {
@@ -1301,8 +1287,7 @@ void Engine::show_multiplayer_menu() {
 
 	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
 
-	if (f.btn("start")) {
-		sfx.play_sfx(SfxId::sfx_ui_click);
+	if (btn(f, "start", sfx)) {
 		switch (connection_mode) {
 			case 0:
 				start_server(connection_port);

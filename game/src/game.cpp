@@ -8,6 +8,10 @@
 
 namespace aoe {
 
+std::map<EntityType, SfxId> spawn_sfx{
+	{EntityType::villager, SfxId::villager_spawn},
+	{EntityType::melee1, SfxId::melee_spawn} };
+
 Game::Game()
 	: m(), t(), players(), entities(), entities_spawned(), entities_killed()
 	, particles(), particles_spawned()

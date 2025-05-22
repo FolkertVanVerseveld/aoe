@@ -46,7 +46,7 @@ bool Engine::show_achievements(Frame &f, bool bkg) {
 		f.str("Time");
 
 		if (f.btn("Back")) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
+			sfx.play_sfx(SfxId::ui_click);
 			show_timeline = false;
 		}
 	} else {
@@ -112,14 +112,14 @@ bool Engine::show_achievements(Frame &f, bool bkg) {
 		}
 
 		if (f.btn("Timeline")) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
+			sfx.play_sfx(SfxId::ui_click);
 			show_timeline = true;
 		}
 
 		f.sl();
 
 		if (f.btn("Close")) {
-			sfx.play_sfx(SfxId::sfx_ui_click);
+			sfx.play_sfx(SfxId::ui_click);
 			return false;
 		}
 	}

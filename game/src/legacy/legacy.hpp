@@ -284,6 +284,7 @@ enum class DrsId {
 	sfx_player_resign = 50306,
 	sfx_gameover_victory = 50320,
 	sfx_gameover_defeat = 50321,
+	sfx_queue_error = 50303,
 };
 
 struct DrsBkg final {
