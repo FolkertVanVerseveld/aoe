@@ -408,7 +408,6 @@ void Engine::start_client_now(const char *host, uint16_t port, UI_TaskInfo &info
 void Engine::start_client(const char *host, uint16_t port) {
 	ZoneScoped;
 
-	reserve_threads(1);
 	std::thread t([this](const char *func, const char *host, uint16_t port) {
 		ZoneScoped;
 
@@ -638,6 +637,14 @@ void Engine::goto_menu(MenuState state) {
 	switch (menu_state) {
 	case MenuState::start:
 		sfx.play_music(MusicId::menu);
+		// pray this never becomes racey
+		{
+			lock lk(m);
+			if (server && !server->active())
+				server.reset();
+			if (client && !client->connected())
+				client.reset();
+		}
 		break;
 	case MenuState::multiplayer_game:
 		sfx.play_music(MusicId::game, -1);
@@ -779,17 +786,24 @@ void Engine::add_chat_text(const std::string &s) {
 
 void Engine::quit_game(MenuState next) {
 	try {
+		bool bail = false;
+
 		if (server) {
-			if (!server->active())
-				return;
-
-			stop_server();
-		} else {
-			if (!client->connected())
-				return;
-
-			client->stop();
+			if (server->active())
+				stop_server();
+			else
+				bail = true;
 		}
+
+		if (client) {
+			if (client->connected())
+				client->stop();
+			else
+				bail = true;
+		}
+
+		if (bail)
+			return;
 
 		chat.clear();
 		if (menu_state == next_menu_state)
