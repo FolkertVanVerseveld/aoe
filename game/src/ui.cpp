@@ -1309,6 +1309,11 @@ void Engine::show_multiplayer_menu() {
 	ImGui::SetCursorPosX(old_x);
 }
 
+void DrawLine(ImDrawList *lst, float x0, float y0, float x1, float y1, SDL_Color col)
+{
+	lst->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(col.r, col.g, col.b, SDL_ALPHA_OPAQUE), 1);
+}
+
 void Engine::draw_background_border() {
 	ZoneScoped;
 	assert(assets.get());
@@ -1345,23 +1350,23 @@ void Engine::draw_background_border() {
 
 	GLfloat right = io.DisplaySize.x, bottom = io.DisplaySize.y;
 
-	lst->AddLine(ImVec2(0, 0), ImVec2(right, 0), IM_COL32(col.border[0].r, col.border[0].g, col.border[0].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(right - 1, 0), ImVec2(right - 1, bottom - 1), IM_COL32(col.border[0].r, col.border[0].g, col.border[0].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, 0, 0, right, 0, col.border[0]);
+	DrawLine(lst, right - 1, 0, right - 1, bottom - 1, col.border[0]);
 
-	lst->AddLine(ImVec2(1, 1), ImVec2(right - 1, 1), IM_COL32(col.border[1].r, col.border[1].g, col.border[1].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(right - 2, 1), ImVec2(right - 2, bottom - 2), IM_COL32(col.border[1].r, col.border[1].g, col.border[1].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, 1, 1, right - 1, 1, col.border[1]);
+	DrawLine(lst, right - 2, 1, right - 2, bottom - 2, col.border[1]);
 
-	lst->AddLine(ImVec2(2, 2), ImVec2(right - 2, 2), IM_COL32(col.border[2].r, col.border[2].g, col.border[2].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(right - 3, 2), ImVec2(right - 3, bottom - 3), IM_COL32(col.border[2].r, col.border[2].g, col.border[2].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, 2, 2, right - 2, 2, col.border[2]);
+	DrawLine(lst, right - 3, 2, right - 3, bottom - 3, col.border[2]);
 
-	lst->AddLine(ImVec2(0, 0), ImVec2(0, bottom), IM_COL32(col.border[5].r, col.border[5].g, col.border[5].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(0, bottom - 1), ImVec2(right, bottom - 1), IM_COL32(col.border[5].r, col.border[5].g, col.border[5].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, 0, 0, 0, bottom, col.border[5]);
+	DrawLine(lst, 0, bottom - 1, right, bottom - 1, col.border[5]);
 
-	lst->AddLine(ImVec2(1, 1), ImVec2(1, bottom - 1), IM_COL32(col.border[4].r, col.border[4].g, col.border[4].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(1, bottom - 2), ImVec2(right - 1, bottom - 2), IM_COL32(col.border[4].r, col.border[4].g, col.border[4].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, 1, 1, 1, bottom - 1, col.border[4]);
+	DrawLine(lst, 1, bottom - 2, right - 1, bottom - 2, col.border[4]);
 
-	lst->AddLine(ImVec2(2, 2), ImVec2(2, bottom - 2), IM_COL32(col.border[3].r, col.border[3].g, col.border[3].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(2, bottom - 3), ImVec2(right - 2, bottom - 3), IM_COL32(col.border[3].r, col.border[3].g, col.border[3].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, 2, 2, 2, bottom - 2, col.border[3]);
+	DrawLine(lst, 2, bottom - 3, right - 2, bottom - 3, col.border[3]);
 }
 
 }

@@ -30,6 +30,8 @@ namespace aoe {
 class Assets;
 class Engine;
 
+void DrawLine(ImDrawList *lst, float x0, float y0, float x1, float y1, SDL_Color col);
+
 namespace ui {
 
 bool chkbox(const char *s, bool &b);

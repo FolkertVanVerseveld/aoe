@@ -210,23 +210,23 @@ bool UICache::frame_btn(const BackgroundColors &col, const char *lbl, float x, f
 		coltbl[5] = col.border[5];
 	}
 
-	lst->AddLine(ImVec2(x, y), ImVec2(right, y), IM_COL32(coltbl[0].r, coltbl[0].g, coltbl[0].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(right - 1, y), ImVec2(right - 1, bottom - 1), IM_COL32(coltbl[0].r, coltbl[0].g, coltbl[0].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, x, y, right, y, coltbl[0]);
+	DrawLine(lst, right - 1, y, right - 1, bottom - 1, coltbl[0]);
 
-	lst->AddLine(ImVec2(x + 1, y + 1), ImVec2(right - 1, y + 1), IM_COL32(coltbl[1].r, coltbl[1].g, coltbl[1].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(right - 2, y + 1), ImVec2(right - 2, bottom - 2), IM_COL32(coltbl[1].r, coltbl[1].g, coltbl[1].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, x + 1, y + 1, right - 1, y + 1, coltbl[1]);
+	DrawLine(lst, right - 2, y + 1, right - 2, bottom - 2, coltbl[1]);
 
-	lst->AddLine(ImVec2(x + 2, y + 2), ImVec2(right - 2, y + 2), IM_COL32(coltbl[2].r, coltbl[2].g, coltbl[2].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(right - 3, y + 2), ImVec2(right - 3, bottom - 3), IM_COL32(coltbl[2].r, coltbl[2].g, coltbl[2].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, x + 2, y + 2, right - 2, y + 2, coltbl[2]);
+	DrawLine(lst, right - 3, y + 2, right - 3, bottom - 3, coltbl[2]);
 
-	lst->AddLine(ImVec2(x, y), ImVec2(x, bottom), IM_COL32(coltbl[5].r, coltbl[5].g, coltbl[5].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(x, bottom - 1), ImVec2(right, bottom - 1), IM_COL32(coltbl[5].r, coltbl[5].g, coltbl[5].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, x, y, x, bottom, coltbl[5]);
+	DrawLine(lst, x, bottom - 1, right, bottom - 1, coltbl[5]);
 
-	lst->AddLine(ImVec2(x + 1, y + 1), ImVec2(x + 1, bottom - 1), IM_COL32(coltbl[4].r, coltbl[4].g, coltbl[4].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(x + 1, bottom - 2), ImVec2(right - 1, bottom - 2), IM_COL32(coltbl[4].r, coltbl[4].g, coltbl[4].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, x + 1, y + 1, x + 1, bottom - 1, coltbl[4]);
+	DrawLine(lst, x + 1, bottom - 2, right - 1, bottom - 2, coltbl[4]);
 
-	lst->AddLine(ImVec2(x + 2, y + 2), ImVec2(x + 2, bottom - 2), IM_COL32(coltbl[3].r, coltbl[3].g, coltbl[3].b, SDL_ALPHA_OPAQUE), 1);
-	lst->AddLine(ImVec2(x + 2, bottom - 3), ImVec2(right - 2, bottom - 3), IM_COL32(coltbl[3].r, coltbl[3].g, coltbl[3].b, SDL_ALPHA_OPAQUE), 1);
+	DrawLine(lst, x + 2, y + 2, x + 2, bottom - 2, coltbl[3]);
+	DrawLine(lst, x + 2, bottom - 3, right - 2, bottom - 3, coltbl[3]);
 
 	ImVec2 sz(ImGui::CalcTextSize(lbl));
 	if (snd) { ++x; ++y; }
