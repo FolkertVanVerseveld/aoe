@@ -55,6 +55,7 @@ enum class TauntId {
 
 enum class SfxId {
 	ui_click,
+	hud_click,
 	chat,
 	towncenter,
 	barracks,

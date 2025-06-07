@@ -238,8 +238,9 @@ enum class DrsId {
 	ent_dead_tree2 = 637,
 	ent_decay_tree = 623,
 
-	sfx_ui_click = 5035,
+	sfx_ui_click = 50300,  // in game: 5035,
 	sfx_priest_convert2 = 5051,
+	sfx_hud_click = 50301, // in game buttons
 	sfx_chat = 50302,
 	sfx_towncenter = 5044,
 	sfx_barracks = 5022,

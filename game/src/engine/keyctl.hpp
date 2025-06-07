@@ -26,6 +26,7 @@ enum class GameKey {
 	toggle_debug_window,
 	// hotkeys for logistics
 	focus_towncenter,
+	open_buildmenu,
 	train_villager,
 	train_melee1,
 	max,

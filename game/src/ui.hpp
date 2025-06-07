@@ -212,6 +212,13 @@ struct VisualTile final {
 void show_player_game_table(ui::Frame &f);
 void show_scenario_settings(ui::Frame &f, ScenarioSettings &scn);
 
+enum class HudState {
+	start,
+	worker,
+	buildmenu,
+	trainmenu,
+};
+
 class UICache final {
 	std::vector<std::string> civs;
 	Engine *e;
@@ -235,6 +242,8 @@ class UICache final {
 	int build_menu;
 	float start_x, start_y;
 public:
+	HudState state;
+
 	UICache();
 
 	std::optional<Entity> first_selected_entity();
@@ -269,6 +278,7 @@ public:
 
 	void set_scn(io::Scenario&);
 private:
+	void play_sfx(SfxId id, int loops=0);
 	void draw_tile(uint8_t id, uint8_t h, int x, int y, const ImVec2 &size, ImU32 col);
 	void show_terrain();
 	/** Show user selected entities. */

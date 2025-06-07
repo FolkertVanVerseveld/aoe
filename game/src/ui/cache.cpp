@@ -14,7 +14,8 @@ UICache::UICache()
 	, t_imgs()
 	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
 	, scn(), scn_edit(), scn_game(), mem(), gmb_top(), gmb_bottom()
-	, select_started(false), multi_select(false), btn_left(false), build_menu(-1), start_x(0), start_y(0) {}
+	, select_started(false), multi_select(false), btn_left(false)
+	, build_menu(-1), start_x(0), start_y(0), state(HudState::start) {}
 
 static constexpr bool point_in_rect(float x, float y, const SDL_Rect &rect)
 {

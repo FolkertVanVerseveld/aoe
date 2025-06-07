@@ -30,6 +30,10 @@ void UICache::idle_editor(Engine &e) {
 	e.gv.try_read(scn_game);
 }
 
+void UICache::play_sfx(SfxId id, int loops) {
+	e->sfx.play_sfx(id, loops);
+}
+
 void UICache::idle_game() {
 	ZoneScoped;
 
@@ -65,7 +69,7 @@ void UICache::idle_game() {
 		if (sfx == spawn_sfx.end())
 			LOGF(stderr, "%s: unknown spawn sfx for entity %u\n", __func__, (unsigned)ent.type);
 		else
-			e->sfx.play_sfx(sfx->second);
+			play_sfx(sfx->second);
 	}
 
 	spawned.clear();
@@ -75,13 +79,13 @@ void UICache::idle_game() {
 	for (const EntityView &ev : killed) {
 		// TODO filter if out of camera range
 		if (is_building(ev.type)) {
-			e->sfx.play_sfx(SfxId::bld_die_random);
+			play_sfx(SfxId::bld_die_random);
 			continue;
 		}
 
 		switch (ev.type) {
 		default:
-			e->sfx.play_sfx(SfxId::villager_die_random);
+			play_sfx(SfxId::villager_die_random);
 			break;
 		}
 	}
@@ -91,7 +95,7 @@ void UICache::idle_game() {
 	for (unsigned pos : e->gv.players_died) {
 		PlayerView &pv = e->gv.players[pos];
 		e->add_chat_text(pv.init.name + " resigned");
-		e->sfx.play_sfx(SfxId::player_resign);
+		play_sfx(SfxId::player_resign);
 	}
 }
 
@@ -165,6 +169,8 @@ bool UICache::find_idle_villager(unsigned playerid) {
 
 void UICache::show_hud_selection(float menubar_left, float top, float menubar_h) {
 	ZoneScoped;
+	state = HudState::start;
+
 	std::optional<Entity> ent = first_selected_entity();
 	if (!ent.has_value())
 		return;
@@ -212,6 +218,7 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 		return;
 	
 	if (is_building(info.type)) {
+		state = HudState::buildmenu;
 		const ImageSet &s_units = a.anim_at(io::DrsId::gif_unit_icons);
 
 		x0 = menubar_left + 140 * scale;
@@ -224,8 +231,10 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 				const EntityInfo &i_vil = entity_info.at((unsigned)EntityType::villager);
 				const gfx::ImageRef &img_vil = a.at(s_units.try_at(ent->playerid, i_vil.icon));
 
-				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_vil.bnds.w * scale + 4, img_vil.bnds.h * scale + 4, 1))
+				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_vil.bnds.w * scale + 4, img_vil.bnds.h * scale + 4, 1)) {
+					play_sfx(SfxId::hud_click);
 					e->client->entity_train(ent->ref, EntityType::villager);
+				}
 
 				image(img_vil, x0, y0, scale);
 				break;
@@ -235,14 +244,18 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 				const EntityInfo &i_melee = entity_info.at((unsigned)EntityType::melee1);
 				const gfx::ImageRef &img_melee = a.at(s_units.try_at(ent->playerid, i_melee.icon));
 
-				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_melee.bnds.w * scale + 4, img_melee.bnds.h * scale + 4, 1))
+				if (frame_btn(col, "train 1", x0 - 2, y0 - 2, img_melee.bnds.w * scale + 4, img_melee.bnds.h * scale + 4, 1)) {
+					play_sfx(SfxId::hud_click);
 					e->client->entity_train(ent->ref, EntityType::melee1);
+				}
 
 				image(img_melee, x0, y0, scale);
 				break;
 			}
 		}
 	} else if (is_worker(ent->type)) {
+		state = HudState::worker;
+
 		const ImageSet &s_task = a.anim_at(io::DrsId::gif_task_icons);
 		const gfx::ImageRef &img_build = a.at(s_task.imgs[2]);
 
@@ -252,8 +265,10 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 		y0 = top + 10 * scale;
 
 		if (build_menu < 0) {
-			if (frame_btn(col, "build 1", x0 - 2, y0 - 2, img_build.bnds.w * scale + 4, img_build.bnds.h * scale + 4, 1))
+			if (frame_btn(col, "build 1", x0 - 2, y0 - 2, img_build.bnds.w * scale + 4, img_build.bnds.h * scale + 4, 1)) {
+				play_sfx(SfxId::hud_click);
 				build_menu = 0; // TODO open build menu
+			}
 
 			image(img_build, x0, y0, scale);
 		} else {
@@ -276,8 +291,10 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 				char lbl[32];
 				snprintf(lbl, sizeof lbl, "build %u", i);
 
-				if (frame_btn(col, lbl, x0 - 2 + i * ww, y0 - 2, w + margin, h + margin, 1))
-					; // TODO start building placement
+				if (frame_btn(col, lbl, x0 - 2 + i * ww, y0 - 2, w + margin, h + margin, 1)) {
+					play_sfx(SfxId::invalid_select);
+					// TODO start building placement
+				}
 
 				image(blds[i], x0 + i * ww, y0, scale);
 			}

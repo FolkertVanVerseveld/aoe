@@ -259,10 +259,9 @@ void Engine::display() {
 	ZoneScoped;
 	GLCHK;
 	ImGuiIO &io = ImGui::GetIO();
+	io.FontGlobalScale = 1.0f / SDL::fnt_scale;
 	if (font_scaling)
-		io.FontGlobalScale = std::max(1.0f / SDL::fnt_scale, io.DisplaySize.y / SDL::max_h);
-	else
-		io.FontGlobalScale = 1.0f / SDL::fnt_scale;
+		io.FontGlobalScale = std::max(io.FontGlobalScale, io.DisplaySize.y / SDL::max_h);
 
 	ui.idle(*this);
 	show_menubar();
@@ -1048,6 +1047,8 @@ void Engine::kbp_game(GameKey k) {
 		// TODO focus towncenter if we have any
 		if (ui.try_select(EntityType::town_center, cv.playerindex))
 			sfx.play_sfx(SfxId::towncenter);
+		else
+			sfx.play_sfx(SfxId::invalid_select);
 		return;
 	case GameKey::focus_idle_villager:
 		// TODO focus villagers if we have any

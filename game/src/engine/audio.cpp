@@ -251,8 +251,6 @@ void Audio::play_sfx(SfxId id, int loops) {
 	if (sfx_mute)
 		return;
 
-	std::lock_guard<std::mutex> lk(m_mix);
-
 	// check if special sfxid
 	switch (id) {
 		case SfxId::bld_die_random:
@@ -274,6 +272,8 @@ void Audio::play_sfx(SfxId id, int loops) {
 			id = SfxId::queue_error;
 			break;
 	}
+
+	std::lock_guard<std::mutex> lk(m_mix);
 
 	auto it = sfx.find(id);
 	if (it == sfx.end()) {

@@ -390,7 +390,9 @@ void Assets::load_gfx(Engine &eng, UI_TaskInfo &info) {
 	}
 
 #define sfx(id) eng.sfx.load_sfx(SfxId:: id, drs_ui.open_wav(DrsId:: sfx_ ## id))
-	eng.sfx.load_sfx(SfxId::chat, drs_ui.open_wav(DrsId::sfx_chat));
+	sfx(ui_click);
+	sfx(hud_click);
+	sfx(chat);
 	sfx(player_resign);
 	sfx(gameover_victory);
 	sfx(gameover_defeat);
@@ -435,7 +437,6 @@ void Assets::load_audio(Engine &eng, UI_TaskInfo &info) {
 
 	DRS drs_sounds(path + "/data/sounds.drs");
 
-	eng.sfx.load_sfx(SfxId::ui_click, drs_sounds.open_wav(DrsId::sfx_ui_click));
 	eng.sfx.load_taunt(TauntId::max, drs_sounds.open_wav(DrsId::sfx_priest_convert2));
 
 #define sfx(id) eng.sfx.load_sfx(SfxId:: id, drs_sounds.open_wav(DrsId:: sfx_ ## id))
