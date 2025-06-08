@@ -16,6 +16,10 @@
 #include <memory>
 #include <vector>
 
+#if _WIN32
+#include <Windows.h>
+#endif
+
 namespace aoe {
 
 class SDLguard final {
@@ -50,6 +54,10 @@ public:
 	SDL_DisplayMode mode_def, mode_full;
 	SDL_Rect pos_def, pos_full;
 	int disp_full;
+#if _WIN32
+	RECT old_clip;
+	bool is_clipped;
+#endif
 
 	Window(const char *title, int x, int y, int w, int h);
 
@@ -59,6 +67,8 @@ public:
 	void set_fullscreen(bool v=true);
 
 	void size(int &w, int &h);
+
+	bool set_clipping(bool enable);
 };
 
 class SDL final {

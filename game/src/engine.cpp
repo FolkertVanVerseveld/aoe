@@ -632,6 +632,7 @@ void Engine::cam_reset() {
 void Engine::goto_menu(MenuState state) {
 	menu_state = state;
 	set_background(menu_state);
+	sdl->window.set_clipping(false);
 
 	switch (menu_state) {
 	case MenuState::start:
@@ -646,6 +647,9 @@ void Engine::goto_menu(MenuState state) {
 		}
 		break;
 	case MenuState::multiplayer_game:
+		//if (sdl->window.is_fullscreen())
+			sdl->window.set_clipping(true);
+
 		sfx.play_music(MusicId::game, -1);
 		break;
 	case MenuState::editor_scenario:
@@ -1057,6 +1061,9 @@ void Engine::kbp_game(GameKey k) {
 		else
 			sfx.play_sfx(SfxId::invalid_select);
 		return;
+	case GameKey::open_buildmenu:
+		ui.try_open_build_menu();
+		break;
 	}
 
 	std::optional<Entity> ent{ ui.first_selected_entity() };

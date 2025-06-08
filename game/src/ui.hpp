@@ -248,6 +248,7 @@ public:
 
 	std::optional<Entity> first_selected_entity();
 	std::optional<Entity> first_selected_building();
+	std::optional<Entity> first_selected_worker();
 
 	bool try_select(EntityType type, unsigned playerid);
 	bool find_idle_villager(unsigned playerid);
@@ -277,6 +278,8 @@ public:
 	const gfx::ImageRef &imgtile(uint8_t v);
 
 	void set_scn(io::Scenario&);
+
+	void try_open_build_menu();
 private:
 	void play_sfx(SfxId id, int loops=0);
 	void draw_tile(uint8_t id, uint8_t h, int x, int y, const ImVec2 &size, ImU32 col);

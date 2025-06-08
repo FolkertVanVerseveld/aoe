@@ -123,12 +123,31 @@ std::optional<Entity> UICache::first_selected_entity() {
 }
 
 std::optional<Entity> UICache::first_selected_building() {
-	auto v = first_selected_entity();
-	if (!v.has_value())
+	ZoneScoped;
+	if (selected.empty())
 		return std::nullopt;
 
-	const EntityInfo &info = entity_info.at((unsigned)v->type);
-	return is_building(info.type) ? v : std::nullopt;
+	for (const IdPoolRef &ref : selected) {
+		Entity *ent = e->gv.try_get(ref);
+		if (ent && is_building(ent->type))
+			return *ent;
+	}
+
+	return std::nullopt;
+}
+
+std::optional<Entity> UICache::first_selected_worker() {
+	ZoneScoped;
+	if (selected.empty())
+		return std::nullopt;
+
+	for (const IdPoolRef &ref : selected) {
+		Entity *ent = e->gv.try_get(ref);
+		if (ent && is_worker(ent->type))
+			return *ent;
+	}
+
+	return std::nullopt;
 }
 
 bool UICache::try_select(EntityType type, unsigned playerid) {
@@ -165,6 +184,18 @@ bool UICache::find_idle_villager(unsigned playerid) {
 	}
 
 	return changed;
+}
+
+void UICache::try_open_build_menu() {
+	if (state != HudState::worker)
+		return;
+
+	std::optional<Entity> ent = first_selected_worker();
+	if (!ent.has_value())
+		return;
+
+	play_sfx(SfxId::hud_click);
+	build_menu = 0;
 }
 
 void UICache::show_hud_selection(float menubar_left, float top, float menubar_h) {
@@ -218,7 +249,6 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 		return;
 	
 	if (is_building(info.type)) {
-		state = HudState::buildmenu;
 		const ImageSet &s_units = a.anim_at(io::DrsId::gif_unit_icons);
 
 		x0 = menubar_left + 140 * scale;
@@ -272,6 +302,7 @@ void UICache::show_hud_selection(float menubar_left, float top, float menubar_h)
 
 			image(img_build, x0, y0, scale);
 		} else {
+			state = HudState::buildmenu;
 			const ImageSet &s_bld = a.anim_at(io::DrsId::gif_building_icons);
 			unsigned p = ent->playerid;
 

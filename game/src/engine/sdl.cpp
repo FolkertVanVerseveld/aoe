@@ -7,6 +7,10 @@
 
 #include "../legacy/legacy.hpp"
 
+#include <SDL2/SDL_syswm.h>
+
+#include "../debug.hpp"
+
 namespace aoe {
 
 SDLguard::SDLguard(Uint32 flags) : flags(flags)
@@ -96,7 +100,11 @@ Window::Window(const char *title, int x, int y, int w, int h)
 	: flags((SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE))
 #pragma warning(default: 26812)
 	, win(SDL_CreateWindow(title, x, y, w, h, flags), SDL_DestroyWindow)
-	, mode_def{ 0 }, mode_full{ 0 }, pos_def{ 0 }, pos_full{ 0 }, disp_full(-1) {}
+	, mode_def{ 0 }, mode_full{ 0 }, pos_def{ 0 }, pos_full{ 0 }, disp_full(-1)
+#if _WIN32
+	, old_clip(), is_clipped(false)
+#endif
+	{}
 
 GLctx::GLctx(SDL_Window *win) : gl_context(SDL_GL_CreateContext(win)) {}
 
@@ -119,6 +127,18 @@ int GLctx::get_vsync() {
 bool Window::is_fullscreen() {
 	return (SDL_GetWindowFlags(win.get()) & SDL_WINDOW_FULLSCREEN) != 0;
 }
+
+#if _WIN32
+static bool getWindowRect(SDL_Window *win, RECT &rect)
+{
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(win, &wmInfo);
+	HWND hwnd = wmInfo.info.win.window;
+
+	return GetWindowRect(hwnd, &rect);
+}
+#endif
 
 void Window::set_fullscreen(bool v) {
 	if (v == is_fullscreen())
@@ -146,10 +166,57 @@ void Window::set_fullscreen(bool v) {
 		SDL_SetWindowSize(w, pos_def.w, pos_def.h);
 		SDL_SetWindowPosition(w, pos_def.x, pos_def.y);
 	}
+
+#if _WIN32
+	if (!is_clipped)
+		return;
+
+	RECT new_clip;
+	if (!getWindowRect(*this, new_clip) || !ClipCursor(&new_clip)) {
+		LOGF("%s: clipping error: %s\n", __func__, GetLastError());
+
+		// disable and retry
+		SetLastError(0);
+		set_clipping(false);
+		if (!set_clipping(true))
+			LOGF("%s: clipping failed: %s\n", __func__, GetLastError());
+	}
+#else
+#error not implemented
+#endif
 }
 
 void Window::size(int &w, int &h) {
 	SDL_GetWindowSize(win.get(), &w, &h);
+}
+
+bool Window::set_clipping(bool enable) {
+#if _WIN32
+	if (enable == is_clipped)
+		return true;
+
+	bool v;
+
+	if (!enable) {
+		if ((v = ClipCursor(&old_clip)) == true)
+			is_clipped = false;
+
+		return v;
+	}
+
+	RECT clip, new_clip;
+
+	v = GetClipCursor(&clip) && getWindowRect(*this, new_clip) && ClipCursor(&new_clip);
+	if (v) {
+		old_clip = clip;
+		is_clipped = true;
+		return v;
+	}
+
+	return false;
+#else
+#error not implemented
+#endif
 }
 
 }
