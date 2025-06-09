@@ -31,20 +31,8 @@ void Debug::show_texture_map() {
 	ImGui::Image(tex, ImVec2(a.ts_ui.w, a.ts_ui.h));
 }
 
-void Debug::show(bool &open) {
+void Debug::show_display_info(Frame &f) {
 	ZoneScoped;
-
-	if (!open)
-		return;
-
-	Frame f;
-	Engine &e = *eng;
-
-	if (!f.begin("Debug control", open))
-		return;
-
-	ImGuiIO &io = ImGui::GetIO();
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 
 	int displays = SDL_GetNumVideoDisplays();
 	f.fmt("Display count: %d", displays);
@@ -89,11 +77,30 @@ void Debug::show(bool &open) {
 		}
 	}
 
+	Engine &e = *eng;
 	SDL_DisplayMode mode;
 	SDL_GetWindowDisplayMode(e.sdl->window, &mode);
 
 	f.fmt("using display %d", SDL_GetWindowDisplayIndex(e.sdl->window));
 	f.fmt("%4dx%4d @%dHz format %s (%08X)", mode.w, mode.h, mode.refresh_rate, SDL_GetPixelFormatName(mode.format), mode.format);
+}
+
+void Debug::show(bool &open) {
+	ZoneScoped;
+
+	if (!open)
+		return;
+
+	Frame f;
+	Engine &e = *eng;
+
+	if (!f.begin("Debug control", open))
+		return;
+
+	ImGuiIO &io = ImGui::GetIO();
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+
+	show_display_info(f);
 
 	int size = e.tp.size(), idle = e.tp.n_idle(), running = size - idle;
 	f.fmt("Thread pool: %d threads, %d running", size, running);
@@ -138,12 +145,11 @@ void Debug::show(bool &open) {
 						f.fmt("ref (%u,%u)", ref.first, ref.second);
 
 						unsigned flags = ci.flags;
-						// TODO UB: use instance var
-						bool ready = !!(flags & (unsigned)ClientInfoFlags::ready);
+						ci_ready = !!(flags & (unsigned)ClientInfoFlags::ready);
 
-						f.chkbox("ready", ready);
+						f.chkbox("ready", ci_ready);
 
-						if (ready)
+						if (ci_ready)
 							flags |= (unsigned)ClientInfoFlags::ready;
 						else
 							flags &= ~(unsigned)ClientInfoFlags::ready;

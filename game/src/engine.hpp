@@ -132,6 +132,9 @@ private:
 
 	SDL *sdl;
 	bool is_fullscreen;
+#if _WIN32
+	bool is_clipped;
+#endif
 	std::unique_ptr<gfx::GL> m_gl;
 
 	std::unique_ptr<Assets> assets;

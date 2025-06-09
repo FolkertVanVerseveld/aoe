@@ -74,7 +74,11 @@ Engine::Engine()
 	, running(false), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory)
 	, sfx(), music_id(0), music_on(true), music_volume(100.0f), sfx_on(true), sfx_volume(100.0f), game_dir()
 	, debug()
-	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false), m_gl(nullptr), assets(), assets_good(false)
+	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false)
+#if _WIN32
+	, is_clipped(false)
+#endif
+	, m_gl(nullptr), assets(), assets_good(false)
 	, show_chat(false), m_show_achievements(false), show_timeline(false), show_diplomacy(false)
 	, vbo(0), vsync_mode(0), vsync_idx(0)
 	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
@@ -199,6 +203,14 @@ void Engine::show_menubar() {
 
 			if (v != is_fullscreen)
 				sdl->window.set_fullscreen(is_fullscreen);
+
+#if _WIN32
+			v = is_clipped = sdl->window.is_clipped;
+			mv.chkbox("Is clipped", is_clipped);
+
+			if (v != is_clipped)
+				sdl->window.set_clipping(is_clipped);
+#endif
 		}
 	}
 }

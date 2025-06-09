@@ -190,8 +190,8 @@ void Window::size(int &w, int &h) {
 	SDL_GetWindowSize(win.get(), &w, &h);
 }
 
-bool Window::set_clipping(bool enable) {
 #if _WIN32
+bool Window::set_clipping(bool enable) {
 	if (enable == is_clipped)
 		return true;
 
@@ -210,13 +210,12 @@ bool Window::set_clipping(bool enable) {
 	if (v) {
 		old_clip = clip;
 		is_clipped = true;
-		return v;
 	}
 
-	return false;
+	return v;
+}
 #else
 #error not implemented
 #endif
-}
 
 }

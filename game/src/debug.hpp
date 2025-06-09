@@ -10,6 +10,8 @@
 #include "engine/gfx.hpp"
 #include <vector>
 
+#include "ui.hpp"
+
 #if DEBUG
 #define LOGF(f, ...) printf(f, ## __VA_ARGS__)
 #define LOG(s) puts(s)
@@ -23,8 +25,10 @@ namespace aoe {
 class Debug final {
 	MemoryEditor mem_edit;
 	bool show_tm;
+	bool ci_ready;
 
 	void show_texture_map();
+	void show_display_info(ui::Frame&);
 public:
 	void show(bool &open);
 };
