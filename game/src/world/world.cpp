@@ -255,14 +255,14 @@ void World::tick_players() {
 		s->broadcast(pkg);
 	}
 
-	if (players.size() <= 2)
+	if (players.size() <= first_player_idx + 1u)
 		return; // no game over condition
 
 	std::set<unsigned> alive_teams;
 	WorldView wv(*this);
 
 	// collect surviving teams
-	for (unsigned i = 1; i < players.size(); ++i) {
+	for (unsigned i = first_player_idx; i < players.size(); ++i) {
 		Player &p = players[i];
 		if (p.alive) {
 			alive_teams.emplace(p.init.team);

@@ -138,6 +138,7 @@ void Debug::show(bool &open) {
 						f.fmt("ref (%u,%u)", ref.first, ref.second);
 
 						unsigned flags = ci.flags;
+						// TODO UB: use instance var
 						bool ready = !!(flags & (unsigned)ClientInfoFlags::ready);
 
 						f.chkbox("ready", ready);
