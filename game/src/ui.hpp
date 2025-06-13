@@ -260,7 +260,7 @@ public:
 	void idle_editor(Engine &e);
 	void show_multiplayer_game();
 
-	void user_interact_entities();
+	void try_kill_first_entity();
 
 	void show_world();
 

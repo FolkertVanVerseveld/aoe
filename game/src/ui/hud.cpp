@@ -99,13 +99,10 @@ void UICache::idle_game() {
 	}
 }
 
-void UICache::user_interact_entities() {
+void UICache::try_kill_first_entity() {
 	ZoneScoped;
-
-	if (e->keyctl.is_tapped(GameKey::kill_entity) && !selected.empty()) {
+	if (!selected.empty())
 		e->client->entity_kill(*selected.begin());
-		return;
-	}
 }
 
 void UICache::image(const gfx::ImageRef &ref, float x, float y, float scale) {

@@ -14,6 +14,7 @@ enum class GameKey {
 	key_up,
 	key_down,
 	kill_entity,
+	focus_entity,
 	focus_idle_villager,
 	// general hud stuff
 	toggle_chat,
@@ -46,4 +47,7 @@ public:
 	bool is_down(GameKey);
 	bool is_tapped(GameKey, bool reset=true);
 };
+
+extern KeyboardController keyctl;
+
 }

@@ -151,7 +151,6 @@ private:
 	float cam_x, cam_y;
 	static constexpr float cam_speed = 400.0f;
 
-	KeyboardController keyctl;
 	GameView gv;
 	int tw, th;
 	ClientView cv;

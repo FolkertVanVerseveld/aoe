@@ -207,6 +207,7 @@ class Server final : public ServerSocketController, public IServer {
 	friend Debug;
 	friend World;
 public:
+	static constexpr unsigned max_peers = 255; // could be more. it's just to prevent DoS
 	Server();
 	~Server() override;
 
@@ -357,6 +358,7 @@ class Client final : public IClient {
 	std::atomic<bool> starting;
 
 	std::map<IdPoolRef, ClientInfo> peers;
+	std::vector<uint8_t> sendbuf;
 	friend Debug;
 public:
 	Client();

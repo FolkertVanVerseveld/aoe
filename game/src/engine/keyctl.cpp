@@ -2,6 +2,8 @@
 
 namespace aoe {
 
+KeyboardController keyctl;
+
 KeyboardController::KeyboardController() : state((size_t)GameKey::max, false), state_tapped(state.size(), false), keys() {
 	// NOTE in theory, you can have multiple keys mapped to the same GameKey, but this can lead to unreliable results with key down state.
 	keys[SDLK_a] = GameKey::key_left;
@@ -22,6 +24,7 @@ KeyboardController::KeyboardController() : state((size_t)GameKey::max, false), s
 	keys['h'] = keys['H'] = GameKey::focus_towncenter;
 	keys['t'] = keys['T'] = GameKey::train_melee1;
 	keys['.'] = GameKey::focus_idle_villager;
+	keys[' '] = GameKey::focus_entity;
 }
 
 void KeyboardController::clear() {

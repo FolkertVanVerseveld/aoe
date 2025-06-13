@@ -76,14 +76,7 @@ void UICache::show_terrain() {
 
 void UICache::show_world() {
 	ZoneScoped;
-
-	ImGuiIO &io = ImGui::GetIO();
-
 	show_terrain();
-
-	if (!io.WantCaptureMouse)
-		user_interact_entities();
-
 	show_entities();
 	show_selections();
 	show_particles();

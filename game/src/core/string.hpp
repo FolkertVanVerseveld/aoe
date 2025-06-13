@@ -36,4 +36,10 @@ static size_t strmaxlen(const char *str, size_t count)
 	return size;
 }
 
+// substitute for std::string::contains so we don't have to require c++20
+static bool contains(const std::string &haystack, char needle)
+{
+	return haystack.find(needle) != std::string::npos;
+}
+
 }

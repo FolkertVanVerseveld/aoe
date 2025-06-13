@@ -81,7 +81,7 @@ Engine::Engine()
 	, m_gl(nullptr), assets(), assets_good(false)
 	, show_chat(false), m_show_achievements(false), show_timeline(false), show_diplomacy(false)
 	, vbo(0), vsync_mode(0), vsync_idx(0)
-	, cam_x(0), cam_y(0), keyctl(), gv(), tw(0), th(0), cv()
+	, cam_x(0), cam_y(0), gv(), tw(0), th(0), cv()
 	, player_tbl_y(0), ui()
 	, texture1(0), tex1(nullptr)
 {
@@ -1042,6 +1042,8 @@ int Engine::mainloop() {
 }
 
 void Engine::kbp_game(GameKey k) {
+	ImGuiIO &io = ImGui::GetIO();
+
 	switch (k) {
 	case GameKey::toggle_chat:
 		show_chat = true;
@@ -1059,6 +1061,10 @@ void Engine::kbp_game(GameKey k) {
 
 	// focus hotkeys take priority over remaining HUD hotkeys
 	switch (k) {
+	case GameKey::kill_entity:
+		if (!io.WantCaptureMouse)
+			ui.try_kill_first_entity();
+		return;
 	case GameKey::focus_towncenter:
 		// TODO focus towncenter if we have any
 		if (ui.try_select(EntityType::town_center, cv.playerindex))
@@ -1075,7 +1081,7 @@ void Engine::kbp_game(GameKey k) {
 		return;
 	case GameKey::open_buildmenu:
 		ui.try_open_build_menu();
-		break;
+		return;
 	}
 
 	std::optional<Entity> ent{ ui.first_selected_entity() };
@@ -1132,16 +1138,14 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 
 	// Main loop
 	bool done = false;
-	while (!done)
-	{
+	while (!done) {
 		// Poll and handle events (inputs, window resize, etc.)
 		// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
 		// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
 		// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
 		// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 		SDL_Event event;
-		while (SDL_PollEvent(&event))
-		{
+		while (SDL_PollEvent(&event)) {
 			bool p;
 
 			switch (event.type) {
@@ -1177,7 +1181,6 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 		idle();
 
 		GLCHK;
-
 		GL::clearColor(0, 0, 0, 1);
 
 		if (menu_state != MenuState::multiplayer_game) {
@@ -1189,7 +1192,6 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 
 			glBindVertexArray(vao);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
 			GLCHK;
 		}
 

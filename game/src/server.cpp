@@ -3,6 +3,8 @@
 #include "engine.hpp"
 #include "engine/audio.hpp"
 
+#include <string.hpp>
+
 namespace aoe {
 
 Server::Server()
@@ -21,7 +23,7 @@ struct pkg {
 bool Server::incoming(ServerSocket &s, const Peer &p) {
 	std::lock_guard<std::mutex> lk(m_peers);
 
-	if (peers.size() > 255 || m_running)
+	if (peers.size() > max_peers || m_running)
 		return false;
 
 	std::string name(p.host + ":" + p.server);
@@ -184,8 +186,7 @@ bool Server::chk_username(const Peer &p, std::deque<uint8_t> &out, const std::st
 	printf("%s: (%s,%s) wants to change username from \"%s\" to \"%s\"\n", __func__, p.host.c_str(), p.server.c_str(), old.c_str(), name.c_str());
 
 	// allow anything when it's unique and doesn't contain `:'. we use : ourselves when generating names
-	size_t pos = name.find(':');
-	if (pos != std::string::npos) {
+	if (contains(name, ':')) {
 		// : found. ignore and send back old name
 		NetPkg pkg;
 		pkg.set_username(old);

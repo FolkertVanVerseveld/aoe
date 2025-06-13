@@ -157,14 +157,18 @@ void Client::send(NetPkg &pkg) {
 	ZoneScoped;
 	pkg.hton();
 
+	std::lock_guard<std::mutex> lk(m);
+
+	size_t payload = pkg.data.size(), n = 4 + payload;
+	sendbuf.resize(n);
+
 	// prepare header
-	uint16_t v[2];
+	uint16_t *v = (uint16_t*)sendbuf.data();
 	v[0] = pkg.hdr.type;
 	v[1] = pkg.hdr.payload;
 
-	// TODO merge into one send
-	send(v, 2);
-	send(pkg.data.data(), (int)pkg.data.size());
+	memcpy(&v[2], pkg.data.data(), payload);
+	send(sendbuf.data(), n);
 }
 
 NetPkg Client::recv() {
