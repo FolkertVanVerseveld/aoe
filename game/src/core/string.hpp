@@ -42,4 +42,8 @@ static bool contains(const std::string &haystack, char needle)
 	return haystack.find(needle) != std::string::npos;
 }
 
+static bool isspace(const std::string &s) {
+	return s.find_first_not_of(' ') == std::string::npos;
+}
+
 }

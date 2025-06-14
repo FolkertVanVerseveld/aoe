@@ -138,9 +138,17 @@ bool Frame::btn(const char *s, TextHalign ha, const ImVec2 &sz) {
 }
 
 bool Frame::xbtn(const char *s, TextHalign ha, const ImVec2 &sz) {
+	return xbtn(s, NULL, ha, sz);
+}
+
+bool Frame::xbtn(const char *s, const char *tooltip, TextHalign ha, const ImVec2 &sz) {
 	ImGui::BeginDisabled();
 	bool b = btn(s, ha, sz);
 	ImGui::EndDisabled();
+	if (tooltip && *tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+		FontGuard fg2(fnt.fnt_arial);
+		ImGui::Tooltip(tooltip);
+	}
 	return b;
 }
 
@@ -1019,11 +1027,7 @@ void Engine::show_start() {
 		if (btn(f, "Single Player", TextHalign::center, sfx))
 			next_menu_state = MenuState::singleplayer_menu;
 #else
-		f.xbtn("Single Player", TextHalign::center);
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-			FontGuard fg2(fnt.fnt_arial);
-			ImGui::Tooltip("Single player mode is not suppoted yet. Use multiplayer mode with 1 player instead.");
-		}
+		f.xbtn("Single Player", "Single player mode is not supported yet. Use multiplayer mode with 1 player instead.", TextHalign::center);
 #endif
 
 		ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
@@ -1036,11 +1040,7 @@ void Engine::show_start() {
 		if (btn(f, "Help", TextHalign::center, sfx))
 			open_help();
 #else
-		f.xbtn("Help", TextHalign::center);
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-			FontGuard fg2(fnt.fnt_arial);
-			ImGui::Tooltip("The original help is using a subsystem on Windows that is not supported. Consult the Github page or an Age of Empires forum if you need help.");
-		}
+		f.xbtn("Help", "The original help is using a subsystem on Windows that is not supported. Consult the Github page or an Age of Empires forum if you need help.", TextHalign::center);
 #endif
 
 		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
@@ -1097,9 +1097,7 @@ void Engine::show_init() {
 		if (f.btn("Start"))
 			next_menu_state = MenuState::start;
 	} else {
-		f.xbtn("Start");
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGui::Tooltip("Game directory must be set before the game can be run.");
+		f.xbtn("Start", "Game directory must be set before the game can be run.");
 	}
 
 	if (f.btn("Quit"))
@@ -1125,7 +1123,6 @@ void Engine::show_init() {
 
 	if (fd.HasSelected()) {
 		std::string path(fd.GetSelected().string());
-		printf("selected \"%s\"\n", path.c_str());
 
 		MusicId id = (MusicId)music_id;
 		sfx.jukebox[id] = path;
@@ -1283,6 +1280,8 @@ void Engine::show_multiplayer_menu() {
 		f.str2("Multiplayer", TextHalign::center);
 	}
 
+	f.text("Username", username, ImGuiInputTextFlags_EnterReturnsTrue);
+
 	ImGui::RadioButton(connection_modes[0], &connection_mode, 0); ImGui::SameLine();
 	ImGui::RadioButton(connection_modes[1], &connection_mode, 1);
 
@@ -1295,7 +1294,13 @@ void Engine::show_multiplayer_menu() {
 
 	ImGui::InputScalar("port", ImGuiDataType_U16, &connection_port);
 
-	if (btn(f, "start", sfx)) {
+	if (isspace(username)) {
+		const char *tooltip = "Enter a username before hosting a game";
+		if (connection_mode)
+			tooltip = "Enter a username before joining a game";
+
+		f.xbtn("start", tooltip);
+	} else if (btn(f, "start", sfx)) {
 		switch (connection_mode) {
 			case 0:
 				start_server(connection_port);

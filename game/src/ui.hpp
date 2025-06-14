@@ -68,6 +68,7 @@ public:
 	bool chkbox(const char*, bool&);
 	bool btn(const char*, TextHalign ha=TextHalign::left, const ImVec2 &sz=ImVec2(0, 0));
 	bool xbtn(const char*, TextHalign ha=TextHalign::left, const ImVec2 &sz=ImVec2(0, 0)); // like btn, but disabled
+	bool xbtn(const char*, const char *tooltip, TextHalign ha=TextHalign::left, const ImVec2 &sz=ImVec2(0, 0)); // like btn, but disabled
 	bool combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height_in_items=-1);
 
 	// typed input fields

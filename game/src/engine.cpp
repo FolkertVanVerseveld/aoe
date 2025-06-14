@@ -206,7 +206,7 @@ void Engine::show_menubar() {
 
 #if _WIN32
 			v = is_clipped = sdl->window.is_clipped;
-			mv.chkbox("Is clipped", is_clipped);
+			mv.chkbox("Grap mouse", is_clipped);
 
 			if (v != is_clipped)
 				sdl->window.set_clipping(is_clipped);
