@@ -168,6 +168,18 @@ void Window::set_fullscreen(bool v) {
 	}
 
 #if _WIN32
+	reclip();
+#else
+#error not implemented
+#endif
+}
+
+void Window::size(int &w, int &h) {
+	SDL_GetWindowSize(win.get(), &w, &h);
+}
+
+#if _WIN32
+void Window::reclip() {
 	if (!is_clipped)
 		return;
 
@@ -181,16 +193,8 @@ void Window::set_fullscreen(bool v) {
 		if (!set_clipping(true))
 			LOGF("%s: clipping failed: %s\n", __func__, GetLastError());
 	}
-#else
-#error not implemented
-#endif
 }
 
-void Window::size(int &w, int &h) {
-	SDL_GetWindowSize(win.get(), &w, &h);
-}
-
-#if _WIN32
 bool Window::set_clipping(bool enable) {
 	if (enable == is_clipped)
 		return true;

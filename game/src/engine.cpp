@@ -1153,6 +1153,7 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 				done = true;
 				break;
 			case SDL_WINDOWEVENT:
+				sdl.window.reclip();
 				ImGui_ImplSDL2_ProcessEvent(&event);
 				if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(sdl.window))
 					done = true;

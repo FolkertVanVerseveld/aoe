@@ -69,6 +69,7 @@ public:
 	void size(int &w, int &h);
 
 	bool set_clipping(bool enable);
+	void reclip();
 };
 
 class SDL final {

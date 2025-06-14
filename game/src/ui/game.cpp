@@ -318,6 +318,7 @@ void UICache::show_multiplayer_game() {
 		ImGui::EndPopup();
 	}
 
+	// TODO convert into retained gui elements
 	if (menu_btn(e->tex1, a, "Menu", btn_left, scale, true)) {
 		e->sfx.play_sfx(SfxId::ui_click);
 		ImGui::OpenPopup("MenuPopup");
@@ -350,7 +351,6 @@ void UICache::show_multiplayer_game() {
 				Child ch;
 
 				if (ch.begin("ChatHistory", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * 0.8f), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
-
 					for (std::string &s : e->chat)
 						ImGui::TextWrapped("%s", s.c_str());
 
