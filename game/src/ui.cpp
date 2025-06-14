@@ -1015,8 +1015,16 @@ void Engine::show_start() {
 
 		ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
 
+#if 0
 		if (btn(f, "Single Player", TextHalign::center, sfx))
 			next_menu_state = MenuState::singleplayer_menu;
+#else
+		f.xbtn("Single Player", TextHalign::center);
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+			FontGuard fg2(fnt.fnt_arial);
+			ImGui::Tooltip("Single player mode is not suppoted yet. Use multiplayer mode with 1 player instead.");
+		}
+#endif
 
 		ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
 

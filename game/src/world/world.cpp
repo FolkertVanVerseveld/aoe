@@ -876,6 +876,11 @@ void World::create_entities() {
 		++t_x;
 		++t_y;
 
+		int mil_x = (int)(eps_x + eps_hw * cos(angle) + unif_jx(re)) - 3;
+		int mil_y = (int)(eps_y + eps_hh * sin(angle) + unif_jy(re)) - 3;
+
+		add_building(EntityType::barracks, pid, mil_x, mil_y);
+
 		unsigned villagers = this->scn.villagers;
 		double angle_villagers = 2 * M_PI / villagers;
 		double angle_vilagers_offset = unif(re);
