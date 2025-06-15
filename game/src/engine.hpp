@@ -46,10 +46,9 @@ class Engine;
 class Config final {
 	Engine &e;
 public:
-	SDL_Rect bnds, display, vp;
 	std::string path, game_dir;
 	bool autostart;
-	uint8_t music_volume, sfx_volume;
+	double music_volume, sfx_volume;
 
 	static constexpr uint32_t magic = 0x06ce09f6;
 

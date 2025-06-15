@@ -8,8 +8,6 @@
 
 #include <algorithm>
 
-#include <nlohmann/json.hpp>
-
 #include "../debug.hpp"
 #include "../game.hpp"
 #include "../world/terrain.hpp"
@@ -510,6 +508,8 @@ void ScenarioEditor::load(const io::Scenario &scn) {
 
 void ScenarioEditor::load(const std::string &path) {
 	ZoneScoped;
+	fprintf(stderr, "%s: stub: %s\n", __func__, path.c_str());
+#if 0
 	using json = nlohmann::json;
 
 	std::ifstream in(path);
@@ -529,10 +529,13 @@ void ScenarioEditor::load(const std::string &path) {
 	} catch (std::exception &e) {
 		throw std::runtime_error(e.what());
 	}
+#endif
 }
 
 void ScenarioEditor::save(const std::string &path) {
 	ZoneScoped;
+	fprintf(stderr, "%s: stub: %s\n", __func__, path.c_str());
+#if 0
 	using json = nlohmann::json;
 	json data;
 
@@ -548,6 +551,7 @@ void ScenarioEditor::save(const std::string &path) {
 	out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
 	out << data.dump(4) << std::endl;
+#endif
 }
 
 }

@@ -98,7 +98,6 @@ set(LOCAL_INCLUDE_DIRS
 	${IMGUI_DIR} ${IMGUI_BACKENDS_DIR}
 	${WEPOLL_DIR}
 	${PROJECT_SRCDIR}/tracy/public
-	${PROJECT_SRCDIR}/json/single_include
 	${PROJECT_SRCDIR}/miniz
 )
 
