@@ -359,9 +359,10 @@ class Client final : public IClient {
 
 	std::map<IdPoolRef, ClientInfo> peers;
 	std::vector<uint8_t> sendbuf;
+	std::string initial_username;
 	friend Debug;
 public:
-	Client();
+	Client(const std::string &username);
 	~Client() override {
 		stop();
 	}

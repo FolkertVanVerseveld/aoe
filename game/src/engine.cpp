@@ -399,11 +399,10 @@ void Engine::push_error(const std::string &msg) {
 void Engine::start_client_now(const char *host, uint16_t port, UI_TaskInfo &info) {
 	ZoneScoped;
 
-	Client *c = new Client();
+	Client *c = new Client(username);
 	client.reset(c);
 
 	info.next("Connecting to host");
-
 	c->start(host, port);
 }
 

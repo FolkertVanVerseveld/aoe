@@ -139,9 +139,10 @@ void LocalClient::entity_kill(IdPoolRef ref) {
 	// TODO use this
 }
 
-Client::Client()
+Client::Client(const std::string &username)
 	: IClient()
-	, s(), port(0), starting(false), peers() {}
+	, s(), port(0), starting(false), peers()
+	, sendbuf(), initial_username(username) {}
 
 void Client::mainloop() {
 	send_protocol(1);
@@ -155,6 +156,7 @@ void Client::mainloop() {
 			switch (pkg.type()) {
 				case NetPkgType::set_protocol:
 					LOGF("prot=%u\n", pkg.protocol_version());
+					send_username(initial_username);
 					break;
 				case NetPkgType::chat_text: {
 					auto p = pkg.chat_text();
@@ -183,7 +185,7 @@ void Client::mainloop() {
 						unsigned me_team = maybe_pv.value().init.team;
 						victory = me_team == g.winning_team();
 					} else {
-						LOGF(stderr, "%s: unable to determine winning team: playerindex=%u\n", __func__, playerindex);
+						LOGF("%s: unable to determine winning team: playerindex=%u\n", __func__, playerindex);
 						victory = false;
 					}
 					gameover = true;
