@@ -38,22 +38,6 @@ void Config::reset() {
 	music_volume = sfx_volume = SDL_MIX_MAXVOLUME;
 }
 
-#define EXP_BASE 5.0
-#define SCALE SDL_MIX_MAXVOLUME
-
-static int exponential_to_linear(double y)
-{
-	y = std::clamp(0.0, y, 1.0);
-	double x = log(y * (EXP_BASE - 1.0) + 1.0) / log(EXP_BASE);
-	return (int)round(x * SCALE);
-}
-
-static double linear_to_exponential(double y)
-{
-	double x = std::clamp<double>(0, y, SCALE) / SCALE;
-	return (pow(EXP_BASE, x) - 1.0) / (EXP_BASE - 1.0);
-}
-
 void Config::load(const std::string &path) {
 	ZoneScoped;
 	IniParser ini(path.c_str());
@@ -62,37 +46,15 @@ void Config::load(const std::string &path) {
 		return;
 	}
 
-#if 1
 	const char *section = "audio";
-
-#if 0
-	double music, sfxvol;
-	music = ini.get_or_default(section, "music_volume", 0.3);
-	sfxvol = ini.get_or_default(section, "sounds_volume", 0.7);
-
-	music_volume = (uint8_t)(std::clamp(0.0, music, 1.0) / SDL_MIX_MAXVOLUME);
-#endif
-
 	Audio &sfx = e.sfx;
-	std::string v;
 
 	ini.try_get(section, "music_main_menu", sfx.jukebox[MusicId::menu]);
 	ini.try_get(section, "music_victory", sfx.jukebox[MusicId::success]);
 	ini.try_get(section, "music_defeat", sfx.jukebox[MusicId::fail]);
 	ini.try_get(section, "music_gameplay", sfx.jukebox[MusicId::game]);
 
-	bool enable_music = ini.get_or_default(section, "music_enabled", true);
-	bool enable_sound = ini.get_or_default(section, "sounds_enabled", true);
-
-	if (enable_music)
-		sfx.unmute_music();
-	else
-		sfx.mute_music();
-
-	if (enable_sound)
-		sfx.unmute_sfx();
-	else
-		sfx.mute_sfx();
+	sfx.load(ini);
 
 	ini.try_get("legacy", "game_directory", game_dir);
 #if _WIN32
@@ -103,21 +65,10 @@ void Config::load(const std::string &path) {
 #endif
 
 	autostart = ini.get_or_default("", "autostart", false);
-#else
-	try {
-		json data(json::parse(in));
-
-		music_volume = (uint8_t)std::clamp<int>(data["audio"]["music_volume"], 0, SDL_MIX_MAXVOLUME);
-		sfx_volume = (uint8_t)std::clamp<int>(data["audio"]["sounds_volume"], 0, SDL_MIX_MAXVOLUME);
-	} catch (std::exception &e) {
-		throw std::runtime_error(e.what());
-	}
-#endif
 }
 
 void Config::save(const std::string &path) {
 	ZoneScoped;
-#if 1
 	IniParser ini(NULL);
 
 	ini.add_cache("legacy", "game_directory", game_dir);
@@ -126,30 +77,18 @@ void Config::save(const std::string &path) {
 	const char *section = "audio";
 	Audio &sfx = e.sfx;
 
-	ini.add_cache(section, "music_enabled", !sfx.is_muted_music());
-	ini.add_cache(section, "sounds_enabled", !sfx.is_muted_sfx());
+	ini.add_cache(section, "music_enabled", sfx.is_enabled_music());
+	ini.add_cache(section, "sounds_enabled", sfx.is_enabled_sound());
 
-	ini.add_cache(section, "music_volume", music_volume, 2);
-	ini.add_cache(section, "sounds_volume", sfx_volume, 2);
+	ini.add_cache(section, "music_volume", sfx.get_music_volume(), 2);
+	ini.add_cache(section, "sounds_volume", sfx.get_sound_volume(), 2);
 
-	// TODO add kv pairs
+	ini.add_cache(section, "music_main_menu", sfx.jukebox[MusicId::menu]);
+	ini.add_cache(section, "music_victory", sfx.jukebox[MusicId::success]);
+	ini.add_cache(section, "music_defeat", sfx.jukebox[MusicId::fail]);
+	ini.add_cache(section, "music_gameplay", sfx.jukebox[MusicId::game]);
+
 	ini.write_file(path.c_str());
-#else
-	using json = nlohmann::json;
-	json data;
-
-	data["audio"]["music_enabled"]  = !sfx.is_muted_music();
-	data["audio"]["sounds_enabled"] = !sfx.is_muted_sfx();
-	data["audio"]["music_volume"]   = music_volume;
-	data["audio"]["sounds_volume"]  = sfx_volume;
-
-	data["audio"]["music_main_menu"] = sfx.jukebox[MusicId::menu];
-	data["audio"]["music_victory"  ] = sfx.jukebox[MusicId::success];
-	data["audio"]["music_defeat"   ] = sfx.jukebox[MusicId::fail];
-	data["audio"]["music_gameplay" ] = sfx.jukebox[MusicId::game];
-
-	data["autostart"] = autostart;
-#endif
 }
 
 }

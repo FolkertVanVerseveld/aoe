@@ -15,6 +15,8 @@
 #include <optional>
 #include <vector>
 
+class IniParser;
+
 namespace aoe {
 
 enum class MusicId {
@@ -107,7 +109,8 @@ class Audio final {
 	Uint16 format;
 
 	std::unique_ptr<Mix_Music, decltype(&Mix_FreeMusic)> music;
-	bool music_mute, sfx_mute;
+	bool enable_music, enable_sound;
+	float music_vol, sfx_vol;
 	std::string music_file;
 
 	std::mutex m_mix;
@@ -121,6 +124,8 @@ public:
 	Audio();
 	~Audio();
 
+	void load(IniParser&);
+
 	/** Force stop all audio playing. */
 	void panic();
 	/** Force stop all audio playing and clear audio caches. */
@@ -131,14 +136,17 @@ public:
 
 	void stop_music();
 
-	void mute_music();
-	void unmute_music();
+	void set_enable_music(bool);
+	void set_enable_sound(bool);
 
-	void mute_sfx();
-	void unmute_sfx();
+	void set_music_volume(double); // [0, 1]
+	void set_sound_volume(double); // [0, 1]
 
-	constexpr bool is_muted_music() const noexcept { return music_mute; }
-	constexpr bool is_muted_sfx() const noexcept { return sfx_mute; }
+	constexpr bool is_enabled_music() const noexcept { return enable_music; }
+	constexpr bool is_enabled_sound() const noexcept { return enable_sound; }
+
+	constexpr float get_music_volume() const noexcept { return music_vol; }
+	constexpr float get_sound_volume() const noexcept { return sfx_vol; }
 
 	void load_taunt(TauntId id, const char *file);
 	void load_taunt(TauntId id, const std::vector<uint8_t> &data);

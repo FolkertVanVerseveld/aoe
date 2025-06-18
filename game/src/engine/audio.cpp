@@ -1,7 +1,8 @@
 #include "audio.hpp"
 
 #include <cctype>
-#include <cmath>
+#include <cmath> // log, round
+#include <algorithm> // clamp
 
 #include <array>
 #include <stdexcept>
@@ -9,13 +10,33 @@
 #include <unordered_map>
 
 #include "../debug.hpp"
+#include "ini.hpp"
 
 #define SAMPLING_FREQ 48000
 #define NUM_CHANNELS 2
 
 namespace aoe {
 
-Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic), music_mute(false), sfx_mute(false), music_file()
+static const double exp_base = 5.0;
+static const double scale = SDL_MIX_MAXVOLUME;
+
+static inline int exponential_to_linear(double y)
+{
+	y = std::clamp(0.0, y, 1.0);
+	double x = log(y * (exp_base - 1.0) + 1.0) / log(exp_base);
+	return std::clamp(0, (int)round(x * scale), SDL_MIX_MAXVOLUME);
+}
+
+static inline double linear_to_exponential(double y)
+{
+	double x = std::clamp<double>(0, y, scale) / scale;
+	return (pow(exp_base, x) - 1.0) / (exp_base - 1.0);
+}
+
+Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic)
+	, enable_music(true), enable_sound(true)
+	, music_vol(0.3f), sfx_vol(0.5f)
+	, music_file()
 	, m_mix(), taunts(), sfx(), jukebox(), play_taunts(true)
 {
 	int flags = MIX_INIT_MP3;
@@ -39,6 +60,34 @@ Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic),
 Audio::~Audio() {
 	music.reset();
 	Mix_Quit();
+}
+
+void Audio::load(IniParser &ini) {
+	const char *section = "audio";
+
+	music_vol = std::clamp(0.0, ini.get_or_default(section, "music_volume", 0.3), 1.0);
+	sfx_vol = std::clamp(0.0, ini.get_or_default(section, "sounds_volume", 0.5), 1.0);
+
+	set_music_volume(music_vol);
+	set_sound_volume(sfx_vol);
+
+	enable_music = ini.get_or_default(section, "music_enabled", true);
+	enable_sound = ini.get_or_default(section, "sounds_enabled", true);
+
+	set_enable_music(enable_music);
+	set_enable_sound(enable_sound);
+}
+
+void Audio::set_music_volume(double v) {
+	music_vol = v;
+	int vol = exponential_to_linear(v);
+	Mix_VolumeMusic(vol);
+}
+
+void Audio::set_sound_volume(double v) {
+	sfx_vol = v;
+	int vol = exponential_to_linear(sfx_vol);
+	Mix_Volume(-1, vol);
 }
 
 void Audio::panic() {
@@ -67,7 +116,7 @@ void Audio::play_music(const char *file, int loops) {
 	}
 	music_file = file;
 
-	if (!music_mute)
+	if (enable_music)
 		Mix_PlayMusic(music.get(), loops);
 }
 
@@ -87,33 +136,37 @@ void Audio::stop_music() {
 	Mix_HaltMusic();
 }
 
-void Audio::mute_music() {
-	if (!music_mute)
-		stop_music();
+void Audio::set_enable_music(bool enable) {
+	std::lock_guard<std::mutex> lk(m_mix);
 
-	music_mute = true;
+	if (enable) {
+		if (enable_music)
+			return;
+
+		enable_music = true;
+		// restart if music is loaded
+		if (music.get())
+			Mix_PlayMusic(music.get(), 0);
+	} else {
+		if (enable_music)
+			stop_music();
+
+		enable_music = false;
+	}
 }
 
-void Audio::unmute_music() {
-	if (!music_mute)
-		return;
+void Audio::set_enable_sound(bool enable) {
+	std::lock_guard<std::mutex> lk(m_mix);
 
-	music_mute = false;
-	// restart if music is loaded
-	if (music.get())
-		Mix_PlayMusic(music.get(), 0);
-}
+	if (enable) {
+		enable_sound = true;
+	} else {
+		if (!enable_sound)
+			return;
 
-void Audio::mute_sfx() {
-	if (sfx_mute)
-		return;
-
-	Mix_HaltChannel(-1);
-	sfx_mute = true;
-}
-
-void Audio::unmute_sfx() {
-	sfx_mute = false;
+		Mix_HaltChannel(-1);
+		enable_sound = false;
+	}
 }
 
 void Audio::load_taunt(TauntId id, const char *file) {
@@ -248,7 +301,7 @@ void Audio::load_sfx(SfxId id, const std::vector<uint8_t> &data) {
 void Audio::play_sfx(SfxId id, int loops) {
 	ZoneScoped;
 
-	if (sfx_mute)
+	if (!enable_sound)
 		return;
 
 	// check if special sfxid

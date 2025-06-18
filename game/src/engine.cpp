@@ -74,7 +74,7 @@ Engine::Engine()
 	, running(false), scroll_to_bottom(false), username(), fd(ImGuiFileBrowserFlags_CloseOnEsc), fd2(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SelectDirectory)
 	, sfx(), music_id(0), music_on(true), music_volume(100.0f), sfx_on(true), sfx_volume(100.0f), game_dir()
 	, debug()
-	, cfg(*this, "config"), sdl(nullptr), is_fullscreen(false)
+	, cfg(*this, "config.ini"), sdl(nullptr), is_fullscreen(false)
 #if _WIN32
 	, is_clipped(false)
 #endif
@@ -114,8 +114,7 @@ using namespace aoe::ui;
 static const std::vector<std::string> vsync_modes{ "Disabled", "Enabled", "Adaptive" };
 
 void Engine::show_general_settings() {
-	music_on = !sfx.is_muted_music();
-
+	ZoneScoped;
 	int vsync_mode_old = sdl->gl_context.get_vsync();
 
 	switch (vsync_mode_old) {
@@ -135,35 +134,27 @@ void Engine::show_general_settings() {
 	if (vsync_mode != vsync_mode_old)
 		sdl->gl_context.set_vsync(vsync_mode);
 
-	chkbox("Music enabled", music_on);
-	ImGui::SliderFloat("Music volume", &music_volume, 0, 100);
-	// plot 129 * (2*(e^x)/(e^x+1) - 1) from 0 to 5
+	music_on = sfx.is_enabled_music();
+	if (chkbox("Music enabled", music_on))
+		sfx.set_enable_music(music_on);
 
-	float x = music_volume / 20.0f;
-	int ivol = music_volume / 100.0 * SDL_MIX_MAXVOLUME;
-	//ivol = (int)((SDL_MIX_MAXVOLUME * 1.01) * (2.0 * exp(x) / (exp(x) + 1.0) - 1.0));
+	const float scale = 100.0;
 
-	Mix_VolumeMusic(cfg.music_volume = std::clamp(ivol, 0, SDL_MIX_MAXVOLUME));
+	music_volume = sfx.get_music_volume() * scale;
+	if (ImGui::SliderFloat("Music volume", &music_volume, 0, scale))
+		sfx.set_music_volume(music_volume / scale);
 
-	chkbox("Sound effects enabled", sfx_on);
-	ImGui::SliderFloat("Sfx volume", &sfx_volume, 0, 100);
+	sfx_on = sfx.is_enabled_sound();
+	if (chkbox("Sound effects enabled", sfx_on))
+		sfx.set_enable_sound(sfx_on);
 
-	x = sfx_volume / 20.0f;
-	ivol = sfx_volume / 100.0 * SDL_MIX_MAXVOLUME;
-	//ivol = (int)((SDL_MIX_MAXVOLUME * 1.01) * (2.0 * exp(x) / (exp(x) + 1.0) - 1.0));
-
-	Mix_Volume(-1, cfg.sfx_volume = std::clamp(ivol, 0, SDL_MIX_MAXVOLUME));
-
-	// TODO save music_volume, sfx_on, sfx_volume
+	sfx_volume = sfx.get_sound_volume() * scale;
+	if (ImGui::SliderFloat("Sfx volume", &sfx_volume, 0, scale))
+		sfx.set_sound_volume(sfx_volume / scale);
 
 	chkbox("Play chat taunts", sfx.play_taunts);
 	chkbox("Autostart", cfg.autostart);
 	chkbox("UI scaling", font_scaling);
-
-	if (music_on)
-		sfx.unmute_music();
-	else
-		sfx.mute_music();
 }
 
 void Engine::show_menubar() {
