@@ -428,8 +428,13 @@ void Engine::show_mph_chat(ui::Frame &f) {
 	if (!cf.begin("ChatFrame", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() * (1 - player_height - frame_margin)), false, ImGuiWindowFlags_HorizontalScrollbar))
 		return;
 
-	if (f.text("Username", username, ImGuiInputTextFlags_EnterReturnsTrue))
+	if (multiplayer_ready) {
+		ImGui::BeginDisabled();
+		f.text("Username", username);
+		ImGui::EndDisabled();
+	} else if (f.text("Username", username, ImGuiInputTextFlags_EnterReturnsTrue)) {
 		client->send_username(username);
+	}
 
 	f.str("Chat");
 	{
@@ -537,7 +542,7 @@ void Engine::show_multiplayer_host() {
 	uint32_t player_count = scn.players.size();
 
 	if (!locked_settings()) {
-		f.str("Multiplayer game  -");
+		f.str("Multiplayer game -");
 		f.sl();
 
 		--player_count;
@@ -1094,8 +1099,11 @@ void Engine::show_init() {
 	}
 
 	if (assets_good) {
-		if (f.btn("Start"))
+		if (f.btn("Start")) {
 			next_menu_state = MenuState::start;
+			cfg.game_dir = game_dir;
+			cfg.save("config.ini");
+		}
 	} else {
 		f.xbtn("Start", "Game directory must be set before the game can be run.");
 	}

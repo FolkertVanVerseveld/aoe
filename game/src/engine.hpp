@@ -15,6 +15,7 @@
 #include "debug.hpp"
 #include "engine/assets.hpp"
 #include "engine/font.hpp"
+#include "engine/ini.hpp"
 
 #include <queue>
 #include <deque>
@@ -46,7 +47,7 @@ class Engine;
 class Config final {
 	Engine &e;
 public:
-	std::string path, game_dir;
+	std::string path, game_dir, username;
 	bool autostart;
 	double music_volume, sfx_volume;
 
@@ -58,7 +59,7 @@ public:
 
 	void reset();
 
-	void load(const std::string&);
+	ipStatus load(const std::string&);
 	void save(const std::string&);
 };
 

@@ -16,19 +16,18 @@ namespace aoe {
 
 Config::Config(Engine &e) : Config(e, "") {}
 
-Config::Config(Engine &e, const std::string &s) : e(e), path(s), game_dir(), autostart(false), music_volume(0.3), sfx_volume(0.7) {
+Config::Config(Engine &e, const std::string &s)
+	: e(e), path(s), game_dir(), username()
+	, autostart(false), music_volume(0.3), sfx_volume(0.7)
+{
 #if _WIN32
 	game_dir = DEFAULT_GAME_DIR;
 #endif
 }
 
 Config::~Config() {
-	if (path.empty())
-		return;
-
-	try {
+	if (!path.empty())
 		save(path);
-	} catch (std::exception&) {}
 }
 
 void Config::reset() {
@@ -38,12 +37,12 @@ void Config::reset() {
 	music_volume = sfx_volume = SDL_MIX_MAXVOLUME;
 }
 
-void Config::load(const std::string &path) {
+ipStatus Config::load(const std::string &path) {
 	ZoneScoped;
 	IniParser ini(path.c_str());
 	if (!ini.exists()) {
 		perror(path.c_str());
-		return;
+		return ipStatus::not_found;
 	}
 
 	const char *section = "audio";
@@ -65,6 +64,9 @@ void Config::load(const std::string &path) {
 #endif
 
 	autostart = ini.get_or_default("", "autostart", false);
+	ini.try_get("", "username", username);
+
+	return ipStatus::ok;
 }
 
 void Config::save(const std::string &path) {
@@ -73,6 +75,7 @@ void Config::save(const std::string &path) {
 
 	ini.add_cache("legacy", "game_directory", game_dir);
 	ini.add_cache("", "autostart", autostart);
+	ini.add_cache("", "username", username);
 
 	const char *section = "audio";
 	Audio &sfx = e.sfx;

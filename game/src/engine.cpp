@@ -102,6 +102,9 @@ Engine::~Engine() {
 
 	running = false;
 	stop_server_now();
+
+	// update config
+	cfg.username = username;
 }
 
 gfx::GL &Engine::gl() {
@@ -649,8 +652,7 @@ void Engine::goto_menu(MenuState state) {
 		}
 		break;
 	case MenuState::multiplayer_game:
-		//if (sdl->window.is_fullscreen())
-			sdl->window.set_clipping(true);
+		sdl->window.set_clipping(true);
 
 		sfx.play_music(MusicId::game, -1);
 		break;
@@ -919,15 +921,24 @@ static ImGuiIO &imgui_init(SDL &sdl) {
 }
 
 void Engine::cfg_init() {
-	try {
-		cfg.load(cfg.path);
+	ipStatus ret = cfg.load(cfg.path);
 
-		music_volume = cfg.music_volume * 100.0f / SDL_MIX_MAXVOLUME;
-		sfx_volume = cfg.sfx_volume * 100.0f / SDL_MIX_MAXVOLUME;
-	} catch (const std::runtime_error &e) {
-		fprintf(stderr, "%s: could not load config: %s\n", __func__, e.what());
-		cfg.autostart = false;
+	switch (ret) {
+	case ipStatus::not_found:
+		fprintf(stderr, "%s: no config found\n", __func__);
+		return;
+	default:
+		fprintf(stderr, "%s: i/o error while loading config\n", __func__);
+		return;
+	case ipStatus::ok:
+		break;
 	}
+
+	music_volume = cfg.music_volume * 100.0f / SDL_MIX_MAXVOLUME;
+	sfx_volume = cfg.sfx_volume * 100.0f / SDL_MIX_MAXVOLUME;
+
+	if (!cfg.username.empty())
+		username = cfg.username;
 }
 
 using namespace gfx;
