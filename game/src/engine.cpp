@@ -793,6 +793,7 @@ void Engine::add_chat_text(const std::string &s) {
 
 void Engine::quit_game(MenuState next) {
 	try {
+		// FIXME is this really necessary?
 		bool bail = false;
 
 		if (server) {

@@ -9,6 +9,17 @@ namespace aoe {
 
 namespace ui {
 
+static const ImVec4 player_colors[8] = {
+	{0.0f, 0.0f, 192 / 255.0f, 1.0f},
+	{200 / 255.0f, 0.0f, 0.0f, 1.0f},
+	{234 / 255.0f, 234 / 255.0f, 0.0f, 1.0f},
+	{140 / 255.0f, 90 / 255.0f, 33 / 255.0f, 1.0f},
+	{255 / 255.0f, 128 / 255.0f, 0.0f, 1.0f},
+	{0.0f, 128 / 255.0f, 0.0f, 1.0f},
+	{128 / 255.0f, 128 / 255.0f, 128 / 255.0f, 1.0f},
+	{64 / 255.0f, 128 / 255.0f, 128 / 255.0f, 1.0f},
+};
+
 void show_player_game_table(ui::Frame &f) {
 	Table t;
 
@@ -85,8 +96,13 @@ void UICache::show_mph_tbl(ui::Frame &f) {
 			r.next();
 
 			p.team = std::max(1u, p.team);
+
+			unsigned pos = (p.team + 8 - 1) % 8;
+			ImGui::PushStyleColor(ImGuiCol_Text, player_colors[pos]);
 			if (f.scalar("##2", p.team, 1))
 				e->client->send_set_player_team(i, p.team);
+			ImGui::PopStyleColor();
+
 			r.next();
 		}
 	}
