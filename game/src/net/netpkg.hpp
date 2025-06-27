@@ -98,7 +98,7 @@ public:
 	void set_gameticks(unsigned n);
 
 	NetGamespeedControl get_gamespeed();
-	void set_gamespeed(NetGamespeedType type);
+	void set_gamespeed(NetGamespeedType type, uint8_t speed);
 
 	NetPkgType type();
 

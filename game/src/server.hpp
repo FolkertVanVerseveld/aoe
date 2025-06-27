@@ -93,7 +93,7 @@ class World final {
 	friend WorldView;
 public:
 	ScenarioSettings scn;
-	std::atomic<double> logic_gamespeed;
+	std::atomic<unsigned> logic_gamespeed;
 	std::atomic<bool> running;
 
 	static constexpr double gamespeed_max = 3.0;
@@ -150,6 +150,7 @@ private:
 
 	void cam_move(WorldEvent&);
 
+	unsigned set_gamespeed(int v);
 	void gamespeed_control(WorldEvent&);
 	void push_gamespeed_control(WorldEvent&);
 
@@ -171,6 +172,7 @@ private:
 
 	void send_resources();
 
+	void send_player(IdPoolRef ref, NetPkg &pkg);
 	void send_player(unsigned i, NetPkg &pkg);
 
 	std::optional<unsigned> ref2idx(IdPoolRef) const noexcept;
@@ -360,6 +362,7 @@ class Client final : public IClient {
 	std::map<IdPoolRef, ClientInfo> peers;
 	std::vector<uint8_t> sendbuf;
 	std::string initial_username;
+	uint8_t gamespeed;
 	friend Debug;
 public:
 	Client(const std::string &username);

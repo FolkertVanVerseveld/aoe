@@ -142,7 +142,7 @@ void LocalClient::entity_kill(IdPoolRef ref) {
 Client::Client(const std::string &username)
 	: IClient()
 	, s(), port(0), starting(false), peers()
-	, sendbuf(), initial_username(username) {}
+	, sendbuf(), initial_username(username), gamespeed(0) {}
 
 void Client::mainloop() {
 	send_protocol(1);
@@ -256,13 +256,31 @@ void Client::gamespeed_control(const NetGamespeedControl &ctl) {
 	ZoneScoped;
 	NetGamespeedType type = ctl.type;
 
-	switch (type) {
-	case NetGamespeedType::pause:
-		g.running = false;
-		break;
-	case NetGamespeedType::unpause:
-		g.running = true;
-		break;
+	uint8_t old_speed = this->gamespeed, new_speed = ctl.speed;
+	this->gamespeed = new_speed;
+
+	bool new_running = new_speed != 0;
+	g.running = new_running;
+
+	if (old_speed == new_speed)
+		return;
+
+	lock lk(m_eng);
+	if (!eng)
+		return;
+
+	if (new_speed == 0) {
+		eng->add_chat_text("Game paused");
+	} else if (old_speed == 0) {
+		eng->add_chat_text("Game resumed"); 
+	} else {
+		char buf[80];
+		float speed;
+
+		speed = ctl.speed * World::gamespeed_step;
+		snprintf(buf, sizeof buf, "Gamespeed set to %.1f", speed);
+
+		eng->add_chat_text(buf);
 	}
 }
 
@@ -424,7 +442,18 @@ void Client::cam_move(float x, float y, float w, float h) {
 
 void Client::send_gamespeed_control(NetGamespeedType type) {
 	NetPkg pkg;
-	pkg.set_gamespeed(type);
+	uint8_t speed = 0;
+
+	switch (type) {
+	case NetGamespeedType::increase:
+		speed = this->gamespeed + 1;
+		break;
+	case NetGamespeedType::decrease:
+		speed = this->gamespeed - 1;
+		break;
+	}
+
+	pkg.set_gamespeed(type, speed);
 	send(pkg);
 }
 

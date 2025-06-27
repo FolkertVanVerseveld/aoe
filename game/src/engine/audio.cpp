@@ -55,6 +55,8 @@ Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic)
 
 	if (Mix_QuerySpec(&freq, &format, &channels))
 		printf("freq=%d, channels=%d, format=0x%X\n", freq, channels, format);
+
+	Mix_AllocateChannels(32);
 }
 
 Audio::~Audio() {
@@ -335,7 +337,14 @@ void Audio::play_sfx(SfxId id, int loops) {
 	}
 
 	Mix_Chunk *chunk = it->second.get(); // Mix_PlayChannel used to be a macro, so just in case
-	Mix_PlayChannel(-1, chunk, loops);
+
+	// TODO use priorities for sound effects.
+	// prioritize: victory/defeat, UI sfx, combat sfx
+	int ch = Mix_PlayChannel(-1, chunk, loops);
+	if (ch == -1) {
+		fprintf(stderr, "%s: failed to play sfx: %s\n", __func__, Mix_GetError());
+		fprintf(stderr, "%s: currently playing: %d\n", __func__, Mix_Playing(-1));
+	}
 }
 
 }

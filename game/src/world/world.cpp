@@ -63,7 +63,7 @@ World::World()
 	: m(), m_events(), t(), entities(), dirty_entities(), spawned_entities()
 	, particles(), spawned_particles()
 	, players(), player_achievements(), events_in(), events_out(), views()
-	, resources_out(), s(nullptr), gameover(false), scn(), logic_gamespeed(1.0), running(false) {}
+	, resources_out(), s(nullptr), gameover(false), scn(), logic_gamespeed((unsigned)(1.0 / World::gamespeed_step)), running(false) {}
 
 void World::load_sp_players() {
 	this->scn.players.clear();
@@ -466,23 +466,15 @@ void World::send_resources() {
 
 void World::push_gamespeed_control(WorldEvent &ev) {
 	NetGamespeedControl ctl = std::get<NetGamespeedControl>(ev.data);
+	uint8_t netspeed = (uint8_t)this->logic_gamespeed.load();
+	NetPkg pkg;
 
-	switch (ctl.type) {
-	case NetGamespeedType::toggle_pause: {
-		NetPkg pkg;
+	if (ctl.type == NetGamespeedType::toggle_pause && !running)
+		pkg.set_gamespeed(NetGamespeedType::pause, 0);
+	else
+		pkg.set_gamespeed(ctl.type, netspeed);
 
-		if (running)
-			pkg.set_gamespeed(NetGamespeedType::unpause);
-		else
-			pkg.set_gamespeed(NetGamespeedType::pause);
-
-		s->broadcast(pkg);
-		break;
-	}
-	default:
-		printf("%s: gamespeed control type %u\n", __func__, (unsigned)ctl.type);
-		break;
-	}
+	s->broadcast(pkg);
 }
 
 void World::cam_move(WorldEvent &ev) {
@@ -491,24 +483,55 @@ void World::cam_move(WorldEvent &ev) {
 	views.at(move.ref) = move.cam;
 }
 
+unsigned World::set_gamespeed(int v) {
+	int min = (int)std::floor(World::gamespeed_min / World::gamespeed_step);
+	int max = (int)std::ceil(World::gamespeed_max / World::gamespeed_step);
+	return this->logic_gamespeed = (unsigned)std::clamp(v, min, max);
+}
+
 void World::gamespeed_control(WorldEvent &ev) {
 	ZoneScoped;
 	NetGamespeedControl ctl(std::get<NetGamespeedControl>(ev.data));
 
 	switch (ctl.type) {
-	case NetGamespeedType::toggle_pause:
+	case NetGamespeedType::toggle_pause: {
 		this->running = !this->running;
+		uint8_t net_speed = (uint8_t)this->logic_gamespeed.load();
+		ev.data.emplace<NetGamespeedControl>(ctl.type, net_speed);
 		events_out.emplace_back(ev);
 		break;
+	}
 	case NetGamespeedType::increase:
 		// disallow changing gamespeed while paused
-		if (this->running)
-			this->logic_gamespeed = std::clamp(this->logic_gamespeed + World::gamespeed_step, World::gamespeed_min, World::gamespeed_max);
+		if (this->running) {
+			// only change gamespeed if player will raise its last known value
+			unsigned old_speed = this->logic_gamespeed.load(), new_speed = ctl.speed;
+			if (new_speed > old_speed) {
+				uint8_t net_speed = set_gamespeed(new_speed);
+				ev.data.emplace<NetGamespeedControl>(ctl.type, net_speed);
+				events_out.emplace_back(ev);
+			} else {
+				NetPkg pkg;
+				pkg.set_gamespeed(NetGamespeedType::increase, this->logic_gamespeed);
+				send_player(ev.src, pkg);
+			}
+		}
 		break;
 	case NetGamespeedType::decrease:
 		// disallow changing gamespeed while paused
-		if (this->running)
-			this->logic_gamespeed = std::clamp(this->logic_gamespeed - World::gamespeed_step, World::gamespeed_min, World::gamespeed_max);
+		if (this->running) {
+			// only change gamespeed if player will lower its last known value
+			double old_speed = this->logic_gamespeed, new_speed = ctl.speed;
+			if (new_speed < old_speed) {
+				uint8_t net_speed = set_gamespeed(new_speed);
+				ev.data.emplace<NetGamespeedControl>(ctl.type, net_speed);
+				events_out.emplace_back(ev);
+			} else {
+				NetPkg pkg;
+				pkg.set_gamespeed(NetGamespeedType::decrease, this->logic_gamespeed);
+				send_player(ev.src, pkg);
+			}
+		}
 		break;
 	}
 }
@@ -639,6 +662,19 @@ bool World::single_team() const noexcept {
 			return false;
 
 	return true;
+}
+
+void World::send_player(IdPoolRef ref, NetPkg &pkg) {
+	ZoneScoped;
+	Server *ss = dynamic_cast<Server*>(this->s);
+	if (!ss) {
+		this->s->broadcast(pkg);
+		return;
+	}
+
+	const Peer *p = ss->try_peer(ref);
+	if (p)
+		ss->send(*p, pkg);
 }
 
 void World::send_player(unsigned i, NetPkg &pkg) {
@@ -834,7 +870,6 @@ void World::spawn_particle(ParticleType t, float x, float y)
 
 void World::create_entities() {
 	ZoneScoped;
-
 	entities.clear();
 
 	/*
@@ -949,7 +984,6 @@ void World::create_entities() {
 
 void World::startup(UI_TaskInfo *info) {
 	ZoneScoped;
-
 	NetPkg pkg;
 
 	// announce server is starting
@@ -985,6 +1019,9 @@ void World::startup(UI_TaskInfo *info) {
 			s->broadcast(pkg);
 		}
 	}
+
+	pkg.set_gamespeed(NetGamespeedType::increase, this->logic_gamespeed);
+	s->broadcast(pkg);
 
 	this->running = true;
 
@@ -1028,7 +1065,7 @@ void World::eventloop(IServer &s, UI_TaskInfo *info) {
 
 	while (s.is_running() && !gameover) {
 		// recompute as logic_gamespeed may change
-		double interval_inv = logic_gamespeed * DEFAULT_TICKS_PER_SECOND;
+		double interval_inv = logic_gamespeed * World::gamespeed_step * DEFAULT_TICKS_PER_SECOND;
 		double interval = 1 / std::max(0.01, interval_inv);
 
 		auto now = std::chrono::steady_clock::now();
@@ -1054,11 +1091,7 @@ void World::eventloop(IServer &s, UI_TaskInfo *info) {
 		push_events();
 
 		dt = fmod(dt, interval);
-
-		unsigned us = 0;
-
-		if (!steps)
-			us = (unsigned)(interval * 1000 * 1000);
+		unsigned us = !steps ? (unsigned)(interval * 1000 * 1000) : 0;
 
 		if (us > 500)
 			std::this_thread::sleep_for(std::chrono::microseconds(us));

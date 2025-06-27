@@ -206,15 +206,17 @@ enum class NetGamespeedType {
 	toggle_pause, // NOTE this type is only for client to server
 	increase,
 	decrease,
+	// TODO create SET
 };
 
 class NetGamespeedControl final {
 public:
 	NetGamespeedType type;
+	uint8_t speed; // only used by server to announce new gamespeed
 
-	static constexpr size_t size = 1;
+	static constexpr size_t size = 2;
 
-	NetGamespeedControl(NetGamespeedType t) : type(t) {}
+	NetGamespeedControl(NetGamespeedType t, uint8_t speed) : type(t), speed(speed) {}
 };
 
 }
