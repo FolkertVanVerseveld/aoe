@@ -65,7 +65,7 @@ bool Server::incoming(ServerSocket &s, const Peer &p) {
 }
 
 void Server::dropped(ServerSocket &s, const Peer &p) {
-	std::lock_guard<std::mutex> lk(m_peers);
+	lock lk(m_peers);
 
 	ClientInfo ci(peers.at(p));
 	std::string name(ci.username);
@@ -127,11 +127,8 @@ void Server::broadcast(NetPkg &pkg, const Peer &exclude)
 	for (auto kv : peers) {
 		const Peer &p = kv.first;
 
-		if (p.sock == exclude.sock)
-			continue;
-
-
-		s.send(p, v.data(), v.size());
+		if (p.sock != exclude.sock)
+			s.send(p, v.data(), v.size());
 	}
 }
 
@@ -240,8 +237,6 @@ int Server::mainloop(uint16_t port, uint16_t protocol, bool testing) {
 	this->protocol = protocol;
 
 	if (!testing) {
-		Assets &a = eng->gamedata();
-
 		civs = old_lang.civs;
 		old_lang.collect_civs(civnames);
 	}

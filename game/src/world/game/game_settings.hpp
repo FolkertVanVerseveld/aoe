@@ -20,6 +20,11 @@ static constexpr unsigned max_legacy_players = 8 + first_player_idx; // gaia
 
 static constexpr unsigned min_popcap = 5, max_popcap = 500;
 
+enum class PlayerType {
+	human,
+	cpu,
+};
+
 class PlayerSetting final {
 public:
 	std::string name;
@@ -28,10 +33,10 @@ public:
 	unsigned team;
 	Resources res;
 	bool active;
-	bool ai;
+	PlayerType type;
 
-	PlayerSetting() : name(), color(0), civ(0), team(1), res(), active(false), ai(false) {}
-	PlayerSetting(const std::string &name, int civ, unsigned team, Resources res) : name(name), color(0), civ(civ), team(team), res(res), active(false), ai(false) {}
+	PlayerSetting();
+	PlayerSetting(const std::string &name, int civ, unsigned team, Resources res);
 	PlayerSetting(const PlayerSetting&) = default;
 };
 

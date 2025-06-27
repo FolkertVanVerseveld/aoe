@@ -93,10 +93,8 @@ Net::Net() {
 			throw std::runtime_error("wsa: winsock version not supported");
 		case WSAEINPROGRESS:
 			throw std::runtime_error("wsa: winsock blocked");
-			break;
 		case WSAEPROCLIM:
 			throw std::runtime_error("wsa: winsock process limit reached");
-			break;
 		default:
 			if (r)
 				throw std::runtime_error(std::string("wsa: winsock error code ") + std::to_string(r));

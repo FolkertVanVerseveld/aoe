@@ -70,7 +70,8 @@ private:
 	std::set<IdPoolRef> entities;
 public:
 	uint64_t explored_max;
-	bool alive, ai;
+	bool alive;
+	PlayerType type;
 	// TODO add std::optional<AI> ai;
 
 	// ai stuff

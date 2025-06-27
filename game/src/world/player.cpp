@@ -31,7 +31,10 @@ int64_t PlayerAchievements::recompute() noexcept {
 	return score;
 }
 
-Player::Player(const PlayerSetting &ps, size_t explored_max) : init(ps), res(ps.res), achievements(), entities(), explored_max(explored_max), alive(true), ai(ps.ai), ai_workers() {
+Player::Player(const PlayerSetting &ps, size_t explored_max)
+	: init(ps), res(ps.res), achievements(), entities(), explored_max(explored_max), alive(true)
+	, type(ps.type), ai_workers()
+{
 	achievements.alive = alive;
 }
 
@@ -117,7 +120,7 @@ void Player::ai_gather(WorldView &wv, unsigned n, EntityType type) {
 void Player::tick(WorldView &wv) {
 	tick_autotask(wv);
 
-	if (!ai)
+	if (type == PlayerType::human)
 		return;
 
 	// TODO auto collect workers for any player, regardless if AI (e.g. for idle workers)

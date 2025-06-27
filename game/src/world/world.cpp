@@ -706,7 +706,7 @@ void World::sanitize_player_settings(Server &ss) {
 				p.name = alias;
 			} else {
 				p.name = "Oerkneus de Eerste";
-				p.ai = true;
+				p.type = PlayerType::cpu;
 
 				if (p.civ >= 0 && p.civ < ss.civs.size()) {
 					auto &names = ss.civs[ss.civnames[p.civ]];
@@ -724,6 +724,7 @@ void World::create_players() {
 
 	// force Gaia as special player
 	PlayerSetting &gaia = scn.players.at(0);
+	gaia.type = PlayerType::cpu;
 	gaia.team = 0;
 
 	Server *ss = dynamic_cast<Server*>(this->s);
