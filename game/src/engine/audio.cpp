@@ -20,6 +20,18 @@ namespace aoe {
 static const double exp_base = 5.0;
 static const double scale = SDL_MIX_MAXVOLUME;
 
+static const std::map<SfxId, SfxPriority> prios = {
+	{SfxId::gameover_defeat, SfxPriority::high},
+	{SfxId::gameover_victory, SfxPriority::high},
+	{SfxId::invalid_select, SfxPriority::high},
+	{SfxId::melee_spawn, SfxPriority::medium},
+	{SfxId::villager_spawn, SfxPriority::medium},
+	{SfxId::priest_attack_random, SfxPriority::medium},
+	{SfxId::villager_attack_random, SfxPriority::medium},
+	{SfxId::villager_die_random, SfxPriority::medium},
+	{SfxId::bld_die_random, SfxPriority::medium},
+};
+
 static inline int exponential_to_linear(double y)
 {
 	y = std::clamp(0.0, y, 1.0);
@@ -34,10 +46,10 @@ static inline double linear_to_exponential(double y)
 }
 
 Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic)
-	, enable_music(true), enable_sound(true)
-	, music_vol(0.3f), sfx_vol(0.5f)
-	, music_file()
-	, m_mix(), taunts(), sfx(), jukebox(), play_taunts(true)
+, enable_music(true), enable_sound(true)
+, music_vol(0.3f), sfx_vol(0.5f)
+, music_file()
+, m_mix(), taunts(), sfx(), jukebox(), play_taunts(true)
 {
 	int flags = MIX_INIT_MP3;
 	int ret;
@@ -56,7 +68,13 @@ Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic)
 	if (Mix_QuerySpec(&freq, &format, &channels))
 		printf("freq=%d, channels=%d, format=0x%X\n", freq, channels, format);
 
+	// TODO subject to change
 	Mix_AllocateChannels(32);
+
+	// NOTE 'to' channel is inclusive
+	Mix_GroupChannels(0, 5, (int)SfxPriority::high);
+	Mix_GroupChannels(6, 23, (int)SfxPriority::medium);
+	Mix_GroupChannels(24, 31, (int)SfxPriority::low);
 }
 
 Audio::~Audio() {
@@ -306,26 +324,31 @@ void Audio::play_sfx(SfxId id, int loops) {
 	if (!enable_sound)
 		return;
 
+	SfxPriority prio = SfxPriority::low;
+	auto pit = prios.find(id);
+	if (pit != prios.end())
+		prio = pit->second;
+
 	// check if special sfxid
 	switch (id) {
-		case SfxId::bld_die_random:
-			id = (SfxId)((unsigned)SfxId::bld_die1 + rand() % 3);
-			break;
-		case SfxId::villager_random:
-			id = (SfxId)((unsigned)SfxId::villager1 + rand() % 7);
-			break;
-		case SfxId::villager_die_random:
-			id = (SfxId)((unsigned)SfxId::villager_die1 + rand() % 10);
-			break;
-		case SfxId::villager_attack_random:
-			id = (SfxId)((unsigned)SfxId::villager_attack1 + rand() % 3);
-			break;
-		case SfxId::priest_attack_random:
-			id = (SfxId)((unsigned)SfxId::priest_attack1 + rand() % 2);
-			break;
-		case SfxId::invalid_select:
-			id = SfxId::queue_error;
-			break;
+	case SfxId::bld_die_random:
+		id = (SfxId)((unsigned)SfxId::bld_die1 + rand() % 3);
+		break;
+	case SfxId::villager_random:
+		id = (SfxId)((unsigned)SfxId::villager1 + rand() % 7);
+		break;
+	case SfxId::villager_die_random:
+		id = (SfxId)((unsigned)SfxId::villager_die1 + rand() % 10);
+		break;
+	case SfxId::villager_attack_random:
+		id = (SfxId)((unsigned)SfxId::villager_attack1 + rand() % 3);
+		break;
+	case SfxId::priest_attack_random:
+		id = (SfxId)((unsigned)SfxId::priest_attack1 + rand() % 2);
+		break;
+	case SfxId::invalid_select:
+		id = SfxId::queue_error;
+		break;
 	}
 
 	std::lock_guard<std::mutex> lk(m_mix);
@@ -337,13 +360,31 @@ void Audio::play_sfx(SfxId id, int loops) {
 	}
 
 	Mix_Chunk *chunk = it->second.get(); // Mix_PlayChannel used to be a macro, so just in case
+	int ch = Mix_GroupAvailable((int)prio);
+	if (ch != -1) {
+		Mix_PlayChannel(ch, chunk, loops);
+		return;
+	}
 
-	// TODO use priorities for sound effects.
-	// prioritize: victory/defeat, UI sfx, combat sfx
-	int ch = Mix_PlayChannel(-1, chunk, loops);
-	if (ch == -1) {
+	switch (prio) {
+	case SfxPriority::high:
+		ch = Mix_GroupNewer((int)prio);
+		fprintf(stderr, "%s: too many simultaneous sound effects. reusing channel %d\n", __func__, ch);
+		Mix_PlayChannel(ch, chunk, loops);
+		break;
+	case SfxPriority::medium:
+		// check if there's a low priority channel available
+		ch = Mix_GroupAvailable((int)SfxPriority::low);
+		if (ch == -1) {
+			ch = Mix_GroupNewer((int)prio);
+			fprintf(stderr, "%s: too many simultaneous sound effects. reusing channel %d\n", __func__, ch);
+		}
+		Mix_PlayChannel(ch, chunk, loops);
+		break;
+	default:
 		fprintf(stderr, "%s: failed to play sfx: %s\n", __func__, Mix_GetError());
 		fprintf(stderr, "%s: currently playing: %d\n", __func__, Mix_Playing(-1));
+		break;
 	}
 }
 

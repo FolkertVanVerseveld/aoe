@@ -55,6 +55,12 @@ enum class TauntId {
 	max,
 };
 
+enum class SfxPriority {
+	high,
+	medium,
+	low,
+};
+
 enum class SfxId {
 	ui_click,
 	hud_click,
