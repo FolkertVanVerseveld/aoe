@@ -281,6 +281,8 @@ public:
 	void set_scn(io::Scenario&);
 
 	void try_open_build_menu();
+
+	void show_debug(bool &open);
 private:
 	void play_sfx(SfxId id, int loops=0);
 	void draw_tile(uint8_t id, uint8_t h, int x, int y, const ImVec2 &size, ImU32 col);

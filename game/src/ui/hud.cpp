@@ -156,6 +156,7 @@ bool UICache::try_select(EntityType type, unsigned playerid) {
 		if (ent->is_type(type)) {
 			selected.clear();
 			selected.emplace_back(ent->ref);
+			// TODO focus
 			return true;
 		}
 	}

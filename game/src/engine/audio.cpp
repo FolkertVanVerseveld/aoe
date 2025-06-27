@@ -369,7 +369,7 @@ void Audio::play_sfx(SfxId id, int loops) {
 	switch (prio) {
 	case SfxPriority::high:
 		ch = Mix_GroupNewer((int)prio);
-		fprintf(stderr, "%s: too many simultaneous sound effects. reusing channel %d\n", __func__, ch);
+		//fprintf(stderr, "%s: too many simultaneous sound effects. reusing channel %d\n", __func__, ch);
 		Mix_PlayChannel(ch, chunk, loops);
 		break;
 	case SfxPriority::medium:
@@ -377,13 +377,13 @@ void Audio::play_sfx(SfxId id, int loops) {
 		ch = Mix_GroupAvailable((int)SfxPriority::low);
 		if (ch == -1) {
 			ch = Mix_GroupNewer((int)prio);
-			fprintf(stderr, "%s: too many simultaneous sound effects. reusing channel %d\n", __func__, ch);
+			//fprintf(stderr, "%s: too many simultaneous sound effects. reusing channel %d\n", __func__, ch);
 		}
 		Mix_PlayChannel(ch, chunk, loops);
 		break;
 	default:
-		fprintf(stderr, "%s: failed to play sfx: %s\n", __func__, Mix_GetError());
-		fprintf(stderr, "%s: currently playing: %d\n", __func__, Mix_Playing(-1));
+		//fprintf(stderr, "%s: failed to play sfx: %s\n", __func__, Mix_GetError());
+		//fprintf(stderr, "%s: currently playing: %d\n", __func__, Mix_Playing(-1));
 		break;
 	}
 }

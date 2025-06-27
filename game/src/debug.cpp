@@ -94,6 +94,8 @@ void Debug::show(bool &open) {
 	Frame f;
 	Engine &e = *eng;
 
+	e.ui.show_debug(open);
+
 	if (!f.begin("Debug control", open))
 		return;
 
@@ -110,7 +112,6 @@ void Debug::show(bool &open) {
 
 		bool has_server = e.server.get() != nullptr;
 		bool has_client = e.client.get() != nullptr;
-
 
 		f.fmt("Server active: %s", has_server ? "yes" : "no");
 
@@ -250,5 +251,28 @@ void ImageCapture::step(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1) {
 	m_fiIdx = (m_fiIdx + 1) % 4;
 }
 #endif
+
+void UICache::show_debug(bool &open) {
+	ZoneScoped;
+	if (!open)
+		return;
+
+	Frame f;
+
+	if (!f.begin("HUD debug", open))
+		return;
+
+	f.fmt("Entities count: %u\n", (unsigned)entities.size());
+	f.fmt("Particles count: %u\n", (unsigned)particles.size());
+
+	f.fmt("Selected count: %u\n", (unsigned)selected.size());
+
+	if (!selected.empty() && ImGui::TreeNode("selected")) {
+		for (auto ref : selected) {
+			f.fmt("(%d, %d)", ref.first, ref.second);
+		}
+		ImGui::TreePop();
+	}
+}
 
 }
