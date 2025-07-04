@@ -987,8 +987,8 @@ int Engine::mainloop() {
 
 	ImGuiIO &io = imgui_init(sdl);
 
-	guess_font_paths();
 	cfg_init();
+	guess_font_paths();
 
 	m_gl.reset(new GL());
 

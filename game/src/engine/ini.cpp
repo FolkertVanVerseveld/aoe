@@ -4,6 +4,8 @@
 #include <cctype>  // tolower
 #include <cstring> // strerror
 
+#include <algorithm> // clamp
+
 IniParser::IniParser(const char *path) : f(path ? fopen(path, "rb") : NULL), cache() {}
 
 IniParser::~IniParser() {
@@ -172,14 +174,21 @@ ipStatus IniParser::try_get(const char *section, const char *name, std::string &
 
 double IniParser::get_or_default(const char *section, const char *key, double def)
 {
-	std::string value;
+	double value;
+	return try_get(section, key, value) == ipStatus::invalid_value ? def : value;
+}
 
-	switch (try_get(section, key, value)) {
-		case ipStatus::ioerr:
-			fprintf(stderr, "%s: failed to read: %s\n", __func__, strerror(errno));
-			return def;
-		case ipStatus::not_found:
-			return def;
+ipStatus IniParser::try_get(const char *section, const char *key, double &dst)
+{
+	std::string value;
+	ipStatus status;
+
+	switch (status = try_get(section, key, value)) {
+	case ipStatus::ioerr:
+		fprintf(stderr, "%s: failed to read: %s\n", __func__, strerror(errno));
+		return status;
+	case ipStatus::not_found:
+		return status;
 	}
 
 	const char *str = value.c_str();
@@ -187,9 +196,21 @@ double IniParser::get_or_default(const char *section, const char *key, double de
 
 	double v = std::strtod(str, &end);
 	if (end == str)
-		return def;
+		return ipStatus::invalid_value;
 
-	return v;
+	dst = v;
+	return ipStatus::ok;
+}
+
+ipStatus IniParser::try_clamp(const char *section, const char *name, double &dst, double min, double max)
+{
+	double value;
+	ipStatus status = try_get(section, name, value);
+
+	if (status == ipStatus::ok)
+		dst = std::clamp<double>(value, min, max);
+
+	return status;
 }
 
 static int strcasecmp(const std::string &s1, const std::string &s2)

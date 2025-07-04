@@ -42,18 +42,18 @@ namespace aoe {
 
 FontCache fnt;
 
-FontGuard::FontGuard(ImFont *fnt) {
-	ImGui::PushFont(fnt);
+FontGuard::FontGuard(const Font &fnt) {
+	ImGui::PushFont(fnt.fnt);
 }
 
 FontGuard::~FontGuard() {
 	ImGui::PopFont();
 }
 
-FontCache::FontCache() : fnt_arial(NULL), fnt_copper(NULL), fnt_copper2(NULL) {}
+FontCache::FontCache() : arial(13.0f), copper(22.0f), copper2(36.0f) {}
 
 bool FontCache::loaded() const noexcept {
-	return fnt_arial && fnt_copper && fnt_copper2;
+	return arial && copper && copper2;
 }
 
 static ImFont *try_add_font(ImFontAtlas *a, const char *path, float size) {
@@ -87,6 +87,19 @@ fail:
 	return fnt;
 }
 
+Font::Font(float pt) : fnt(NULL), path(), pt(pt) {}
+
+bool Font::load(ImFontAtlas *fa, const char *path) {
+	fnt = try_add_font(fa, path, size());
+	if (fnt)
+		this->path = path;
+	return fnt != NULL;
+}
+
+float Font::size() const noexcept {
+	return ceil(pt * SDL::fnt_scale);
+}
+
 bool FontCache::try_load() {
 	ImGuiIO &io = ImGui::GetIO();
 	// Load Fonts
@@ -103,30 +116,24 @@ bool FontCache::try_load() {
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
 	//ImFont *font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 	//IM_ASSERT(font != NULL);
-
-	float f = SDL::fnt_scale;
-
 #if _WIN32
-	fnt_arial = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\arial.ttf", ceil(13.0f * f));
+	arial.load(io.Fonts, "C:\\Windows\\Fonts\\arial.ttf");
 
-	if (!(fnt_copper = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\COPRGTB.TTF", ceil(18.0f * f)))) {
+	if (!(copper.load(io.Fonts, "C:\\Windows\\Fonts\\COPRGTB.TTF"))) {
 		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTB.TTF");
-
-		fnt_copper = try_add_font(io.Fonts, localpath.c_str(), ceil(18.0f * f));
+		copper.load(io.Fonts, localpath.c_str());
 	}
 
-	if (!(fnt_copper2 = try_add_font(io.Fonts, "C:\\Windows\\Fonts\\COPRGTL.TTF", ceil(30.0f * f)))) {
+	if (!(copper2.load(io.Fonts, "C:\\Windows\\Fonts\\COPRGTL.TTF"))) {
 		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTL.TTF");
-
-		fnt_copper2 = try_add_font(io.Fonts, localpath.c_str(), ceil(30.0f * f));
+		copper2.load(io.Fonts, localpath.c_str());
 	}
 #else
 	#define FONT_DIR "/usr/share/fonts/truetype/"
 
-	fnt_arial = try_add_font(io.Fonts, FONT_DIR "liberation/LiberationSans-Regular.ttf", ceil(15.0f * f));
-
-	fnt_copper = try_add_font(io.Fonts, FONT_DIR "abyssinica/AbyssinicaSIL-Regular.ttf", ceil(18.0f * f));
-	fnt_copper2 = try_add_font(io.Fonts, FONT_DIR "ancient-scripts/Symbola_hint.ttf", ceil(30.0f * f));
+	arial.load(io.Fonts, FONT_DIR "liberation/LiberationSans-Regular.ttf");
+	copper.load(io.Fonts, FONT_DIR "abyssinica/AbyssinicaSIL-Regular.ttf");
+	copper2.load(io.Fonts, FONT_DIR "ancient-scripts/Symbola_hint.ttf");
 #endif
 	return loaded();
 }

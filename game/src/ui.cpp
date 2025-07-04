@@ -146,7 +146,7 @@ bool Frame::xbtn(const char *s, const char *tooltip, TextHalign ha, const ImVec2
 	bool b = btn(s, ha, sz);
 	ImGui::EndDisabled();
 	if (tooltip && *tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-		FontGuard fg2(fnt.fnt_arial);
+		FontGuard fg2(fnt.arial);
 		ImGui::Tooltip(tooltip);
 	}
 	return b;
@@ -622,13 +622,13 @@ void UICache::show_editor_menu() {
 	float old_x = ImGui::GetCursorPosX();
 
 	{
-		FontGuard fg(fnt.fnt_copper2);
+		FontGuard fg(fnt.copper2);
 
 		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
 		f.str2("Scenario Editor", TextHalign::center);
 	}
 
-	FontGuard fg(fnt.fnt_copper);
+	FontGuard fg(fnt.copper);
 
 	ImGui::SetCursorPosY(272.0f / 768.0f * vp->WorkSize.y);
 
@@ -691,7 +691,7 @@ void UICache::strnum(const ImVec2 &pos, int v) {
 
 void UICache::str_scream(const char *txt) {
 	ImGuiIO &io = ImGui::GetIO();
-	FontGuard fg(fnt.fnt_copper2);
+	FontGuard fg(fnt.copper2);
 
 	ImVec2 sz(ImGui::CalcTextSize(txt));
 
@@ -1024,7 +1024,7 @@ void Engine::show_start() {
 	float old_x = ImGui::GetCursorPosX();
 
 	{
-		FontGuard fg(fnt.fnt_copper);
+		FontGuard fg(fnt.copper);
 
 		ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
 
@@ -1178,13 +1178,13 @@ void Engine::show_singleplayer_menu() {
 	float old_x = GetCursorPosX();
 
 	{
-		FontGuard fg(fnt.fnt_copper2);
+		FontGuard fg(fnt.copper2);
 
 		SetRelY(38.0f);
 		f.str2("Single Player", TextHalign::center);
 	}
 
-	FontGuard fg(fnt.fnt_copper);
+	FontGuard fg(fnt.copper);
 
 	SetRelY(188.0f);
 	if (btn(f, "Random Map", TextHalign::center, sfx))
@@ -1223,7 +1223,7 @@ void Engine::show_singleplayer_host() {
 	SetWindowSize(vp->WorkSize);
 
 	{
-		FontGuard fg(fnt.fnt_copper2);
+		FontGuard fg(fnt.copper2);
 
 		SetRelY(14.0f);
 		f.str2("Single Player Game", TextHalign::center);
@@ -1282,7 +1282,7 @@ void Engine::show_multiplayer_menu() {
 	float old_x = ImGui::GetCursorPosX();
 
 	{
-		FontGuard fg(fnt.fnt_copper2);
+		FontGuard fg(fnt.copper2);
 
 		SetRelY(38.0f);
 		f.str2("Multiplayer", TextHalign::center);
