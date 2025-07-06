@@ -71,7 +71,7 @@ class TcpSocket final {
 public:
 	TcpSocket();
 	TcpSocket(SOCKET s) : s((int)s) {}
-	TcpSocket(const TcpSocket &) = delete;
+	TcpSocket(const TcpSocket&) = delete;
 	TcpSocket(TcpSocket &&s) noexcept : s(s.s.load()) { s.s.store((int)INVALID_SOCKET); }
 	~TcpSocket();
 
@@ -165,6 +165,9 @@ public:
 
 	/* A peer has just left or has been kicked from this server. */
 	virtual void dropped(ServerSocket &s, const Peer &p) = 0;
+
+	/* Server has started and is actively listening to incoming connections. */
+	virtual void started() = 0;
 
 	/* Server has been stopped. */
 	virtual void stopped() = 0;

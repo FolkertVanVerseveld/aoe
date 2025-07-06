@@ -1040,6 +1040,8 @@ int ServerSocket::mainloop(uint16_t port, int backlog, ServerSocketController &c
 	s.set_nonblocking();
 	step = false;
 
+	ctl.started();
+
 	for (int nfds; (nfds = epoll_wait(h, events.data(), events.size(), -1)) >= 0; step = false) {
 		for (int i = 0; i < nfds; ++i)
 			if (!event_step(i)) {

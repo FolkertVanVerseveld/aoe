@@ -13,7 +13,7 @@ LocalClient::LocalClient()
 	: IClient(), IServer(), w() {}
 
 void LocalClient::close() {
-	m_active = false;
+	set_active(false);
 	stop();
 }
 

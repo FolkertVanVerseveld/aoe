@@ -13,6 +13,7 @@
 #include <thread>
 #include <variant>
 #include <optional>
+#include <condition_variable>
 
 #include "game.hpp"
 #include "debug.hpp"
@@ -179,14 +180,17 @@ private:
 };
 
 class IServer {
-protected:
-	std::atomic<bool> m_active;
+private:
+	std::condition_variable cv_active;
+	std::mutex lk_active;
+	bool m_active;
 public:
-	IServer() : m_active(false) {}
-
+	IServer();
 	virtual ~IServer() = default;
 
-	bool active() const noexcept { return m_active; }
+	bool active() noexcept;
+	void set_active(bool v);
+	void wait_active(bool exp);
 
 	virtual bool is_running() const noexcept =0;
 	virtual void close() =0;
@@ -214,6 +218,7 @@ public:
 	~Server() override;
 
 	void stop();
+	void started() override;
 	void close() override; // this will block till everything is stopped
 
 	int mainloop(uint16_t port, uint16_t protocol, bool testing=false);

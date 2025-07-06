@@ -505,7 +505,9 @@ void Engine::start_server(uint16_t port) {
 			}, port);
 			t2.detach();
 
+			server->wait_active(true);
 			start_client_now("127.0.0.1", port, info);
+
 			guard.good = true;
 		} catch (std::exception &e) {
 			fprintf(stderr, "%s: cannot start server: %s\n", func, e.what());

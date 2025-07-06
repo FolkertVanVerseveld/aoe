@@ -7,6 +7,27 @@
 
 namespace aoe {
 
+IServer::IServer() : cv_active(), lk_active(), m_active(false) {}
+
+bool IServer::active() noexcept {
+	std::lock_guard<std::mutex> lk(lk_active);
+	return m_active;
+}
+
+void IServer::set_active(bool v) {
+	{
+		std::lock_guard<std::mutex> lk(lk_active);
+		m_active = v;
+	}
+	cv_active.notify_all();
+}
+
+void IServer::wait_active(bool exp) {
+	std::unique_lock<std::mutex> lk(lk_active);
+	while (m_active != exp)
+		cv_active.wait(lk);
+}
+
 Server::Server()
 	: ServerSocketController(), IServer()
 	, s(), m_running(false), m_peers(), port(0), protocol(0), peers(), refs(), w(), civs() {}
@@ -241,14 +262,16 @@ int Server::mainloop(uint16_t port, uint16_t protocol, bool testing) {
 		old_lang.collect_civs(civnames);
 	}
 
-	m_active = true;
-	int r = s.mainloop(port, 10, *this);
+	return s.mainloop(port, 10, *this);
+}
 
-	return r;
+void Server::started() {
+	set_active(true);
 }
 
 void Server::stop() {
-	m_running = m_active = false;
+	m_running = false;
+	set_active(false);
 }
 
 void Server::close() {
