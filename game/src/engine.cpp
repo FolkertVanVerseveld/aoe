@@ -228,6 +228,17 @@ void Engine::verify_game_data(const std::string &path) {
 		try {
 			assets.reset(new Assets(*this, path));
 			trigger_async_flags(EngineAsyncTask::new_game_data);
+		} catch (std::ios_base::failure &e) {
+			const char *what = "missing or invalid data";
+			if (path.find("/media") == 0 || path.find("/mnt") == 0) {
+#if _WIN32
+				what = "missing data. Game directory looks like a Unix path. Make sure to specify a proper Windows path";
+#else
+				what = "missing data. Make sure the mount volume is mounted properly";
+#endif
+			}
+
+			push_error(func, std::string("Game data verification failed: ") + what);
 		} catch (std::exception &e) {
 			push_error(func, std::string("Game data verification failed: ") + e.what());
 		}

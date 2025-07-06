@@ -169,8 +169,6 @@ void Window::set_fullscreen(bool v) {
 
 #if _WIN32
 	reclip();
-#else
-#error not implemented
 #endif
 }
 
@@ -219,7 +217,11 @@ bool Window::set_clipping(bool enable) {
 	return v;
 }
 #else
-#error not implemented
+void Window::reclip() {}
+
+bool Window::set_clipping(bool enable) {
+	return false;
+}
 #endif
 
 }
