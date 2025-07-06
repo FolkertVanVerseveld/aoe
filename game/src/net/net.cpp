@@ -617,7 +617,16 @@ int ServerSocket::add_fd(SOCKET s) {
 	ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET;
 	ev.data.fd = (int)s;
 
-	return epoll_ctl(h, EPOLL_CTL_ADD, s, &ev);
+	int r = epoll_ctl(h, EPOLL_CTL_ADD, s, &ev);
+#if _WIN32
+	return r;
+#else
+	if (r) {
+		perror("add_fd: epoll_ctl_add");
+		fprintf(stderr, "add_fd: fd=%d\n", s);
+	}
+	return r;
+#endif
 }
 
 int ServerSocket::del_fd(SOCKET s) {

@@ -416,6 +416,7 @@ void Engine::start_client_now(const char *host, uint16_t port, UI_TaskInfo &info
 	Client *c = new Client(username);
 	client.reset(c);
 
+	puts("Connecting to host");
 	info.next("Connecting to host");
 	c->start(host, port);
 }
