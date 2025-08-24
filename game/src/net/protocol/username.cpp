@@ -11,7 +11,8 @@ std::string NetPkg::username() {
 
 void NetPkg::set_username(const std::string &s) {
 	PkgWriter out(*this, NetPkgType::set_username);
-	write("40s", pkgargs{ s }, false);
+	clear();
+	writef("40s", s.size(), s.c_str());
 }
 
 }

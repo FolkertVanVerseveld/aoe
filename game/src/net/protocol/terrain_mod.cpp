@@ -16,14 +16,15 @@ void NetPkg::set_terrain_mod(const NetTerrainMod &tm) {
 		throw std::runtime_error("terrain mod too big");
 
 	PkgWriter out(*this, NetPkgType::terrainmod);
-	unsigned pos = write("4H", pkgargs{ tm.x, tm.y, tm.w, tm.h }, false);
+	clear();
+	writef("4H", tm.x, tm.y, tm.w, tm.h);
 
 	// TODO implement write(int ch, vector)
 	for (uint16_t v : tm.tiles)
-		pos += write("H", pkgargs{ v });
+		writef("H", v);
 
 	for (uint8_t h : tm.hmap)
-		pos += write("B", pkgargs{ h });
+		writef("B", h);
 }
 
 NetTerrainMod NetPkg::get_terrain_mod() {

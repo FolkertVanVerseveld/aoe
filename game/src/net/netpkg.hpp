@@ -5,6 +5,7 @@
 #include <utility>
 #include <cstdint>
 #include <initializer_list>
+#include <cstdarg>
 
 #include <idpool.hpp>
 
@@ -15,6 +16,14 @@ class PkgWriter;
 typedef std::variant<uint64_t, std::string> netarg;
 typedef std::vector<netarg> netargs;
 typedef std::initializer_list<netarg> pkgargs;
+
+enum class netArgsStatus {
+	ok,
+	mult_overflow,
+	bad_fmt_char,
+	str_unterminated,
+	str_too_big,
+};
 
 class NetPkg final {
 public:
@@ -122,13 +131,17 @@ private:
 
 	unsigned read(NetPkgType, const std::string &fmt);
 	unsigned read(const std::string &fmt, netargs &args, unsigned offset=0);
-	unsigned write(const std::string &fmt, const netargs &args, bool append=true);
+	//unsigned write_old(const std::string &fmt, const netargs &args, bool append=true);
+
+	void clear();
+	netArgsStatus writef(const char *fmt, ...);
 
 	int8_t i8(unsigned pos) const;
 	uint8_t u8(unsigned pos) const;
 	uint16_t u16(unsigned pos) const;
 	int32_t i32(unsigned pos) const;
 	uint32_t u32(unsigned pos) const;
+	float F32(unsigned pos) const; // truncated float (no decimal point)
 	uint64_t u64(unsigned pos) const;
 	std::string str(unsigned pos) const;
 };

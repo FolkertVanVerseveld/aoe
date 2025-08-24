@@ -6,7 +6,8 @@ namespace aoe {
 
 void NetPkg::set_gameover(unsigned team) {
 	PkgWriter out(*this, NetPkgType::gameover);
-	write("H", pkgargs{ team }, false);
+	clear();
+	writef("H", team);
 }
 
 unsigned NetPkg::get_gameover() {

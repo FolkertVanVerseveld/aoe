@@ -6,7 +6,8 @@ namespace aoe {
 
 void NetPkg::set_protocol(uint16_t version) {
 	PkgWriter out(*this, NetPkgType::set_protocol);
-	write("H", pkgargs{ (uint64_t)version }, false);
+	clear();
+	writef("H", version);
 }
 
 uint16_t NetPkg::protocol_version() {

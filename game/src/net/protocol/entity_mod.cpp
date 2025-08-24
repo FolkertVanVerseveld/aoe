@@ -38,18 +38,14 @@ void NetPkg::entity_add(const EntityView &e, NetEntityControlType type) {
 	refcheck(e.ref);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H4IHHHBbbBHH", pkgargs({
-		(uint16_t)type, (uint16_t)e.type,
-		e.ref.first, e.ref.second, (uint64_t)e.x, (uint64_t)e.y,
-		(uint64_t)(e.angle * UINT16_MAX / (2 * M_PI)),
-		(uint64_t)e.playerid, (uint64_t)e.subimage,
-		(uint8_t)e.state,
-		(uint64_t)(int8_t)(INT8_MAX * fmodf(e.x, 1)),
-		(uint64_t)(int8_t)(INT8_MAX * fmodf(e.y, 1)),
-		(uint64_t)e.stats.attack,
-		(uint64_t)e.stats.hp,
-		(uint64_t)e.stats.maxhp,
-	}), false);
+	clear();
+	writef("2H2I2F", (uint16_t)type, (uint16_t)e.type,
+		e.ref.first, e.ref.second, e.x, e.y);
+	writef("HHHB", (uint16_t)(e.angle * UINT16_MAX / (2 * M_PI)),
+		e.playerid, e.subimage, (uint8_t)e.state);
+	writef("bbBHH",
+		(int8_t)(INT8_MAX * fmodf(e.x, 1)), (int8_t)(INT8_MAX * fmodf(e.y, 1)),
+		e.stats.attack, e.stats.hp, e.stats.maxhp);
 }
 
 void NetPkg::set_entity_kill(IdPoolRef ref) {
@@ -57,21 +53,17 @@ void NetPkg::set_entity_kill(IdPoolRef ref) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("H2I", pkgargs{
-		(uint16_t)NetEntityControlType::kill,
-		ref.first, ref.second,
-	}, false);
+	clear();
+	writef("H2I", NetEntityControlType::kill, ref.first, ref.second);
 }
 
 void NetPkg::entity_move(IdPoolRef ref, float x, float y) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H4I", pkgargs({
-		(uint16_t)NetEntityControlType::task,
-		(uint16_t)EntityTaskType::move,
-		ref.first, ref.second, (uint64_t)x, (uint64_t)y
-	}), false);
+	clear();
+	writef("2H2I2F", NetEntityControlType::task, EntityTaskType::move,
+		ref.first, ref.second, x, y);
 }
 
 void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
@@ -80,12 +72,8 @@ void NetPkg::entity_task(IdPoolRef r1, IdPoolRef r2, EntityTaskType type) {
 	refcheck(r2);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H4I", pkgargs{
-		(uint16_t)NetEntityControlType::task,
-		(uint16_t)type,
-		r1.first, r1.second,
-		r2.first, r2.second,
-	}, false);
+	clear();
+	writef("2H4I", NetEntityControlType::task, type, r1.first, r1.second, r2.first, r2.second);
 }
 
 void NetPkg::entity_train(IdPoolRef src, EntityType type) {
@@ -93,13 +81,11 @@ void NetPkg::entity_train(IdPoolRef src, EntityType type) {
 	refcheck(src);
 	PkgWriter out(*this, NetPkgType::entity_mod);
 
-	write("2H2IH", pkgargs{
-		(unsigned)NetEntityControlType::task,
-		(uint16_t)EntityTaskType::train_unit,
-
-		src.first, src.second,
-		(unsigned)type, // TODO add more info to message when technologies are supported
-	}, false);
+	clear();
+	writef("2H2IH",
+		NetEntityControlType::task,
+		EntityTaskType::train_unit,
+		src.first, src.second, type); // TODO add more info to message when technologies are supported
 }
 
 NetEntityMod NetPkg::get_entity_mod() {

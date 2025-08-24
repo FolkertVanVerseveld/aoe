@@ -24,7 +24,8 @@ void NetPkg::set_gameticks(unsigned n) {
 	assert(n <= UINT16_MAX);
 
 	PkgWriter out(*this, NetPkgType::gameticks);
-	write("H", { n }, false);
+	clear();
+	writef("H", n);
 }
 
 }

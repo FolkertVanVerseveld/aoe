@@ -12,17 +12,19 @@ void NetPkg::set_player_resize(size_t size) {
 		throw std::runtime_error("overflow player resize");
 
 	PkgWriter out(*this, NetPkgType::playermod);
-	write("2H", pkgargs{(unsigned)NetPlayerControlType::resize, size}, false);
+	clear();
+	writef("2H", NetPlayerControlType::resize, size);
 }
 
 void NetPkg::claim_player_setting(uint16_t idx) {
 	PkgWriter out(*this, NetPkgType::playermod);
-	write("2H", pkgargs{(unsigned)NetPlayerControlType::set_ref, idx}, false);
+	clear();
+	writef("2H", NetPlayerControlType::set_ref, idx);
 }
 
 void NetPkg::set_player_died(uint16_t idx) {
 	PkgWriter out(*this, NetPkgType::playermod);
-	write("2H", pkgargs{(unsigned)NetPlayerControlType::died, idx}, false);
+	writef("2H", NetPlayerControlType::died, idx);
 }
 
 void NetPkg::set_player_score(uint16_t idx, const PlayerAchievements &pa) {
@@ -30,15 +32,13 @@ void NetPkg::set_player_score(uint16_t idx, const PlayerAchievements &pa) {
 
 	unsigned flags = 0;
 
-	if (pa.alive) flags |= 1 << 0;
+	if (pa.alive)
+		flags |= 1 << 0;
 
-	write("2HILB", pkgargs({
-		(unsigned)NetPlayerControlType::set_score,
-		(uint64_t)idx,
-		(uint64_t)pa.military_score,
-		(uint64_t)pa.score,
-		(uint64_t)flags,
-	}), false);
+	clear();
+	writef("2HIlB",
+		NetPlayerControlType::set_score,
+		idx, pa.military_score, pa.score, flags);
 }
 
 NetPlayerControl NetPkg::get_player_control() {
@@ -92,7 +92,8 @@ NetPlayerControl NetPkg::get_player_control() {
 
 void NetPkg::playermod2(NetPlayerControlType type, uint16_t idx, uint16_t pos) {
 	PkgWriter out(*this, NetPkgType::playermod);
-	write("3H", pkgargs{ (unsigned)type, idx, pos }, false);
+	clear();
+	writef("3H", type, idx, pos);
 }
 
 void NetPkg::set_player_civ(uint16_t idx, uint16_t civ) {
@@ -105,9 +106,8 @@ void NetPkg::set_player_team(uint16_t idx, uint16_t team) {
 
 void NetPkg::set_player_name(uint16_t idx, const std::string &s) {
 	PkgWriter out(*this, NetPkgType::playermod);
-	write("2H40s", pkgargs{
-		(unsigned)NetPlayerControlType::set_player_name, idx, s
-	}, false);
+	clear();
+	writef("2H40s", NetPlayerControlType::set_player_name, idx, s.size(), s.c_str());
 }
 
 }

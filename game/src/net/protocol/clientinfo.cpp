@@ -4,7 +4,8 @@ namespace aoe {
 
 void NetPkg::set_ready(bool v) {
 	PkgWriter out(*this, NetPkgType::client_info);
-	write("B", pkgargs{ !!v }, false);
+	clear();
+	writef("B", v);
 }
 
 NetClientInfoControl NetPkg::get_client_info() {

@@ -13,46 +13,40 @@ void NetPkg::set_incoming(IdPoolRef ref) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::peermod);
 
-	write("2IH", pkgargs{
-		ref.first, ref.second, (unsigned)NetPeerControlType::incoming
-	}, false);
+	clear();
+	writef("2IH", ref.first, ref.second, NetPeerControlType::incoming);
 }
 
 void NetPkg::set_peer_ref(IdPoolRef ref) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::peermod);
 
-	write("2IH", pkgargs{
-		ref.first, ref.second, (unsigned)NetPeerControlType::set_peer_ref,
-	}, false);
+	clear();
+	writef("2IH", ref.first, ref.second, NetPeerControlType::set_peer_ref);
 }
 
 void NetPkg::set_dropped(IdPoolRef ref) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::peermod);
 
-	write("2IH", pkgargs{
-		ref.first, ref.second, (unsigned)NetPeerControlType::dropped
-	}, false);
+	clear();
+	writef("2IH", ref.first, ref.second, NetPeerControlType::dropped);
 }
 
 void NetPkg::set_claim_player(IdPoolRef ref, uint16_t idx) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::peermod);
 
-	write("2I2H", pkgargs{
-		ref.first, ref.second, (unsigned)NetPeerControlType::set_player_idx, idx
-	}, false);
+	clear();
+	writef("2I2H", ref.first, ref.second, NetPeerControlType::set_player_idx, idx);
 }
 
 void NetPkg::set_ref_username(IdPoolRef ref, const std::string &s) {
 	refcheck(ref);
 	PkgWriter out(*this, NetPkgType::peermod);
 
-	write("2IH40s", pkgargs{
-		ref.first, ref.second,
-		(unsigned)NetPeerControlType::set_username, s
-	}, false);
+	clear();
+	writef("2IH40s", ref.first, ref.second, NetPeerControlType::set_username, s.size(), s.c_str());
 }
 
 NetPeerControl NetPkg::get_peer_control() {

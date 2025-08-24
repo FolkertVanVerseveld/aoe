@@ -26,7 +26,8 @@ NetGamespeedControl NetPkg::get_gamespeed() {
 void NetPkg::set_gamespeed(NetGamespeedType type, uint8_t speed) {
 	ZoneScoped;
 	PkgWriter out(*this, NetPkgType::gamespeed_control);
-	write("2B", pkgargs{ (uint8_t)type, speed}, false);
+	clear();
+	writef("2B", type, speed);
 }
 
 }

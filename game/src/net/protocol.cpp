@@ -140,7 +140,8 @@ void NetPkg::set_hdr(NetPkgType type) {
 
 void NetPkg::set_start_game(NetStartGameType type) {
 	PkgWriter out(*this, NetPkgType::start_game);
-	write("B", pkgargs{ type }, false);
+	clear();
+	writef("B", type);
 }
 
 NetStartGameType NetPkg::get_start_type() {

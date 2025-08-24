@@ -17,11 +17,9 @@ void NetPkg::set_scn_vars(const ScenarioSettings &scn) {
 	if (scn.wrap            ) flags |= 1 << 5;
 	if (scn.restricted      ) flags |= 1 << 6;
 
-	write("6I4IB", pkgargs({
-		(uint64_t)scn.width, (uint64_t)scn.height, (uint64_t)scn.popcap, (uint64_t)scn.age, (uint64_t)scn.seed, (uint64_t)scn.villagers,
-		(uint64_t)scn.res.food, (uint64_t)scn.res.wood, (uint64_t)scn.res.gold, (uint64_t)scn.res.stone,
-		(uint64_t)flags,
-	}), false);
+	clear();
+	writef("3Ii2I", scn.width, scn.height, scn.popcap, scn.age, scn.seed, scn.villagers);
+	writef("4iB", scn.res.food, scn.res.wood, scn.res.gold, scn.res.stone, flags);
 }
 
 ScenarioSettings NetPkg::get_scn_vars() {

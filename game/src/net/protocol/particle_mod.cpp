@@ -11,13 +11,11 @@ namespace aoe {
 
 void NetPkg::particle_spawn(const Particle &p) {
 	PkgWriter out(*this, NetPkgType::particle_mod);
-	write("2I2H2I2b", pkgargs({
-		(uint64_t)p.ref.first, (uint64_t)p.ref.second,
-		(uint16_t)p.type, (uint64_t)p.subimage,
-		(uint32_t)p.x, (uint32_t)p.y,
-		(uint64_t)(int8_t)(INT8_MAX * fmodf(p.x, 1)),
-		(uint64_t)(int8_t)(INT8_MAX * fmodf(p.y, 1))
-	}), false);
+
+	clear();
+	writef("2IHF", p.ref.first, p.ref.second, p.type, p.subimage);
+	writef("2F2b", p.x, p.y,
+		(int8_t)(INT8_MAX * fmodf(p.x, 1)), (int8_t)(INT8_MAX * fmodf(p.y, 1)));
 }
 
 Particle NetPkg::get_particle() {

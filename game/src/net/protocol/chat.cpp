@@ -6,7 +6,8 @@ namespace aoe {
 
 void NetPkg::set_chat_text(IdPoolRef ref, const std::string &s) {
 	PkgWriter out(*this, NetPkgType::chat_text);
-	write("2I80s", pkgargs{ ref.first, ref.second, s }, false);
+	clear();
+	writef("2I80s", ref.first, ref.second, s.size(), s.c_str());
 }
 
 std::pair<IdPoolRef, std::string> NetPkg::chat_text() {
