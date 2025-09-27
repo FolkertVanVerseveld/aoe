@@ -17,6 +17,14 @@ namespace aoe {
 
 namespace gfx {
 
+struct BkgVertex {
+	GLfloat x, y, z; // geometric data
+	GLfloat r, g, b; // color data
+	GLfloat s, t;    // texture coords
+};
+
+extern BkgVertex bkg_vertices[4];
+
 typedef std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> Surface;
 
 void glchk(const char *file, const char *func, int lno);
@@ -52,6 +60,8 @@ public:
 		return lhs.ref < rhs.ref;
 	}
 };
+
+void SetBackground(const ImageRef &r, GLuint vbo);
 
 /** Big texture that contains all references images. */
 class Tileset final {

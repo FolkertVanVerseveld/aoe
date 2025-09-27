@@ -100,11 +100,11 @@ NetEntityMod NetPkg::get_entity_mod() {
 		EntityView ev;
 		args.clear();
 
-		pos += read("H4IHHHBbbBHH", args, pos);
+		pos += read("H2I2FHHHBbbBHH", args, pos);
 
 		ev.type = (EntityType)u16(0);
 		ev.ref.first = u32(1); ev.ref.second = u32(2);
-		ev.x = u32(3); ev.y = u32(4);
+		ev.x = F32(3); ev.y = F32(4);
 
 		ev.angle = u16(5) * (2 * M_PI) / UINT16_MAX;
 		ev.playerid = u16(6);

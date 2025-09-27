@@ -16,6 +16,7 @@
 #include "engine/assets.hpp"
 #include "engine/font.hpp"
 #include "engine/ini.hpp"
+#include "engine/menu.hpp"
 
 #include <queue>
 #include <deque>
@@ -25,22 +26,6 @@
 #include <condition_variable>
 
 namespace aoe {
-
-enum class MenuState {
-	init,
-	start,
-	singleplayer_menu,
-	singleplayer_host,
-	singleplayer_game,
-	multiplayer_menu,
-	multiplayer_host,
-	multiplayer_settings,
-	multiplayer_game,
-	defeat,
-	victory,
-	editor_menu,
-	editor_scenario,
-};
 
 class Engine;
 

@@ -7,10 +7,14 @@ namespace aoe {
 
 namespace ui {
 
+ImDrawList *bkg = nullptr;
+ImGuiIO *gui = nullptr;
+ImGuiViewport *vp = nullptr;
+
 UICache::UICache()
 	: civs(), e(nullptr), entities(), entities_deceased(), particles(), selected(), display_area()
 	, left(0), top(0), scale(1)
-	, bkg(nullptr), btnsel()
+	, btnsel()
 	, t_imgs()
 	, fd(), fd2(ImGuiFileBrowserFlags_EnterNewFilename)
 	, scn(), scn_edit(), scn_game(), mem(), gmb_top(), gmb_bottom()

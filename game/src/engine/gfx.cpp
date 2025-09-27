@@ -5,6 +5,14 @@
 namespace aoe {
 namespace gfx {
 
+BkgVertex bkg_vertices[4] = {
+	// positions          // colors          // texture coords
+	{ 1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  1.0f, 0.0f}, // top right
+	{ 1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  1.0f, 1.0f}, // bottom right
+	{-1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f}, // bottom left
+	{-1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  0.0f, 0.0f}, // top left
+};
+
 void glchk(const char *file, const char *func, int lno) {
 	GLenum err;
 
@@ -202,6 +210,25 @@ void GLprogram::setVertexArray(const char *name, GLint size, GLenum type, GLbool
 
 	glVertexAttribPointer(id, size, type, normalized, stride, (void*)(0 + offset));
 	glEnableVertexAttribArray(id);
+}
+
+void SetBackground(const ImageRef &r, GLuint vbo) {
+	bkg_vertices[0].s = r.s1;
+	bkg_vertices[1].s = r.s1;
+
+	bkg_vertices[2].s = r.s0;
+	bkg_vertices[3].s = r.s0;
+
+	bkg_vertices[0].t = r.t0;
+	bkg_vertices[3].t = r.t0;
+
+	bkg_vertices[1].t = r.t1;
+	bkg_vertices[2].t = r.t1;
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(bkg_vertices), bkg_vertices, GL_STATIC_DRAW);
+
+	GLCHK;
 }
 
 }

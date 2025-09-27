@@ -51,18 +51,6 @@ unsigned sp_player_count = 5, sp_player_ui_count = sp_player_count - 1;
 std::array<PlayerSetting, max_legacy_players> sp_players;
 ScenarioSettings sp_scn;
 
-static struct BkgVertex {
-	GLfloat x, y, z;
-	GLfloat r, g, b;
-	GLfloat s, t;
-} bkg_vertices[] = {
-	// positions          // colors          // texture coords
-	{ 1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  1.0f, 0.0f}, // top right
-	{ 1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  1.0f, 1.0f}, // bottom right
-	{-1.0f, -1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f}, // bottom left
-	{-1.0f,  1.0f, 0.0f,  1.0f, 1.0f, 1.0f,  0.0f, 0.0f}, // top left
-};
-
 Engine::Engine()
 	: net(), show_demo(false), show_debug(false), font_scaling(true)
 	, connection_mode(0), connection_port(32768), connection_host("")
@@ -286,7 +274,6 @@ void Engine::display() {
 	switch (menu_state) {
 	case MenuState::multiplayer_host:
 		show_multiplayer_host();
-		draw_background_border();
 		break;
 	case MenuState::multiplayer_game:
 	case MenuState::singleplayer_game:
@@ -295,28 +282,22 @@ void Engine::display() {
 		break;
 	case MenuState::singleplayer_menu:
 		show_singleplayer_menu();
-		draw_background_border();
 		break;
 	case MenuState::singleplayer_host:
 		show_singleplayer_host();
-		draw_background_border();
 		break;
 	case MenuState::multiplayer_menu:
 		show_multiplayer_menu();
-		draw_background_border();
 		break;
 	case MenuState::start:
 		show_start();
-		draw_background_border();
 		break;
 	case MenuState::defeat:
 	case MenuState::victory:
 		show_gameover();
-		draw_background_border();
 		break;
 	case MenuState::editor_menu:
 		ui.show_editor_menu();
-		draw_background_border();
 		break;
 	case MenuState::editor_scenario:
 		ui.show_world();
@@ -327,6 +308,12 @@ void Engine::display() {
 		break;
 	default:
 		throw "invalid menu state";
+	}
+
+	const MenuInfo *mi;
+	if ((mi = HasMenuInfo(menu_state))) {
+		if (mi->draw_border)
+			draw_background_border();
 	}
 
 	if (show_demo)
@@ -557,24 +544,7 @@ void Engine::set_background(io::DrsId id) {
 	Assets &a = *assets.get();
 
 	const gfx::ImageRef &r = a.at(id);
-	//printf("(%.2f,%.2f), (%.2f,%.2f)\n", r.s0, r.t0, r.s1, r.t1);
-
-	bkg_vertices[0].s = r.s1;
-	bkg_vertices[1].s = r.s1;
-
-	bkg_vertices[2].s = r.s0;
-	bkg_vertices[3].s = r.s0;
-
-	bkg_vertices[0].t = r.t0;
-	bkg_vertices[3].t = r.t0;
-
-	bkg_vertices[1].t = r.t1;
-	bkg_vertices[2].t = r.t1;
-
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(bkg_vertices), bkg_vertices, GL_STATIC_DRAW);
-
-	GLCHK;
+	SetBackground(r, vbo);
 }
 
 void Engine::set_background(MenuState s) {

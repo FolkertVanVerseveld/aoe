@@ -169,7 +169,6 @@ bool UICache::menu_btn(ImTextureID tex, const Assets &a, const char *lbl, float 
 }
 
 bool UICache::frame_btn(const BackgroundColors &col, const char *lbl, float x, float y, float w, float h, float scale, bool invert) {
-	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 	ImGuiIO &io = ImGui::GetIO();
 
 	float btn_w = w * scale, btn_h = h * scale;
@@ -203,23 +202,23 @@ bool UICache::frame_btn(const BackgroundColors &col, const char *lbl, float x, f
 		coltbl[5] = col.border[5];
 	}
 
-	DrawLine(lst, x, y, right, y, coltbl[0]);
-	DrawLine(lst, right - 1, y, right - 1, bottom - 1, coltbl[0]);
+	DrawLine(x, y, right, y, coltbl[0]);
+	DrawLine(right - 1, y, right - 1, bottom - 1, coltbl[0]);
 
-	DrawLine(lst, x + 1, y + 1, right - 1, y + 1, coltbl[1]);
-	DrawLine(lst, right - 2, y + 1, right - 2, bottom - 2, coltbl[1]);
+	DrawLine(x + 1, y + 1, right - 1, y + 1, coltbl[1]);
+	DrawLine(right - 2, y + 1, right - 2, bottom - 2, coltbl[1]);
 
-	DrawLine(lst, x + 2, y + 2, right - 2, y + 2, coltbl[2]);
-	DrawLine(lst, right - 3, y + 2, right - 3, bottom - 3, coltbl[2]);
+	DrawLine(x + 2, y + 2, right - 2, y + 2, coltbl[2]);
+	DrawLine(right - 3, y + 2, right - 3, bottom - 3, coltbl[2]);
 
-	DrawLine(lst, x, y, x, bottom, coltbl[5]);
-	DrawLine(lst, x, bottom - 1, right, bottom - 1, coltbl[5]);
+	DrawLine(x, y, x, bottom, coltbl[5]);
+	DrawLine(x, bottom - 1, right, bottom - 1, coltbl[5]);
 
-	DrawLine(lst, x + 1, y + 1, x + 1, bottom - 1, coltbl[4]);
-	DrawLine(lst, x + 1, bottom - 2, right - 1, bottom - 2, coltbl[4]);
+	DrawLine(x + 1, y + 1, x + 1, bottom - 1, coltbl[4]);
+	DrawLine(x + 1, bottom - 2, right - 1, bottom - 2, coltbl[4]);
 
-	DrawLine(lst, x + 2, y + 2, x + 2, bottom - 2, coltbl[3]);
-	DrawLine(lst, x + 2, bottom - 3, right - 2, bottom - 3, coltbl[3]);
+	DrawLine(x + 2, y + 2, x + 2, bottom - 2, coltbl[3]);
+	DrawLine(x + 2, bottom - 3, right - 2, bottom - 3, coltbl[3]);
 
 	ImVec2 sz(ImGui::CalcTextSize(lbl));
 	if (snd) { ++x; ++y; }

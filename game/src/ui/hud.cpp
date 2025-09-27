@@ -24,6 +24,8 @@ void UICache::idle(Engine &e) {
 	top = vp->WorkPos.y + vp->WorkSize.y / 2 - floor(e.cam_y);
 
 	bkg = ImGui::GetBackgroundDrawList();
+	gui = &io;
+	aoe::ui::vp = vp;
 }
 
 void UICache::idle_editor(Engine &e) {

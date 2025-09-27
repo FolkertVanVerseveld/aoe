@@ -30,7 +30,8 @@ namespace aoe {
 class Assets;
 class Engine;
 
-void DrawLine(ImDrawList *lst, float x0, float y0, float x1, float y1, SDL_Color col);
+void DrawLine(float x0, float y0, float x1, float y1, SDL_Color col);
+void DrawBorder(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol);
 
 namespace ui {
 
@@ -220,6 +221,10 @@ enum class HudState {
 	trainmenu,
 };
 
+extern ImDrawList *bkg;
+extern ImGuiIO *gui;
+extern ImGuiViewport *vp;
+
 class UICache final {
 	std::vector<std::string> civs;
 	Engine *e;
@@ -228,7 +233,6 @@ class UICache final {
 	std::vector<IdPoolRef> selected;
 	std::vector<VisualTile> display_area;
 	float left, top, scale;
-	ImDrawList *bkg;
 	std::string btnsel;
 
 	std::vector<ImageSet> t_imgs;

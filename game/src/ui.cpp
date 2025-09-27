@@ -1330,9 +1330,30 @@ void Engine::show_multiplayer_menu() {
 	ImGui::SetCursorPosX(old_x);
 }
 
-void DrawLine(ImDrawList *lst, float x0, float y0, float x1, float y1, SDL_Color col)
+void DrawLine(float x0, float y0, float x1, float y1, SDL_Color col)
 {
-	lst->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(col.r, col.g, col.b, SDL_ALPHA_OPAQUE), 1);
+	bkg->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(col.r, col.g, col.b, SDL_ALPHA_OPAQUE), 1);
+}
+
+void DrawBorder(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol)
+{
+	DrawLine(x0, y0, x1, y0, bkgcol.border[0]);
+	DrawLine(x1 - 1, y0, x1 - 1, y1 - 1, bkgcol.border[0]);
+
+	DrawLine(x0 + 1, y0 + 1, x1 - 1, y0 + 1, bkgcol.border[1]);
+	DrawLine(x1 - 2, y0 + 1, x1 - 2, y1 - 2, bkgcol.border[1]);
+
+	DrawLine(x0 + 2, y0 + 2, x1 - 2, y0 + 2, bkgcol.border[2]);
+	DrawLine(x1 - 3, y0 + 2, x1 - 3, y1 - 3, bkgcol.border[2]);
+
+	DrawLine(x0, y0, x0, y1, bkgcol.border[5]);
+	DrawLine(x0, y1 - 1, x1, y1 - 1, bkgcol.border[5]);
+
+	DrawLine(x0 + 1, y0 + 1, x0 + 1, y1 - 1, bkgcol.border[4]);
+	DrawLine(x0 + 1, y1 - 2, x1 - 1, y1 - 2, bkgcol.border[4]);
+
+	DrawLine(x0 + 2, y0 + 2, x0 + 2, y1 - 2, bkgcol.border[3]);
+	DrawLine(x0 + 2, y1 - 3, x1 - 2, y1 - 3, bkgcol.border[3]);
 }
 
 void Engine::draw_background_border() {
@@ -1340,54 +1361,11 @@ void Engine::draw_background_border() {
 	assert(assets.get());
 	Assets &a = *assets.get();
 
-	BackgroundColors col;
-
-	switch (menu_state) {
-	case MenuState::multiplayer_host:
-	case MenuState::multiplayer_menu:
-		col = a.bkg_cols.at(io::DrsId::bkg_multiplayer);
-		break;
-	case MenuState::singleplayer_menu:
-	case MenuState::singleplayer_host:
-		col = a.bkg_cols.at(io::DrsId::bkg_singleplayer);
-		break;
-	case MenuState::defeat:
-		col = a.bkg_cols.at(io::DrsId::bkg_defeat);
-		break;
-	case MenuState::victory:
-		col = a.bkg_cols.at(io::DrsId::bkg_victory);
-		break;
-	case MenuState::editor_menu:
-	case MenuState::editor_scenario:
-		col = a.bkg_cols.at(io::DrsId::bkg_editor_menu);
-		break;
-	default:
-		col = a.bkg_cols.at(io::DrsId::bkg_main_menu);
-		break;
-	}
-
-	ImDrawList *lst = ImGui::GetBackgroundDrawList();
+	BackgroundColors col = a.bkg_cols.at(GetMenuInfo(menu_state).border_col);
 	ImGuiIO &io = ImGui::GetIO();
-
 	GLfloat right = io.DisplaySize.x, bottom = io.DisplaySize.y;
 
-	DrawLine(lst, 0, 0, right, 0, col.border[0]);
-	DrawLine(lst, right - 1, 0, right - 1, bottom - 1, col.border[0]);
-
-	DrawLine(lst, 1, 1, right - 1, 1, col.border[1]);
-	DrawLine(lst, right - 2, 1, right - 2, bottom - 2, col.border[1]);
-
-	DrawLine(lst, 2, 2, right - 2, 2, col.border[2]);
-	DrawLine(lst, right - 3, 2, right - 3, bottom - 3, col.border[2]);
-
-	DrawLine(lst, 0, 0, 0, bottom, col.border[5]);
-	DrawLine(lst, 0, bottom - 1, right, bottom - 1, col.border[5]);
-
-	DrawLine(lst, 1, 1, 1, bottom - 1, col.border[4]);
-	DrawLine(lst, 1, bottom - 2, right - 1, bottom - 2, col.border[4]);
-
-	DrawLine(lst, 2, 2, 2, bottom - 2, col.border[3]);
-	DrawLine(lst, 2, bottom - 3, right - 2, bottom - 3, col.border[3]);
+	DrawBorder(0, 0, right, bottom, col);
 }
 
 }
