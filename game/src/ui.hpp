@@ -33,6 +33,8 @@ class Engine;
 void DrawLine(float x0, float y0, float x1, float y1, SDL_Color col);
 void DrawBorder(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol);
 
+void DrawTextWrapped(const std::string&);
+
 namespace ui {
 
 bool chkbox(const char *s, bool &b);

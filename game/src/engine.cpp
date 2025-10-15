@@ -42,6 +42,8 @@
 
 #include "debug.hpp"
 
+#pragma clang diagnostic ignored "-Wswitch"
+
 namespace aoe {
 
 Engine *eng;
@@ -346,37 +348,37 @@ void Engine::display_ui_tasks() {
 	std::lock_guard<std::mutex> lock(m_ui);
 
 	ImGui::OpenPopup("tasks");
-
 	ImGui::SetNextWindowSize(ImVec2(400, 0));
 
 	if (ImGui::BeginPopupModal("tasks", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 		int i = 0;
-		bool cancellable = false;
+		unsigned cancellable = 0;
 
 		for (auto it = eng->ui_tasks.begin(); it != eng->ui_tasks.end(); ++i) {
 			UI_Task &tsk = it->second;
 
 			float f = (float)tsk.steps / tsk.total;
-			ImGui::TextWrapped("%s", tsk.title.c_str());
+			DrawTextWrapped(tsk.title);
 			ImGui::ProgressBar(f, ImVec2(-1, 0));
-			if (!tsk.desc.empty())
-				ImGui::TextWrapped("%s", tsk.desc.c_str());
+			DrawTextWrapped(tsk.desc);
 
 			std::string str("Cancel##" + std::to_string(i));
+			bool b = tsk.is_cancellable();
 
-			if ((unsigned)tsk.flags & (unsigned)TaskFlags::cancellable)
-				cancellable = true;
+			if (b)
+				++cancellable;
 
-			if (((unsigned)tsk.flags & (unsigned)TaskFlags::cancellable) && ImGui::Button(str.c_str()))
+			if (b && ImGui::Button(str.c_str()))
 				it = eng->ui_tasks.erase(it);
 			else
 				++it;
 		}
 
-		if (cancellable && ImGui::Button("Cancel all tasks")) {
+		// only show when more than one can be cancelled
+		if (cancellable > 1 && ImGui::Button("Cancel all tasks")) {
 			for (auto it = eng->ui_tasks.begin(); it != eng->ui_tasks.end(); ++i) {
 				UI_Task &tsk = it->second;
-				if ((unsigned)tsk.flags & (unsigned)TaskFlags::cancellable)
+				if (tsk.is_cancellable())
 					it = eng->ui_tasks.erase(it);
 				else
 					++it;
@@ -548,29 +550,8 @@ void Engine::set_background(io::DrsId id) {
 }
 
 void Engine::set_background(MenuState s) {
-	io::DrsId id = io::DrsId::bkg_main_menu;
-
-	switch (s) {
-	case MenuState::multiplayer_host:
-	case MenuState::multiplayer_menu:
-		id = io::DrsId::bkg_multiplayer;
-		break;
-	case MenuState::singleplayer_menu:
-	case MenuState::singleplayer_host:
-		id = io::DrsId::bkg_singleplayer;
-		break;
-	case MenuState::defeat:
-		id = io::DrsId::bkg_defeat;
-		break;
-	case MenuState::victory:
-		id = io::DrsId::bkg_victory;
-		break;
-	case MenuState::editor_menu:
-		id = io::DrsId::bkg_editor_menu;
-		break;
-	}
-
-	set_background(id);
+	const MenuInfo &mi = GetMenuInfo(s);
+	set_background(mi.border_col);
 }
 
 ImVec2 Engine::tilepos(float x, float y, float left, float top, int h) {

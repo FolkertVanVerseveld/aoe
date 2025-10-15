@@ -7,6 +7,8 @@
 
 #include <algorithm>
 
+#pragma clang diagnostic ignored "-Wmacro-redefined"
+
 namespace aoe {
 
 using namespace gfx;

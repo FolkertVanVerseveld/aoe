@@ -917,6 +917,8 @@ void UICache::show_entities() {
 
 #define MAPSIZE_STEP 4
 
+#pragma clang diagnostic ignored "-Wparentheses"
+
 // TODO extract to ui/widgets/scenario_settings.cpp
 void Engine::show_mph_cfg(ui::Frame &f) {
 	ZoneScoped;
@@ -1354,6 +1356,12 @@ void DrawBorder(float x0, float y0, float x1, float y1, const BackgroundColors &
 
 	DrawLine(x0 + 2, y0 + 2, x0 + 2, y1 - 2, bkgcol.border[3]);
 	DrawLine(x0 + 2, y1 - 3, x1 - 2, y1 - 3, bkgcol.border[3]);
+}
+
+void DrawTextWrapped(const std::string &s)
+{
+	if (!s.empty())
+		ImGui::TextWrapped("%s", s.c_str());
 }
 
 void Engine::draw_background_border() {

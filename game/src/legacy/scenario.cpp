@@ -12,6 +12,8 @@
 #include "../game.hpp"
 #include "../world/terrain.hpp"
 
+#pragma clang diagnostic ignored "-Wunused-value"
+
 // yes, including .c's is evil, but... we have no choice :/
 #include <miniz.c>
 

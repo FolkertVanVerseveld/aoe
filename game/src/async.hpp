@@ -29,6 +29,10 @@ struct UI_Task final {
 
 	UI_Task(IdPoolRef id, TaskFlags flags, const std::string &title, const std::string &desc, unsigned steps, unsigned total)
 		: id(id), flags(flags), title(title), desc(desc), steps(steps), total(total) {}
+
+	constexpr bool is_cancellable() const noexcept {
+		return !!((unsigned)flags & (unsigned)TaskFlags::cancellable);
+	}
 };
 
 /** Wrapper to manage ui task info. */

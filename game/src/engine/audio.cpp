@@ -15,6 +15,8 @@
 #define SAMPLING_FREQ 48000
 #define NUM_CHANNELS 2
 
+#pragma clang diagnostic ignored "-Wswitch"
+
 namespace aoe {
 
 static const double exp_base = 5.0;
@@ -59,7 +61,7 @@ Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic)
 		if (msg)
 			throw std::runtime_error(std::string("Mix: Could not initialize audio: ") + msg);
 		else
-			throw std::runtime_error(std::string("Mix: Could not initialize audio: unknown error"));
+			throw std::runtime_error("Mix: Could not initialize audio: unknown error");
 	}
 
 	if (Mix_OpenAudio(SAMPLING_FREQ, MIX_DEFAULT_FORMAT, NUM_CHANNELS, 1024) == -1)
@@ -143,7 +145,7 @@ void Audio::play_music(const char *file, int loops) {
 void Audio::play_music(MusicId id, int loops) {
 	auto it = jukebox.find(id);
 	if (it == jukebox.end()) {
-		fprintf(stderr, "%s: cannot play music id %d: not found\n", __func__, id);
+		fprintf(stderr, "%s: cannot play music id %u: not found\n", __func__, id);
 		return;
 	}
 
@@ -221,7 +223,7 @@ void Audio::play_taunt(TauntId id) {
 
 	auto it = taunts.find(id);
 	if (it == taunts.end()) {
-		fprintf(stderr, "%s: cannot play taunt id %d: not found\n", __func__, id);
+		fprintf(stderr, "%s: cannot play taunt id %u: not found\n", __func__, id);
 		return;
 	}
 
