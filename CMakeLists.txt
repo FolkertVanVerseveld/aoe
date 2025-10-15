@@ -151,6 +151,11 @@ if (WIN32)
 	target_compile_definitions(${GAME_TARGET} PRIVATE
 		_CRT_SECURE_NO_WARNINGS # no snprintf_s BS warnings
 	)
+	if (BUILD_TESTS)
+		target_compile_definitions(${TEST_TARGET} PRIVATE
+			_CRT_SECURE_NO_WARNINGS # no snprintf_s BS warnings
+		)
+	endif()
 endif()
 
 set(APP_PARENT_DIR "$<TARGET_FILE_DIR:${GAME_TARGET}>")

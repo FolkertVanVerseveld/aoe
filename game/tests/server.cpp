@@ -25,7 +25,7 @@ TEST_F(NoUnixOrTracyFixture, serverCreateFail) {
 
 TEST_F(NoUnixOrTracyFixture, clientCreateFail) {
 	try {
-		Client c;
+		Client c("");
 		(void)c;
 		FAIL() << "client created with no network subsystem";
 	} catch (std::runtime_error&) {}
@@ -52,12 +52,12 @@ static void f(Server &s) {
 }
 
 TEST_F(ServerFixture, initDelete) {
-	Client c;
+	Client c("");
 	(void)c;
 }
 
 TEST_F(ServerFixture, clientStopEarly) {
-	Client c;
+	Client c("");
 	c.stop();
 }
 
@@ -65,7 +65,7 @@ static void connect_test(bool close) {
 	Server s;
 	std::thread t1([&] { s.mainloop(default_port, 0, true); if (close) s.close(); });
 
-	Client c;
+	Client c("");
 	c.start(default_host, default_port, false);
 
 	char buf[64];
@@ -106,7 +106,7 @@ TEST_F(ServerFixture, connectTests) {
 }
 
 TEST_F(ServerFixture, connectTooEarly) {
-	Client c;
+	Client c("");
 
 	try {
 		c.start(default_host, default_port, false);
@@ -122,7 +122,7 @@ TEST_F(ServerFixture, connectTooLate) {
 	s.close();
 
 	try {
-		Client c;
+		Client c("");
 		c.start(default_host, default_port, false);
 
 		char buf[64];
@@ -157,7 +157,7 @@ static void echo_test(std::vector<std::string> &bt, bool close) {
 	Server s;
 	std::thread t1([&] { s.mainloop(default_port, 1, true); if (close) s.close(); });
 
-	Client c;
+	Client c("");
 	c.start(default_host, default_port, false);
 
 	handshake(c);
@@ -183,7 +183,7 @@ TEST_F(ServerFixture, protocol) {
 	Server s;
 	std::thread t1([&] { s.mainloop(default_port, 1, true); s.close(); });
 
-	Client c;
+	Client c("");
 	uint16_t prot;
 
 	c.start(default_host, default_port, false);

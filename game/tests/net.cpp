@@ -582,6 +582,7 @@ class SsockCtlDummy final : public ServerSocketController {
 public:
 	bool incoming(ServerSocket&, const Peer&) override { return true; }
 	void dropped(ServerSocket&, const Peer&) override {}
+	void started() override {}
 	void stopped() override {}
 
 	int proper_packet(ServerSocket&, const std::deque<uint8_t> &q) {
@@ -595,6 +596,7 @@ class SsockCtlEcho final : public ServerSocketController {
 public:
 	bool incoming(ServerSocket&, const Peer&) override { return true; }
 	void dropped(ServerSocket&, const Peer&) override {}
+	void started() override {}
 	void stopped() override {}
 
 	int proper_packet(ServerSocket&, const std::deque<uint8_t> &q) {
