@@ -18,9 +18,7 @@
 
 #include "../legacy/strings.hpp"
 
-#if _WIN32
-#include <shellapi.h>
-#endif
+#include "os.hpp"
 
 namespace aoe {
 
@@ -1005,10 +1003,8 @@ void Engine::show_gameover() {
 
 void Engine::open_help() {
 	ZoneScoped;
-#if _WIN32
 	sdl->window.set_fullscreen(false);
-	ShellExecute(NULL, NULL, "https://github.com/FolkertVanVerseveld/aoe", NULL, NULL, SW_SHOW);
-#endif
+	open_url("https://github.com/FolkertVanVerseveld/aoe");
 }
 
 void Engine::show_start() {
@@ -1043,12 +1039,8 @@ void Engine::show_start() {
 			next_menu_state = MenuState::multiplayer_menu;
 
 		ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
-#if _WIN32
 		if (btn(f, "Help", TextHalign::center, sfx))
 			open_help();
-#else
-		f.xbtn("Help", "The original help is using a subsystem on Windows that is not supported. Consult the Github page or an Age of Empires forum if you need help.", TextHalign::center);
-#endif
 
 		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
 
