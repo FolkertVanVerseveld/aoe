@@ -165,7 +165,7 @@ netArgsStatus NetPkg::writef(const char *fmt, ...) {
 		switch (ch) {
 		case 'b': case 'B': // int8/uint8
 			for (unsigned i = 0; i < mult; ++i) {
-				uint8_t v = va_arg(args, uint8_t);
+				uint8_t v = (uint8_t)va_arg(args, unsigned);
 				data.emplace_back(v);
 			}
 
@@ -173,7 +173,7 @@ netArgsStatus NetPkg::writef(const char *fmt, ...) {
 			break;
 		case 'h': case 'H': // int16/uint16
 			for (unsigned i = 0; i < mult; ++i) {
-				uint16_t v = va_arg(args, uint16_t);
+				uint16_t v = (uint16_t)va_arg(args, unsigned);
 				data.emplace_back(v >> 8);
 				data.emplace_back(v & 0xff);
 			}
@@ -182,7 +182,7 @@ netArgsStatus NetPkg::writef(const char *fmt, ...) {
 			break;
 		case 'i': case 'I': // int32/uint32
 			for (unsigned i = 0; i < mult; ++i) {
-				uint32_t v = va_arg(args, uint32_t);
+				uint32_t v = va_arg(args, unsigned);
 				data.emplace_back(v >> 24);
 				data.emplace_back(v >> 16);
 				data.emplace_back(v >> 8);
@@ -208,7 +208,7 @@ netArgsStatus NetPkg::writef(const char *fmt, ...) {
 			break;
 		case 'F': // truncated float (cast to int32)
 			for (unsigned i = 0; i < mult; ++i) {
-				int32_t v = (int32_t)va_arg(args, float);
+				int32_t v = (int32_t)va_arg(args, double);
 				data.emplace_back(v >> 24);
 				data.emplace_back(v >> 16);
 				data.emplace_back(v >> 8);

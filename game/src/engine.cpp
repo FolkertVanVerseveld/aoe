@@ -567,7 +567,8 @@ void Engine::set_background(io::DrsId id) {
 
 void Engine::set_background(MenuState s) {
 	const MenuInfo &mi = GetMenuInfo(s);
-	set_background(mi.border_col);
+	if (mi.border_col != (io::DrsId)0)
+		set_background(mi.border_col);
 }
 
 ImVec2 Engine::tilepos(float x, float y, float left, float top, int h) {
