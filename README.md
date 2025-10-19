@@ -1,7 +1,7 @@
 # Age of Empires Free Software Remake
 
 *All copyrighted material and trademarks belong to their respective owners. This
-is an educational non-profit project we are writing in our free time.*
+is an educational non-profit project I am writing in my free time.*
 
 ## Preview
 

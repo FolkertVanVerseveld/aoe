@@ -179,7 +179,7 @@ private:
 	void verify_game_data(const std::string &path);
 	void set_game_data();
 
-	void display();
+	void display(gfx::GLprogram &prog, GLuint vao);
 	void display_ui_tasks();
 	void show_init();
 	void show_start();

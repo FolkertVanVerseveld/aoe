@@ -220,7 +220,7 @@ void Engine::verify_game_data(const std::string &path) {
 			trigger_async_flags(EngineAsyncTask::new_game_data);
 		} catch (std::ios_base::failure &e) {
 			const char *what = "missing or invalid data";
-			if (path.find("/media") == 0 || path.find("/mnt") == 0) {
+			if (!path.empty() && path[0] == '/') {
 #if _WIN32
 				what = "missing data. Game directory looks like a Unix path. Make sure to specify a proper Windows path";
 #else
@@ -262,8 +262,26 @@ void Engine::start_singleplayer_game() {
 	t.detach();
 }
 
-void Engine::display() {
+using namespace gfx;
+
+void Engine::display(gfx::GLprogram &prog, GLuint vao) {
 	ZoneScoped;
+
+	GLCHK;
+	GL::clearColor(0, 0, 0, 1);
+
+	if (menu_state != MenuState::multiplayer_game) {
+		// bind textures on corresponding texture units
+		GL::bind2d(0, texture1);
+
+		prog.use();
+		prog.setUniform("texture1", 0);
+
+		glBindVertexArray(vao);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		GLCHK;
+	}
+
 	GLCHK;
 	ImGuiIO &io = ImGui::GetIO();
 	io.FontGlobalScale = 1.0f / SDL::fnt_scale;
@@ -363,12 +381,10 @@ void Engine::display_ui_tasks() {
 			DrawTextWrapped(tsk.desc);
 
 			std::string str("Cancel##" + std::to_string(i));
-			bool b = tsk.is_cancellable();
-
-			if (b)
+			if (tsk.is_cancellable())
 				++cancellable;
 
-			if (b && ImGui::Button(str.c_str()))
+			if (tsk.is_cancellable() && ImGui::Button(str.c_str()))
 				it = eng->ui_tasks.erase(it);
 			else
 				++it;
@@ -376,7 +392,7 @@ void Engine::display_ui_tasks() {
 
 		// only show when more than one can be cancelled
 		if (cancellable > 1 && ImGui::Button("Cancel all tasks")) {
-			for (auto it = eng->ui_tasks.begin(); it != eng->ui_tasks.end(); ++i) {
+			for (auto it = eng->ui_tasks.begin(); it != eng->ui_tasks.end();) {
 				UI_Task &tsk = it->second;
 				if (tsk.is_cancellable())
 					it = eng->ui_tasks.erase(it);
@@ -907,8 +923,6 @@ void Engine::cfg_init() {
 		username = cfg.username;
 }
 
-using namespace gfx;
-
 static bool shaders_init(GLuint &vs, GLuint &fs) {
 
 	// https://learnopengl.com/Getting-started/Shaders
@@ -1148,22 +1162,7 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 
 		idle();
 
-		GLCHK;
-		GL::clearColor(0, 0, 0, 1);
-
-		if (menu_state != MenuState::multiplayer_game) {
-			// bind textures on corresponding texture units
-			GL::bind2d(0, texture1);
-
-			prog.use();
-			prog.setUniform("texture1", 0);
-
-			glBindVertexArray(vao);
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-			GLCHK;
-		}
-
-		display();
+		display(prog, vao);
 
 		// Rendering
 		ImGui::Render();
