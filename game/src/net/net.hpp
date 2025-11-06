@@ -19,6 +19,9 @@
 // use lowercase header names as we may be cross compiling on a filesystem where filenames are case-sensitive (which is typical on e.g. linux)
 #include <winsock2.h>
 
+#include <ws2tcpip.h>
+#include <windows.h>
+
 #include <wepoll.h>
 #else
 #include <sys/socket.h>

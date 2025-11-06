@@ -98,11 +98,10 @@ Net::Net() {
 		default:
 			if (r)
 				throw std::runtime_error(std::string("wsa: winsock error code ") + std::to_string(r));
+			else
+				++initnet;
 			break;
 	}
-
-	unsigned v = ++initnet;
-	(void)v;// printf("%s: initnet=%u\n", __func__, v);
 }
 
 Net::~Net() {
@@ -114,13 +113,22 @@ Net::~Net() {
 		r = WSAGetLastError();
 
 	switch (r) {
-		case WSANOTINITIALISED: fprintf(stderr, "%s: winsock not initialised\n", __func__); break;
-		case WSAENETDOWN: fprintf(stderr, "%s: winsock failed\n", __func__); break;
-		case WSAEINPROGRESS: fprintf(stderr, "%s: winsock is blocked\n", __func__); break;
+		case WSANOTINITIALISED:
+			fprintf(stderr, "%s: winsock not initialised\n", __func__);
+			break;
+		case WSAENETDOWN:
+			fprintf(stderr, "%s: winsock failed\n", __func__);
+			break;
+		case WSAEINPROGRESS:
+			fprintf(stderr, "%s: winsock is blocked\n", __func__);
+			break;
+		default:
+			if (r)
+				fprintf(stderr, "%s: winsock error %d\n", __func__, r);
+			else
+				--initnet;
+			break;
 	}
-
-	unsigned v = --initnet;
-	(void)v;// printf("%s: initnet=%u\n", __func__, v);
 }
 
 TcpSocket::TcpSocket() : s((int)INVALID_SOCKET) {

@@ -41,6 +41,10 @@ TEST(Net, StartTwice) {
 }
 
 #if _WIN32
+TEST(Net, SocketPoll) {
+
+}
+
 TEST(Net, Adapters) {
 	DWORD ret = 0;
 
