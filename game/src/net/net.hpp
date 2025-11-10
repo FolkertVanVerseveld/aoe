@@ -64,12 +64,19 @@ public:
 	explicit SocketClosedError(const char *msg) : std::runtime_error(msg) {}
 };
 
+class SocketError final : public std::runtime_error {
+public:
+	std::string user; // user friendly message
+
+	explicit SocketError(const std::string &what, const std::string &user) : std::runtime_error(what), user(user) {}
+};
+
 class ServerSocket;
 
 void set_nonblocking(SOCKET s, bool nonbl=true);
 
 class TcpSocket final {
-	std::atomic<int> s;
+	std::atomic<SOCKET> s;
 	friend ServerSocket;
 public:
 	TcpSocket();

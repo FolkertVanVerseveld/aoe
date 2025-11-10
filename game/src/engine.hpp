@@ -239,6 +239,7 @@ private:
 public:
 	void push_error(const char *func, const std::string &msg);
 	void push_error(const std::string &msg);
+	void push_error(const char *func, SocketError &err);
 
 	// API for asynchronous tasks
 	UI_TaskInfo ui_async(const std::string &title, const std::string &desc, unsigned steps, TaskFlags flags=TaskFlags::all);

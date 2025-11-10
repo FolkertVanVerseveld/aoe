@@ -415,6 +415,11 @@ void Engine::push_error(const std::string &msg) {
 	popups_async.emplace(msg, ui::PopupType::error);
 }
 
+void Engine::push_error(const char *func, SocketError &err) {
+	fprintf(stderr, "%s: %s\n", func, err.what());
+	push_error(err.user);
+}
+
 void Engine::start_client_now(const char *host, uint16_t port, UI_TaskInfo &info) {
 	ZoneScoped;
 
@@ -437,6 +442,8 @@ void Engine::start_client(const char *host, uint16_t port) {
 
 			start_client_now(host, port, info);
 			trigger_client_connected();
+		} catch (SocketError &e) {
+			push_error(func, e);
 		} catch (std::exception &e) {
 			push_error(func, std::string("cannot connect to server: ") + e.what());
 		}

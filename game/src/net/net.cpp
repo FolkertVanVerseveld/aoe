@@ -32,52 +32,64 @@ static int close(SOCKET sock)
 namespace aoe {
 
 #if _WIN32
+static std::string wsa_parse_error(const char *prefix="", int code=WSAGetLastError())
+{
+	std::string msg(prefix);
+
+	switch (code) {
+	case WSANOTINITIALISED:
+		msg += "winsock not ready";
+		break;
+	case WSAENETDOWN:
+		msg += "network subsystem error";
+		break;
+	case WSAEINPROGRESS:
+		msg += "waiting for network to become ready";
+		break;
+	case WSAENOBUFS:
+		msg += "out of memory";
+		break;
+	case WSAENOTSOCK:
+		msg += "invalid socket";
+		break;
+	case WSAEOPNOTSUPP:
+		msg += "operation not supported";
+		break;
+	case WSAEFAULT:
+		msg += "argument address fault";
+		break;
+	case WSAEACCES:
+		msg += "access denied";
+		break;
+	case WSAEADDRINUSE:
+		msg += "socket address still in use";
+		break;
+	case WSAEADDRNOTAVAIL:
+		msg += "invalid address";
+		break;
+	case WSAEINVAL:
+		msg += "invalid state or invalid value specified";
+		break;
+	default:
+		msg += "unknown error code " + std::to_string(code);
+		break;
+	}
+
+	return msg;
+}
+
 // process and throw error message. always throws
 static void wsa_generic_error(const char *prefix, int code) noexcept(false)
 {
-	std::string msg(prefix);
-	msg += ": ";
-
-	switch (code) {
-		case WSANOTINITIALISED:
-			msg += "winsock not ready";
-			break;
-		case WSAENETDOWN:
-			msg += "network subsystem error";
-			break;
-		case WSAENOBUFS:
-			msg += "out of memory";
-			break;
-		case WSAENOTSOCK:
-			msg += "invalid socket";
-			break;
-		case WSAEOPNOTSUPP:
-			msg += "operation not supported";
-			break;
-		default:
-			msg += "code " + std::to_string(code);
-			break;
-	}
-
-	throw std::runtime_error(msg);
+	throw std::runtime_error(wsa_parse_error(prefix, code));
 }
 
 std::atomic<unsigned> initnet(0);
 
 void set_nonblocking(SOCKET s, bool nonbl) {
 	u_long arg = !!nonbl;
-	if (!ioctlsocket(s, FIONBIO, &arg))
-		return;
-
-	int r;
-
-	switch (r = WSAGetLastError()) {
-		case WSAEFAULT:
-			throw std::runtime_error("wsa: argument address fault");
-		default:
-			wsa_generic_error("wsa: cannot change non-blocking mode", r);
-			break;
-	}
+	if (ioctlsocket(s, FIONBIO, &arg))
+		throw std::runtime_error(wsa_parse_error());
 }
 
 Net::Net() {
@@ -95,6 +107,8 @@ Net::Net() {
 			throw std::runtime_error("wsa: winsock blocked");
 		case WSAEPROCLIM:
 			throw std::runtime_error("wsa: winsock process limit reached");
+		case WSAEFAULT:
+			throw std::runtime_error("wsa: wsadata bogus pointer");
 		default:
 			if (r)
 				throw std::runtime_error(std::string("wsa: winsock error code ") + std::to_string(r));
@@ -108,27 +122,16 @@ Net::~Net() {
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-wsacleanup
 	int r = WSACleanup();
 
+	if (r == 0) {
+		--initnet;
+		return;
+	}
+
 	if (r == SOCKET_ERROR)
 		// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-wsacleanup
-		r = WSAGetLastError();
-
-	switch (r) {
-		case WSANOTINITIALISED:
-			fprintf(stderr, "%s: winsock not initialised\n", __func__);
-			break;
-		case WSAENETDOWN:
-			fprintf(stderr, "%s: winsock failed\n", __func__);
-			break;
-		case WSAEINPROGRESS:
-			fprintf(stderr, "%s: winsock is blocked\n", __func__);
-			break;
-		default:
-			if (r)
-				fprintf(stderr, "%s: winsock error %d\n", __func__, r);
-			else
-				--initnet;
-			break;
-	}
+		fprintf(stderr, "%s: %s\n", __func__, wsa_parse_error("").c_str());
+	else
+		fprintf(stderr, "%s: unexpected error code %d\n", __func__, r);
 }
 
 TcpSocket::TcpSocket() : s((int)INVALID_SOCKET) {
@@ -137,7 +140,7 @@ TcpSocket::TcpSocket() : s((int)INVALID_SOCKET) {
 	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
 		throw std::runtime_error("socket failed");
 
-	s.store((int)sock);
+	s.store(sock);
 }
 
 TcpSocket::~TcpSocket() {
@@ -152,7 +155,7 @@ void TcpSocket::open() {
 		throw std::runtime_error("socket failed");
 
 	closesocket(s);
-	s.store((int)sock);
+	s.store(sock);
 }
 
 void TcpSocket::close() {
@@ -172,48 +175,40 @@ void TcpSocket::bind(const char *address, uint16_t port) {
 	const auto sock = s.load(std::memory_order_relaxed);
 	sockaddr_in dst{ 0 };
 
-	dst.sin_family = AF_INET;
-	dst.sin_addr.s_addr = inet_addr(address);
+	int af = AF_INET;
+	dst.sin_family = af;
 	dst.sin_port = htons(port);
 
-	// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-bind
-	int r = ::bind(sock, (const sockaddr *)&dst, sizeof dst);
+	int r = InetPton(af, address, &dst.sin_addr);
+	if (r != 1) {
+		if (r == 0)
+			throw SocketError(
+				std::string("wsa: InetPton: invalid address \"") + address + "\"",
+				std::string("Invalid address \"") + address + "\""
+			);
 
-	if (r == 0)
-		return;
+		if (r != -1)
+			throw SocketError(
+				std::string("wsa: InetPton: unexpected error code ") + std::to_string(r),
+				std::string("Unexpected error for address \"") + address + "\""
+			);
 
-	if (r != SOCKET_ERROR)
-		throw std::runtime_error(std::string("wsa: bind failed: unknown return code ") + std::to_string(r));
-
-	int err = WSAGetLastError();
-
-	switch (err) {
-		case WSAEACCES:
-			throw std::runtime_error("wsa: bind failed: access denied");
-		case WSAEADDRINUSE:
-			throw std::runtime_error("wsa: bind failed: socket address still in use");
-		case WSAEADDRNOTAVAIL:
-			throw std::runtime_error("wsa: bind failed: invalid address");
-		case WSAEFAULT:
-			throw std::runtime_error("wsa: bind failed: bad argument");
-		case WSAEINPROGRESS:
-			throw std::runtime_error("wsa: bind failed: in progress");
-		case WSAEINVAL:
-			throw std::runtime_error("wsa: bind failed: already bound");
-		default:
-			wsa_generic_error("wsa: bind failed", err);
-			break;
+		throw std::runtime_error(wsa_parse_error("", r));
 	}
+
+	// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-bind
+	r = ::bind(sock, (const sockaddr*)&dst, sizeof dst);
+	if (r != 0)
+		throw std::runtime_error(wsa_parse_error("wsa: bind failed: "));
 }
 
 void TcpSocket::listen(int backlog) {
 	if (backlog < 1)
 		throw std::runtime_error("listen failed: backlog must be positive");
 
-	const auto sock = s.load(std::memory_order_relaxed);
+	SOCKET sock = s.load(std::memory_order_relaxed);
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-listen
 	int r = ::listen(sock, backlog);
-
 	if (r == 0)
 		return;
 
@@ -243,15 +238,39 @@ void TcpSocket::listen(int backlog) {
 }
 
 void TcpSocket::connect(const char *address, uint16_t port) {
-	const auto sock = s.load(std::memory_order_relaxed);
+	SOCKET sock = s.load(std::memory_order_relaxed);
 	sockaddr_in dst{ 0 };
 
-	dst.sin_family = AF_INET;
-	dst.sin_addr.s_addr = inet_addr(address);
+	int af = AF_INET;
+	dst.sin_family = af;
 	dst.sin_port = htons(port);
 
+	int r = InetPton(af, address, &dst.sin_addr);
+	if (r != 1) {
+		if (r == 0)
+			throw SocketError(
+				std::string("wsa: connect failed: invalid address \"") + address + "\"",
+				std::string("Invalid IPv4 host address \"" ) + address + "\"");
+
+		if (r != -1)
+			throw SocketError(
+				std::string("wsa: connect failed: unknown error code: ") + std::to_string(r),
+				std::string("Unknown error ") + std::to_string(r) + " has occurred");
+
+		r = WSAGetLastError();
+
+		switch (r) {
+		case WSAEFAULT: // should we just abort?
+			throw std::string("wsa: connect failed: invalid address: The system detected an invalid pointer address in attempting to use a pointer argument in a call");
+		case WSAEAFNOSUPPORT: // should we just abort?
+			throw std::string("wsa: connect failed: invalid address: An address incompatible with the requested protocol was used");
+		default:
+			throw std::runtime_error(std::string("wsa: connect failed: invalid address: unknown error code: ") + std::to_string(r));
+		}
+	}
+
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
-	int r = ::connect(sock, (const sockaddr *)&dst, sizeof dst);
+	r = ::connect(sock, (sockaddr*)&dst, sizeof dst);
 
 	if (r == 0)
 		return;
