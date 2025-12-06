@@ -283,10 +283,16 @@ TEST(Tcp, ListenTwice) {
 TEST(Tcp, ConnectBadAddress) {
 	Net net;
 	TcpSocket tcp;
+	const char *address = "a.b.c.d";
 	try {
-		tcp.connect("a.b.c.d", 4312);
-		FAIL() << "should not recognize a.b.c.d";
-	} catch (std::runtime_error&) {}
+		tcp.connect(address, 4312);
+		FAIL() << "should not accept address " << address;
+	} catch (SocketError &e) {
+		std::string exp(std::string("wsa: connect failed: invalid address \"") + address + "\"");
+		std::string user(std::string("Invalid IPv4 host address \"") + address + "\"");
+		ASSERT_STREQ(e.what(), exp.c_str());
+		ASSERT_STREQ(e.user.c_str(), user.c_str());
+	}
 }
 
 TEST(Tcp, ConnectTimeout) {
