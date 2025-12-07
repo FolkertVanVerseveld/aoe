@@ -17,6 +17,7 @@ option(BUILD_TESTS_HEADLESS "Only run headless unit tests" OFF)
 option(BUILD_PROFILER "Use Tracy Profiler" OFF)
 
 set(TEST_TARGET "testempires")
+set(SERVER_TARGET "dedicated_server")
 
 if (BUILD_PROFILER)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRACY_ENABLE=1")
@@ -101,9 +102,12 @@ set(LOCAL_INCLUDE_DIRS
 	${PROJECT_SRCDIR}/miniz
 )
 
+set(SERVER_SRC ${GAME_DIR}/server.cpp ${GAME_SOURCES} ${IMGUI_SRC} ${WEPOLL_SRC})
+
 # set recipes
 
 add_executable(${GAME_TARGET} ${GAME_SRC})
+add_executable(${SERVER_TARGET} ${SERVER_SRC})
 
 if(BUILD_TESTS)
 add_executable(${TEST_TARGET} ${GAME_SOURCES} ${IMGUI_SRC} ${WEPOLL_SRC} ${TEST_SRC})
@@ -118,10 +122,19 @@ target_include_directories(${GAME_TARGET} PRIVATE
 	${GAME_INCLUDE_DIRS}
 )
 
+target_include_directories(${SERVER_TARGET} PRIVATE
+	${SDL2_INCLUDE_DIRS}
+	${OPENGL_INCLUDE_DIR}
+	${LOCAL_INCLUDE_DIRS}
+	${GAME_INCLUDE_DIRS}
+)
+
 if (BUILD_PROFILER)
 target_link_libraries(${GAME_TARGET} ${GAME_LIBRARIES} TracyClient)
+target_link_libraries(${SERVER_TARGET} ${GAME_LIBRARIES} TracyClient)
 else()
 target_link_libraries(${GAME_TARGET} ${GAME_LIBRARIES})
+target_link_libraries(${SERVER_TARGET} ${GAME_LIBRARIES})
 endif()
 
 if(BUILD_TESTS)
