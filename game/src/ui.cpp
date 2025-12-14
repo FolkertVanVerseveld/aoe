@@ -1007,6 +1007,54 @@ void Engine::open_help() {
 	open_url("https://github.com/FolkertVanVerseveld/aoe");
 }
 
+class MenuBtn final {
+public:
+	const int relY;
+	const char *text;
+
+	MenuBtn(int y, const char *text) : relY(y), text(text) {}
+
+	bool draw(ImGuiViewport *vp, Frame &f, Audio &sfx) {
+		ImGui::SetCursorPosY(relY / 768.0f * vp->WorkSize.y);
+		return btn(f, text, TextHalign::center, sfx);
+	}
+
+	void drawDisabled(ImGuiViewport *vp, Frame &f) {
+		ImGui::SetCursorPosY(relY / 768.0f * vp->WorkSize.y);
+		f.xbtn(text, TextHalign::center);
+	}
+
+	void drawDisabled(ImGuiViewport *vp, Frame &f, const char *tooltip) {
+		ImGui::SetCursorPosY(relY / 768.0f * vp->WorkSize.y);
+		f.xbtn(text, tooltip, TextHalign::center);
+	}
+} main_menu_btns[] = {
+	{284, "Single Player"},
+	{364, "Multiplayer"},
+	{444, "Help"},
+	{524, "Scenario Builder"},
+	{604, "Exit"},
+}, sp_menu_btns[] = {
+	{188, "Random Map"},
+	{268, "Campaign"},
+	{348, "Death Match"},
+	{428, "Scenario"},
+	{508, "Saved Game"},
+	{588, "Cancel"},
+};
+
+static void menu_title_str(ImGuiViewport *vp, Frame &f, const char *str)
+{
+	ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
+	f.str2(str, TextHalign::center);
+}
+
+static void menu_footer_str(ImGuiViewport *vp, Frame &f, const char *str)
+{
+	ImGui::SetCursorPosY((710.0f - 40.0f) / 768.0f * vp->WorkSize.y);
+	f.str2(str, TextHalign::center);
+}
+
 void Engine::show_start() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -1020,43 +1068,36 @@ void Engine::show_start() {
 	ImGui::SetWindowSize(vp->WorkSize);
 
 	float old_x = ImGui::GetCursorPosX();
-
 	{
 		FontGuard fg(fnt.copper);
+#define DRAW_BTN(i) main_menu_btns[i].draw(vp, f, sfx)
+#define DRAW_XBTN(i, tt) main_menu_btns[i].drawDisabled(vp, f, tt)
 
 		ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
 
 #if 0
-		if (btn(f, "Single Player", TextHalign::center, sfx))
+		if (DRAW_BTN(0))
 			next_menu_state = MenuState::singleplayer_menu;
 #else
-		f.xbtn("Single Player", "Single player mode is not supported yet. Use multiplayer mode with 1 player instead.", TextHalign::center);
+		DRAW_XBTN(0, "Single player mode is not supported yet. Use multiplayer mode with 1 player instead.");
 #endif
 
-		ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
-
-		if (btn(f, "Multiplayer", TextHalign::center, sfx))
+		// TODO refactor to stateful buttons
+		if (DRAW_BTN(1))
 			next_menu_state = MenuState::multiplayer_menu;
 
-		ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
-		if (btn(f, "Help", TextHalign::center, sfx))
+		if (DRAW_BTN(2))
 			open_help();
 
-		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
-
-		if (btn(f, "Scenario Builder", TextHalign::center, sfx))
+		if (DRAW_BTN(3))
 			next_menu_state = MenuState::editor_menu;
 
-		ImGui::SetCursorPosY(604.0f / 768.0f * vp->WorkSize.y);
-
-		if (btn(f, "Exit", TextHalign::center, sfx))
+		if (DRAW_BTN(4))
 			throw 0;
 	}
-
 	ImGui::SetCursorPosX(old_x);
-	ImGui::SetCursorPosY((710.0f - 40.0f) / 768.0f * vp->WorkSize.y);
 
-	f.str2("Trademark reserved by Microsoft. Remake by Folkert van Verseveld.", TextHalign::center);
+	menu_footer_str(vp, f, "Trademark reserved by Microsoft. Remake by Folkert van Verseveld.");
 }
 
 static const std::vector<std::string> music_ids{ "menu", "success", "fail", "game" };
@@ -1173,32 +1214,26 @@ void Engine::show_singleplayer_menu() {
 
 	{
 		FontGuard fg(fnt.copper2);
-
-		SetRelY(38.0f);
-		f.str2("Single Player", TextHalign::center);
+		menu_title_str(vp, f, "Single Player");
 	}
 
 	FontGuard fg(fnt.copper);
 
-	SetRelY(188.0f);
-	if (btn(f, "Random Map", TextHalign::center, sfx))
+#define DRAW_BTN(i) sp_menu_btns[i].draw(vp, f, sfx)
+#define DRAW_XBTN(i) sp_menu_btns[i].drawDisabled(vp, f)
+
+	if (DRAW_BTN(0))
 		next_menu_state = MenuState::singleplayer_host;
 
-	SetRelY(268.0f);
-	f.xbtn("Campaign", TextHalign::center);
+	DRAW_XBTN(1);
 
-	SetRelY(348.0f);
-	if (btn(f, "Death Match", TextHalign::center, sfx))
+	if (DRAW_BTN(2))
 		next_menu_state = MenuState::singleplayer_host;
 
-	SetRelY(428);
-	f.xbtn("Scenario", TextHalign::center);
+	DRAW_XBTN(3);
+	DRAW_XBTN(4);
 
-	SetRelY(508.0f);
-	f.xbtn("Saved Game", TextHalign::center);
-
-	SetRelY(588.0f);
-	if (btn(f, "Cancel", TextHalign::center, sfx))
+	if (DRAW_BTN(5))
 		next_menu_state = MenuState::start;
 }
 
