@@ -461,7 +461,7 @@ void Engine::show_multiplayer_diplomacy() {
 		return;
 
 	Assets &a = *assets.get();
-	ImDrawList *lst = ImGui::GetWindowDrawList();
+	ImDrawList *lst = ImGui::GetWindowDrawList(); // TODO refactor to bkg
 
 	const gfx::ImageRef &rbkg = a.at(io::DrsId::img_dialog0);
 	ImVec2 pos(ImGui::GetWindowPos());
@@ -543,6 +543,7 @@ void Engine::show_multiplayer_host() {
 		f.str("Multiplayer game -");
 		f.sl();
 
+		// FIXME make this less ugly
 		--player_count;
 		f.scalar(player_count == 1 ? "player" : "players", player_count, 1, 1, MAX_PLAYERS - 1);
 		++player_count;
@@ -555,6 +556,7 @@ void Engine::show_multiplayer_host() {
 
 		player_tbl_y = ImGui::GetCursorPosY();
 	} else {
+		// FIXME make this less ugly
 		--player_count;
 		f.fmt("Multiplayer game - %u %s", player_count, player_count == 1 ? "player" : "players");
 		++player_count;
@@ -631,7 +633,7 @@ void UICache::show_editor_menu() {
 	ImGui::SetCursorPosY(272.0f / 768.0f * vp->WorkSize.y);
 
 	if (btn(f, "Create Scenario", TextHalign::center, e->sfx))
-		e->next_menu_state = MenuState::editor_scenario;
+		next_menu_state = MenuState::editor_scenario;
 
 	ImGui::SetCursorPosY(352.0f / 768.0f * vp->WorkSize.y);
 
@@ -644,7 +646,7 @@ void UICache::show_editor_menu() {
 	ImGui::SetCursorPosY(512.0f / 768.0f * vp->WorkSize.y);
 
 	if (btn(f, "Cancel", TextHalign::center, e->sfx))
-		e->next_menu_state = MenuState::start;
+		next_menu_state = MenuState::start;
 
 	ImGui::SetCursorPosX(old_x);
 }
@@ -1007,6 +1009,92 @@ void Engine::open_help() {
 	open_url("https://github.com/FolkertVanVerseveld/aoe");
 }
 
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0])) // NOTE a is compile constant and evaluated twice
+
+class MenuButton final {
+public:
+	float relY;
+	float x0, y0, x1, y1;
+	const char *name;
+
+	MenuButton(float y, const char *name)
+		: relY(y), name(name)
+		, x0(0), y0(0), x1(0), y1(0) {}
+
+	void reshape(ImGuiViewport *vp) {
+		float w = vp->WorkSize.x, h = vp->WorkSize.y;
+		x0 = 212 / 800.0f * w;
+		x1 = 586 / 800.0f * w;
+		y0 = relY / 768.0f * h;
+		y1 = (relY + 64.0f) / 768.0f * h;
+	}
+
+	bool showDisabled(Frame &f, const char *tooltip, const BackgroundColors &col) const {
+		DrawBorder(x0, y0, x1, y1, col);
+		ImGui::SetCursorPosY(y0);
+		return f.xbtn(name, tooltip, TextHalign::center);
+	}
+
+	bool show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
+		ImGui::SetCursorPosY(y0);
+		bool b = btn(f, name, TextHalign::center, sfx);
+		if (b)
+			DrawBorderInv(x0, y0, x1, y1, col);
+		else
+			DrawBorder(x0, y0, x1, y1, col);
+		return b;
+	}
+};
+
+MenuButton mainMenuButtons[] = {
+	{284, "Single Player"},
+	{364, "Multiplayer"},
+	{444, "Help"},
+	{524, "Scenario Builder"},
+	{604, "Exit"},
+};
+
+class MainMenu final {
+public:
+	const MenuButton &sp, &mp, &help, &scn, &quit;
+
+	MainMenu() : sp(mainMenuButtons[0]), mp(mainMenuButtons[1])
+		, help(mainMenuButtons[2]), scn(mainMenuButtons[3]), quit(mainMenuButtons[4]) {}
+
+	void reshape(ImGuiViewport *vp) {
+		for (unsigned i = 0; i < ARRAY_SIZE(mainMenuButtons); ++i)
+			mainMenuButtons[i].reshape(vp);
+	}
+} mainMenu;
+
+static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass)
+{
+	MainMenu &mm = mainMenu;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+
+	FontGuard fg(fnt.copper);
+
+	mm.reshape(vp);
+
+	float y0 = 284 / 768.0f * vp->WorkSize.y, y1 = 348 / 768.0f * vp->WorkSize.y;
+	BackgroundColors col = ass.bkg_cols.at(io::DrsId::bkg_main_menu);
+
+#define DRAW_BTN(btn) btn.show(f, sfx, col)
+#define DRAW_DISABLED(btn, tt) btn.showDisabled(f, tt, col)
+
+#if 0
+	if (DRAW_BTN(mm.sp))
+		next_menu_state = MenuState::singleplayer_menu;
+#else
+	DRAW_DISABLED(mm.sp, "Single player mode is not supported yet. Use multiplayer mode with 1 player instead.");
+#endif
+
+	if (DRAW_BTN(mm.mp  )) next_menu_state = MenuState::multiplayer_menu;
+	if (DRAW_BTN(mm.help)) eng->open_help();
+	if (DRAW_BTN(mm.scn )) next_menu_state = MenuState::editor_menu;
+	if (DRAW_BTN(mm.quit)) throw 0;
+}
+
 void Engine::show_start() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -1021,37 +1109,7 @@ void Engine::show_start() {
 
 	float old_x = ImGui::GetCursorPosX();
 
-	{
-		FontGuard fg(fnt.copper);
-
-		ImGui::SetCursorPosY(284.0f / 768.0f * vp->WorkSize.y);
-
-#if 0
-		if (btn(f, "Single Player", TextHalign::center, sfx))
-			next_menu_state = MenuState::singleplayer_menu;
-#else
-		f.xbtn("Single Player", "Single player mode is not supported yet. Use multiplayer mode with 1 player instead.", TextHalign::center);
-#endif
-
-		ImGui::SetCursorPosY(364.0f / 768.0f * vp->WorkSize.y);
-
-		if (btn(f, "Multiplayer", TextHalign::center, sfx))
-			next_menu_state = MenuState::multiplayer_menu;
-
-		ImGui::SetCursorPosY(444.0f / 768.0f * vp->WorkSize.y);
-		if (btn(f, "Help", TextHalign::center, sfx))
-			open_help();
-
-		ImGui::SetCursorPosY(524.0f / 768.0f * vp->WorkSize.y);
-
-		if (btn(f, "Scenario Builder", TextHalign::center, sfx))
-			next_menu_state = MenuState::editor_menu;
-
-		ImGui::SetCursorPosY(604.0f / 768.0f * vp->WorkSize.y);
-
-		if (btn(f, "Exit", TextHalign::center, sfx))
-			throw 0;
-	}
+	DrawMainMenu(f, sfx, *assets.get());
 
 	ImGui::SetCursorPosX(old_x);
 	ImGui::SetCursorPosY((710.0f - 40.0f) / 768.0f * vp->WorkSize.y);
@@ -1076,7 +1134,7 @@ void Engine::show_init() {
 	f.str("Age of Empires game setup");
 
 	ImGui::TextWrapped("%s", "In this menu, you can change general settings how the game behaves and where the game assets will be loaded from.");
-	ImGui::TextWrapped("%s", "This game is free software. If you have paid for this free software remake, you have been scammed! If you like Age of Empires, please support Microsoft by buying the original game on Steam");
+	ImGui::TextWrapped("%s", "This game is free software. If you have paid for this free software remake, you have been fooled!");
 
 
 	if (!fnt.loaded()) {
@@ -1327,6 +1385,19 @@ void Engine::show_multiplayer_menu() {
 void DrawLine(float x0, float y0, float x1, float y1, SDL_Color col)
 {
 	bkg->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(col.r, col.g, col.b, SDL_ALPHA_OPAQUE), 1);
+}
+
+void DrawBorderInv(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol)
+{
+	BackgroundColors bkgcol2;
+	bkgcol2.border[0] = bkgcol.border[3];
+	bkgcol2.border[1] = bkgcol.border[4];
+	bkgcol2.border[2] = bkgcol.border[5];
+	bkgcol2.border[3] = bkgcol.border[0];
+	bkgcol2.border[4] = bkgcol.border[1];
+	bkgcol2.border[5] = bkgcol.border[2];
+
+	DrawBorder(x0, y0, x1, y1, bkgcol2);
 }
 
 void DrawBorder(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol)

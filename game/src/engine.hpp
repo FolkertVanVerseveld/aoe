@@ -60,6 +60,8 @@ enum class EngineAsyncTask {
 
 class EngineView;
 
+extern MenuState next_menu_state;
+
 // TODO make engine view that wraps eng and m_eng magic
 // TODO split async?
 // TODO split ui
@@ -70,7 +72,7 @@ class Engine final {
 	int connection_mode;
 	unsigned short connection_port;
 	char connection_host[256]; // 253 according to https://web.archive.org/web/20190518124533/https://devblogs.microsoft.com/oldnewthing/?p=7873
-	MenuState menu_state, next_menu_state;
+	MenuState menu_state;
 
 	// multiplayer_host
 	bool multiplayer_ready;
@@ -220,9 +222,8 @@ public:
 	void trigger_async_flags(unsigned f);
 	void trigger_async_flags(EngineAsyncTask t) { trigger_async_flags((unsigned)t); }
 
-private:
 	void open_help();
-
+private:
 	void goto_multiplayer_menu();
 	void start_multiplayer_game();
 

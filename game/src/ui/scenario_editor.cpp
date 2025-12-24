@@ -100,7 +100,7 @@ void UICache::show_editor_scenario() {
 
 	if (ImGui::BeginPopup("EditMenuPopup")) {
 		if (ImGui::MenuItem("Quit")) {
-			e->next_menu_state = MenuState::start;
+			next_menu_state = MenuState::start;
 			ImGui::CloseCurrentPopup();
 		}
 

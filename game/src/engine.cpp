@@ -53,10 +53,12 @@ unsigned sp_player_count = 5, sp_player_ui_count = sp_player_count - 1;
 std::array<PlayerSetting, max_legacy_players> sp_players;
 ScenarioSettings sp_scn;
 
+MenuState next_menu_state = MenuState::init;
+
 Engine::Engine()
 	: net(), show_demo(false), show_debug(false), font_scaling(true)
 	, connection_mode(0), connection_port(32768), connection_host("")
-	, menu_state(MenuState::init), next_menu_state(MenuState::init)
+	, menu_state(MenuState::init)
 	, multiplayer_ready(false), m_show_menubar(false)
 	, chat_line(), chat(), server()
 	, tp(2), ui_tasks(), ui_mod_id(), popups(), popups_async()
