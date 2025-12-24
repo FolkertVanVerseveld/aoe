@@ -30,6 +30,23 @@ namespace aoe {
 class Assets;
 class Engine;
 
+/*
+button states:
+hover,
+selected,
+pressed,
+enabled
+*/
+enum ButtonStateFlags {
+	hover = 1 << 0,
+	selected = 1 << 1,
+	pressed = 1 << 2,
+	enabled = 1 << 3,
+};
+
+// TODO also support background colors
+void DrawMenuButton(float y, const char *text, ButtonStateFlags flags, const char *tooltip);
+
 void DrawLine(float x0, float y0, float x1, float y1, SDL_Color col);
 void DrawBorder(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol);
 
