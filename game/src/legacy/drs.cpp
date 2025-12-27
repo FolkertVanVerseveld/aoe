@@ -26,7 +26,11 @@ struct DrsHdr final {
 
 DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
 	ZoneScoped;
-	in.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+	try {
+		in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	} catch (const std::ifstream::failure &ex) {
+		throw std::runtime_error(std::string("cannot find \"") + path + "\"");
+	}
 
 	DrsHdr hdr{ 0 };
 	in.read((char*)&hdr, sizeof(hdr));

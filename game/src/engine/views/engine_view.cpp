@@ -14,7 +14,7 @@ void EngineView::trigger_async_flags(EngineAsyncTask t) {
 }
 
 void EngineView::goto_menu(MenuState ms) {
-	eng->next_menu_state = ms;
+	next_menu_state = ms;
 }
 
 void EngineView::play_sfx(SfxId id, int loops) {

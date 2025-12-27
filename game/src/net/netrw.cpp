@@ -107,7 +107,7 @@ unsigned NetPkg::read(const std::string &fmt, netargs &dst, unsigned offset) {
 				if (!has_mult)
 					throw std::runtime_error("string has no length");
 
-				// FIXME this looks like a bug... shouldn't this be: sz = mult
+				// NOTE the size of data should be correct, but just in case limit it to mult
 				unsigned sz = std::min<unsigned>(data.at(offset) << 8 | data.at(offset + 1), mult);
 
 				std::string s;
