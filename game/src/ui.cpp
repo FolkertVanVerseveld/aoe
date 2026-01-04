@@ -12,6 +12,7 @@
 
 #include <minmax.hpp>
 #include "ui.hpp"
+#include "ui/fullscreenmenu.hpp"
 #include "string.hpp"
 #include "world/entity_info.hpp"
 #include "world/terrain.hpp"
@@ -401,6 +402,29 @@ bool Popup::show() {
 	}
 
 	return active;
+}
+
+void MenuButton::reshape(ImGuiViewport *vp) {
+	float w = vp->WorkSize.x, h = vp->WorkSize.y;
+	x0 = 212 / 800.0f * w;
+	x1 = 586 / 800.0f * w;
+	y0 = relY / 768.0f * h;
+	y1 = (relY + 64.0f) / 768.0f * h;
+}
+
+bool MenuButton::show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
+	ImGui::SetCursorPosY(y0);
+
+	FillRect(x0, y0, x1, y1, SDL_Color{ 0, 0, 0, 127 });
+	if (state & (unsigned)MenuButtonState::selected)
+		DrawBorderInv(x0, y0, x1, y1, col);
+	else
+		DrawBorder(x0, y0, x1, y1, col);
+
+	if (state & (unsigned)MenuButtonState::disabled)
+		return f.xbtn(name, tooltip, TextHalign::center);
+
+	return btn(f, name, TextHalign::center, sfx);
 }
 
 }
@@ -1011,41 +1035,6 @@ void Engine::open_help() {
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0])) // NOTE a is compile constant and evaluated twice
 
-class MenuButton final {
-public:
-	float relY;
-	float x0, y0, x1, y1;
-	const char *name;
-
-	MenuButton(float y, const char *name)
-		: relY(y), name(name)
-		, x0(0), y0(0), x1(0), y1(0) {}
-
-	void reshape(ImGuiViewport *vp) {
-		float w = vp->WorkSize.x, h = vp->WorkSize.y;
-		x0 = 212 / 800.0f * w;
-		x1 = 586 / 800.0f * w;
-		y0 = relY / 768.0f * h;
-		y1 = (relY + 64.0f) / 768.0f * h;
-	}
-
-	bool showDisabled(Frame &f, const char *tooltip, const BackgroundColors &col) const {
-		DrawBorder(x0, y0, x1, y1, col);
-		ImGui::SetCursorPosY(y0);
-		return f.xbtn(name, tooltip, TextHalign::center);
-	}
-
-	bool show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
-		ImGui::SetCursorPosY(y0);
-		bool b = btn(f, name, TextHalign::center, sfx);
-		if (b)
-			DrawBorderInv(x0, y0, x1, y1, col);
-		else
-			DrawBorder(x0, y0, x1, y1, col);
-		return b;
-	}
-};
-
 MenuButton mainMenuButtons[] = {
 	{284, "Single Player"},
 	{364, "Multiplayer"},
@@ -1054,45 +1043,61 @@ MenuButton mainMenuButtons[] = {
 	{604, "Exit"},
 };
 
-class MainMenu final {
-public:
-	const MenuButton &sp, &mp, &help, &scn, &quit;
+void FullscreenMenu::reshape(ImGuiViewport *vp) {
+	for (unsigned i = 0; i < buttonCount; ++i)
+		buttons[i].reshape(vp);
+}
 
-	MainMenu() : sp(mainMenuButtons[0]), mp(mainMenuButtons[1])
-		, help(mainMenuButtons[2]), scn(mainMenuButtons[3]), quit(mainMenuButtons[4]) {}
+FullscreenMenu::FullscreenMenu(unsigned menuState, MenuButton *buttons, unsigned buttonCount,
+	void (*fn)(Frame&, Audio&, Assets&))
+	: menuState(menuState), buttons(buttons), buttonCount(buttonCount), selected(0), draw(fn)
+{
+	assert(buttonCount);
+	buttons[selected].state |= (unsigned)MenuButtonState::selected;
+}
 
-	void reshape(ImGuiViewport *vp) {
-		for (unsigned i = 0; i < ARRAY_SIZE(mainMenuButtons); ++i)
-			mainMenuButtons[i].reshape(vp);
+void FullscreenMenu::kbp_down(GameKey key) {
+	unsigned old = selected;
+
+	if (key == GameKey::ui_prev) {
+		if (selected > 0)
+			--selected;
+		else
+			selected = 0;
+	} else if (key == GameKey::ui_next) {
+		if (selected < buttonCount - 1)
+			++selected;
+		else
+			selected = buttonCount - 1;
 	}
-} mainMenu;
+
+	unsigned mask = (unsigned)MenuButtonState::selected;
+
+	buttons[old].state &= ~mask;
+	buttons[selected].state |= mask;
+}
+
+static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass);
+
+FullscreenMenu mainMenu((unsigned)MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), DrawMainMenu);
 
 static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass)
 {
-	MainMenu &mm = mainMenu;
+	FullscreenMenu &mm = mainMenu;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 
 	FontGuard fg(fnt.copper);
-
 	mm.reshape(vp);
 
-	float y0 = 284 / 768.0f * vp->WorkSize.y, y1 = 348 / 768.0f * vp->WorkSize.y;
 	BackgroundColors col = ass.bkg_cols.at(io::DrsId::bkg_main_menu);
 
-#define DRAW_BTN(btn) btn.show(f, sfx, col)
-#define DRAW_DISABLED(btn, tt) btn.showDisabled(f, tt, col)
+#define DRAW_BTN(idx) mm.buttons[idx].show(f, sfx, col)
 
-#if 0
-	if (DRAW_BTN(mm.sp))
-		next_menu_state = MenuState::singleplayer_menu;
-#else
-	DRAW_DISABLED(mm.sp, "Single player mode is not supported yet. Use multiplayer mode with 1 player instead.");
-#endif
-
-	if (DRAW_BTN(mm.mp  )) next_menu_state = MenuState::multiplayer_menu;
-	if (DRAW_BTN(mm.help)) eng->open_help();
-	if (DRAW_BTN(mm.scn )) next_menu_state = MenuState::editor_menu;
-	if (DRAW_BTN(mm.quit)) throw 0;
+	if (DRAW_BTN(0)) next_menu_state = MenuState::singleplayer_menu;
+	if (DRAW_BTN(1)) next_menu_state = MenuState::multiplayer_menu;
+	if (DRAW_BTN(2)) eng->open_help();
+	if (DRAW_BTN(3)) next_menu_state = MenuState::editor_menu;
+	if (DRAW_BTN(4)) throw 0;
 }
 
 void Engine::show_start() {
@@ -1109,7 +1114,7 @@ void Engine::show_start() {
 
 	float old_x = ImGui::GetCursorPosX();
 
-	DrawMainMenu(f, sfx, *assets.get());
+	mainMenu.draw(f, sfx, *assets.get());
 
 	ImGui::SetCursorPosX(old_x);
 	ImGui::SetCursorPosY((710.0f - 40.0f) / 768.0f * vp->WorkSize.y);
@@ -1380,6 +1385,11 @@ void Engine::show_multiplayer_menu() {
 		next_menu_state = MenuState::start;
 
 	ImGui::SetCursorPosX(old_x);
+}
+
+void FillRect(float x0, float y0, float x1, float y1, SDL_Color col)
+{
+	bkg->AddRectFilled(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(col.r, col.g, col.b, col.a), 0);
 }
 
 void DrawLine(float x0, float y0, float x1, float y1, SDL_Color col)

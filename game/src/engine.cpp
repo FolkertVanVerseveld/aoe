@@ -7,6 +7,8 @@
 #include "engine/audio.hpp"
 #include "engine/sdl.hpp"
 
+#include "ui/fullscreenmenu.hpp"
+
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
@@ -627,6 +629,7 @@ void Engine::cam_reset() {
 
 void Engine::goto_menu(MenuState state) {
 	menu_state = state;
+	keyctl.clear();
 	set_background(menu_state);
 	sdl->window.set_clipping(false);
 
@@ -1123,6 +1126,14 @@ void Engine::key_tapped(SDL &sdl, GameKey k) {
 	keyctl.is_tapped(k);
 }
 
+void Engine::kbp_down(GameKey k) {
+	if (k >= GameKey::max)
+		return;
+
+	if (menu_state == MenuState::start)
+		mainMenu.kbp_down(k);
+}
+
 void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 	ImageCapture videoRecorder(WINDOW_WIDTH_MIN, WINDOW_HEIGHT_MIN);
 	ImGuiIO &io = ImGui::GetIO();
@@ -1137,8 +1148,6 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 		// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
-			bool p;
-
 			switch (event.type) {
 			case SDL_QUIT:
 				done = true;
@@ -1154,10 +1163,10 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 				key_tapped(sdl, keyctl.up(event.key));
 				break;
 			case SDL_KEYDOWN:
-				p = ImGui_ImplSDL2_ProcessEvent(&event);
+				ImGui_ImplSDL2_ProcessEvent(&event);
 
-				if (!p || (capture_keys() && !io.WantCaptureKeyboard))
-					keyctl.down(event.key);
+				if (menu_state == MenuState::start || (capture_keys() && !io.WantCaptureKeyboard))
+					kbp_down(keyctl.down(event.key));
 				break;
 			default:
 				ImGui_ImplSDL2_ProcessEvent(&event);

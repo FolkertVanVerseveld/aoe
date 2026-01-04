@@ -169,6 +169,7 @@ private:
 	void eventloop(SDL&, gfx::GLprogram&, GLuint);
 
 	void kbp_game(GameKey k);
+	void kbp_down(GameKey k);
 
 	void idle();
 	void idle_async();

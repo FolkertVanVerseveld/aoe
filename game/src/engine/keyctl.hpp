@@ -9,6 +9,9 @@
 namespace aoe {
 
 enum class GameKey {
+	ui_prev,
+	ui_next,
+	// gameplay
 	key_left,
 	key_right,
 	key_up,

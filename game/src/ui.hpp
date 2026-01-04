@@ -30,6 +30,7 @@ namespace aoe {
 class Assets;
 class Engine;
 
+void FillRect(float x0, float y0, float x1, float y1, SDL_Color col);
 void DrawLine(float x0, float y0, float x1, float y1, SDL_Color col);
 void DrawBorderInv(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol);
 void DrawBorder(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol);
