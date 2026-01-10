@@ -1168,6 +1168,14 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 				if (menu_state == MenuState::start || (capture_keys() && !io.WantCaptureKeyboard))
 					kbp_down(keyctl.down(event.key));
 				break;
+			case SDL_MOUSEBUTTONDOWN:
+				ImGui_ImplSDL2_ProcessEvent(&event);
+
+				if (menu_state == MenuState::start) {
+					if (event.button.button = SDL_BUTTON_LEFT)
+						mainMenu.mouse_down(event.button.x, event.button.y);
+				}
+				break;
 			default:
 				ImGui_ImplSDL2_ProcessEvent(&event);
 				break;
@@ -1180,7 +1188,6 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 		ImGui::NewFrame();
 
 		idle();
-
 		display(prog, vao);
 
 		// Rendering

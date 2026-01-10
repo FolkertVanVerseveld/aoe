@@ -1,4 +1,7 @@
-#pragma once
+#ifndef AOE_UI_FULLSCREENMENU_HPP
+#define AOE_UI_FULLSCREENMENU_HPP 1
+
+#include "../engine/keyctl.hpp"
 
 struct ImGuiViewport;
 
@@ -48,6 +51,7 @@ public:
 	void reshape(ImGuiViewport *vp);
 
 	void kbp_down(GameKey key);
+	void mouse_down(int mx, int my);
 };
 
 }
@@ -55,3 +59,5 @@ public:
 extern ui::FullscreenMenu mainMenu;
 
 }
+
+#endif

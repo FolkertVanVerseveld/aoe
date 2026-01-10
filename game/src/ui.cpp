@@ -416,7 +416,7 @@ bool MenuButton::show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
 	ImGui::SetCursorPosY(y0);
 
 	FillRect(x0, y0, x1, y1, SDL_Color{ 0, 0, 0, 127 });
-	if (state & (unsigned)MenuButtonState::selected)
+	if (state & ((unsigned)MenuButtonState::active | (unsigned)MenuButtonState::selected))
 		DrawBorderInv(x0, y0, x1, y1, col);
 	else
 		DrawBorder(x0, y0, x1, y1, col);
@@ -1054,6 +1054,23 @@ FullscreenMenu::FullscreenMenu(unsigned menuState, MenuButton *buttons, unsigned
 {
 	assert(buttonCount);
 	buttons[selected].state |= (unsigned)MenuButtonState::selected;
+}
+
+void FullscreenMenu::mouse_down(int mx, int my) {
+	unsigned mask = (unsigned)MenuButtonState::active;
+
+	for (unsigned i = 0; i < buttonCount; ++i) {
+		MenuButton *btn = &buttons[i];
+		SDL_FPoint pt{ mx, my };
+		SDL_FRect rect{ btn->x0, btn->y0, btn->x1 - btn->x0, btn->y1 - btn->y0 };
+
+		if (SDL_PointInFRect(&pt, &rect)) {
+			selected = i;
+			btn->state |= mask;
+		} else {
+			btn->state &= ~mask;
+		}
+	}
 }
 
 void FullscreenMenu::kbp_down(GameKey key) {

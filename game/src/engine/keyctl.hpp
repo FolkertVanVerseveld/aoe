@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AOE_KEYCTL_HPP
+#define AOE_KEYCTL_HPP 1
 
 #include <map>
 #include <vector>
@@ -36,6 +37,12 @@ enum class GameKey {
 	max,
 };
 
+enum KeyboardMode {
+	configure, // change settings
+	fullscreen_menu,
+	other, // gameplay, scenario editor, etc.
+};
+
 class KeyboardController final {
 	std::vector<bool> state, state_tapped;
 	std::map<SDL_Keycode, GameKey> keys;
@@ -54,3 +61,5 @@ public:
 extern KeyboardController keyctl;
 
 }
+
+#endif
