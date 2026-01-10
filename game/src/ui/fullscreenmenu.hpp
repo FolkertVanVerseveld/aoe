@@ -1,4 +1,8 @@
-#pragma once
+#ifndef AOE_UI_FULLSCREENMENU_HPP
+#define AOE_UI_FULLSCREENMENU_HPP 1
+
+#include "../engine/keyctl.hpp"
+#include "../engine/menu.hpp"
 
 struct ImGuiViewport;
 
@@ -12,11 +16,27 @@ namespace ui {
 
 class Frame;
 
+static inline void dec(unsigned &v, unsigned min=0)
+{
+	if (v > min)
+		--v;
+	else
+		v = min;
+}
+
+static inline void inc(unsigned &v, unsigned max)
+{
+	if (v < max)
+		++v;
+	else
+		v = max;
+}
+
 enum class MenuButtonState {
-	active   = 0x01,
-	disabled = 0x02,
-	hovered  = 0x04,
-	selected = 0x08,
+	active   = 0x01, // pressed down, unique
+	disabled = 0x02, // unselectable
+	hovered  = 0x04, // mouse over element
+	selected = 0x08, // activated, unique
 };
 
 class MenuButton final {
@@ -48,10 +68,16 @@ public:
 	void reshape(ImGuiViewport *vp);
 
 	void kbp_down(GameKey key);
+	void mouse_down(int mx, int my, Audio &sfx);
+	void mouse_up(int mx, int my, MenuState state);
 };
 
 }
 
+void MenuButtonActivate(MenuState state, unsigned idx);
+
 extern ui::FullscreenMenu mainMenu;
 
 }
+
+#endif

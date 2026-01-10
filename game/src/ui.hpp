@@ -48,6 +48,10 @@ enum class TextHalign {
 	right,
 };
 
+// undef from Win32 GDI
+#undef DrawText
+void DrawText(const SDL_Rect &bnds, const char *str, ImU32 col, TextHalign halign, bool vmiddle);
+
 void str(const char*, TextHalign ha, bool wrap);
 
 class Frame final {

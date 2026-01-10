@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+/** ImGui helper functions to make common ImGui:: calls more sensible */
+
 namespace ImGui {
 
 IMGUI_API bool InputText(const char *label, std::string &buf, ImGuiInputTextFlags flags=0);
@@ -16,6 +18,6 @@ IMGUI_API bool InputClamp(const char *label, int &v, int min, int max, int step=
 IMGUI_API void Tooltip(const char *str, float width=30.0f);
 
 IMGUI_API void TextUnformatted(const char *str, int halign, bool wrap);
-IMGUI_API bool Button(const char *label, int halign, const ImVec2 &size = ImVec2(0, 0));
+IMGUI_API bool Button(const char *label, int halign, const ImVec2 &size=ImVec2(0, 0));
 
 }

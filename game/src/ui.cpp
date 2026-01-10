@@ -416,15 +416,21 @@ bool MenuButton::show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
 	ImGui::SetCursorPosY(y0);
 
 	FillRect(x0, y0, x1, y1, SDL_Color{ 0, 0, 0, 127 });
-	if (state & (unsigned)MenuButtonState::selected)
+	if (state & (unsigned)MenuButtonState::active)
 		DrawBorderInv(x0, y0, x1, y1, col);
 	else
 		DrawBorder(x0, y0, x1, y1, col);
 
-	if (state & (unsigned)MenuButtonState::disabled)
-		return f.xbtn(name, tooltip, TextHalign::center);
+	SDL_Rect bnds{ x0, y0, x1 - x0, y1 - y0 };
+	ImU32 rgba = IM_COL32_WHITE;
+	if (state & (unsigned)MenuButtonState::selected)
+		rgba = IM_COL32(255, 255, 0, 255);
 
-	return btn(f, name, TextHalign::center, sfx);
+	if (state & (unsigned)MenuButtonState::disabled)
+		rgba = IM_COL32(64, 64, 64, 255);
+
+	DrawText(bnds, name, rgba, TextHalign::center, true);
+	return false;
 }
 
 }
@@ -926,7 +932,7 @@ void UICache::show_entities() {
 
 	std::sort(entities_deceased.begin(), entities_deceased.end(), [](const VisualEntity &lhs, const VisualEntity &rhs){ return lhs.z < rhs.z; });
 	std::sort(entities.begin(), entities.end(), [](const VisualEntity &lhs, const VisualEntity &rhs){ return lhs.z < rhs.z; });
-	
+
 	ImDrawList *lst = ImGui::GetBackgroundDrawList();
 
 	// push deceased entities first to make sure they are always below any other entities
@@ -1043,40 +1049,6 @@ MenuButton mainMenuButtons[] = {
 	{604, "Exit"},
 };
 
-void FullscreenMenu::reshape(ImGuiViewport *vp) {
-	for (unsigned i = 0; i < buttonCount; ++i)
-		buttons[i].reshape(vp);
-}
-
-FullscreenMenu::FullscreenMenu(unsigned menuState, MenuButton *buttons, unsigned buttonCount,
-	void (*fn)(Frame&, Audio&, Assets&))
-	: menuState(menuState), buttons(buttons), buttonCount(buttonCount), selected(0), draw(fn)
-{
-	assert(buttonCount);
-	buttons[selected].state |= (unsigned)MenuButtonState::selected;
-}
-
-void FullscreenMenu::kbp_down(GameKey key) {
-	unsigned old = selected;
-
-	if (key == GameKey::ui_prev) {
-		if (selected > 0)
-			--selected;
-		else
-			selected = 0;
-	} else if (key == GameKey::ui_next) {
-		if (selected < buttonCount - 1)
-			++selected;
-		else
-			selected = buttonCount - 1;
-	}
-
-	unsigned mask = (unsigned)MenuButtonState::selected;
-
-	buttons[old].state &= ~mask;
-	buttons[selected].state |= mask;
-}
-
 static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass);
 
 FullscreenMenu mainMenu((unsigned)MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), DrawMainMenu);
@@ -1091,13 +1063,14 @@ static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass)
 
 	BackgroundColors col = ass.bkg_cols.at(io::DrsId::bkg_main_menu);
 
-#define DRAW_BTN(idx) mm.buttons[idx].show(f, sfx, col)
+	bool activated = false;
 
-	if (DRAW_BTN(0)) next_menu_state = MenuState::singleplayer_menu;
-	if (DRAW_BTN(1)) next_menu_state = MenuState::multiplayer_menu;
-	if (DRAW_BTN(2)) eng->open_help();
-	if (DRAW_BTN(3)) next_menu_state = MenuState::editor_menu;
-	if (DRAW_BTN(4)) throw 0;
+	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i) {
+		if (mm.buttons[i].show(f, sfx, col) && !activated) {
+			activated = true;
+			MenuButtonActivate(MenuState::start, i);
+		}
+	}
 }
 
 void Engine::show_start() {
@@ -1449,4 +1422,43 @@ void Engine::draw_background_border() {
 	DrawBorder(0, 0, right, bottom, col);
 }
 
+}
+
+/**
+ * ImGui helper functions that will eventually be replaced once ImGui has become redundant or for debug use only
+ */
+
+#include <imgui_internal.h>
+
+namespace aoe {
+namespace ui {
+
+void DrawText(const SDL_Rect &bnds, const char *str, ImU32 col, TextHalign halign, bool vmiddle)
+{
+	// no-op when fully transparent
+	if (!(col & IM_COL32_A_MASK))
+		return;
+
+	ImVec2 pos(bnds.x, bnds.y);
+
+	// skip CalcTextSize in simple case
+	if (halign == TextHalign::left && !vmiddle) {
+		bkg->AddText(NULL, 0.0f, pos, col, str);
+		return;
+	}
+
+	ImVec2 text_size = ImGui::CalcTextSize(str);
+
+	if (halign == TextHalign::right)
+		pos.x = bnds.x + bnds.w - text_size.x;
+	else if (halign == TextHalign::center)
+		pos.x = bnds.x + 0.5f * bnds.w - 0.5f * text_size.x;
+
+	if (vmiddle)
+		pos.y = bnds.y + 0.5f * bnds.h - 0.5f * text_size.y;
+
+	bkg->AddText(NULL, 0.0f, pos, col, str);
+}
+
+}
 }
