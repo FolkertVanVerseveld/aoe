@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../legacy/legacy.hpp"
+#include "keyboard_mode.hpp"
 
 namespace aoe {
 
@@ -23,6 +24,7 @@ enum class MenuState {
 
 struct MenuInfo final {
 	bool draw_border;
+	KeyboardMode keyboard_mode;
 	io::DrsId border_col;
 };
 

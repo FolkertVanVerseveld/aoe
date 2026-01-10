@@ -6,19 +6,19 @@ namespace aoe {
 using namespace io;
 
 const MenuInfo menu_info[] = {
-	{ false, DrsId::bkg_main_menu }, // init
-	{ true, DrsId::bkg_main_menu }, // start
-	{ true, DrsId::bkg_singleplayer },
-	{ true, DrsId::bkg_singleplayer },
-	{ false, (DrsId)0 }, // sp game
-	{ true, DrsId::bkg_multiplayer },
-	{ true, DrsId::bkg_multiplayer },
-	{ false, (DrsId)0 }, // mp game
-	{ false, (DrsId)0 }, // mp settings
-	{ true, DrsId::bkg_defeat },
-	{ true, DrsId::bkg_victory },
-	{ true, DrsId::bkg_editor_menu }, // edit menu
-	{ false, (DrsId)0 }, // edit scn
+	{ false, KeyboardMode::configure, DrsId::bkg_main_menu }, // init
+	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_main_menu }, // start
+	{ true, KeyboardMode::other, DrsId::bkg_singleplayer },
+	{ true, KeyboardMode::other, DrsId::bkg_singleplayer },
+	{ false, KeyboardMode::other, (DrsId)0 }, // sp game
+	{ true, KeyboardMode::other, DrsId::bkg_multiplayer },
+	{ true, KeyboardMode::other, DrsId::bkg_multiplayer },
+	{ false, KeyboardMode::other, (DrsId)0 }, // mp game
+	{ false, KeyboardMode::other, (DrsId)0 }, // mp settings
+	{ true, KeyboardMode::other, DrsId::bkg_defeat },
+	{ true, KeyboardMode::other, DrsId::bkg_victory },
+	{ true, KeyboardMode::other, DrsId::bkg_editor_menu }, // edit menu
+	{ false, KeyboardMode::other, (DrsId)0 }, // edit scn
 };
 
 const MenuInfo &GetMenuInfo(MenuState state) {

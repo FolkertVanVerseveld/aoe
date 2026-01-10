@@ -56,20 +56,22 @@ public:
 
 class FullscreenMenu final {
 public:
-	unsigned menuState;
+	MenuState menuState;
 	MenuButton *buttons;
 	unsigned buttonCount;
+	bool activated;
 	unsigned selected;
 	void (*draw)(Frame&, Audio&, Assets&);
 
-	FullscreenMenu(unsigned menuState, MenuButton *buttons, unsigned buttonCount,
+	FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
 		void (*fn)(Frame &, Audio &, Assets &));
 
 	void reshape(ImGuiViewport *vp);
 
-	void kbp_down(GameKey key);
+	void key_down(GameKey key, KeyboardController &keyctl, Audio &sfx);
+	void key_tapped(GameKey key);
 	void mouse_down(int mx, int my, Audio &sfx);
-	void mouse_up(int mx, int my, MenuState state);
+	void mouse_up(int mx, int my);
 };
 
 }

@@ -1,10 +1,35 @@
 #include "keyctl.hpp"
 
+#include <algorithm> // fill
+
 namespace aoe {
 
 KeyboardController keyctl;
 
-KeyboardController::KeyboardController() : state((size_t)GameKey::max, false), state_tapped(state.size(), false), keys() {
+/*
+https://discourse.libsdl.org/t/scancode-vs-keycode/32860/5
+
+the author of SDL says about key-/scancodes:
+
+SDL is trying to support essentially 3 different types of keyboard input:
+
+SDL scancodes are used for games that require position independent key input, e.g. an FPS that uses WASD for movement should use scancodes because the position is important (i.e. the key position shouldn't change on a French AZERTY keyboard, etc.)
+SDL keycodes are used for games that use symbolic key input, e.g. `I' for inventory, `B' for bag, etc. This is useful for MMOs and other games where the label on the key is important for understanding what the action is. Typically shift or control modifiers on those keys do something related to the original function and aren't related to another letter that might be mapped there (e.g. Shift-B closes all bags, etc.)
+SDL text input is used for games that have a text field for chat, or character names, etc.
+Games don't always follow these usage patterns, but this is the way it was originally designed.
+*/
+
+enum class KeyType {
+	scan, // position independent
+	key , // symbolic key
+	text, // input fields
+};
+
+KeyboardController::KeyboardController()
+	: state((size_t)GameKey::max, false), state_tapped(state.size(), false)
+	, scan_keys()
+	, keys(), mode(KeyboardMode::fullscreen_menu)
+{
 	// NOTE in theory, you can have multiple keys mapped to the same GameKey, but this can lead to unreliable results with key down state.
 	keys[SDLK_UP] = GameKey::ui_prev;
 	keys[SDLK_DOWN] = GameKey::ui_next;
@@ -27,17 +52,35 @@ KeyboardController::KeyboardController() : state((size_t)GameKey::max, false), s
 	keys['t'] = keys['T'] = GameKey::train_melee1;
 	keys['.'] = GameKey::focus_idle_villager;
 	keys[' '] = GameKey::focus_entity;
+
+	scan_keys[SDL_SCANCODE_UP] = GameKey::ui_prev;
+	scan_keys[SDL_SCANCODE_DOWN] = GameKey::ui_next;
+	scan_keys[SDL_SCANCODE_SPACE] = GameKey::ui_select;
+	scan_keys[SDL_SCANCODE_GRAVE] = GameKey::toggle_debug_window;
+	scan_keys[SDL_SCANCODE_F1] = GameKey::open_help;
+	scan_keys[SDL_SCANCODE_F11] = GameKey::toggle_fullscreen;
 }
 
-void KeyboardController::clear() {
-	state.clear();
-	state_tapped.clear();
-	size_t end = (size_t)GameKey::max;
-	state.resize(end, false);
-	state_tapped.resize(end, false);
+void KeyboardController::clear(KeyboardMode mode) {
+	this->mode = mode;
+	std::fill(state.begin(), state.end(), false);
+	std::fill(state_tapped.begin(), state_tapped.end(), false);
 }
 
 GameKey KeyboardController::down(const SDL_KeyboardEvent &e) {
+	if (mode == KeyboardMode::fullscreen_menu) {
+		auto it = scan_keys.find(e.keysym.scancode);
+
+		if (it == scan_keys.end())
+			return GameKey::max;
+
+		GameKey k = it->second;
+		size_t idx = (size_t)k;
+		state[idx] = true;
+		state_tapped[idx] = false;
+		return k;
+	}
+
 	auto it = keys.find(e.keysym.sym);
 
 	if (it == keys.end())
@@ -52,6 +95,24 @@ GameKey KeyboardController::down(const SDL_KeyboardEvent &e) {
 }
 
 GameKey KeyboardController::up(const SDL_KeyboardEvent &e) {
+	if (mode == KeyboardMode::fullscreen_menu) {
+		auto it = scan_keys.find(e.keysym.scancode);
+
+		if (it == scan_keys.end())
+			return GameKey::max;
+
+		GameKey k = it->second;
+		size_t idx = (size_t)k;
+
+		if (!state[idx]) {
+			state[idx] = false;
+			return GameKey::max;
+		}
+		state_tapped[idx] = true;
+		state[idx] = false;
+		return k;
+	}
+
 	auto it = keys.find(e.keysym.sym);
 
 	if (it == keys.end())
@@ -60,6 +121,10 @@ GameKey KeyboardController::up(const SDL_KeyboardEvent &e) {
 	GameKey k = it->second;
 	size_t idx = (size_t)k;
 
+	if (!state[idx]) {
+		state[idx] = false;
+		return GameKey::max;
+	}
 	state[idx] = false;
 	state_tapped[idx] = true;
 	return k;

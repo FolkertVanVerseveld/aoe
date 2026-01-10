@@ -1051,7 +1051,7 @@ MenuButton mainMenuButtons[] = {
 
 static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass);
 
-FullscreenMenu mainMenu((unsigned)MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), DrawMainMenu);
+FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), DrawMainMenu);
 
 static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass)
 {

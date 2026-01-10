@@ -569,17 +569,14 @@ bool Engine::is_hosting() {
 }
 
 void Engine::set_background(io::DrsId id) {
+	if (id == (io::DrsId)0)
+		return;
+
 	assert(assets.get());
 	Assets &a = *assets.get();
 
 	const gfx::ImageRef &r = a.at(id);
 	SetBackground(r, vbo);
-}
-
-void Engine::set_background(MenuState s) {
-	const MenuInfo &mi = GetMenuInfo(s);
-	if (mi.border_col != (io::DrsId)0)
-		set_background(mi.border_col);
 }
 
 ImVec2 Engine::tilepos(float x, float y, float left, float top, int h) {
@@ -629,8 +626,11 @@ void Engine::cam_reset() {
 
 void Engine::goto_menu(MenuState state) {
 	menu_state = state;
-	keyctl.clear();
-	set_background(menu_state);
+
+	const MenuInfo &mi = GetMenuInfo(state);
+	keyctl.clear(mi.keyboard_mode);
+	set_background(mi.border_col);
+
 	sdl->window.set_clipping(false);
 
 	switch (menu_state) {
@@ -775,7 +775,7 @@ void Engine::start_multiplayer_game() {
 	show_timeline = false;
 	show_diplomacy = false;
 	multiplayer_ready = false;
-	keyctl.clear();
+	keyctl.clear(KeyboardMode::gameplay);
 
 	cam_reset();
 }
@@ -1116,6 +1116,9 @@ void Engine::key_tapped(SDL &sdl, GameKey k) {
 
 	// menu specific
 	switch (menu_state) {
+	case MenuState::start:
+		mainMenu.key_tapped(k);
+		break;
 	case MenuState::singleplayer_game:
 	case MenuState::multiplayer_game:
 		kbp_game(k);
@@ -1131,7 +1134,7 @@ void Engine::kbp_down(GameKey k) {
 		return;
 
 	if (menu_state == MenuState::start)
-		mainMenu.kbp_down(k);
+		mainMenu.key_down(k, keyctl, sfx);
 }
 
 void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
@@ -1181,7 +1184,7 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 
 				if (menu_state == MenuState::start) {
 					if (event.button.button = SDL_BUTTON_LEFT)
-						mainMenu.mouse_up(event.button.x, event.button.y, menu_state);
+						mainMenu.mouse_up(event.button.x, event.button.y);
 				}
 				break;
 			default:

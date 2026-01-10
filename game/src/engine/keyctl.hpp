@@ -2,16 +2,20 @@
 #define AOE_KEYCTL_HPP 1
 
 #include <map>
+#include <set>
 #include <vector>
 
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_keyboard.h>
+
+#include "keyboard_mode.hpp"
 
 namespace aoe {
 
 enum class GameKey {
 	ui_prev,
 	ui_next,
+	ui_select,
 	// gameplay
 	key_left,
 	key_right,
@@ -37,19 +41,15 @@ enum class GameKey {
 	max,
 };
 
-enum KeyboardMode {
-	configure, // change settings
-	fullscreen_menu,
-	other, // gameplay, scenario editor, etc.
-};
-
 class KeyboardController final {
 	std::vector<bool> state, state_tapped;
+	std::map<SDL_Scancode, GameKey> scan_keys;
 	std::map<SDL_Keycode, GameKey> keys;
+	KeyboardMode mode;
 public:
 	KeyboardController();
 
-	void clear();
+	void clear(KeyboardMode mode);
 
 	GameKey down(const SDL_KeyboardEvent&);
 	GameKey up(const SDL_KeyboardEvent&);

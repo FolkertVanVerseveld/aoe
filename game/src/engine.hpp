@@ -228,7 +228,6 @@ private:
 	void goto_multiplayer_menu();
 	void start_multiplayer_game();
 
-	void set_background(MenuState);
 	void set_background(io::DrsId);
 
 	void draw_background_border();
