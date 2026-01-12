@@ -1,13 +1,15 @@
 #include "menu.hpp"
 #include "../engine.hpp"
 
+#include "../ui/fullscreenmenu.hpp"
+
 namespace aoe {
 
 using namespace io;
 
 const MenuInfo menu_info[] = {
 	{ false, KeyboardMode::configure, DrsId::bkg_main_menu }, // init
-	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_main_menu }, // start
+	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_main_menu, &mainMenu }, // start
 	{ true, KeyboardMode::other, DrsId::bkg_singleplayer },
 	{ true, KeyboardMode::other, DrsId::bkg_singleplayer },
 	{ false, KeyboardMode::other, (DrsId)0 }, // sp game
@@ -17,7 +19,7 @@ const MenuInfo menu_info[] = {
 	{ false, KeyboardMode::other, (DrsId)0 }, // mp settings
 	{ true, KeyboardMode::other, DrsId::bkg_defeat },
 	{ true, KeyboardMode::other, DrsId::bkg_victory },
-	{ true, KeyboardMode::other, DrsId::bkg_editor_menu }, // edit menu
+	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_editor_menu, &scenarioMenu }, // edit menu
 	{ false, KeyboardMode::other, (DrsId)0 }, // edit scn
 };
 
@@ -39,11 +41,15 @@ enum class MainMenuButtonIdx {
 	quit,
 };
 
-void MenuButtonActivate(MenuState state, unsigned idx)
-{
-	if (state != MenuState::start)
-		return;
+enum class EditorMenuButtonIdx {
+	create_scenario,
+	load_scenario,
+	campaign_editor,
+	cancel
+};
 
+void StartMenuButtonActivate(unsigned idx)
+{
 	MainMenuButtonIdx btn = (MainMenuButtonIdx)idx;
 
 	switch (btn) {
@@ -61,6 +67,32 @@ void MenuButtonActivate(MenuState state, unsigned idx)
 		break;
 	default:
 		throw 0;
+	}
+}
+
+void EditorMenuButtonActivate(unsigned idx)
+{
+	EditorMenuButtonIdx btn = (EditorMenuButtonIdx)idx;
+
+	switch (btn) {
+	case EditorMenuButtonIdx::create_scenario:
+		next_menu_state = MenuState::editor_scenario;
+		break;
+	default:
+		next_menu_state = MenuState::start;
+		break;
+	}
+}
+
+void MenuButtonActivate(MenuState state, unsigned idx)
+{
+ 	switch (state) {
+	case MenuState::start:
+		StartMenuButtonActivate(idx);
+		break;
+	case MenuState::editor_menu:
+		EditorMenuButtonActivate(idx);
+		break;
 	}
 }
 

@@ -637,6 +637,8 @@ void Engine::show_multiplayer_host() {
 	}
 }
 
+static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass);
+
 void UICache::show_editor_menu() {
 	ZoneScoped;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -658,6 +660,7 @@ void UICache::show_editor_menu() {
 		f.str2("Scenario Editor", TextHalign::center);
 	}
 
+#if 0
 	FontGuard fg(fnt.copper);
 
 	ImGui::SetCursorPosY(272.0f / 768.0f * vp->WorkSize.y);
@@ -678,7 +681,9 @@ void UICache::show_editor_menu() {
 	if (btn(f, "Cancel", TextHalign::center, e->sfx))
 		next_menu_state = MenuState::start;
 
-	ImGui::SetCursorPosX(old_x);
+#else
+	DrawScenarioMenu(f, e->sfx, *e->assets.get());
+#endif
 }
 
 
@@ -1049,9 +1054,32 @@ MenuButton mainMenuButtons[] = {
 	{604, "Exit"},
 };
 
+MenuButton scenarioMenuButtons[] = {
+	{272, "Create Scenario"},
+	{352, "Edit Scenario"},
+	{432, "Campaign Editor"},
+	{512, "Cancel"},
+};
+
 static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass);
+static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass);
 
 FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), DrawMainMenu);
+FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), DrawScenarioMenu);
+
+static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass)
+{
+	FullscreenMenu &mm = scenarioMenu;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+
+	FontGuard fg(fnt.copper);
+	mm.reshape(vp);
+
+	BackgroundColors col = ass.bkg_cols.at(io::DrsId::bkg_editor_menu);
+
+	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
+		mm.buttons[i].show(f, sfx, col);
+}
 
 static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass)
 {
@@ -1063,14 +1091,8 @@ static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass)
 
 	BackgroundColors col = ass.bkg_cols.at(io::DrsId::bkg_main_menu);
 
-	bool activated = false;
-
-	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i) {
-		if (mm.buttons[i].show(f, sfx, col) && !activated) {
-			activated = true;
-			MenuButtonActivate(MenuState::start, i);
-		}
-	}
+	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
+		mm.buttons[i].show(f, sfx, col);
 }
 
 void Engine::show_start() {

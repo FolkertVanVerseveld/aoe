@@ -1119,6 +1119,9 @@ void Engine::key_tapped(SDL &sdl, GameKey k) {
 	case MenuState::start:
 		mainMenu.key_tapped(k);
 		break;
+	case MenuState::editor_menu:
+		scenarioMenu.key_tapped(k);
+		break;
 	case MenuState::singleplayer_game:
 	case MenuState::multiplayer_game:
 		kbp_game(k);
@@ -1133,8 +1136,14 @@ void Engine::kbp_down(GameKey k) {
 	if (k >= GameKey::max)
 		return;
 
-	if (menu_state == MenuState::start)
+	switch (menu_state) {
+	case MenuState::start:
 		mainMenu.key_down(k, keyctl, sfx);
+		break;
+	case MenuState::editor_menu:
+		scenarioMenu.key_down(k, keyctl, sfx);
+		break;
+	}
 }
 
 void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
@@ -1150,6 +1159,8 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 		// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
 		// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 		SDL_Event event;
+		const MenuInfo *mi = HasMenuInfo(menu_state);
+
 		while (SDL_PollEvent(&event)) {
 			switch (event.type) {
 			case SDL_QUIT:
@@ -1168,23 +1179,23 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 			case SDL_KEYDOWN:
 				ImGui_ImplSDL2_ProcessEvent(&event);
 
-				if (menu_state == MenuState::start || (capture_keys() && !io.WantCaptureKeyboard))
+				if ((mi && mi->menu) || (capture_keys() && !io.WantCaptureKeyboard))
 					kbp_down(keyctl.down(event.key));
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 				ImGui_ImplSDL2_ProcessEvent(&event);
 
-				if (menu_state == MenuState::start) {
-					if (event.button.button = SDL_BUTTON_LEFT)
-						mainMenu.mouse_down(event.button.x, event.button.y, sfx);
+				if (mi && mi->menu) {
+					if (event.button.button == SDL_BUTTON_LEFT)
+						mi->menu->mouse_down(event.button.x, event.button.y, sfx);
 				}
 				break;
 			case SDL_MOUSEBUTTONUP:
 				ImGui_ImplSDL2_ProcessEvent(&event);
 
-				if (menu_state == MenuState::start) {
-					if (event.button.button = SDL_BUTTON_LEFT)
-						mainMenu.mouse_up(event.button.x, event.button.y);
+				if (mi && mi->menu) {
+					if (event.button.button == SDL_BUTTON_LEFT)
+						mi->menu->mouse_up(event.button.x, event.button.y);
 				}
 				break;
 			default:

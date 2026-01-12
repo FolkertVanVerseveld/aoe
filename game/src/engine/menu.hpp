@@ -5,6 +5,12 @@
 
 namespace aoe {
 
+namespace ui {
+
+class FullscreenMenu;
+
+}
+
 enum class MenuState {
 	init,
 	start,
@@ -26,6 +32,7 @@ struct MenuInfo final {
 	bool draw_border;
 	KeyboardMode keyboard_mode;
 	io::DrsId border_col;
+	ui::FullscreenMenu *menu;
 };
 
 extern const MenuInfo menu_info[(unsigned)MenuState::max];

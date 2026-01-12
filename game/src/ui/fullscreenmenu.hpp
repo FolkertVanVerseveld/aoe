@@ -78,7 +78,7 @@ public:
 
 void MenuButtonActivate(MenuState state, unsigned idx);
 
-extern ui::FullscreenMenu mainMenu;
+extern ui::FullscreenMenu mainMenu, scenarioMenu;
 
 }
 
