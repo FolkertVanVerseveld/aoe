@@ -12,8 +12,8 @@ void FullscreenMenu::reshape(ImGuiViewport *vp) {
 }
 
 FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
-	void (*fn)(Frame &, Audio &, Assets &))
-	: menuState(menuState), buttons(buttons), buttonCount(buttonCount), activated(false), selected(0), draw(fn)
+	const char *title, void (*fn)(Frame &, Audio &, Assets &))
+	: menuState(menuState), buttons(buttons), buttonCount(buttonCount), activated(false), selected(0), title(title), draw(fn)
 {
 	assert(buttonCount);
 	buttons[selected].state |= (unsigned)MenuButtonState::selected;

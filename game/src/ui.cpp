@@ -646,44 +646,8 @@ void UICache::show_editor_menu() {
 
 	Frame f;
 
-	if (!f.begin("editor", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
-		return;
-
-	ImGui::SetWindowSize(vp->WorkSize);
-
-	float old_x = ImGui::GetCursorPosX();
-
-	{
-		FontGuard fg(fnt.copper2);
-
-		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
-		f.str2("Scenario Editor", TextHalign::center);
-	}
-
-#if 0
-	FontGuard fg(fnt.copper);
-
-	ImGui::SetCursorPosY(272.0f / 768.0f * vp->WorkSize.y);
-
-	if (btn(f, "Create Scenario", TextHalign::center, e->sfx))
-		next_menu_state = MenuState::editor_scenario;
-
-	ImGui::SetCursorPosY(352.0f / 768.0f * vp->WorkSize.y);
-
-	f.xbtn("Edit Scenario", TextHalign::center);
-
-	ImGui::SetCursorPosY(432.0f / 768.0f * vp->WorkSize.y);
-
-	f.xbtn("Campaign Editor", TextHalign::center);
-
-	ImGui::SetCursorPosY(512.0f / 768.0f * vp->WorkSize.y);
-
-	if (btn(f, "Cancel", TextHalign::center, e->sfx))
-		next_menu_state = MenuState::start;
-
-#else
-	DrawScenarioMenu(f, e->sfx, *e->assets.get());
-#endif
+	if (f.begin("editor", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
+		DrawScenarioMenu(f, e->sfx, *e->assets.get());
 }
 
 
@@ -1064,13 +1028,21 @@ MenuButton scenarioMenuButtons[] = {
 static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass);
 static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass);
 
-FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), DrawMainMenu);
-FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), DrawScenarioMenu);
+FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), NULL, DrawMainMenu);
+FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), "Scenario Editor", DrawScenarioMenu);
 
 static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass)
 {
-	FullscreenMenu &mm = scenarioMenu;
 	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	FullscreenMenu &mm = scenarioMenu;
+	{
+		FontGuard fg(fnt.copper2);
+
+		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
+		f.str2(mm.title, TextHalign::center);
+	}
 
 	FontGuard fg(fnt.copper);
 	mm.reshape(vp);

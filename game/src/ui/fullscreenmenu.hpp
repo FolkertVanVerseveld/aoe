@@ -61,10 +61,11 @@ public:
 	unsigned buttonCount;
 	bool activated;
 	unsigned selected;
+	const char *title;
 	void (*draw)(Frame&, Audio&, Assets&);
 
 	FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
-		void (*fn)(Frame &, Audio &, Assets &));
+		const char *title, void (*fn)(Frame&, Audio&, Assets&));
 
 	void reshape(ImGuiViewport *vp);
 
