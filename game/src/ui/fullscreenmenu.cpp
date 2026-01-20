@@ -71,11 +71,19 @@ void FullscreenMenu::key_tapped(GameKey key) {
 	if (key == GameKey::ui_select) {
 		buttons[selected].state &= ~(unsigned)MenuButtonState::active;
 		MenuButtonActivate(menuState, selected);
+	} else if (key == GameKey::ui_back) {
+		MenuButtonActivate(menuState, -1);
 	}
 }
 
 void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sfx) {
 	unsigned old = selected;
+
+	if (keyctl.is_down(GameKey::ui_back)) {
+		if (key == GameKey::ui_back)
+			sfx.play_sfx(SfxId::ui_click);
+		return;
+	}
 
 	if (keyctl.is_down(GameKey::ui_select)) {
 		// only do this if we just selected

@@ -1115,16 +1115,16 @@ void Engine::key_tapped(SDL &sdl, GameKey k) {
 	}
 
 	// menu specific
+	const MenuInfo &mi = GetMenuInfo(menu_state);
+
 	switch (menu_state) {
-	case MenuState::start:
-		mainMenu.key_tapped(k);
-		break;
-	case MenuState::editor_menu:
-		scenarioMenu.key_tapped(k);
-		break;
 	case MenuState::singleplayer_game:
 	case MenuState::multiplayer_game:
 		kbp_game(k);
+		break;
+	default:
+		if (mi.keyboard_mode == KeyboardMode::fullscreen_menu)
+			mi.menu->key_tapped(k);
 		break;
 	}
 
@@ -1136,14 +1136,10 @@ void Engine::kbp_down(GameKey k) {
 	if (k >= GameKey::max)
 		return;
 
-	switch (menu_state) {
-	case MenuState::start:
-		mainMenu.key_down(k, keyctl, sfx);
-		break;
-	case MenuState::editor_menu:
-		scenarioMenu.key_down(k, keyctl, sfx);
-		break;
-	}
+	const MenuInfo &mi = GetMenuInfo(menu_state);
+
+	if (mi.keyboard_mode == KeyboardMode::fullscreen_menu)
+		mi.menu->key_down(k, keyctl, sfx);
 }
 
 void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {

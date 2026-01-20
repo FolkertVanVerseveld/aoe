@@ -88,7 +88,7 @@ void Frame::str2(const char *s, TextHalign ha, const ImVec4 &bg, bool wrap) {
 
 	ImVec2 pos = ImGui::GetCursorPos();
 
-	ImGui::SetCursorPos(ImVec2(pos.x - 1, pos.y + 1));
+	ImGui::SetCursorPos(ImVec2(pos.x - 2, pos.y + 2));
 	ui::str(s, ha, wrap);
 
 	ImGui::PopStyleColor(2);
@@ -429,6 +429,8 @@ bool MenuButton::show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
 	if (state & (unsigned)MenuButtonState::disabled)
 		rgba = IM_COL32(64, 64, 64, 255);
 
+	SDL_Rect sh_bnds{ bnds.x - 2, bnds.y + 2, bnds.w, bnds.h };
+	DrawText(sh_bnds, name, IM_COL32_BLACK, TextHalign::center, true);
 	DrawText(bnds, name, rgba, TextHalign::center, true);
 	return false;
 }
@@ -1018,6 +1020,15 @@ MenuButton mainMenuButtons[] = {
 	{604, "Exit"},
 };
 
+MenuButton singleplayerMenuButtons[] = {
+	{188, "Random Map"},
+	{268, "Campaign"},
+	{348, "Death Match"},
+	{428, "Scenario"},
+	{508, "Saved Game"},
+	{588, "Cancel"},
+};
+
 MenuButton scenarioMenuButtons[] = {
 	{272, "Create Scenario"},
 	{352, "Edit Scenario"},
@@ -1026,11 +1037,14 @@ MenuButton scenarioMenuButtons[] = {
 };
 
 static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass);
+static void DrawSingleplayerMenu(Frame &f, Audio &sfx, Assets &ass);
 static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass);
 
 FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), NULL, DrawMainMenu);
+FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), "Single Player", DrawSingleplayerMenu);
 FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), "Scenario Editor", DrawScenarioMenu);
 
+// TODO merge with duplicates
 static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass)
 {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
@@ -1048,6 +1062,29 @@ static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass)
 	mm.reshape(vp);
 
 	BackgroundColors col = ass.bkg_cols.at(io::DrsId::bkg_editor_menu);
+
+	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
+		mm.buttons[i].show(f, sfx, col);
+}
+
+static void DrawSingleplayerMenu(Frame &f, Audio &sfx, Assets &ass)
+{
+	FullscreenMenu &mm = singleplayerMenu;
+	ImGuiViewport *vp = ImGui::GetMainViewport();
+	ImGui::SetWindowSize(vp->WorkSize);
+
+	{
+		FontGuard fg(fnt.copper2);
+
+		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
+		f.str2(mm.title, TextHalign::center);
+	}
+
+	FontGuard fg(fnt.copper);
+	mm.reshape(vp);
+
+	const MenuInfo &mi = GetMenuInfo(MenuState::singleplayer_menu);
+	BackgroundColors col = ass.bkg_cols.at(mi.border_col);
 
 	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
 		mm.buttons[i].show(f, sfx, col);
@@ -1199,8 +1236,10 @@ void Engine::show_singleplayer_menu() {
 
 	SetWindowSize(vp->WorkSize);
 
+#if 1
+	singleplayerMenu.draw(f, sfx, *assets.get());
+#else
 	float old_x = GetCursorPosX();
-
 	{
 		FontGuard fg(fnt.copper2);
 
@@ -1230,6 +1269,7 @@ void Engine::show_singleplayer_menu() {
 	SetRelY(588.0f);
 	if (btn(f, "Cancel", TextHalign::center, sfx))
 		next_menu_state = MenuState::start;
+#endif
 }
 
 void Engine::show_singleplayer_host() {

@@ -56,6 +56,7 @@ KeyboardController::KeyboardController()
 	scan_keys[SDL_SCANCODE_UP] = GameKey::ui_prev;
 	scan_keys[SDL_SCANCODE_DOWN] = GameKey::ui_next;
 	scan_keys[SDL_SCANCODE_SPACE] = GameKey::ui_select;
+	scan_keys[SDL_SCANCODE_ESCAPE] = GameKey::ui_back;
 	scan_keys[SDL_SCANCODE_GRAVE] = GameKey::toggle_debug_window;
 	scan_keys[SDL_SCANCODE_F1] = GameKey::open_help;
 	scan_keys[SDL_SCANCODE_F11] = GameKey::toggle_fullscreen;
@@ -76,6 +77,10 @@ GameKey KeyboardController::down(const SDL_KeyboardEvent &e) {
 
 		GameKey k = it->second;
 		size_t idx = (size_t)k;
+
+		if (state[idx])
+			return GameKey::max; // no repeating keys
+
 		state[idx] = true;
 		state_tapped[idx] = false;
 		return k;

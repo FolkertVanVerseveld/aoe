@@ -10,7 +10,7 @@ using namespace io;
 const MenuInfo menu_info[] = {
 	{ false, KeyboardMode::configure, DrsId::bkg_main_menu }, // init
 	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_main_menu, &mainMenu }, // start
-	{ true, KeyboardMode::other, DrsId::bkg_singleplayer },
+	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_singleplayer, &singleplayerMenu }, // sp menu
 	{ true, KeyboardMode::other, DrsId::bkg_singleplayer },
 	{ false, KeyboardMode::other, (DrsId)0 }, // sp game
 	{ true, KeyboardMode::other, DrsId::bkg_multiplayer },
@@ -39,6 +39,15 @@ enum class MainMenuButtonIdx {
 	help,
 	scenario_builder,
 	quit,
+};
+
+enum class SingleplayerMenuButtonIdx {
+	random_map,
+	campaign,
+	death_match,
+	scenario,
+	saved_game,
+	cancel,
 };
 
 enum class EditorMenuButtonIdx {
@@ -70,6 +79,21 @@ void StartMenuButtonActivate(unsigned idx)
 	}
 }
 
+void SingleplayerMenuButtonActivate(unsigned idx)
+{
+	SingleplayerMenuButtonIdx btn = (SingleplayerMenuButtonIdx)idx;
+
+	switch (btn) {
+	case SingleplayerMenuButtonIdx::random_map:
+	case SingleplayerMenuButtonIdx::death_match:
+		next_menu_state = MenuState::singleplayer_host;
+		break;
+	default:
+		next_menu_state = MenuState::start;
+		break;
+	}
+}
+
 void EditorMenuButtonActivate(unsigned idx)
 {
 	EditorMenuButtonIdx btn = (EditorMenuButtonIdx)idx;
@@ -89,6 +113,9 @@ void MenuButtonActivate(MenuState state, unsigned idx)
  	switch (state) {
 	case MenuState::start:
 		StartMenuButtonActivate(idx);
+		break;
+	case MenuState::singleplayer_menu:
+		SingleplayerMenuButtonActivate(idx);
 		break;
 	case MenuState::editor_menu:
 		EditorMenuButtonActivate(idx);

@@ -16,6 +16,7 @@ enum class GameKey {
 	ui_prev,
 	ui_next,
 	ui_select,
+	ui_back,
 	// gameplay
 	key_left,
 	key_right,
