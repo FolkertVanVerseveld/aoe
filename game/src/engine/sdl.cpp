@@ -76,8 +76,7 @@ SDL::SDL(Uint32 flags) : guard(flags)
 
 	// find tallest display
 	int count = SDL_GetNumVideoDisplays();
-
-	int href = 768, hmax = href;
+	int hmax = href;
 
 	for (int i = 0; i < count; ++i) {
 		SDL_Rect bnds;

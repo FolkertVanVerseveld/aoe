@@ -408,8 +408,8 @@ void MenuButton::reshape(ImGuiViewport *vp) {
 	float w = vp->WorkSize.x, h = vp->WorkSize.y;
 	x0 = 212 / 800.0f * w;
 	x1 = 586 / 800.0f * w;
-	y0 = relY / 768.0f * h;
-	y1 = (relY + 64.0f) / 768.0f * h;
+	y0 = relY / href * h;
+	y1 = (relY + 64.0f) / href * h;
 }
 
 bool MenuButton::show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
@@ -1044,64 +1044,43 @@ FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuBu
 FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), "Single Player", DrawSingleplayerMenu);
 FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), "Scenario Editor", DrawScenarioMenu);
 
-// TODO merge with duplicates
-static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass)
+static void DrawFullscreenMenu(FullscreenMenu &mm, Frame &f, Audio &sfx, Assets &ass, MenuState state)
 {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGui::SetWindowSize(vp->WorkSize);
 
-	FullscreenMenu &mm = scenarioMenu;
-	{
+	// optional: title
+	if (mm.title) {
 		FontGuard fg(fnt.copper2);
 
-		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
+		ImGui::SetCursorPosY(38.0f / href * vp->WorkSize.y);
 		f.str2(mm.title, TextHalign::center);
 	}
 
 	FontGuard fg(fnt.copper);
 	mm.reshape(vp);
 
-	BackgroundColors col = ass.bkg_cols.at(io::DrsId::bkg_editor_menu);
-
-	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
-		mm.buttons[i].show(f, sfx, col);
-}
-
-static void DrawSingleplayerMenu(Frame &f, Audio &sfx, Assets &ass)
-{
-	FullscreenMenu &mm = singleplayerMenu;
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetWindowSize(vp->WorkSize);
-
-	{
-		FontGuard fg(fnt.copper2);
-
-		ImGui::SetCursorPosY(38.0f / 768.0f * vp->WorkSize.y);
-		f.str2(mm.title, TextHalign::center);
-	}
-
-	FontGuard fg(fnt.copper);
-	mm.reshape(vp);
-
-	const MenuInfo &mi = GetMenuInfo(MenuState::singleplayer_menu);
+	const MenuInfo &mi = GetMenuInfo(state);
 	BackgroundColors col = ass.bkg_cols.at(mi.border_col);
 
 	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
 		mm.buttons[i].show(f, sfx, col);
 }
 
+// TODO merge with duplicates
+static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass)
+{
+	DrawFullscreenMenu(scenarioMenu, f, sfx, ass, MenuState::editor_menu);
+}
+
+static void DrawSingleplayerMenu(Frame &f, Audio &sfx, Assets &ass)
+{
+	DrawFullscreenMenu(singleplayerMenu, f, sfx, ass, MenuState::singleplayer_menu);
+}
+
 static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass)
 {
-	FullscreenMenu &mm = mainMenu;
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-
-	FontGuard fg(fnt.copper);
-	mm.reshape(vp);
-
-	BackgroundColors col = ass.bkg_cols.at(io::DrsId::bkg_main_menu);
-
-	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
-		mm.buttons[i].show(f, sfx, col);
+	DrawFullscreenMenu(mainMenu, f, sfx, ass, MenuState::start);
 }
 
 void Engine::show_start() {
@@ -1121,7 +1100,7 @@ void Engine::show_start() {
 	mainMenu.draw(f, sfx, *assets.get());
 
 	ImGui::SetCursorPosX(old_x);
-	ImGui::SetCursorPosY((710.0f - 40.0f) / 768.0f * vp->WorkSize.y);
+	ImGui::SetCursorPosY((710.0f - 40.0f) / href * vp->WorkSize.y);
 
 	f.str2("Trademark reserved by Microsoft. Remake by Folkert van Verseveld.", TextHalign::center);
 }
@@ -1221,7 +1200,7 @@ void Engine::multiplayer_set_localhost() {
 	strncpy0(connection_host, "127.0.0.1", sizeof(connection_host));
 }
 
-#define SetRelY(ry) ImGui::SetCursorPosY((ry) / 768.0f * vp->WorkSize.y)
+#define SetRelY(ry) ImGui::SetCursorPosY((ry) / href * vp->WorkSize.y)
 
 void Engine::show_singleplayer_menu() {
 	using namespace ImGui;
@@ -1236,40 +1215,7 @@ void Engine::show_singleplayer_menu() {
 
 	SetWindowSize(vp->WorkSize);
 
-#if 1
 	singleplayerMenu.draw(f, sfx, *assets.get());
-#else
-	float old_x = GetCursorPosX();
-	{
-		FontGuard fg(fnt.copper2);
-
-		SetRelY(38.0f);
-		f.str2("Single Player", TextHalign::center);
-	}
-
-	FontGuard fg(fnt.copper);
-
-	SetRelY(188.0f);
-	if (btn(f, "Random Map", TextHalign::center, sfx))
-		next_menu_state = MenuState::singleplayer_host;
-
-	SetRelY(268.0f);
-	f.xbtn("Campaign", TextHalign::center);
-
-	SetRelY(348.0f);
-	if (btn(f, "Death Match", TextHalign::center, sfx))
-		next_menu_state = MenuState::singleplayer_host;
-
-	SetRelY(428);
-	f.xbtn("Scenario", TextHalign::center);
-
-	SetRelY(508.0f);
-	f.xbtn("Saved Game", TextHalign::center);
-
-	SetRelY(588.0f);
-	if (btn(f, "Cancel", TextHalign::center, sfx))
-		next_menu_state = MenuState::start;
-#endif
 }
 
 void Engine::show_singleplayer_host() {

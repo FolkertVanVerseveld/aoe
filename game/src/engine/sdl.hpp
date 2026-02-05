@@ -20,7 +20,11 @@
 #include <Windows.h>
 #endif
 
+#include "../legacy/limits.hpp"
+
 namespace aoe {
+
+static constexpr int href = WINDOW_HEIGHT_MAX; // for ui scaling, relY, etc.
 
 class SDLguard final {
 public:
