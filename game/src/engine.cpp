@@ -1177,6 +1177,8 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 
 				if ((mi && mi->menu) || (capture_keys() && !io.WantCaptureKeyboard))
 					kbp_down(keyctl.down(event.key));
+				else
+					keyctl.down_hp(event.key);
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 				ImGui_ImplSDL2_ProcessEvent(&event);

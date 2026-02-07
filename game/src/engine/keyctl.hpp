@@ -42,6 +42,17 @@ enum class GameKey {
 	max,
 };
 
+static inline constexpr bool is_hp(GameKey k) {
+	switch (k) {
+	case GameKey::toggle_debug_window:
+	case GameKey::open_help:
+	case GameKey::toggle_fullscreen:
+		return true;
+	default:
+		return false;
+	}
+}
+
 class KeyboardController final {
 	std::vector<bool> state, state_tapped;
 	std::map<SDL_Scancode, GameKey> scan_keys;
@@ -52,6 +63,8 @@ public:
 
 	void clear(KeyboardMode mode);
 
+	// High Priority. this is to accommodate for menus that still need to be converted
+	GameKey down_hp(const SDL_KeyboardEvent&);
 	GameKey down(const SDL_KeyboardEvent&);
 	GameKey up(const SDL_KeyboardEvent&);
 

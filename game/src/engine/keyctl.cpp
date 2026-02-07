@@ -68,45 +68,43 @@ void KeyboardController::clear(KeyboardMode mode) {
 	std::fill(state_tapped.begin(), state_tapped.end(), false);
 }
 
-GameKey KeyboardController::down(const SDL_KeyboardEvent &e) {
-	if (mode == KeyboardMode::fullscreen_menu) {
-		auto it = scan_keys.find(e.keysym.scancode);
-
-		if (it == scan_keys.end())
-			return GameKey::max;
-
-		GameKey k = it->second;
-		size_t idx = (size_t)k;
-
-		if (state[idx])
-			return GameKey::max; // no repeating keys
-
-		state[idx] = true;
-		state_tapped[idx] = false;
-		return k;
-	}
-
-	auto it = keys.find(e.keysym.sym);
-
-	if (it == keys.end())
+template<typename T> GameKey RegisterKey(const T t, std::map<T, GameKey> &kbmap, std::vector<bool> &state, std::vector<bool> &tapped)
+{
+	auto it = kbmap.find(t);
+	if (it == kbmap.end())
 		return GameKey::max;
 
 	GameKey k = it->second;
 	size_t idx = (size_t)k;
 
+	if (state[idx])
+		return GameKey::max; // no repeating keys
+
 	state[idx] = true;
-	state_tapped[idx] = false;
+	tapped[idx] = false;
+
 	return k;
 }
 
-GameKey KeyboardController::up(const SDL_KeyboardEvent &e) {
-	if (mode == KeyboardMode::fullscreen_menu) {
-		auto it = scan_keys.find(e.keysym.scancode);
+GameKey KeyboardController::down_hp(const SDL_KeyboardEvent &e) {
+	return RegisterKey(e.keysym.scancode, scan_keys, state, state_tapped);
+}
 
-		if (it == scan_keys.end())
+GameKey KeyboardController::down(const SDL_KeyboardEvent &e) {
+	if (mode == KeyboardMode::fullscreen_menu)
+		return RegisterKey(e.keysym.scancode, scan_keys, state, state_tapped);
+
+	return RegisterKey(e.keysym.sym, keys, state, state_tapped);
+}
+
+GameKey KeyboardController::up(const SDL_KeyboardEvent &e) {
+	auto it0 = scan_keys.find(e.keysym.scancode);
+
+	if (mode == KeyboardMode::fullscreen_menu || (it0 != scan_keys.end() && is_hp(it0->second))) {
+		if (it0 == scan_keys.end())
 			return GameKey::max;
 
-		GameKey k = it->second;
+		GameKey k = it0->second;
 		size_t idx = (size_t)k;
 
 		if (!state[idx]) {
