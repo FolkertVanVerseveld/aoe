@@ -5,7 +5,7 @@ is an educational non-profit project I am writing in my free time.*
 
 ## Preview
 
-![Main Menu](https://github.com/FolkertVanVerseveld/aoe/assets/5989565/882ed5f9-63d5-4c39-ac75-79b9534a9dd5)
+![Main Menu](https://github.com/user-attachments/assets/0e12c151-188d-49f0-af74-bb2454ff2ec5)
 ![Demo map](https://github.com/FolkertVanVerseveld/aoe/assets/5989565/4920f958-da29-44fd-a263-7ab0d5d9a5f6)
 
 ## Overview
