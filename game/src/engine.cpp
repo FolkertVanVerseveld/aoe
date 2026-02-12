@@ -295,6 +295,14 @@ void Engine::display(gfx::GLprogram &prog, GLuint vao) {
 	ui.idle(*this);
 	show_menubar();
 
+	const MenuInfo *mi = HasMenuInfo(menu_state);
+
+	if (mi && mi->menu) {
+		FullscreenMenu &mm = *mi->menu;
+		if (mm.menuState == menu_state)
+			DrawFullscreenMenu(mm, sfx, *assets.get(), menu_state);
+	}
+
 	switch (menu_state) {
 	case MenuState::multiplayer_host:
 		show_multiplayer_host();
@@ -304,8 +312,6 @@ void Engine::display(gfx::GLprogram &prog, GLuint vao) {
 		ui.show_world();
 		ui.show_multiplayer_game();
 		break;
-	case MenuState::singleplayer_menu:
-		show_singleplayer_menu();
 		break;
 	case MenuState::singleplayer_host:
 		show_singleplayer_host();
@@ -313,15 +319,13 @@ void Engine::display(gfx::GLprogram &prog, GLuint vao) {
 	case MenuState::multiplayer_menu:
 		show_multiplayer_menu();
 		break;
+	case MenuState::singleplayer_menu:
 	case MenuState::start:
-		show_start();
+	case MenuState::editor_menu:
 		break;
 	case MenuState::defeat:
 	case MenuState::victory:
 		show_gameover();
-		break;
-	case MenuState::editor_menu:
-		ui.show_editor_menu();
 		break;
 	case MenuState::editor_scenario:
 		ui.show_world();
@@ -334,11 +338,8 @@ void Engine::display(gfx::GLprogram &prog, GLuint vao) {
 		throw "invalid menu state";
 	}
 
-	const MenuInfo *mi;
-	if ((mi = HasMenuInfo(menu_state))) {
-		if (mi->draw_border)
-			draw_background_border();
-	}
+	if (mi && mi->draw_border)
+		draw_background_border();
 
 	if (show_demo)
 		ImGui::ShowDemoWindow(&show_demo);
@@ -375,6 +376,7 @@ void Engine::display_ui_tasks() {
 	if (ImGui::BeginPopupModal("tasks", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 		int i = 0;
 		unsigned cancellable = 0;
+		char label[32];
 
 		for (auto it = eng->ui_tasks.begin(); it != eng->ui_tasks.end(); ++i) {
 			UI_Task &tsk = it->second;
@@ -384,11 +386,11 @@ void Engine::display_ui_tasks() {
 			ImGui::ProgressBar(f, ImVec2(-1, 0));
 			DrawTextWrapped(tsk.desc);
 
-			std::string str("Cancel##" + std::to_string(i));
+			snprintf(label, sizeof label, "Cancel##%d", i);
 			if (tsk.is_cancellable())
 				++cancellable;
 
-			if (tsk.is_cancellable() && ImGui::Button(str.c_str()))
+			if (tsk.is_cancellable() && ImGui::Button(label))
 				it = eng->ui_tasks.erase(it);
 			else
 				++it;
@@ -1181,18 +1183,16 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 					keyctl.down_hp(event.key);
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-				ImGui_ImplSDL2_ProcessEvent(&event);
-
-				if (mi && mi->menu) {
-					if (event.button.button == SDL_BUTTON_LEFT)
-						mi->menu->mouse_down(event.button.x, event.button.y, sfx);
-				}
-				break;
 			case SDL_MOUSEBUTTONUP:
 				ImGui_ImplSDL2_ProcessEvent(&event);
 
 				if (mi && mi->menu) {
-					if (event.button.button == SDL_BUTTON_LEFT)
+					if (event.button.button != SDL_BUTTON_LEFT)
+						break;
+
+					if (event.type == SDL_MOUSEBUTTONDOWN)
+						mi->menu->mouse_down(event.button.x, event.button.y, sfx);
+					else
 						mi->menu->mouse_up(event.button.x, event.button.y);
 				}
 				break;

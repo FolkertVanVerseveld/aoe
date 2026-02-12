@@ -641,18 +641,6 @@ void Engine::show_multiplayer_host() {
 
 static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass);
 
-void UICache::show_editor_menu() {
-	ZoneScoped;
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(vp->WorkPos);
-
-	Frame f;
-
-	if (f.begin("editor", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
-		DrawScenarioMenu(f, e->sfx, *e->assets.get());
-}
-
-
 void UICache::load() {
 	ZoneScoped;
 
@@ -1036,18 +1024,21 @@ MenuButton scenarioMenuButtons[] = {
 	{512, "Cancel"},
 };
 
-static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass);
-static void DrawSingleplayerMenu(Frame &f, Audio &sfx, Assets &ass);
-static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass);
+FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), "start", NULL, StartMenuButtonActivate);
+FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), "singleplayer menu", "Single Player", SingleplayerMenuButtonActivate);
+FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), "editor menu", "Scenario Editor", EditorMenuButtonActivate);
 
-FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), NULL, DrawMainMenu);
-FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), "Single Player", DrawSingleplayerMenu);
-FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), "Scenario Editor", DrawScenarioMenu);
-
-static void DrawFullscreenMenu(FullscreenMenu &mm, Frame &f, Audio &sfx, Assets &ass, MenuState state)
+void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass, MenuState state)
 {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetWindowSize(vp->WorkSize);
+	ImGui::SetNextWindowPos(vp->WorkPos);
+	ImGui::SetNextWindowSize(vp->WorkSize);
+	float old_x = ImGui::GetCursorPosX();
+
+	Frame f;
+
+	if (!f.begin(mainMenu.frameTitle, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
+		return; // should never happen, but just in case
 
 	// optional: title
 	if (mm.title) {
@@ -1057,52 +1048,22 @@ static void DrawFullscreenMenu(FullscreenMenu &mm, Frame &f, Audio &sfx, Assets 
 		f.str2(mm.title, TextHalign::center);
 	}
 
-	FontGuard fg(fnt.copper);
-	mm.reshape(vp);
+	{
+		FontGuard fg(fnt.copper);
+		mm.reshape(vp);
 
-	const MenuInfo &mi = GetMenuInfo(state);
-	BackgroundColors col = ass.bkg_cols.at(mi.border_col);
+		const MenuInfo &mi = GetMenuInfo(state);
+		BackgroundColors col = ass.bkg_cols.at(mi.border_col);
 
-	for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
-		mm.buttons[i].show(f, sfx, col);
-}
+		for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
+			mm.buttons[i].show(f, sfx, col);
+	}
 
-// TODO merge with duplicates
-static void DrawScenarioMenu(Frame &f, Audio &sfx, Assets &ass)
-{
-	DrawFullscreenMenu(scenarioMenu, f, sfx, ass, MenuState::editor_menu);
-}
-
-static void DrawSingleplayerMenu(Frame &f, Audio &sfx, Assets &ass)
-{
-	DrawFullscreenMenu(singleplayerMenu, f, sfx, ass, MenuState::singleplayer_menu);
-}
-
-static void DrawMainMenu(Frame &f, Audio &sfx, Assets &ass)
-{
-	DrawFullscreenMenu(mainMenu, f, sfx, ass, MenuState::start);
-}
-
-void Engine::show_start() {
-	ZoneScoped;
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(vp->WorkPos);
-
-	Frame f;
-
-	if (!f.begin("start", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
-		return;
-
-	ImGui::SetWindowSize(vp->WorkSize);
-
-	float old_x = ImGui::GetCursorPosX();
-
-	mainMenu.draw(f, sfx, *assets.get());
-
-	ImGui::SetCursorPosX(old_x);
-	ImGui::SetCursorPosY((710.0f - 40.0f) / href * vp->WorkSize.y);
-
-	f.str2("Trademark reserved by Microsoft. Remake by Folkert van Verseveld.", TextHalign::center);
+	// footer check
+	if (state == MenuState::start) {
+		ImGui::SetCursorPos(ImVec2(old_x, (710.0f - 40.0f) / href * vp->WorkSize.y));
+		f.str2("Trademark reserved by Microsoft. Remake by Folkert van Verseveld.", TextHalign::center);
+	}
 }
 
 static const std::vector<std::string> music_ids{ "menu", "success", "fail", "game" };
@@ -1201,22 +1162,6 @@ void Engine::multiplayer_set_localhost() {
 }
 
 #define SetRelY(ry) ImGui::SetCursorPosY((ry) / href * vp->WorkSize.y)
-
-void Engine::show_singleplayer_menu() {
-	using namespace ImGui;
-	ZoneScoped;
-	ImGuiViewport *vp = GetMainViewport();
-	SetNextWindowPos(vp->WorkPos);
-
-	Frame f;
-
-	if (!f.begin("singleplayer menu", ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
-		return;
-
-	SetWindowSize(vp->WorkSize);
-
-	singleplayerMenu.draw(f, sfx, *assets.get());
-}
 
 void Engine::show_singleplayer_host() {
 	using namespace ImGui;

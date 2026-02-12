@@ -61,11 +61,12 @@ public:
 	unsigned buttonCount;
 	bool activated;
 	unsigned selected;
+	const char *frameTitle; // for Frame
 	const char *title;
-	void (*draw)(Frame&, Audio&, Assets&);
+	void (*fnActivate)(unsigned);
 
 	FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
-		const char *title, void (*fn)(Frame&, Audio&, Assets&));
+		const char *frameTitle, const char *title, void (*fnActivate)(unsigned));
 
 	void reshape(ImGuiViewport *vp);
 
@@ -77,7 +78,9 @@ public:
 
 }
 
-void MenuButtonActivate(MenuState state, unsigned idx);
+void StartMenuButtonActivate(unsigned idx);
+void SingleplayerMenuButtonActivate(unsigned idx);
+void EditorMenuButtonActivate(unsigned idx);
 
 extern ui::FullscreenMenu mainMenu, singleplayerMenu, scenarioMenu;
 

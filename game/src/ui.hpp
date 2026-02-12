@@ -2,17 +2,17 @@
 
 #include "ui/imgui_user.hpp"
 
-#include "external/imfilebrowser.h"
-
 #include <idpool.hpp>
 
 #include "legacy/strings.hpp"
 #include "legacy/scenario.hpp"
 #include "engine/assets.hpp"
 
+#include "external/imfilebrowser.h"
 #include "external/imgui_memory_editor.h"
 
 #include "game.hpp"
+#include "ui/fullscreenmenu.hpp"
 
 #include <SDL2/SDL_rect.h>
 
@@ -36,6 +36,8 @@ void DrawBorderInv(float x0, float y0, float x1, float y1, const BackgroundColor
 void DrawBorder(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol);
 
 void DrawTextWrapped(const std::string&);
+
+void DrawFullscreenMenu(ui::FullscreenMenu &mm, Audio &sfx, Assets &ass, MenuState state);
 
 namespace ui {
 
@@ -278,7 +280,6 @@ public:
 	void show_world();
 
 	void show_mph_tbl(Frame&);
-	void show_editor_menu();
 	void show_editor_scenario();
 
 	void show_hud_selection(float left, float top, float menubar_h);

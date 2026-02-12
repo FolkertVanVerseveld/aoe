@@ -12,10 +12,12 @@ void FullscreenMenu::reshape(ImGuiViewport *vp) {
 }
 
 FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
-	const char *title, void (*fn)(Frame &, Audio &, Assets &))
-	: menuState(menuState), buttons(buttons), buttonCount(buttonCount), activated(false), selected(0), title(title), draw(fn)
+	const char *frameTitle, const char *title, void (*fnActivate)(unsigned idx))
+	: menuState(menuState), buttons(buttons), buttonCount(buttonCount), activated(false), selected(0)
+	, frameTitle(frameTitle), title(title), fnActivate(fnActivate)
 {
 	assert(buttonCount);
+	assert(fnActivate);
 	buttons[selected].state |= (unsigned)MenuButtonState::selected;
 }
 
@@ -61,7 +63,7 @@ void FullscreenMenu::mouse_up(int mx, int my) {
 
 	if (PointInMenuButton(btn, mx, my)) {
 		btn->state = (btn->state | mselected) & ~mactive;
-		MenuButtonActivate(menuState, selected);
+		fnActivate(selected);
 	} else {
 		btn->state &= ~mactive;
 	}
@@ -70,9 +72,9 @@ void FullscreenMenu::mouse_up(int mx, int my) {
 void FullscreenMenu::key_tapped(GameKey key) {
 	if (key == GameKey::ui_select) {
 		buttons[selected].state &= ~(unsigned)MenuButtonState::active;
-		MenuButtonActivate(menuState, selected);
+		fnActivate(selected);
 	} else if (key == GameKey::ui_back) {
-		MenuButtonActivate(menuState, -1);
+		fnActivate(-1);
 	}
 }
 

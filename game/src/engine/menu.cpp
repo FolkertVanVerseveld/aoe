@@ -108,19 +108,4 @@ void EditorMenuButtonActivate(unsigned idx)
 	}
 }
 
-void MenuButtonActivate(MenuState state, unsigned idx)
-{
- 	switch (state) {
-	case MenuState::start:
-		StartMenuButtonActivate(idx);
-		break;
-	case MenuState::singleplayer_menu:
-		SingleplayerMenuButtonActivate(idx);
-		break;
-	case MenuState::editor_menu:
-		EditorMenuButtonActivate(idx);
-		break;
-	}
-}
-
 }

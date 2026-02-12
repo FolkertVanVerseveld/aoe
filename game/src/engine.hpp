@@ -185,10 +185,8 @@ private:
 	void display(gfx::GLprogram &prog, GLuint vao);
 	void display_ui_tasks();
 	void show_init();
-	void show_start();
 	void show_gameover();
 
-	void show_singleplayer_menu();
 	void show_singleplayer_host();
 
 	void multiplayer_set_localhost();
