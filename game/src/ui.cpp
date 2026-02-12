@@ -404,6 +404,18 @@ bool Popup::show() {
 	return active;
 }
 
+void QuitButtonReshape(ImGuiViewport *vp) {
+	const float pad = 4.0f;
+
+	float w = vp->WorkSize.x, h = vp->WorkSize.y;
+	MenuButton &btn = quitButton;
+
+	btn.x0 = w - pad - 24.0f;
+	btn.x1 = w - pad;
+	btn.y0 = pad;
+	btn.y1 = pad + 32.0f;
+}
+
 void MenuButton::reshape(ImGuiViewport *vp) {
 	float w = vp->WorkSize.x, h = vp->WorkSize.y;
 	x0 = 212 / 800.0f * w;
@@ -1028,12 +1040,13 @@ FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuBu
 FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), "singleplayer menu", "Single Player", SingleplayerMenuButtonActivate);
 FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), "editor menu", "Scenario Editor", EditorMenuButtonActivate);
 
-void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass, MenuState state)
+void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass)
 {
 	ImGuiViewport *vp = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(vp->WorkPos);
 	ImGui::SetNextWindowSize(vp->WorkSize);
 	float old_x = ImGui::GetCursorPosX();
+	MenuState state = mm.menuState;
 
 	Frame f;
 
@@ -1057,6 +1070,8 @@ void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass, MenuState s
 
 		for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
 			mm.buttons[i].show(f, sfx, col);
+
+		quitButton.show(f, sfx, col);
 	}
 
 	// footer check

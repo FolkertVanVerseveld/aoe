@@ -37,7 +37,7 @@ void DrawBorder(float x0, float y0, float x1, float y1, const BackgroundColors &
 
 void DrawTextWrapped(const std::string&);
 
-void DrawFullscreenMenu(ui::FullscreenMenu &mm, Audio &sfx, Assets &ass, MenuState state);
+void DrawFullscreenMenu(ui::FullscreenMenu &mm, Audio &sfx, Assets &ass);
 
 namespace ui {
 

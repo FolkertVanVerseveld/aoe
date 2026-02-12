@@ -76,6 +76,10 @@ public:
 	void mouse_up(int mx, int my);
 };
 
+extern MenuButton quitButton;
+
+void QuitButtonReshape(ImGuiViewport *vp);
+
 }
 
 void StartMenuButtonActivate(unsigned idx);

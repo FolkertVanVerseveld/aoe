@@ -6,9 +6,13 @@
 namespace aoe {
 namespace ui {
 
+MenuButton quitButton(0, "X", NULL, 0);
+
 void FullscreenMenu::reshape(ImGuiViewport *vp) {
 	for (unsigned i = 0; i < buttonCount; ++i)
 		buttons[i].reshape(vp);
+
+	QuitButtonReshape(vp);
 }
 
 FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
@@ -31,8 +35,17 @@ static inline bool PointInMenuButton(const MenuButton *btn, int mx, int my)
 }
 
 void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
-	unsigned mask = (unsigned)MenuButtonState::active | (unsigned)MenuButtonState::selected;
+	const unsigned mactive = (unsigned)MenuButtonState::active;
+	const unsigned mselected = (unsigned)MenuButtonState::selected;
+	unsigned mask = mactive | mselected;
 	activated = false;
+
+	// special button that cannot be selected using keyboard navigation
+	if (PointInMenuButton(&quitButton, mx, my)) {
+		quitButton.state |= mactive;
+		sfx.play_sfx(SfxId::ui_click);
+		return;
+	}
 
 	for (unsigned i = 0; i < buttonCount; ++i) {
 		MenuButton *btn = &buttons[i];
@@ -48,17 +61,23 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 	}
 
 	if (!activated)
-		buttons[selected].state |= (unsigned)MenuButtonState::selected;
+		buttons[selected].state |= mselected;
 }
 
 void FullscreenMenu::mouse_up(int mx, int my) {
+	const unsigned mselected = (unsigned)MenuButtonState::selected;
+	const unsigned mactive = (unsigned)MenuButtonState::active;
+
+	// special button that cannot be selected using keyboard navigation
+	if (PointInMenuButton(&quitButton, mx, my) && (quitButton.state & mactive))
+		throw 0;
+
+	quitButton.state &= ~mactive;
+
 	if (!activated || selected >= buttonCount)
 		return;
 
 	MenuButton *btn = &buttons[selected];
-	unsigned mselected = (unsigned)MenuButtonState::selected;
-	unsigned mactive = (unsigned)MenuButtonState::active;
-
 	activated = false;
 
 	if (PointInMenuButton(btn, mx, my)) {

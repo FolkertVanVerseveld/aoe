@@ -300,7 +300,7 @@ void Engine::display(gfx::GLprogram &prog, GLuint vao) {
 	if (mi && mi->menu) {
 		FullscreenMenu &mm = *mi->menu;
 		if (mm.menuState == menu_state)
-			DrawFullscreenMenu(mm, sfx, *assets.get(), menu_state);
+			DrawFullscreenMenu(mm, sfx, *assets.get());
 	}
 
 	switch (menu_state) {
@@ -1186,10 +1186,7 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 			case SDL_MOUSEBUTTONUP:
 				ImGui_ImplSDL2_ProcessEvent(&event);
 
-				if (mi && mi->menu) {
-					if (event.button.button != SDL_BUTTON_LEFT)
-						break;
-
+				if (mi && mi->menu && event.button.button == SDL_BUTTON_LEFT) {
 					if (event.type == SDL_MOUSEBUTTONDOWN)
 						mi->menu->mouse_down(event.button.x, event.button.y, sfx);
 					else
