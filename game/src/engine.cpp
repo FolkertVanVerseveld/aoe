@@ -369,11 +369,12 @@ void Engine::display_ui_tasks() {
 		return;
 
 	std::lock_guard<std::mutex> lock(m_ui);
+	const char *title = "Loading... please wait";
 
-	ImGui::OpenPopup("tasks");
+	ImGui::OpenPopup(title);
 	ImGui::SetNextWindowSize(ImVec2(400, 0));
 
-	if (ImGui::BeginPopupModal("tasks", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+	if (ImGui::BeginPopupModal(title, NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 		int i = 0;
 		unsigned cancellable = 0;
 		char label[32];
