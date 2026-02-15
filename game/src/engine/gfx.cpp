@@ -1,5 +1,6 @@
 #include "gfx.hpp"
 
+#include <cstddef>
 #include <stdexcept>
 
 namespace aoe {
@@ -193,6 +194,12 @@ void GLprogram::setVertexArray(const char *name, GLint size, GLenum type, GLsize
 	setVertexArray(name, size, type, GL_FALSE, stride, offset);
 }
 
+static void enableVertexAttribute(GLint id, GLint size, GLenum type, GLboolean normalized, GLsizei stride, ptrdiff_t offset)
+{
+	glVertexAttribPointer(id, size, type, normalized, stride, (void*)offset);
+	glEnableVertexAttribArray(id);
+}
+
 void GLprogram::setVertexArray(const char *name, GLint size, GLenum type, GLboolean normalized, GLsizei stride, unsigned offset) {
 	auto it = attributes.find(name);
 	GLint id = -1;
@@ -208,8 +215,7 @@ void GLprogram::setVertexArray(const char *name, GLint size, GLenum type, GLbool
 		attributes.emplace(name, id);
 	}
 
-	glVertexAttribPointer(id, size, type, normalized, stride, (void*)(0 + offset));
-	glEnableVertexAttribArray(id);
+	enableVertexAttribute(id, size, type, normalized, stride, offset);
 }
 
 void SetBackground(const ImageRef &r, GLuint vbo) {

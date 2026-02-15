@@ -404,49 +404,6 @@ bool Popup::show() {
 	return active;
 }
 
-void QuitButtonReshape(ImGuiViewport *vp) {
-	const float pad = 4.0f;
-
-	float w = vp->WorkSize.x, h = vp->WorkSize.y;
-	MenuButton &btn = quitButton;
-
-	btn.x0 = w - pad - 24.0f;
-	btn.x1 = w - pad;
-	btn.y0 = pad;
-	btn.y1 = pad + 32.0f;
-}
-
-void MenuButton::reshape(ImGuiViewport *vp) {
-	float w = vp->WorkSize.x, h = vp->WorkSize.y;
-	x0 = 212 / 800.0f * w;
-	x1 = 586 / 800.0f * w;
-	y0 = relY / href * h;
-	y1 = (relY + 64.0f) / href * h;
-}
-
-bool MenuButton::show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
-	ImGui::SetCursorPosY(y0);
-
-	FillRect(x0, y0, x1, y1, SDL_Color{ 0, 0, 0, 127 });
-	if (state & (unsigned)MenuButtonState::active)
-		DrawBorderInv(x0, y0, x1, y1, col);
-	else
-		DrawBorder(x0, y0, x1, y1, col);
-
-	SDL_Rect bnds{ x0, y0, x1 - x0, y1 - y0 };
-	ImU32 rgba = IM_COL32_WHITE;
-	if (state & (unsigned)MenuButtonState::selected)
-		rgba = IM_COL32(255, 255, 0, 255);
-
-	if (state & (unsigned)MenuButtonState::disabled)
-		rgba = IM_COL32(64, 64, 64, 255);
-
-	SDL_Rect sh_bnds{ bnds.x - 2, bnds.y + 2, bnds.w, bnds.h };
-	DrawText(sh_bnds, name, IM_COL32_BLACK, TextHalign::center, true);
-	DrawText(bnds, name, rgba, TextHalign::center, true);
-	return false;
-}
-
 }
 
 using namespace ui;
@@ -1398,6 +1355,13 @@ void DrawText(const SDL_Rect &bnds, const char *str, ImU32 col, TextHalign halig
 		pos.y = bnds.y + 0.5f * bnds.h - 0.5f * text_size.y;
 
 	bkg->AddText(NULL, 0.0f, pos, col, str);
+}
+
+void DrawTextShadow(const SDL_Rect &bnds, const char *str, ImU32 col, TextHalign halign, bool vmiddle, int margin, ImU32 bgcol)
+{
+	SDL_Rect sh_bnds{ bnds.x - margin, bnds.y + margin, bnds.w, bnds.h };
+	DrawText(sh_bnds, str, bgcol, TextHalign::center, true);
+	DrawText(bnds, str, col, TextHalign::center, true);
 }
 
 }

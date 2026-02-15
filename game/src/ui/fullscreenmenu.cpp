@@ -6,13 +6,29 @@
 namespace aoe {
 namespace ui {
 
-MenuButton quitButton(0, "X", NULL, 0);
+static inline void dec(unsigned &v, unsigned min=0)
+{
+	if (v > min)
+		--v;
+	else
+		v = min;
+}
+
+static inline void inc(unsigned &v, unsigned max)
+{
+	if (v < max)
+		++v;
+	else
+		v = max;
+}
+
+MenuButton quitButton({ true, 4, 24, 32 }, "X");
 
 void FullscreenMenu::reshape(ImGuiViewport *vp) {
 	for (unsigned i = 0; i < buttonCount; ++i)
 		buttons[i].reshape(vp);
 
-	QuitButtonReshape(vp);
+	quitButton.reshape(vp);
 }
 
 FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
@@ -29,9 +45,8 @@ static inline bool PointInMenuButton(const MenuButton *btn, int mx, int my)
 {
 	assert(btn);
 	SDL_FPoint pt{ mx, my };
-	SDL_FRect rect{ btn->x0, btn->y0, btn->x1 - btn->x0, btn->y1 - btn->y0 };
 
-	return SDL_PointInFRect(&pt, &rect);
+	return SDL_PointInFRect(&pt, &btn->bnds);
 }
 
 void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {

@@ -30,6 +30,7 @@ namespace aoe {
 class Assets;
 class Engine;
 
+// routines for blitting graphics directly to background drawlist
 void FillRect(float x0, float y0, float x1, float y1, SDL_Color col);
 void DrawLine(float x0, float y0, float x1, float y1, SDL_Color col);
 void DrawBorderInv(float x0, float y0, float x1, float y1, const BackgroundColors &bkgcol);
@@ -53,6 +54,7 @@ enum class TextHalign {
 // undef from Win32 GDI
 #undef DrawText
 void DrawText(const SDL_Rect &bnds, const char *str, ImU32 col, TextHalign halign, bool vmiddle);
+void DrawTextShadow(const SDL_Rect &bnds, const char *str, ImU32 col, TextHalign halign, bool vmiddle, int margin=2, ImU32 bgcol=IM_COL32_BLACK);
 
 void str(const char*, TextHalign ha, bool wrap);
 
@@ -235,6 +237,7 @@ extern ImDrawList *bkg;
 extern ImGuiIO *gui;
 extern ImGuiViewport *vp;
 
+// TODO refactor
 class UICache final {
 	std::vector<std::string> civs;
 	Engine *e;

@@ -16,22 +16,6 @@ namespace ui {
 
 class Frame;
 
-static inline void dec(unsigned &v, unsigned min=0)
-{
-	if (v > min)
-		--v;
-	else
-		v = min;
-}
-
-static inline void inc(unsigned &v, unsigned max)
-{
-	if (v < max)
-		++v;
-	else
-		v = max;
-}
-
 enum class MenuButtonState {
 	active   = 0x01, // pressed down, unique
 	disabled = 0x02, // unselectable
@@ -39,16 +23,38 @@ enum class MenuButtonState {
 	selected = 0x08, // activated, unique
 };
 
+enum class MenuButtonLayoutType {
+	vertical, // main, singleplayer menu, scenario menu
+	corner,   // "X", "?" buttons
+	//custom,   // TODO multiplayer menu, etc.
+};
+
+struct MenuButtonLayoutCorner final {
+	bool topRight; // when false: bottomRight
+	int margin; // to corner
+	int w, h;
+};
+
+union MenuButtonLayoutData final {
+	float relY; // vertical
+	MenuButtonLayoutCorner corner;
+	//SDL_Rect custom;
+
+	MenuButtonLayoutData(float y) : relY(y) {}
+	MenuButtonLayoutData(const MenuButtonLayoutCorner &c) : corner(c) {}
+	//MenuButtonLayoutData(const SDL_Rect &bnds) : custom(bnds) {}
+};
+
 class MenuButton final {
 public:
-	float relY;
-	float x0, y0, x1, y1;
+	SDL_FRect bnds;
 	const char *name, *tooltip;
 	unsigned state;
+	MenuButtonLayoutType type;
+	MenuButtonLayoutData layout;
 
-	MenuButton(float y, const char *name, const char *tooltip=NULL, unsigned state=0)
-		: relY(y), x0(0), y0(0), x1(0), y1(0)
-		, name(name), tooltip(tooltip), state(state) {}
+	MenuButton(float y, const char *name, const char *tooltip=NULL, unsigned state=0);
+	MenuButton(const MenuButtonLayoutCorner &c, const char *name);
 
 	void reshape(ImGuiViewport *vp);
 	bool show(Frame &f, Audio &sfx, const BackgroundColors &col) const;
@@ -76,9 +82,9 @@ public:
 	void mouse_up(int mx, int my);
 };
 
+// special button that is always present in fullscreen menus
+// when selected: close application immediately
 extern MenuButton quitButton;
-
-void QuitButtonReshape(ImGuiViewport *vp);
 
 }
 
