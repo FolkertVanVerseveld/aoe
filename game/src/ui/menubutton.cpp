@@ -31,13 +31,14 @@ static void reshapeVertical(SDL_FRect &bnds, const ImVec2 &sz, float relY)
 static void reshapeCorner(SDL_FRect &bnds, const ImVec2 &sz, const MenuButtonLayoutCorner &c)
 {
 	float w = vp->WorkSize.x, h = vp->WorkSize.y;
-	int margin = c.margin;
+	float margin = c.margin;
+	float ws = w / WINDOW_WIDTH_MIN, hs = h / WINDOW_HEIGHT_MIN;
 
-	bnds.w = (float)c.w / WINDOW_WIDTH_MIN * w;
-	bnds.h = (float)c.h / href * h;
+	bnds.w = (float)c.w * ws;
+	bnds.h = (float)c.h * hs;
 
-	bnds.x = w - bnds.w - margin;
-	bnds.y = c.topRight ? margin : h - bnds.h - margin;
+	bnds.x = w - bnds.w - margin * ws;
+	bnds.y = c.topRight ? margin * hs : h - bnds.h - margin * hs;
 }
 
 void MenuButton::reshape(ImGuiViewport *vp) {
@@ -71,7 +72,7 @@ bool MenuButton::show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
 		rgba = IM_COL32(255, 255, 0, 255);
 
 	if (state & (unsigned)MenuButtonState::disabled)
-		rgba = IM_COL32(64, 64, 64, 255);
+		rgba = IM_COL32(63, 63, 63, 255);
 
 	DrawTextShadow(ibnds, name, rgba, TextHalign::center, true);
 	return false;

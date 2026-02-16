@@ -22,7 +22,7 @@ static inline void inc(unsigned &v, unsigned max)
 		v = max;
 }
 
-MenuButton quitButton({ true, 4, 24, 32 }, "X");
+MenuButton quitButton({ true, 6, 24, 32 }, "X");
 
 void FullscreenMenu::reshape(ImGuiViewport *vp) {
 	for (unsigned i = 0; i < buttonCount; ++i)
