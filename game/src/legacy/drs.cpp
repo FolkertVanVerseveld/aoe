@@ -28,17 +28,11 @@ struct DrsHdr final {
 
 DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
 	ZoneScoped;
-	// TODO replace ifstream with ci_file
+	// TODO replace in with cf
 	CI_fstream cf(path.c_str());
 
-	try {
-		in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	} catch (const std::ifstream::failure &ex) {
-		throw std::runtime_error(std::string("cannot find \"") + path + "\"");
-	}
-
 	DrsHdr hdr{ 0 };
-	in.read((char*)&hdr, sizeof(hdr));
+	cf.read(&hdr, 1);
 
 	hdr.nlist = le32toh(hdr.nlist);
 	hdr.listend = le32toh(hdr.listend);
@@ -49,7 +43,7 @@ DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
 
 	// read lists
 	std::vector<IO_DrsList> lists(hdr.nlist, { 0 });
-	in.read((char*)lists.data(), hdr.nlist * sizeof(IO_DrsList));
+	cf.read((char*)lists.data(), hdr.nlist * sizeof(IO_DrsList));
 
 	// parse lists
 	for (IO_DrsList &l : lists) {
@@ -58,11 +52,11 @@ DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
 		l.size = le32toh(l.size);
 
 		// find list start
-		in.seekg(l.offset, std::ios_base::beg);
+		cf.seek(l.offset, SEEK_SET);
 
 		for (uint_fast32_t i = 0; i < l.size; ++i) {
 			DrsItem item{ 0 };
-			in.read((char*)&item, sizeof(item));
+			cf.read(&item, 1);
 
 			item.id = le32toh(item.id);
 			item.offset = le32toh(item.offset);

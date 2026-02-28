@@ -1,29 +1,28 @@
 #include <mblk.h>
 
 #include <assert.h>
-#include <stdlib.h>
-#include <limits.h>
+#include <stdlib.h> // realloc, free
+#include <limits.h> // SIZE_MAX
 
 /** Try free if MT_ALLOC is set */
 void mblk_free(struct mblk *m)
 {
-	if (mblk_is_alloc(m))
-		free(m->buf.mem);
+	void *ptr;
+
+	if (mblk_is_alloc(m) && (ptr = m->buf.mem) != NULL)
+		free(ptr); // free also accepts NULL,
+		           // but avoid calling when we don't have to
 }
 
 int mstr_const_set_len0(struct mblk *s, const char *str, size_t len)
 {
-	assert(len != SIZE_MAX);
+	assert(len != SIZE_MAX); // len + 1 would overflow
 
 	if (mblk_is_fixed(s))
 		return MB_FIXED; // cannot modify m
 
 	mblk_free(s); // does nothing if MT_ALLOC not set
-
-	s->flags = MT_CONST | MT_STR | MT_NUL;
-	s->buf.cstr = str;
-	s->len = len;
-	s->cap = len + 1;
+	mblk_init(s, MT_CONST | MT_STR | MT_NUL, str, len, len + 1);
 
 	return MB_OK;
 }

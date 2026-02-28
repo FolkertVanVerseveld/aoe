@@ -1,9 +1,11 @@
 #ifndef MBLK_H
 #define MBLK_H 1
 
-#include <stddef.h>
+/** Memory BLocK to ease safe memory and string manipulation */
+
+#include <stddef.h>  // size_t
 #include <stdbool.h> // bool
-#include <string.h> // strlen
+#include <string.h>  // strlen
 
 #if __cplusplus
 extern "C" {
