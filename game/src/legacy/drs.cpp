@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "../engine/file_io.hpp"
+
 namespace aoe {
 
 namespace io {
@@ -26,6 +28,9 @@ struct DrsHdr final {
 
 DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
 	ZoneScoped;
+	// TODO replace ifstream with ci_file
+	CI_fstream cf(path.c_str());
+
 	try {
 		in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	} catch (const std::ifstream::failure &ex) {
