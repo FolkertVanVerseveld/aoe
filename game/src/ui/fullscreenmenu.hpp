@@ -60,13 +60,22 @@ public:
 	bool show(Frame &f, Audio &sfx, const BackgroundColors &col) const;
 };
 
-class FullscreenMenu final {
+class VerticalGroup final {
 public:
-	MenuState menuState;
 	MenuButton *buttons;
 	unsigned buttonCount;
 	bool activated;
 	unsigned selected;
+
+	VerticalGroup(MenuButton *buttons, unsigned buttonCount);
+
+	void reshape(ImGuiViewport *vp);
+};
+
+class FullscreenMenu final {
+public:
+	MenuState menuState;
+	VerticalGroup vertical;
 	const char *frameTitle; // for Frame
 	const char *title;
 	void (*fnActivate)(unsigned);
@@ -80,6 +89,8 @@ public:
 	void key_tapped(GameKey key);
 	void mouse_down(int mx, int my, Audio &sfx);
 	void mouse_up(int mx, int my);
+
+	void drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx);
 };
 
 // special button that is always present in fullscreen menus

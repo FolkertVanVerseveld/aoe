@@ -1025,10 +1025,7 @@ void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass)
 		const MenuInfo &mi = GetMenuInfo(state);
 		BackgroundColors col = ass.bkg_cols.at(mi.border_col);
 
-		for (unsigned i = 0, n = mm.buttonCount; i < n; ++i)
-			mm.buttons[i].show(f, sfx, col);
-
-		quitButton.show(f, sfx, col);
+		mm.drawButtons(f, col, ass, sfx);
 	}
 
 	// footer check

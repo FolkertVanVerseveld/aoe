@@ -25,20 +25,16 @@ static inline void inc(unsigned &v, unsigned max)
 MenuButton quitButton({ true, 6, 24, 32 }, "X");
 
 void FullscreenMenu::reshape(ImGuiViewport *vp) {
-	for (unsigned i = 0; i < buttonCount; ++i)
-		buttons[i].reshape(vp);
-
+	vertical.reshape(vp);
 	quitButton.reshape(vp);
 }
 
 FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
 	const char *frameTitle, const char *title, void (*fnActivate)(unsigned idx))
-	: menuState(menuState), buttons(buttons), buttonCount(buttonCount), activated(false), selected(0)
+	: menuState(menuState), vertical(buttons, buttonCount)
 	, frameTitle(frameTitle), title(title), fnActivate(fnActivate)
 {
-	assert(buttonCount);
 	assert(fnActivate);
-	buttons[selected].state |= (unsigned)MenuButtonState::selected;
 }
 
 static inline bool PointInMenuButton(const MenuButton *btn, int mx, int my)
@@ -53,7 +49,7 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 	const unsigned mactive = (unsigned)MenuButtonState::active;
 	const unsigned mselected = (unsigned)MenuButtonState::selected;
 	unsigned mask = mactive | mselected;
-	activated = false;
+	vertical.activated = false;
 
 	// special button that cannot be selected using keyboard navigation
 	if (PointInMenuButton(&quitButton, mx, my)) {
@@ -62,21 +58,21 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 		return;
 	}
 
-	for (unsigned i = 0; i < buttonCount; ++i) {
-		MenuButton *btn = &buttons[i];
+	for (unsigned i = 0; i < vertical.buttonCount; ++i) {
+		MenuButton *btn = &vertical.buttons[i];
 
-		if (!activated && PointInMenuButton(btn, mx, my)) {
-			activated = true; // only one button can be activated
+		if (!vertical.activated && PointInMenuButton(btn, mx, my)) {
+			vertical.activated = true; // only one button can be activated
 			btn->state |= mask;
-			selected = i;
+			vertical.selected = i;
 			sfx.play_sfx(SfxId::ui_click);
 		} else {
 			btn->state &= ~mask;
 		}
 	}
 
-	if (!activated)
-		buttons[selected].state |= mselected;
+	if (!vertical.activated)
+		vertical.buttons[vertical.selected].state |= mselected;
 }
 
 void FullscreenMenu::mouse_up(int mx, int my) {
@@ -89,15 +85,15 @@ void FullscreenMenu::mouse_up(int mx, int my) {
 
 	quitButton.state &= ~mactive;
 
-	if (!activated || selected >= buttonCount)
+	if (!vertical.activated || vertical.selected >= vertical.buttonCount)
 		return;
 
-	MenuButton *btn = &buttons[selected];
-	activated = false;
+	MenuButton *btn = &vertical.buttons[vertical.selected];
+	vertical.activated = false;
 
 	if (PointInMenuButton(btn, mx, my)) {
 		btn->state = (btn->state | mselected) & ~mactive;
-		fnActivate(selected);
+		fnActivate(vertical.selected);
 	} else {
 		btn->state &= ~mactive;
 	}
@@ -105,15 +101,15 @@ void FullscreenMenu::mouse_up(int mx, int my) {
 
 void FullscreenMenu::key_tapped(GameKey key) {
 	if (key == GameKey::ui_select) {
-		buttons[selected].state &= ~(unsigned)MenuButtonState::active;
-		fnActivate(selected);
+		vertical.buttons[vertical.selected].state &= ~(unsigned)MenuButtonState::active;
+		fnActivate(vertical.selected);
 	} else if (key == GameKey::ui_back) {
 		fnActivate(-1);
 	}
 }
 
 void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sfx) {
-	unsigned old = selected;
+	unsigned old = vertical.selected;
 
 	if (keyctl.is_down(GameKey::ui_back)) {
 		if (key == GameKey::ui_back)
@@ -124,21 +120,28 @@ void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sf
 	if (keyctl.is_down(GameKey::ui_select)) {
 		// only do this if we just selected
 		if (key == GameKey::ui_select) {
-			buttons[selected].state |= (unsigned)MenuButtonState::active;
+			vertical.buttons[vertical.selected].state |= (unsigned)MenuButtonState::active;
 			sfx.play_sfx(SfxId::ui_click);
 		}
 		return;
 	}
 
 	if (key == GameKey::ui_prev)
-		dec(selected);
+		dec(vertical.selected);
 	else if (key == GameKey::ui_next)
-		inc(selected, buttonCount - 1);
+		inc(vertical.selected, vertical.buttonCount - 1);
 
 	unsigned mask = (unsigned)MenuButtonState::selected;
 
-	buttons[old].state &= ~mask;
-	buttons[selected].state |= mask;
+	vertical.buttons[old].state &= ~mask;
+	vertical.buttons[vertical.selected].state |= mask;
+}
+
+void FullscreenMenu::drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx) {
+	for (unsigned i = 0, n = vertical.buttonCount; i < n; ++i)
+		vertical.buttons[i].show(f, sfx, col);
+
+	quitButton.show(f, sfx, col);
 }
 
 }
