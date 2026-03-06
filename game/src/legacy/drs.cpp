@@ -6,8 +6,6 @@
 #include <stdexcept>
 #include <string>
 
-#include "../engine/file_io.hpp"
-
 namespace aoe {
 
 namespace io {
@@ -26,10 +24,8 @@ struct DrsHdr final {
 	uint32_t listend;
 };
 
-DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), items() {
+DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), cf(path.c_str()), items() {
 	ZoneScoped;
-	// TODO replace in with cf
-	CI_fstream cf(path.c_str());
 
 	DrsHdr hdr{ 0 };
 	cf.read(&hdr, 1);

@@ -23,6 +23,11 @@ CI_fstream::~CI_fstream() {
 	ci_file_free(&cf);
 }
 
+int CI_fstream::try_open(const char *path) noexcept {
+	ci_file_free(&cf);
+	return ci_open(&cf, path, CI_INIT, O_RDONLY | O_BINARY, 0);
+}
+
 int CI_fstream::try_read(void *ptr, int &size) noexcept {
 	return ci_read(&cf, ptr, &size);
 }

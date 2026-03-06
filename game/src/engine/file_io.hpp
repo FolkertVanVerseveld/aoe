@@ -20,6 +20,9 @@ public:
 	CI_fstream(const char *path);
 	~CI_fstream();
 
+	/** Fail gracefully for open. Calls close first. */
+	int try_open(const char *path) noexcept;
+
 	int try_read(void *ptr, int &size) noexcept;
 
 	template<typename T> void read(T *ptr, int len) {

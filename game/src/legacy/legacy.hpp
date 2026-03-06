@@ -16,6 +16,8 @@
 #include "limits.hpp"
 #include "strings.hpp"
 
+#include "../engine/file_io.hpp"
+
 namespace aoe {
 
 namespace io {
@@ -334,6 +336,7 @@ public:
 /** Data resource set */
 class DRS final {
 	std::ifstream in;
+	CI_fstream cf;
 	std::set<DrsItem> items;
 public:
 	DRS(const std::string &path);

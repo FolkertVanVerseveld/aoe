@@ -50,7 +50,7 @@ struct ci_file {
 #define CI_ERRNO 9
 
 void ci_file_init(struct ci_file *f);
-void ci_file_close(struct ci_file *f);
+//void ci_file_close(struct ci_file *f);
 void ci_file_free(struct ci_file *f);
 
 /**
