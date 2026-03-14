@@ -3,6 +3,10 @@
 #include <cstdio>
 #include <fcntl.h>
 
+#if _WIN32 == 0
+#define O_BINARY 0
+#endif
+
 namespace aoe {
 
 CI_fstream::CI_fstream() noexcept : cf({ 0 }) {

@@ -13,11 +13,12 @@
 
 typedef ptrdiff_t ssize_t; // this should just work (tm)
 
-#elif __unix__
+#else
 #include <dirent.h>   // fdopendir, closedir
 #include <strings.h>  // strcasecmp
 #include <sys/stat.h> // fstat
 #include <fcntl.h>
+#include <unistd.h> // close
 #endif
 
 static inline bool str_is_mixed_case(const char *s)
@@ -197,7 +198,7 @@ int ci_open(struct ci_file *f, const char *path, unsigned options, int flags, mo
 		if (strcasecmp(basename, dp->d_name))
 			continue;
 
-		fd2 = openat(fd, dp->d_name, ipath.buf.cstr);
+		fd2 = openat(fd, dp->d_name, flags, mode);
 		if (fd2 == -1)
 			goto fail;
 

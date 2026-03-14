@@ -2,7 +2,8 @@
 
 #include <assert.h>
 #include <stdlib.h> // realloc, free
-#include <limits.h> // SIZE_MAX
+#include <limits.h> // SIZE_MAX on windows...
+#include <stdint.h> // SIZE_MAX on linux
 
 // inspired by: https://github.com/esmil/musl/blob/master/src/string/memrchr.c
 // copyright libmusl Rich Felker
