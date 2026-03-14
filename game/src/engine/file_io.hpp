@@ -9,6 +9,7 @@ Address some common gotcha's while dealing with file I/O.
 
 #include <stdexcept>
 #include <string>
+#include <climits>
 
 namespace aoe {
 

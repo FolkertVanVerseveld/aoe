@@ -48,6 +48,8 @@ struct ci_file {
 #define CI_SEEK 8
 // ci_read/ci_write failed and errno was set
 #define CI_ERRNO 9
+// out of memory
+#define CI_NOMEM 10
 
 void ci_file_init(struct ci_file *f);
 //void ci_file_close(struct ci_file *f);

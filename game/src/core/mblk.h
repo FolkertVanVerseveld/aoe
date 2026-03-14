@@ -37,9 +37,17 @@ extern "C" {
 #define MB_FIXED  2
 // resize is not allowed
 #define MB_CONST  3
+// resize would cause numeric overflow
+#define MB_TOOBIG 4
+// cannot shrink empty string
+#define MB_EMPTY  5
+// new size would make string bigger
+#define MB_BAD_SHRINK 6
+// pointer to shrink mblk is out of bounds
+#define MB_BAD_SHRINK_PTR 7
 // TODO add missing codes
 // string to initialise is malformed: `len != 0 && str == NULL`
-#define MB_BAD_INIT_STR 9
+#define MB_BAD_INIT_STR   9
 
 /** Memory BLocK to ease safe memory and string manipulation */
 struct mblk {
@@ -77,6 +85,9 @@ static inline bool mblk_is_alloc(const struct mblk *m)
 	return (m->flags & MT_MASK) == MT_ALLOC;
 }
 
+int mblk_try_cap(struct mblk *m, size_t newcap);
+int mblk_try_grow(struct mblk *m, size_t more);
+
 /**
  * Set mblk to C string with precomputed len.
  * Assumes mblk has been initialised already.
@@ -93,6 +104,42 @@ int mstr_init_len0(struct mblk *s, const char *str, size_t len);
 static inline int mstr_init0(struct mblk *s, const char *str)
 {
 	return mstr_init_len0(s, str, str ? strlen(str) : 0);
+}
+
+/** Shallow copy (like structure assignment). */
+static inline void mstr_cpy(struct mblk *dst, const struct mblk *src)
+{
+	dst->flags = src->flags;
+	dst->buf.cmem = src->buf.cmem;
+	dst->len = src->len;
+	dst->cap = src->cap;
+}
+
+int mstr_bpop(struct mblk *s); /** Remove last character */
+char *mstr_rchr(const struct mblk *s, int c); /** Like strrchr */
+
+int mstr_shrink(struct mblk *s, size_t size);
+
+static inline int mstr_shrink_ptr(struct mblk *s, const char *ptr)
+{
+	if (ptr < s->buf.cstr)
+		return MB_BAD_SHRINK_PTR;
+
+	size_t size = (size_t)(ptrdiff_t)(ptr - s->buf.cstr);
+	return mstr_shrink(s, size);
+}
+
+/** Memory STRing APPEND in REVerse. */
+int mstr_append_rev(struct mblk *s, const char *str);
+
+/** Append CHaracter to end of \a s. */
+int mstr_addch(struct mblk *s, int ch);
+
+int mstr_addstr_len(struct mblk *s, const char *str, size_t len);
+
+static inline int mstr_addstr(struct mblk *s, const char *str)
+{
+	return mstr_addstr_len(s, str, strlen(str));
 }
 
 #if __cplusplus
