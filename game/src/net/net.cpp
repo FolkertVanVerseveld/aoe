@@ -19,7 +19,7 @@ static int close(SOCKET sock)
 	return ::closesocket(sock);
 }
 #else
-#include <arpa/inet.h>
+#include <arpa/inet.h> // inet_pton
 #include <netdb.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -100,18 +100,18 @@ Net::Net() {
 	int r = WSAStartup(version, &wsa);
 	switch (r) {
 		case WSASYSNOTREADY:
-			throw std::runtime_error("wsa: winsock not ready");
+			throw std::runtime_error("tcp: winsock not ready");
 		case WSAVERNOTSUPPORTED:
-			throw std::runtime_error("wsa: winsock version not supported");
+			throw std::runtime_error("tcp: winsock version not supported");
 		case WSAEINPROGRESS:
-			throw std::runtime_error("wsa: winsock blocked");
+			throw std::runtime_error("tcp: winsock blocked");
 		case WSAEPROCLIM:
-			throw std::runtime_error("wsa: winsock process limit reached");
+			throw std::runtime_error("tcp: winsock process limit reached");
 		case WSAEFAULT:
-			throw std::runtime_error("wsa: wsadata bogus pointer");
+			throw std::runtime_error("tcp: wsadata bogus pointer");
 		default:
 			if (r)
-				throw std::runtime_error(std::string("wsa: winsock error code ") + std::to_string(r));
+				throw std::runtime_error(std::string("tcp: winsock error code ") + std::to_string(r));
 			else
 				++initnet;
 			break;
@@ -183,13 +183,13 @@ void TcpSocket::bind(const char *address, uint16_t port) {
 	if (r != 1) {
 		if (r == 0)
 			throw SocketError(
-				std::string("wsa: InetPton: invalid address \"") + address + "\"",
+				std::string("tcp: InetPton: invalid address \"") + address + "\"",
 				std::string("Invalid address \"") + address + "\""
 			);
 
 		if (r != -1)
 			throw SocketError(
-				std::string("wsa: InetPton: unexpected error code ") + std::to_string(r),
+				std::string("tcp: InetPton: unexpected error code ") + std::to_string(r),
 				std::string("Unexpected error for address \"") + address + "\""
 			);
 
@@ -199,7 +199,7 @@ void TcpSocket::bind(const char *address, uint16_t port) {
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-bind
 	r = ::bind(sock, (const sockaddr*)&dst, sizeof dst);
 	if (r != 0)
-		throw std::runtime_error(wsa_parse_error("wsa: bind failed: "));
+		throw std::runtime_error(wsa_parse_error("tcp: bind failed: "));
 }
 
 void TcpSocket::listen(int backlog) {
@@ -213,27 +213,27 @@ void TcpSocket::listen(int backlog) {
 		return;
 
 	if (r != SOCKET_ERROR)
-		throw std::runtime_error(std::string("wsa: listen failed: unknown return code ") + std::to_string(r));
+		throw std::runtime_error(std::string("tcp: listen failed: unknown return code ") + std::to_string(r));
 
 	int err = WSAGetLastError();
 
 	switch (err) {
 		case WSANOTINITIALISED:
-			throw std::runtime_error("wsa: listen failed: winsock not ready");
+			throw std::runtime_error("tcp: listen failed: winsock not ready");
 		case WSAENETDOWN:
-			throw std::runtime_error("wsa: listen failed: network subsystem error");
+			throw std::runtime_error("tcp: listen failed: network subsystem error");
 		case WSAEADDRINUSE:
-			throw std::runtime_error("wsa: listen failed: socket address still in use");
+			throw std::runtime_error("tcp: listen failed: socket address still in use");
 		case WSAEINPROGRESS:
-			throw std::runtime_error("wsa: listen failed: in progress");
+			throw std::runtime_error("tcp: listen failed: in progress");
 		case WSAEINVAL:
-			throw std::runtime_error("wsa: listen failed: socket not bound");
+			throw std::runtime_error("tcp: listen failed: socket not bound");
 		case WSAEISCONN:
-			throw std::runtime_error("wsa: listen failed: socket is connected and cannot listen");
+			throw std::runtime_error("tcp: listen failed: socket is connected and cannot listen");
 		case WSAEMFILE:
-			throw std::runtime_error("wsa: listen failed: out of socket resources");
+			throw std::runtime_error("tcp: listen failed: out of socket resources");
 		default:
-			throw std::runtime_error(std::string("wsa: listen failed: code ") + std::to_string(err));
+			throw std::runtime_error(std::string("tcp: listen failed: code ") + std::to_string(err));
 	}
 }
 
@@ -241,7 +241,7 @@ void TcpSocket::connect(const char *address, uint16_t port) {
 	SOCKET sock = s.load(std::memory_order_relaxed);
 	sockaddr_in dst{ 0 };
 
-	int af = AF_INET;
+	const int af = AF_INET;
 	dst.sin_family = af;
 	dst.sin_port = htons(port);
 
@@ -249,23 +249,23 @@ void TcpSocket::connect(const char *address, uint16_t port) {
 	if (r != 1) {
 		if (r == 0)
 			throw SocketError(
-				std::string("wsa: connect failed: invalid address \"") + address + "\"",
+				std::string("tcp: connect failed: invalid address \"") + address + "\"",
 				std::string("Invalid IPv4 host address \"" ) + address + "\"");
 
 		if (r != -1)
 			throw SocketError(
-				std::string("wsa: connect failed: unknown error code: ") + std::to_string(r),
+				std::string("tcp: connect failed: unknown error code: ") + std::to_string(r),
 				std::string("Unknown error ") + std::to_string(r) + " has occurred");
 
 		r = WSAGetLastError();
 
 		switch (r) {
 		case WSAEFAULT: // should we just abort?
-			throw std::string("wsa: connect failed: invalid address: The system detected an invalid pointer address in attempting to use a pointer argument in a call");
+			throw std::string("tcp: connect failed: invalid address: The system detected an invalid pointer address in attempting to use a pointer argument in a call");
 		case WSAEAFNOSUPPORT: // should we just abort?
-			throw std::string("wsa: connect failed: invalid address: An address incompatible with the requested protocol was used");
+			throw std::string("tcp: connect failed: invalid address: An address incompatible with the requested protocol was used");
 		default:
-			throw std::runtime_error(std::string("wsa: connect failed: invalid address: unknown error code: ") + std::to_string(r));
+			throw std::runtime_error(std::string("tcp: connect failed: invalid address: unknown error code: ") + std::to_string(r));
 		}
 	}
 
@@ -276,45 +276,45 @@ void TcpSocket::connect(const char *address, uint16_t port) {
 		return;
 
 	if (r != SOCKET_ERROR)
-		throw std::runtime_error(std::string("wsa: connect failed: unknown return code ") + std::to_string(r));
+		throw std::runtime_error(std::string("tcp: connect failed: unknown return code ") + std::to_string(r));
 
 	int err = WSAGetLastError();
 
 	switch (err) {
 		case WSAEADDRINUSE:
-			throw std::runtime_error("wsa: connect failed: socket address still in use");
+			throw std::runtime_error("tcp: connect failed: socket address still in use");
 		case WSAEINTR:
-			throw std::runtime_error("wsa: connect failed: cancelled");
+			throw std::runtime_error("tcp: connect failed: cancelled");
 		case WSAEINPROGRESS:
-			throw std::runtime_error("wsa: connect failed: in progress");
+			throw std::runtime_error("tcp: connect failed: in progress");
 		case WSAEALREADY:
-			throw std::runtime_error("wsa: connect failed: already connecting asynchronously");
+			throw std::runtime_error("tcp: connect failed: already connecting asynchronously");
 		case WSAEADDRNOTAVAIL:
-			throw std::runtime_error("wsa: connect failed: invalid address");
+			throw std::runtime_error("tcp: connect failed: invalid address");
 		case WSAEAFNOSUPPORT:
-			throw std::runtime_error("wsa: connect failed: operation not supported");
+			throw std::runtime_error("tcp: connect failed: operation not supported");
 		case WSAECONNREFUSED:
-			throw std::runtime_error("wsa: connect failed: cancelled by destination");
+			throw std::runtime_error("tcp: connect failed: cancelled by destination");
 		case WSAEFAULT:
-			throw std::runtime_error("wsa: connect failed: bad argument");
+			throw std::runtime_error("tcp: connect failed: bad argument");
 		case WSAEINVAL:
-			throw std::runtime_error("wsa: connect failed: socket in bound or listening mode");
+			throw std::runtime_error("tcp: connect failed: socket in bound or listening mode");
 		case WSAEISCONN:
-			throw std::runtime_error("wsa: connect failed: already connected");
+			throw std::runtime_error("tcp: connect failed: already connected");
 		case WSAENETUNREACH:
-			throw std::runtime_error("wsa: connect failed: network unreachable");
+			throw std::runtime_error("tcp: connect failed: network unreachable");
 		case WSAEHOSTUNREACH:
-			throw std::runtime_error("wsa: connect failed: host unreachable");
+			throw std::runtime_error("tcp: connect failed: host unreachable");
 		case WSAENOTSOCK:
-			throw std::runtime_error("wsa: connect failed: invalid socket");
+			throw std::runtime_error("tcp: connect failed: invalid socket");
 		case WSAETIMEDOUT:
-			throw std::runtime_error("wsa: connect failed: cancelled by timeout");
+			throw std::runtime_error("tcp: connect failed: cancelled by timeout");
 		case WSAEWOULDBLOCK:
-			throw std::runtime_error("wsa: connect failed: connect will block: try again later");
+			throw std::runtime_error("tcp: connect failed: connect will block: try again later");
 		case WSAEACCES:
-			throw std::runtime_error("wsa: connect failed: access denied");
+			throw std::runtime_error("tcp: connect failed: access denied");
 		default:
-			wsa_generic_error("wsa: connect failed", err);
+			wsa_generic_error("tcp: connect failed", err);
 			break;
 	}
 }
@@ -329,9 +329,9 @@ int TcpSocket::send(const void *ptr, int len, unsigned tries) {
 
 	switch (err) {
 		case 0:
-			throw std::runtime_error(std::string("wsa: send failed: unknown return code ") + std::to_string(out));
+			throw std::runtime_error(std::string("tcp: send failed: unknown return code ") + std::to_string(out));
 		default:
-			wsa_generic_error("wsa: send failed", err);
+			wsa_generic_error("tcp: send failed", err);
 			break;
 	}
 
@@ -347,9 +347,9 @@ int TcpSocket::recv(void *dst, int len, unsigned tries) {
 	int err = WSAGetLastError();
 
 	if (!err && in < 0)
-		throw std::runtime_error(std::string("wsa: recv failed: unknown return code ") + std::to_string(in));
+		throw std::runtime_error(std::string("tcp: recv failed: unknown return code ") + std::to_string(in));
 
-	wsa_generic_error("wsa: recv failed", err);
+	wsa_generic_error("tcp: recv failed", err);
 
 	return in;
 }
@@ -458,17 +458,29 @@ void TcpSocket::connect(const char *address, uint16_t port) {
 	const auto sock = s.load(std::memory_order_relaxed);
 	sockaddr_in dst{ 0 };
 
-	dst.sin_family = AF_INET;
+	const int af = AF_INET;
+	dst.sin_family = af;
 	dst.sin_addr.s_addr = inet_addr(address);
 	dst.sin_port = htons(port);
 
-	int r = ::connect(sock, (const sockaddr *)&dst, sizeof dst);
+	int r = inet_pton(af, address, &dst.sin_addr.s_addr);
+	if (r != 1) {
+		if (r == 0)
+			throw SocketError(
+				std::string("tcp: connect failed: invalid address \"") + address + "\"",
+				std::string("Invalid IPv4 host address \"") + address + "\"");
+
+		int err = errno;
+		throw std::runtime_error(std::string("connect failed: internal error: ") + strerror(err));
+	}
+	
+	r = ::connect(sock, (const sockaddr *)&dst, sizeof dst);
 
 	if (r == 0)
 		return;
 
 	if (r != -1)
-		throw std::runtime_error(std::string("wsa: connect failed: unknown return code ") + std::to_string(r));
+		throw std::runtime_error(std::string("tcp: connect failed: unknown return code ") + std::to_string(r));
 
 	int err = errno;
 
