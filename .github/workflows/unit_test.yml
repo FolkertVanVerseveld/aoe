@@ -23,8 +23,10 @@ jobs:
         sudo cp lib/*.a /usr/lib
         sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a
         sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
       with:
+        show-progress: false
+        clean: false
         submodules: true
     - name: configure and build
       run: |
