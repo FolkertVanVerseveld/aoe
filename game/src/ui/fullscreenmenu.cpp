@@ -37,12 +37,17 @@ FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigne
 	assert(fnActivate);
 }
 
+static inline bool PointInFRect(const SDL_FPoint &p, const SDL_FRect &r)
+{
+	return p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
+}
+
 static inline bool PointInMenuButton(const MenuButton *btn, int mx, int my)
 {
 	assert(btn);
 	SDL_FPoint pt{ mx, my };
 
-	return SDL_PointInFRect(&pt, &btn->bnds);
+	return PointInFRect(pt, btn->bnds);
 }
 
 void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
