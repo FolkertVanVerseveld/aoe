@@ -1003,7 +1003,7 @@ FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuBu
 FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), "singleplayer menu", "Single Player", SingleplayerMenuButtonActivate);
 FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), "editor menu", "Scenario Editor", EditorMenuButtonActivate);
 
-FullscreenCustomMenu singleplayerHostMenu(MenuState::singleplayer_host, singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), "singleplayer host", "Single Player Game", SingleplayerHostButtonActivate);
+FullscreenMenu singleplayerHostMenu(MenuState::singleplayer_host, singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), "singleplayer host", "Single Player Game", SingleplayerHostButtonActivate);
 
 void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass)
 {
@@ -1040,38 +1040,6 @@ void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass)
 	if (state == MenuState::start) {
 		ImGui::SetCursorPos(ImVec2(old_x, (710.0f - 40.0f) / href * vp->WorkSize.y));
 		f.str2("Trademark reserved by Microsoft. Remake by Folkert van Verseveld.", TextHalign::center);
-	}
-}
-
-void DrawFullscreenMenu(FullscreenCustomMenu &mm, Audio &sfx, Assets &ass)
-{
-	ImGuiViewport *vp = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(vp->WorkPos);
-	ImGui::SetNextWindowSize(vp->WorkSize);
-	float old_x = ImGui::GetCursorPosX();
-	MenuState state = mm.menuState;
-
-	Frame f;
-
-	if (!f.begin(mainMenu.frameTitle, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground))
-		return; // should never happen, but just in case
-
-	// optional: title
-	if (mm.title) {
-		FontGuard fg(fnt.copper2);
-
-		ImGui::SetCursorPosY(38.0f / href * vp->WorkSize.y);
-		f.str2(mm.title, TextHalign::center);
-	}
-
-	{
-		FontGuard fg(fnt.copper);
-		mm.reshape(vp);
-
-		const MenuInfo &mi = GetMenuInfo(state);
-		BackgroundColors col = ass.bkg_cols.at(mi.border_col);
-
-		mm.drawButtons(f, col, ass, sfx);
 	}
 }
 

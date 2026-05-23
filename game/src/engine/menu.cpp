@@ -11,7 +11,7 @@ const MenuInfo menu_info[] = {
 	{ false, KeyboardMode::configure, DrsId::bkg_main_menu }, // init
 	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_main_menu, &mainMenu }, // start
 	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_singleplayer, &singleplayerMenu }, // sp menu
-	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_singleplayer, nullptr, &singleplayerHostMenu }, // sp host
+	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_singleplayer, &singleplayerHostMenu }, // sp host
 	{ false, KeyboardMode::other, (DrsId)0 }, // sp game
 	{ true, KeyboardMode::other, DrsId::bkg_multiplayer },
 	{ true, KeyboardMode::other, DrsId::bkg_multiplayer },
