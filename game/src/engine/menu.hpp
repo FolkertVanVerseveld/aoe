@@ -8,6 +8,7 @@ namespace aoe {
 namespace ui {
 
 class FullscreenMenu;
+class FullscreenCustomMenu;
 
 }
 
@@ -33,6 +34,7 @@ struct MenuInfo final {
 	KeyboardMode keyboard_mode;
 	io::DrsId border_col;
 	ui::FullscreenMenu *menu;
+	ui::FullscreenCustomMenu *cmenu;
 };
 
 extern const MenuInfo menu_info[(unsigned)MenuState::max];

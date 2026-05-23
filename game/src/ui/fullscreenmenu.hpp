@@ -57,7 +57,7 @@ public:
 	MenuButton(const MenuButtonLayoutCorner &c, const char *name);
 
 	void reshape(ImGuiViewport *vp);
-	bool show(Frame &f, Audio &sfx, const BackgroundColors &col) const;
+	bool show(Frame &f, const BackgroundColors &col) const;
 };
 
 class VerticalGroup final {
@@ -70,7 +70,10 @@ public:
 	VerticalGroup(MenuButton *buttons, unsigned buttonCount);
 
 	void reshape(ImGuiViewport *vp);
+	void show(Frame &f, BackgroundColors &col);
 };
+
+// TODO add custom group
 
 class FullscreenMenu final {
 public:
@@ -93,6 +96,25 @@ public:
 	void drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx);
 };
 
+class FullscreenCustomMenu final {
+public:
+	MenuState menuState;
+	VerticalGroup vertical;
+	const char *frameTitle; // for Frame
+	const char *title;
+	void (*fnActivate)(unsigned);
+
+	FullscreenCustomMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
+		const char *frameTitle, const char *title, void (*fnActivate)(unsigned));
+
+	void reshape(ImGuiViewport *vp);
+
+	void key_down(GameKey key, KeyboardController &keyctl, Audio &sfx);
+	void key_tapped(GameKey key);
+
+	void drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx);
+};
+
 // special button that is always present in fullscreen menus
 // when selected: close application immediately
 extern MenuButton quitButton;
@@ -103,7 +125,10 @@ void StartMenuButtonActivate(unsigned idx);
 void SingleplayerMenuButtonActivate(unsigned idx);
 void EditorMenuButtonActivate(unsigned idx);
 
+void SingleplayerHostButtonActivate(unsigned idx);
+
 extern ui::FullscreenMenu mainMenu, singleplayerMenu, scenarioMenu;
+extern ui::FullscreenCustomMenu singleplayerHostMenu;
 
 }
 

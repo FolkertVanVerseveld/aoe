@@ -54,7 +54,7 @@ void MenuButton::reshape(ImGuiViewport *vp) {
 	}
 }
 
-bool MenuButton::show(Frame &f, Audio &sfx, const BackgroundColors &col) const {
+bool MenuButton::show(Frame &f, const BackgroundColors &col) const {
 	ImGui::SetCursorPosY(bnds.y);
 
 	float x0 = bnds.x, y0 = bnds.y;

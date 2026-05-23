@@ -29,6 +29,11 @@ void FullscreenMenu::reshape(ImGuiViewport *vp) {
 	quitButton.reshape(vp);
 }
 
+void FullscreenCustomMenu::reshape(ImGuiViewport *vp) {
+	vertical.reshape(vp); 
+	quitButton.reshape(vp);
+}
+
 FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
 	const char *frameTitle, const char *title, void (*fnActivate)(unsigned idx))
 	: menuState(menuState), vertical(buttons, buttonCount)
@@ -40,6 +45,14 @@ FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigne
 static inline bool PointInFRect(const SDL_FPoint &p, const SDL_FRect &r)
 {
 	return p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
+}
+
+FullscreenCustomMenu::FullscreenCustomMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
+	const char *frameTitle, const char *title, void (*fnActivate)(unsigned))
+	: menuState(menuState), vertical(buttons, buttonCount)
+	, frameTitle(frameTitle), title(title), fnActivate(fnActivate)
+{
+	assert(fnActivate);
 }
 
 static inline bool PointInMenuButton(const MenuButton *btn, int mx, int my)
@@ -113,6 +126,11 @@ void FullscreenMenu::key_tapped(GameKey key) {
 	}
 }
 
+void FullscreenCustomMenu::key_tapped(GameKey key) {
+	if (key == GameKey::ui_back)
+		fnActivate(-1);
+}
+
 void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sfx) {
 	unsigned old = vertical.selected;
 
@@ -142,11 +160,24 @@ void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sf
 	vertical.buttons[vertical.selected].state |= mask;
 }
 
-void FullscreenMenu::drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx) {
-	for (unsigned i = 0, n = vertical.buttonCount; i < n; ++i)
-		vertical.buttons[i].show(f, sfx, col);
+void FullscreenCustomMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sfx) {
+	// TODO stub
 
-	quitButton.show(f, sfx, col);
+	if (keyctl.is_down(GameKey::ui_back)) {
+		if (key == GameKey::ui_back)
+			sfx.play_sfx(SfxId::ui_click);
+		return;
+	}
+}
+
+void FullscreenMenu::drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx) {
+	vertical.show(f, col);
+	quitButton.show(f, col);
+}
+
+void FullscreenCustomMenu::drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx) {
+	vertical.show(f, col);
+	quitButton.show(f, col);
 }
 
 }

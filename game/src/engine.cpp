@@ -301,6 +301,10 @@ void Engine::display(gfx::GLprogram &prog, GLuint vao) {
 		FullscreenMenu &mm = *mi->menu;
 		if (mm.menuState == menu_state)
 			DrawFullscreenMenu(mm, sfx, *assets.get());
+	} else if (mi && mi->cmenu) { // TODO merge these two eventually
+		FullscreenCustomMenu &cm = *mi->cmenu;
+		if (cm.menuState == menu_state)
+			DrawFullscreenMenu(cm, sfx, *assets.get());
 	}
 
 	switch (menu_state) {
@@ -313,13 +317,11 @@ void Engine::display(gfx::GLprogram &prog, GLuint vao) {
 		ui.show_multiplayer_game();
 		break;
 		break;
-	case MenuState::singleplayer_host:
-		show_singleplayer_host();
-		break;
 	case MenuState::multiplayer_menu:
 		show_multiplayer_menu();
 		break;
 	case MenuState::singleplayer_menu:
+	case MenuState::singleplayer_host: // show_singleplayer_host();
 	case MenuState::start:
 	case MenuState::editor_menu:
 		break;
@@ -1126,8 +1128,12 @@ void Engine::key_tapped(SDL &sdl, GameKey k) {
 		kbp_game(k);
 		break;
 	default:
-		if (mi.keyboard_mode == KeyboardMode::fullscreen_menu)
-			mi.menu->key_tapped(k);
+		if (mi.keyboard_mode == KeyboardMode::fullscreen_menu) {
+			if (mi.menu)
+				mi.menu->key_tapped(k);
+			else if (mi.cmenu)
+				mi.cmenu->key_tapped(k);
+		}
 		break;
 	}
 
@@ -1141,8 +1147,13 @@ void Engine::kbp_down(GameKey k) {
 
 	const MenuInfo &mi = GetMenuInfo(menu_state);
 
-	if (mi.keyboard_mode == KeyboardMode::fullscreen_menu)
-		mi.menu->key_down(k, keyctl, sfx);
+	// FIXME crashes for cmenu
+	if (mi.keyboard_mode == KeyboardMode::fullscreen_menu) {
+		if (mi.menu)
+			mi.menu->key_down(k, keyctl, sfx);
+		else if (mi.cmenu)
+			mi.cmenu->key_down(k, keyctl, sfx);
+	}
 }
 
 void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {

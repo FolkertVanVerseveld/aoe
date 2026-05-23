@@ -19,5 +19,10 @@ void VerticalGroup::reshape(ImGuiViewport *vp) {
 		buttons[i].reshape(vp);
 }
 
+void VerticalGroup::show(Frame &f, BackgroundColors &col) {
+	for (unsigned i = 0, n = buttonCount; i < n; ++i)
+		buttons[i].show(f, col);
+}
+
 }
 }

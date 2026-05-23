@@ -11,7 +11,7 @@ const MenuInfo menu_info[] = {
 	{ false, KeyboardMode::configure, DrsId::bkg_main_menu }, // init
 	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_main_menu, &mainMenu }, // start
 	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_singleplayer, &singleplayerMenu }, // sp menu
-	{ true, KeyboardMode::other, DrsId::bkg_singleplayer },
+	{ true, KeyboardMode::fullscreen_menu, DrsId::bkg_singleplayer, nullptr, &singleplayerHostMenu }, // sp host
 	{ false, KeyboardMode::other, (DrsId)0 }, // sp game
 	{ true, KeyboardMode::other, DrsId::bkg_multiplayer },
 	{ true, KeyboardMode::other, DrsId::bkg_multiplayer },
@@ -48,6 +48,14 @@ enum class SingleplayerMenuButtonIdx {
 	scenario,
 	saved_game,
 	cancel,
+};
+
+enum class SingleplayerHostButtonIdx {
+	settings,
+	//player_table,
+	start_game,
+	cancel,
+	//tooltip, // XXX do we need this?
 };
 
 enum class EditorMenuButtonIdx {
@@ -90,6 +98,17 @@ void SingleplayerMenuButtonActivate(unsigned idx)
 		break;
 	default:
 		next_menu_state = MenuState::start;
+		break;
+	}
+}
+
+void SingleplayerHostButtonActivate(unsigned idx)
+{
+	SingleplayerHostButtonIdx btn = (SingleplayerHostButtonIdx)idx;
+
+	switch (btn) {
+	default:
+		next_menu_state = MenuState::singleplayer_menu;
 		break;
 	}
 }
