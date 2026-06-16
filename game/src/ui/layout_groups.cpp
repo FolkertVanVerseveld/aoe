@@ -5,12 +5,13 @@
 namespace aoe {
 namespace ui {
 
-OrthognalGroup::OrthognalGroup(MenuButton *buttons, unsigned buttonCount)
+OrthognalGroup::OrthognalGroup(MenuButton *buttons, unsigned buttonCount, unsigned selected)
 	: buttons(buttons), buttonCount(buttonCount)
-	, activated(false), selected(0)
+	, activated(false), selected(selected)
 {
 	assert(buttons);
 	assert(buttonCount);
+	assert(selected < buttonCount);
 	buttons[selected].state |= (unsigned)MenuButtonState::selected;
 }
 

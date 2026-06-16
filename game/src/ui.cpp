@@ -1003,7 +1003,7 @@ FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuBu
 FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), "singleplayer menu", "Single Player", SingleplayerMenuButtonActivate);
 FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), "editor menu", "Scenario Editor", EditorMenuButtonActivate);
 
-FullscreenMenu singleplayerHostMenu(MenuState::singleplayer_host, singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), "singleplayer host", "Single Player Game", SingleplayerHostButtonActivate);
+FullscreenMenu singleplayerHostMenu(MenuState::singleplayer_host, singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), "singleplayer host", "Single Player Game", SingleplayerHostButtonActivate, 1);
 
 void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass)
 {

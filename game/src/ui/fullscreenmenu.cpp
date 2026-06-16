@@ -30,8 +30,8 @@ void FullscreenMenu::reshape(ImGuiViewport *vp) {
 }
 
 FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
-	const char *frameTitle, const char *title, void (*fnActivate)(unsigned idx))
-	: menuState(menuState), vertical(buttons, buttonCount)
+	const char *frameTitle, const char *title, void (*fnActivate)(unsigned idx), unsigned selected)
+	: menuState(menuState), vertical(buttons, buttonCount, selected)
 	, frameTitle(frameTitle), title(title), fnActivate(fnActivate)
 {
 	assert(fnActivate);

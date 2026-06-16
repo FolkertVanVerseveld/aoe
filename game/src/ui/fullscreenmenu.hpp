@@ -67,7 +67,7 @@ public:
 	bool activated;
 	unsigned selected;
 
-	OrthognalGroup(MenuButton *buttons, unsigned buttonCount);
+	OrthognalGroup(MenuButton *buttons, unsigned buttonCount, unsigned selected);
 
 	void reshape(ImGuiViewport *vp);
 	void show(Frame &f, BackgroundColors &col);
@@ -84,7 +84,7 @@ public:
 	void (*fnActivate)(unsigned);
 
 	FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
-		const char *frameTitle, const char *title, void (*fnActivate)(unsigned));
+		const char *frameTitle, const char *title, void (*fnActivate)(unsigned), unsigned selected=0);
 
 	void reshape(ImGuiViewport *vp);
 
