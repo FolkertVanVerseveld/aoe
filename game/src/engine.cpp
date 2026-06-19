@@ -1178,10 +1178,14 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 			case SDL_KEYDOWN:
 				ImGui_ImplSDL2_ProcessEvent(&event);
 
-				if ((mi && mi->menu) || (capture_keys() && !io.WantCaptureKeyboard))
-					kbp_down(keyctl.down(event.key));
-				else
+				if ((mi && mi->menu) || (capture_keys() && !io.WantCaptureKeyboard)) {
+					GameKey k = keyctl.down(event.key);
+					// check again since mi and mi->menu may be NULL
+					if (mi && mi->menu)
+						kbp_down(keyctl.down(event.key));
+				} else {
 					keyctl.down_hp(event.key);
+				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 			case SDL_MOUSEBUTTONUP:
