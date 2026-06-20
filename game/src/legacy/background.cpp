@@ -20,9 +20,9 @@ DrsBkg DRS::open_bkg(DrsId k) {
 	const DrsItem &item = *it;
 
 	// fetch data
-	in.seekg(item.offset);
+	cf.seek(item.offset, SEEK_SET);
 	std::string data(item.size, ' ');
-	in.read(data.data(), item.size);
+	cf.read(data.data(), item.size);
 
 	if (sscanf(data.data(),
 			"background1_files %15s none %d -1\n"

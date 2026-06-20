@@ -37,7 +37,7 @@ public:
 			throw std::runtime_error(std::string("CI_fstream: read failed: code ") + std::to_string(ret));
 	}
 
-	int try_seek(off_t to, int whence) noexcept;
+	int try_seek(off_t &to, int whence) noexcept;
 
 	void seek(off_t to, int whence) {
 		int ret = try_seek(to, whence);

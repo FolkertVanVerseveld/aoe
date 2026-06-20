@@ -36,7 +36,7 @@ int CI_fstream::try_read(void *ptr, int &size) noexcept {
 	return ci_read(&cf, ptr, &size);
 }
 
-int CI_fstream::try_seek(off_t to, int whence) noexcept {
+int CI_fstream::try_seek(off_t &to, int whence) noexcept {
 	return ci_seek(&cf, &to, whence);
 }
 
