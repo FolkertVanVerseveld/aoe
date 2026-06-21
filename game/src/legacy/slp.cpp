@@ -40,13 +40,13 @@ Slp DRS::open_slp(DrsId k) {
 	} hdr;
 
 	// fetch data
-	in.seekg(0, std::ios_base::end);
-	long long end = in.tellg();
+	off_t end = 0;
+	int ret = cf.try_seek(end, SEEK_END);
 
-	in.seekg(item.offset);
-	long long start = in.tellg();
+	off_t start = item.offset;
 
-	in.read((char*)&hdr, sizeof(hdr));
+	cf.try_seek(start, SEEK_SET);
+	cf.read(&hdr, 1);
 
 	// parse header
 	cstrncpy(slp.version, hdr.version, 4);
@@ -63,7 +63,7 @@ Slp DRS::open_slp(DrsId k) {
 			return slp;
 
 		fi.resize(frames);
-		in.read((char*)fi.data(), frames * sizeof(SlpFrameInfo));
+		cf.read(fi.data(), frames);
 
 		for (auto &f : fi) {
 			f.outline_table_offset = le32toh(f.outline_table_offset);
@@ -96,10 +96,10 @@ Slp DRS::open_slp(DrsId k) {
 
 		// read frame data
 		// read frame row edge
-		in.seekg(start + f.outline_table_offset);
+		cf.seek(start + f.outline_table_offset, SEEK_SET);
 
 		sf.frameEdges.resize(f.height);
-		in.read((char*)sf.frameEdges.data(), f.height * sizeof(SlpFrameRowEdge));
+		cf.read(sf.frameEdges.data(), f.height);
 
 		for (SlpFrameRowEdge &e : sf.frameEdges) {
 			e.left_space = le16toh(e.left_space);
@@ -122,11 +122,12 @@ Slp DRS::open_slp(DrsId k) {
 		if (it_cmd_next != cmd_offset.end())
 			size = std::min(size, *it_cmd_next);
 
-		in.seekg(start + f.cmd_table_offset + 4 * f.height);
-		size = std::min<unsigned>(size, (unsigned)(end - in.tellg()));
+		off_t g = start + f.cmd_table_offset + 4 * f.height;
+		cf.try_seek(g, SEEK_SET);
+		size = std::min<unsigned>(size, (unsigned)(end - g));
 
 		sf.cmd.resize(size);
-		in.read((char*)sf.cmd.data(), size);
+		cf.read(sf.cmd.data(), size);
 	}
 
 	return slp;
