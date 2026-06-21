@@ -24,7 +24,7 @@ struct DrsHdr final {
 	uint32_t listend;
 };
 
-DRS::DRS(const std::string &path) : in(path, std::ios_base::binary), cf(path.c_str()), items() {
+DRS::DRS(const std::string &path) : cf(path.c_str()), items() {
 	ZoneScoped;
 
 	DrsHdr hdr{ 0 };

@@ -106,8 +106,6 @@ Slp DRS::open_slp(DrsId k) {
 			e.right_space = le16toh(e.right_space);
 		}
 
-		long long from = in.tellg();
-
 		// read cmd
 		// since the size is not specified, we will have to guess
 		// assume that the next outline_table_offset or cmd_table_offset ends it

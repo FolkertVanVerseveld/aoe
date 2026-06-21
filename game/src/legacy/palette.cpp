@@ -28,9 +28,9 @@ std::unique_ptr<SDL_Palette, decltype(&SDL_FreePalette)> DRS::open_pal(DrsId k) 
 	const DrsItem &item = *it;
 
 	// fetch data
-	in.seekg(item.offset);
+	cf.seek(item.offset, SEEK_SET);
 	std::string data(item.size, ' ');
-	in.read(data.data(), item.size);
+	cf.read(data.data(), item.size);
 
 	if (item.size < strlen(JASC_PAL))
 		throw std::runtime_error(std::string("Could not load palette ") + std::to_string(id) + ": bad header");

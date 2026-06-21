@@ -23,9 +23,9 @@ std::vector<uint8_t> DRS::open_wav(DrsId k) {
 	const DrsItem &item = *it;
 
 	// fetch data
-	in.seekg(item.offset);
+	cf.seek(item.offset, SEEK_SET);
 	std::vector<uint8_t> data(item.size, 0);
-	in.read((char*)data.data(), item.size);
+	cf.read(data.data(), item.size);
 
 	return data;
 }

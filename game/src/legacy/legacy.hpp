@@ -335,7 +335,6 @@ public:
 
 /** Data resource set */
 class DRS final {
-	std::ifstream in;
 	CI_fstream cf;
 	std::set<DrsItem> items;
 public:
