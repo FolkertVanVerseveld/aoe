@@ -1182,7 +1182,7 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 					GameKey k = keyctl.down(event.key);
 					// check again since mi and mi->menu may be NULL
 					if (mi && mi->menu)
-						kbp_down(keyctl.down(event.key));
+						kbp_down(k);
 				} else {
 					keyctl.down_hp(event.key);
 				}

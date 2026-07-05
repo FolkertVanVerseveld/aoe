@@ -237,19 +237,20 @@ struct pestr final {
 
 #pragma warning(pop)
 
-PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Type::unknown), bits(0), nrvasz(0), sections(), path(path) {
+PE::PE(const std::string &path) : in(path, std::ios_base::binary), cf(path.c_str()), m_type(PE_Type::unknown), bits(0), nrvasz(0), sections(), path(path) {
 	in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
-	in.seekg(0, std::ios_base::end);
-	long long end = in.tellg();
-	in.seekg(0);
-	long long beg = in.tellg();
+	off_t end = 0;
+	cf.try_seek(end, SEEK_END);
+
+	off_t beg = 0;
+	cf.try_seek(beg, SEEK_SET);
 
 	assert(end >= beg);
 	size_t size = (unsigned long long)(end - beg);
 
 	mz mz;
-	in.read((char*)&mz, sizeof mz);
+	cf.read(&mz, 1);
 
 	// only fix the endian byte order of variables we care about
 	mz.e_magic = le16toh(mz.e_magic);
@@ -273,9 +274,9 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Typ
 	if (start < sizeof(dos))
 		return;
 
-	in.seekg(0);
 	dos dos;
-	in.read((char*)&dos, sizeof dos);
+	cf.seek(0, SEEK_SET);
+	cf.read(&dos, 1);
 
 	dos.e_lfanew = le16toh(dos.e_lfanew);
 	size_t pe_start = dos.e_lfanew;
@@ -291,8 +292,8 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), m_type(PE_Typ
 	m_type = PE_Type::pe;
 	bits = 32;
 
-	in.seekg(pe_start);
-	in.read((char*)&pe, sizeof pe);
+	cf.seek(pe_start, SEEK_SET);
+	cf.read(&pe, 1);
 
 	// only fix the endian byte order of variables we care about
 	pe.f_magic = le32toh(pe.f_magic);

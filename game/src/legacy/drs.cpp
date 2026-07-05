@@ -39,7 +39,8 @@ DRS::DRS(const std::string &path) : cf(path.c_str()), items() {
 
 	// read lists
 	std::vector<IO_DrsList> lists(hdr.nlist, { 0 });
-	cf.read((char*)lists.data(), hdr.nlist * sizeof(IO_DrsList));
+	//cf.read((char*)lists.data(), hdr.nlist * sizeof(IO_DrsList));
+	cf.read(lists.data(), hdr.nlist);
 
 	// parse lists
 	for (IO_DrsList &l : lists) {
