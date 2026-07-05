@@ -237,9 +237,7 @@ struct pestr final {
 
 #pragma warning(pop)
 
-PE::PE(const std::string &path) : in(path, std::ios_base::binary), cf(path.c_str()), m_type(PE_Type::unknown), bits(0), nrvasz(0), sections(), path(path) {
-	in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
+PE::PE(const std::string &path) : cf(path.c_str()), m_type(PE_Type::unknown), bits(0), nrvasz(0), sections(), path(path) {
 	off_t end = 0;
 	cf.try_seek(end, SEEK_END);
 
@@ -314,21 +312,21 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), cf(path.c_str
 
 	// this is definitely a winnt file
 	m_type = io::PE_Type::peopt;
-	in.seekg(pe_start + sizeof(pe));
-	in.read((char*)&coff, sizeof coff);
-	in.seekg(pe_start + sizeof(pe));
+	cf.seek(pe_start + sizeof(pe), SEEK_SET);
+	cf.read(&coff, 1);
+	cf.seek(pe_start + sizeof(pe), SEEK_SET);
 
 	peopthdr peopt;
 
 	coff.o_magic = le16toh(coff.o_magic);
 	switch (coff.o_magic) {
 	case 0x10b:
-		in.read((char*)&peopt.hdr32, sizeof(peopt.hdr32));
+		cf.read(&peopt.hdr32, 1);
 		bits = 32;
 		nrvasz = le32toh(peopt.hdr32.o_nrvasz);
 		break;
 	case 0x20b:
-		in.read((char*)&peopt.hdr64, sizeof(peopt.hdr64));
+		cf.read(&peopt.hdr64, 1);
 		bits = 64;
 		nrvasz = le32toh(peopt.hdr64.o_nrvasz);
 		break;
@@ -336,16 +334,16 @@ PE::PE(const std::string &path) : in(path, std::ios_base::binary), cf(path.c_str
 		throw std::runtime_error(std::string("PE: unknown architecture ") + std::to_string(coff.o_magic));
 	}
 
-	in.seekg(pe_start);
+	cf.seek(pe_start, SEEK_SET);
 
 	penthdr nt;
-	in.read((char*)&nt, sizeof nt);
+	cf.read(&nt, 1);
 
 	size_t sec_start = pe_start + sizeof(pe) + pe.f_opthdr;
-	in.seekg(sec_start);
+	cf.seek(sec_start, SEEK_SET);
 
 	sections.resize(pe.f_nsect);
-	in.read((char*)sections.data(), sections.size() * sizeof(sechdr));
+	cf.read(sections.data(), sections.size());
 }
 
 bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
@@ -494,8 +492,8 @@ bool PE::load_res(RsrcType type, res_id id, size_t &pos, size_t &count) {
 }
 
 void PE::read(char *dst, size_t pos, size_t size) {
-	in.seekg(pos, std::ios_base::beg);
-	in.read(dst, size);
+	cf.seek(pos, SEEK_SET);
+	cf.read(dst, size);
 }
 
 std::string PE::load_string(res_id id) {

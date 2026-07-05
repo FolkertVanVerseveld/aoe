@@ -19,7 +19,7 @@ CI_fstream::CI_fstream(const char *path) : cf({ 0 }) {
 
 	if ((ret = ci_open(&cf, path, CI_INIT, O_RDONLY | O_BINARY, 0)) != CI_OK) {
 		fprintf(stderr, "%s: cannot open \"%s\": code %d\n", __func__, path, ret);
-		return; // TODO throw
+		throw std::runtime_error(std::string("cannot open file: ") + path);
 	}
 }
 

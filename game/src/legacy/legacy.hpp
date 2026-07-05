@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 #include <set>
-#include <fstream>
 #include <vector>
 #include <memory>
 #include <map>
@@ -395,7 +394,6 @@ struct sechdr final {
 typedef uint16_t res_id;
 
 class PE final {
-	std::ifstream in;
 	CI_fstream cf;
 	PE_Type m_type;
 	unsigned bits;
