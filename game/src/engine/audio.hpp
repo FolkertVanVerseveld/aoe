@@ -1,10 +1,6 @@
 #pragma once
 
-#if __APPLE__
-#include "/usr/local/Cellar/sdl2_mixer/2.0.4_1/include/SDL2/SDL_mixer.h"
-#else
 #include <SDL2/SDL_mixer.h>
-#endif
 
 #include <cstddef>
 

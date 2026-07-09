@@ -38,6 +38,10 @@ find_package(SDL2 REQUIRED)
 if (UNIX)
 	find_package(PkgConfig)
 	pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
+	# macOS has no epoll(7); use kqueue-backed epoll-shim (brew install epoll-shim)
+	if (APPLE)
+		pkg_check_modules(EPOLL_SHIM REQUIRED epoll-shim)
+	endif()
 else()
 	find_package(SDL2_mixer CONFIG REQUIRED)
 endif()
@@ -63,8 +67,10 @@ else()
 	set(GAME_LIBRARIES
 		${SDL2_LIBRARIES}
 		${SDL2_MIXER_LIBRARIES}
+		${EPOLL_SHIM_LIBRARIES}
 		${OPENGL_LIBRARIES}
 	)
+	link_directories(${SDL2_MIXER_LIBRARY_DIRS} ${EPOLL_SHIM_LIBRARY_DIRS})
 endif()
 
 # source tree config
@@ -113,6 +119,8 @@ endif()
 
 target_include_directories(${GAME_TARGET} PRIVATE
 	${SDL2_INCLUDE_DIRS}
+	${SDL2_MIXER_INCLUDE_DIRS}
+	${EPOLL_SHIM_INCLUDE_DIRS}
 	${OPENGL_INCLUDE_DIR}
 	${LOCAL_INCLUDE_DIRS}
 	${GAME_INCLUDE_DIRS}
@@ -127,6 +135,8 @@ endif()
 if(BUILD_TESTS)
 target_include_directories(${TEST_TARGET} PRIVATE
 	${SDL2_INCLUDE_DIRS}
+	${SDL2_MIXER_INCLUDE_DIRS}
+	${EPOLL_SHIM_INCLUDE_DIRS}
 	${OPENGL_INCLUDE_DIR}
 	${LOCAL_INCLUDE_DIRS}
 	${GAME_INCLUDE_DIRS}
