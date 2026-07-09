@@ -193,6 +193,7 @@ int mstr_addch(struct mblk *s, int ch)
 	if (!mblk_is_alloc(s))
 		return MB_CONST;
 
+	// TODO consider opt. faster growing
 	int ret = mblk_try_grow(s, 1);
 	if (ret != MB_OK)
 		return ret;

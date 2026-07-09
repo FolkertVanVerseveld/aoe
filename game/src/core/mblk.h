@@ -29,6 +29,11 @@ extern "C" {
 
 #define MT_C_STRA (MT_ALLOC | MT_STR | MT_NUL)
 
+// windows defines MB_OK for MessageBox
+#if _WIN32
+#undef MB_OK
+#endif
+
 // Memory Block return codes
 #define MB_OK     0
 // (re)allocation failed

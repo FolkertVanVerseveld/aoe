@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../net/net.hpp"
+#include "net/net.hpp"
 
 #include "async.hpp"
 #include "engine/audio.hpp"

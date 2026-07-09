@@ -17,12 +17,15 @@ namespace aoe {
 Config::Config(Engine &e) : Config(e, "") {}
 
 Config::Config(Engine &e, const std::string &s)
-	: e(e), path(s), game_dir(), username()
+	: e(e), path(s),
+#if _WIN32
+	game_dir(DEFAULT_GAME_DIR),
+#else
+	game_dir(),
+#endif
+	username()
 	, autostart(false), music_volume(0.3), sfx_volume(0.7)
 {
-#if _WIN32
-	game_dir = DEFAULT_GAME_DIR;
-#endif
 }
 
 Config::~Config() {

@@ -193,10 +193,16 @@ void Audio::set_enable_sound(bool enable) {
 
 void Audio::load_taunt(TauntId id, const char *file) {
 	ZoneScoped;
+
+	CI_fstream cf(file);
+	SDL_RWops *rw = SDL_RWFromFP(fdopen(cf.cf.fd, "rb"), SDL_TRUE);
+	if (rw)
+		cf.cf.fd = -1;
+
 	std::lock_guard<std::mutex> lk(m_mix);
 
-	std::unique_ptr<Mix_Chunk, decltype(&Mix_FreeChunk)> sfx(Mix_LoadWAV(file), Mix_FreeChunk);
-	if (!sfx.get())
+	std::unique_ptr<Mix_Chunk, decltype(&Mix_FreeChunk)> sfx(Mix_LoadWAV_RW(rw, 1), Mix_FreeChunk);
+	if (!rw || !sfx.get())
 		throw std::runtime_error(std::string("cannot load ") + file + ": " + Mix_GetError());
 
 	taunts.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(sfx.release(), Mix_FreeChunk));

@@ -93,10 +93,8 @@ int ci_open(struct ci_file *f, const char *path, unsigned options, int flags, mo
 	// XXX skip redundant initial part of paths?
 	// no need... it's non-trivial and this function is too complex already
 
-	if (mstr_init0(&ipath, path)) {
-		ret = CI_NOMEM;
-		goto fail;
-	}
+	if (mstr_init0(&ipath, path))
+		goto fail_mem;
 
 	// recurse backwards trying to find case insensitive subpath that works
 	for (char *ptr; (ptr = mstr_rchr(&ipath, '/')) != NULL;) {
@@ -113,8 +111,10 @@ int ci_open(struct ci_file *f, const char *path, unsigned options, int flags, mo
 
 	if (fd == -1) {
 		fd = open(*path == '/' ? "/" : "./", O_RDONLY);
-		if (fd == -1)
+		if (fd == -1) {
+			ret = CI_NO_FILE;
 			goto fail;
+		}
 	}
 
 	// now try to work forwards again
@@ -130,7 +130,7 @@ int ci_open(struct ci_file *f, const char *path, unsigned options, int flags, mo
 		if ((ret = mstr_append_rev(&ipath, ptr + 1)) != MB_OK ||
 			(ret = mstr_shrink_ptr(&pathrem, ptr)) != MB_OK)
 		{
-			goto fail;
+			goto fail_mem;
 		}
 
 		// directory name we are going to look for
@@ -159,20 +159,18 @@ int ci_open(struct ci_file *f, const char *path, unsigned options, int flags, mo
 			if ((ret = mstr_shrink_ptr(&ipath, basename)) != MB_OK ||
 				(ret = mstr_addstr(&ipath, dp->d_name)) != MB_OK)
 			{
-				goto fail;
+				goto fail_mem;
 			}
 
 			fd2 = openat(fd, dp->d_name, O_RDONLY);
 			break;
 		}
 
-		if (fd2 != -1) {
-			// strictly not necessary due to closedir, but just in case
-			close(fd);
-			fd = fd2;
-		} else {
-			goto fail;
-		}
+		if (fd2 == -1)
+			goto fail_path;
+
+		close(fd);
+		fd = fd2;
 	}
 
 	if (d)
@@ -188,7 +186,7 @@ int ci_open(struct ci_file *f, const char *path, unsigned options, int flags, mo
 	if ((ret = mstr_addch(&ipath, '/')) != MB_OK ||
 		(ret = mstr_append_rev(&ipath, pathrem.buf.cstr)) != MB_OK)
 	{
-		goto fail;
+		goto fail_mem;
 	}
 
 	const char *basename = &ipath.buf.cstr[ilen];
@@ -200,23 +198,36 @@ int ci_open(struct ci_file *f, const char *path, unsigned options, int flags, mo
 
 		fd2 = openat(fd, dp->d_name, flags, mode);
 		if (fd2 == -1)
-			goto fail;
+			goto fail_path;
 
 		if ((ret = mstr_shrink_ptr(&ipath, basename)) != MB_OK ||
 			(ret = mstr_addstr(&ipath, dp->d_name)) != MB_OK)
 		{
-			goto fail;
+			goto fail_mem;
 		}
 		break;
 	}
 
 	closedir(d);
 
-	if (fd2 == -1)
+	if (fd2 == -1) {
+fail_path:
+		switch (errno) {
+			case EBADF:
+			case ENOENT:
+			case 0:
+				ret = CI_NO_FILE;
+				break;
+			default:
+				ret = CI_ERRNO;
+				break;
+		}
+
 		goto fail;
+	}
 
 	close(fd);
-	fd2 = fd;
+	fd = fd2;
 
 	f->fd = fd;
 	f->flags = flags;
@@ -226,6 +237,8 @@ int ci_open(struct ci_file *f, const char *path, unsigned options, int flags, mo
 	mblk_free(&pathrem);
 
 	return CI_OK;
+fail_mem:
+	ret = CI_NOMEM;
 fail:
 	if (d)
 		closedir(d);
