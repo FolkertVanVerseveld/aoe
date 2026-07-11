@@ -274,7 +274,7 @@ void Engine::display(gfx::GLprogram &prog, GLuint vao) {
 	GLCHK;
 	GL::clearColor(0, 0, 0, 1);
 
-	if (menu_state != MenuState::multiplayer_game) {
+	if (menu_state != MenuState::multiplayer_game && menu_state != MenuState::singleplayer_game) {
 		// bind textures on corresponding texture units
 		GL::bind2d(0, texture1);
 
@@ -646,6 +646,7 @@ void Engine::goto_menu(MenuState state) {
 				client.reset();
 		}
 		break;
+	case MenuState::singleplayer_game:
 	case MenuState::multiplayer_game:
 		sdl->window.set_clipping(true);
 

@@ -6,7 +6,7 @@
 
 #if _WIN32
 #include <shellapi.h>
-#elif __linux__
+#elif defined(__linux__) || defined(__APPLE__)
 #include <unistd.h>
 #include <spawn.h>
 #include <sys/types.h>
@@ -257,6 +257,16 @@ void open_url(const char *url) {
 	}
 
 	if (!launch_detached(exec_argv))
+		eng->push_error(__func__, std::string("Cannot open url: ") + url);
+}
+
+#elif defined(__APPLE__)
+// macOS: let LaunchServices open the URL in the user's default browser
+void open_url(const char *url) {
+	const char *argv[] = { "open", url, nullptr };
+	pid_t pid;
+	if (posix_spawnp(&pid, "/usr/bin/open", nullptr, nullptr,
+			const_cast<char *const *>(argv), environ) != 0)
 		eng->push_error(__func__, std::string("Cannot open url: ") + url);
 }
 

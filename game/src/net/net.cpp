@@ -403,7 +403,8 @@ int TcpSocket::accept() {
 int TcpSocket::accept(sockaddr &a, int &sz) {
 	socklen_t len = sz;
 	int ret = ::accept(s, &a, &len);
-	return sz = len;
+	sz = len;
+	return ret;
 }
 
 void TcpSocket::bind(const char *address, uint16_t port) {
@@ -415,6 +416,11 @@ void TcpSocket::bind(const char *address, uint16_t port) {
 
 	if (inet_pton(AF_INET, address, &dst.sin_addr.s_addr) != 1)
 		throw std::runtime_error(std::string("bind failed: invalid address"));
+
+	// allow rebinding a port stuck in TIME_WAIT (server restart); BSD/macOS is
+	// stricter than Linux here so without this rebinding the same port fails
+	int yes = 1;
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
 
 	// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-bind
 	int r = ::bind(sock, (const sockaddr *)&dst, sizeof dst);
@@ -1090,7 +1096,15 @@ int ServerSocket::mainloop(uint16_t port, int backlog, ServerSocketController &c
 
 	ctl.started();
 
-	for (int nfds; (nfds = epoll_wait(h, events.data(), events.size(), -1)) >= 0; step = false) {
+	// NOTE: on non-Windows, sockets are registered edge-triggered (EPOLLET), so an
+	// always-writable socket only yields EPOLLOUT once. With an infinite timeout the
+	// loop would then only wake on *incoming* data, so queued outgoing packets (e.g.
+	// world/entity updates pushed by the game thread) would not be flushed until a
+	// client happens to send something. Use the poll interval as the timeout so the
+	// send queue is flushed periodically regardless of incoming traffic.
+	const int poll_ms = poll_us ? std::max(1, (int)(poll_us / 1000)) : -1;
+
+	for (int nfds; (nfds = epoll_wait(h, events.data(), events.size(), poll_ms)) >= 0; step = false) {
 		for (int i = 0; i < nfds; ++i)
 			if (!event_step(i)) {
 				stop();

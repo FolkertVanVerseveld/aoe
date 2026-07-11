@@ -128,6 +128,12 @@ bool FontCache::try_load() {
 		std::string localpath(std::string("C:\\Users\\") + get_username() + "\\AppData\\Local\\Microsoft\\Windows\\Fonts\\COPRGTL.TTF");
 		copper2.load(io.Fonts, localpath.c_str());
 	}
+#elif defined(__APPLE__)
+	#define FONT_DIR "/System/Library/Fonts/"
+
+	arial.load(io.Fonts, FONT_DIR "Supplemental/Arial.ttf");
+	copper.load(io.Fonts, FONT_DIR "Supplemental/Copperplate.ttc");
+	copper2.load(io.Fonts, FONT_DIR "Apple Symbols.ttf");
 #else
 	#define FONT_DIR "/usr/share/fonts/truetype/"
 

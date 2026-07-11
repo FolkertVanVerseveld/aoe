@@ -39,7 +39,7 @@
 namespace aoe {
 
 // define these in our namespace to reduce the risk of name clashes
-#ifdef __unix__
+#if defined(__unix__) || defined(__APPLE__)
 typedef int SOCKET;
 typedef int HANDLE;
 
@@ -47,6 +47,7 @@ typedef int HANDLE;
 #define INVALID_HANDLE_VALUE ((int)-1)
 
 #define epoll_close(fd) ::close(fd)
+#define closesocket(fd) ::close(fd)
 #endif
 
 static constexpr unsigned tcp4_max_size = UINT16_MAX - 32 + 1;
