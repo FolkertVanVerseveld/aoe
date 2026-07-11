@@ -133,7 +133,7 @@ bool FontCache::try_load() {
 
 	arial.load(io.Fonts, FONT_DIR "Supplemental/Arial.ttf");
 	copper.load(io.Fonts, FONT_DIR "Supplemental/Copperplate.ttc");
-	copper2.load(io.Fonts, FONT_DIR "Apple Symbols.ttf");
+	copper2.load(io.Fonts, FONT_DIR "Supplemental/Copperplate.ttc");
 #else
 	#define FONT_DIR "/usr/share/fonts/truetype/"
 
