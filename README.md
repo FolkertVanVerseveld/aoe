@@ -32,16 +32,24 @@ A simple, incomplete user guide is available [here](doc/user_guide.md).
 
 ## Status
 
-At the moment, there's only very basic gameplay. Some villager tasks are
-implemented as well as a very dumb CPU player. See the github project for most
-up-to-date info: [AoE](https://github.com/FolkertVanVerseveld/aoe).
+At the moment, there's only very basic gameplay and only multiplayer mode. To
+start a singleplayer game, host a multiplayer session and just add some
+computer players. The computer only gathers resources and does nothing until
+attacked. See the github project for most up-to-date info:
+[AoE](https://github.com/FolkertVanVerseveld/aoe).
 
 ## Support
 
-Windows has first class support, while an Ubuntu based Linux should compile the
-project just fine.
+The following operating systems are supported:
+* Windows 10 and above
+* macOS Sequoia 15.7.7
 
-For more information how to install and run AoE, see [INSTALL](INSTALL).
+The following Linux distributions are supported:
+* Ubuntu 22 and above
+
+Other Linux distribution or older OS  versions just might work, but your milage
+may vary. The listed ones are tested and actively maintained. For more
+information how to install and run AoE, see [INSTALL](INSTALL).
 
 ## Troubleshooting
 
