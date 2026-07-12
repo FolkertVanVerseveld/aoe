@@ -31,7 +31,7 @@ void FullscreenMenu::reshape(ImGuiViewport *vp) {
 
 FullscreenMenu::FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
 	const char *frameTitle, const char *title, void (*fnActivate)(unsigned idx), unsigned selected)
-	: menuState(menuState), vertical(buttons, buttonCount, selected)
+	: menuState(menuState), vertical(buttons, buttonCount, selected), selecting(SelectMode::wait)
 	, frameTitle(frameTitle), title(title), fnActivate(fnActivate)
 {
 	assert(fnActivate);
@@ -51,6 +51,9 @@ static inline bool PointInMenuButton(const MenuButton *btn, int mx, int my)
 }
 
 void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
+	if (selecting != SelectMode::wait)
+		return;
+
 	const unsigned mactive = (unsigned)MenuButtonState::active;
 	const unsigned mselected = (unsigned)MenuButtonState::selected;
 	unsigned mask = mactive | mselected;
@@ -59,6 +62,7 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 	// special button that cannot be selected using keyboard navigation
 	if (PointInMenuButton(&quitButton, mx, my) && !quitButton.is_hidden()) {
 		quitButton.state |= mactive;
+		selecting = SelectMode::mouse;
 		sfx.play_sfx(SfxId::ui_click);
 		return;
 	}
@@ -70,17 +74,25 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 			vertical.activated = true; // only one button can be activated
 			btn->state |= mask;
 			vertical.selected = i;
+			selecting = SelectMode::mouse;
 			sfx.play_sfx(SfxId::ui_click);
 		} else {
 			btn->state &= ~mask;
 		}
 	}
 
-	if (!vertical.activated)
+	if (!vertical.activated) {
 		vertical.buttons[vertical.selected].state |= mselected;
+		selecting = SelectMode::mouse;
+	}
 }
 
 void FullscreenMenu::mouse_up(int mx, int my) {
+	if (selecting != SelectMode::mouse)
+		return;
+
+	selecting = SelectMode::wait;
+
 	const unsigned mselected = (unsigned)MenuButtonState::selected;
 	const unsigned mactive = (unsigned)MenuButtonState::active;
 
@@ -105,41 +117,48 @@ void FullscreenMenu::mouse_up(int mx, int my) {
 }
 
 void FullscreenMenu::key_tapped(GameKey key) {
-	if (key == GameKey::ui_select) {
-		vertical.buttons[vertical.selected].state &= ~(unsigned)MenuButtonState::active;
-		fnActivate(vertical.selected);
-	} else if (key == GameKey::ui_back) {
-		fnActivate(-1);
+	if (selecting != SelectMode::keyboard)
+		return;
+
+	if (key == GameKey::ui_select || key == GameKey::ui_back) {
+		selecting = SelectMode::wait;
+		unsigned idx = vertical.selected;
+		vertical.buttons[idx].state &= ~(unsigned)MenuButtonState::active;
+
+		if (key == GameKey::ui_back)
+			idx = -1;
+
+		fnActivate(idx);
 	}
 }
 
 void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sfx) {
-	unsigned old = vertical.selected;
-
-	if (keyctl.is_down(GameKey::ui_back)) {
-		if (key == GameKey::ui_back)
-			sfx.play_sfx(SfxId::ui_click);
+	if (selecting != SelectMode::wait)
 		return;
-	}
 
-	if (keyctl.is_down(GameKey::ui_select)) {
-		// only do this if we just selected
-		if (key == GameKey::ui_select) {
+	if (key == GameKey::ui_back || key == GameKey::ui_select) {
+		selecting = SelectMode::keyboard;
+		sfx.play_sfx(SfxId::ui_click);
+
+		if (key == GameKey::ui_select)
 			vertical.buttons[vertical.selected].state |= (unsigned)MenuButtonState::active;
-			sfx.play_sfx(SfxId::ui_click);
-		}
+
 		return;
 	}
+
+	unsigned old = vertical.selected;
 
 	if (key == GameKey::ui_prev)
 		dec(vertical.selected);
 	else if (key == GameKey::ui_next)
 		inc(vertical.selected, vertical.buttonCount - 1);
 
-	unsigned mask = (unsigned)MenuButtonState::selected;
+	if (vertical.selected != old) {
+		unsigned mask = (unsigned)MenuButtonState::selected;
 
-	vertical.buttons[old].state &= ~mask;
-	vertical.buttons[vertical.selected].state |= mask;
+		vertical.buttons[old].state &= ~mask;
+		vertical.buttons[vertical.selected].state |= mask;
+	}
 }
 
 void FullscreenMenu::drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx) {

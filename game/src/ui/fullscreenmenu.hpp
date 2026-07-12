@@ -87,10 +87,18 @@ public:
 
 // TODO add custom group
 
+// type of menu selection that's happening right now
+enum class SelectMode {
+	wait,
+	keyboard,
+	mouse,
+};
+
 class FullscreenMenu final {
 public:
 	MenuState menuState;
 	OrthognalGroup vertical;
+	SelectMode selecting; // TODO consider moving this to Engine
 	const char *frameTitle; // for Frame
 	const char *title;
 	void (*fnActivate)(unsigned);
