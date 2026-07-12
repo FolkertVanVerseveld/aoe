@@ -21,14 +21,14 @@ void Debug::show_texture_map() {
 		return;
 
 	Frame f;
+	Engine &e = *eng;
+	Assets *a = e.assets.get();
 
-	if (!f.begin("Texturemap", show_tm, ImGuiWindowFlags_HorizontalScrollbar))
+	if (!a || !f.begin("Texturemap", show_tm, ImGuiWindowFlags_HorizontalScrollbar))
 		return;
 
-	Engine &e = *eng;
-	Assets &a = *e.assets.get();
 	ImTextureID tex = (ImTextureID)1;
-	ImGui::Image(tex, ImVec2(a.ts_ui.w, a.ts_ui.h));
+	ImGui::Image(tex, ImVec2(a->ts_ui.w, a->ts_ui.h));
 }
 
 void Debug::show_display_info(Frame &f) {

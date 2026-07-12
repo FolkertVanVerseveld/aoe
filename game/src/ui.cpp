@@ -1056,6 +1056,7 @@ void Engine::show_init() {
 		return;
 
 	ImGui::SetWindowSize(vp->WorkSize);
+	ImGui::GetIO().FontGlobalScale = 1.35f;
 
 	f.str("Age of Empires game setup");
 
@@ -1086,8 +1087,12 @@ void Engine::show_init() {
 		f.xbtn("Start", "Game directory must be set before the game can be run.");
 	}
 
+	f.sl();
+
 	if (f.btn("Quit"))
 		throw 0;
+
+	f.sl();
 
 	if (f.btn("Set game directory"))
 		fd2.Open();
