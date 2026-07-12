@@ -1,0 +1,51 @@
+name: build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Update and install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang cmake libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libgl1-mesa-dev pkg-config
+    - uses: actions/checkout@v6
+      with:
+        show-progress: false
+        clean: false
+        submodules: true
+    - name: configure and build
+      run: |
+        cmake -S . -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+        pushd build
+        make -j4 empires
+        popd
+
+  fedora:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        dnf install -y clang cmake make pkgconf-pkg-config git \
+          SDL2-devel SDL2_mixer-devel mesa-libGL-devel
+    - uses: actions/checkout@v6
+      with:
+        show-progress: false
+        clean: false
+        submodules: true
+    - name: configure and build
+      run: |
+        cmake -S . -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+        pushd build
+        make -j4 empires
+        popd
