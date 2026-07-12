@@ -28,6 +28,7 @@ static int close(SOCKET sock)
 #include <tracy/Tracy.hpp>
 
 // TODO merge common errors
+// TODO localise errors
 
 namespace aoe {
 
@@ -171,13 +172,18 @@ SOCKET TcpSocket::accept(sockaddr &a, int &sz) {
 	return ::accept(s, &a, &sz);
 }
 
-void TcpSocket::bind(const char *address, uint16_t port) {
+void TcpSocket::bind(const char *address, uint16_t port, bool reuse) {
 	const auto sock = s.load(std::memory_order_relaxed);
 	sockaddr_in dst{ 0 };
 
 	int af = AF_INET;
 	dst.sin_family = af;
 	dst.sin_port = htons(port);
+
+	if (reuse) {
+		int yes = 1;
+		setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char*)&yes, sizeof yes);
+	}
 
 	int r = InetPton(af, address, &dst.sin_addr);
 	if (r != 1) {
@@ -407,7 +413,7 @@ int TcpSocket::accept(sockaddr &a, int &sz) {
 	return ret;
 }
 
-void TcpSocket::bind(const char *address, uint16_t port) {
+void TcpSocket::bind(const char *address, uint16_t port, bool reuse) {
 	const int sock = s.load(std::memory_order_relaxed);
 	sockaddr_in dst{ 0 };
 
@@ -419,10 +425,11 @@ void TcpSocket::bind(const char *address, uint16_t port) {
 
 	// allow rebinding a port stuck in TIME_WAIT (server restart); BSD/macOS is
 	// stricter than Linux here so without this rebinding the same port fails
-	int yes = 1;
-	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+	if (reuse) {
+		int yes = 1;
+		setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+	}
 
-	// https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-bind
 	int r = ::bind(sock, (const sockaddr *)&dst, sizeof dst);
 
 	if (r == 0)

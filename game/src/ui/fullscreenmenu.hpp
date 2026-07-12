@@ -21,6 +21,7 @@ enum class MenuButtonState {
 	disabled = 0x02, // unselectable
 	hovered  = 0x04, // mouse over element
 	selected = 0x08, // activated, unique
+	hidden   = 0x10, // invisible and uninteractable
 };
 
 enum class MenuButtonLayoutType {
@@ -54,10 +55,21 @@ public:
 	MenuButtonLayoutData layout;
 
 	MenuButton(float y, const char *name, const char *tooltip=NULL, unsigned state=0);
-	MenuButton(const MenuButtonLayoutCorner &c, const char *name);
+	MenuButton(const MenuButtonLayoutCorner &c, const char *name, unsigned state=0);
 
 	void reshape(ImGuiViewport *vp);
 	bool show(Frame &f, const BackgroundColors &col) const;
+
+	void hide(bool v) {
+		if (v)
+			state |= (unsigned)MenuButtonState::hidden;
+		else
+			state &= ~(unsigned)MenuButtonState::hidden;
+	}
+
+	bool is_hidden() const noexcept {
+		return state & (unsigned)MenuButtonState::hidden;
+	}
 };
 
 class OrthognalGroup final {

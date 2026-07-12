@@ -13,9 +13,9 @@ MenuButton::MenuButton(float y, const char *name, const char *tooltip, unsigned 
 	, name(name), tooltip(tooltip), state(state)
 	, type(MenuButtonLayoutType::vertical), layout(y) {}
 
-MenuButton::MenuButton(const MenuButtonLayoutCorner &c, const char *name)
+MenuButton::MenuButton(const MenuButtonLayoutCorner &c, const char *name, unsigned state)
 	: bnds{ 0, 0, 0, 0 }
-	, name(name), tooltip(NULL), state(0)
+	, name(name), tooltip(NULL), state(state)
 	, type(MenuButtonLayoutType::corner), layout(c) {}
 
 static void reshapeVertical(SDL_FRect &bnds, const ImVec2 &sz, float relY)
@@ -56,6 +56,9 @@ void MenuButton::reshape(ImGuiViewport *vp) {
 
 bool MenuButton::show(Frame &f, const BackgroundColors &col) const {
 	ImGui::SetCursorPosY(bnds.y);
+
+	if (state & (unsigned)MenuButtonState::hidden)
+		return false;
 
 	float x0 = bnds.x, y0 = bnds.y;
 	float x1 = x0 + bnds.w, y1 = y0 + bnds.h;

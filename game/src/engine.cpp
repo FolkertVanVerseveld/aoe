@@ -1125,8 +1125,9 @@ void Engine::key_tapped(SDL &sdl, GameKey k) {
 		kbp_game(k);
 		break;
 	default:
-		assert(mi.menu);
-		if (mi.keyboard_mode == KeyboardMode::fullscreen_menu)
+		// ` crashes
+		//assert(mi.menu);
+		if (mi.menu && mi.keyboard_mode == KeyboardMode::fullscreen_menu)
 			mi.menu->key_tapped(k);
 		break;
 	}

@@ -22,7 +22,7 @@ static inline void inc(unsigned &v, unsigned max)
 		v = max;
 }
 
-MenuButton quitButton({ true, 6, 24, 32 }, "X");
+MenuButton quitButton({ true, 6, 24, 32 }, "X", (unsigned)MenuButtonState::hidden);
 
 void FullscreenMenu::reshape(ImGuiViewport *vp) {
 	vertical.reshape(vp);
@@ -57,7 +57,7 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 	vertical.activated = false;
 
 	// special button that cannot be selected using keyboard navigation
-	if (PointInMenuButton(&quitButton, mx, my)) {
+	if (PointInMenuButton(&quitButton, mx, my) && !quitButton.is_hidden()) {
 		quitButton.state |= mactive;
 		sfx.play_sfx(SfxId::ui_click);
 		return;
@@ -66,7 +66,7 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 	for (unsigned i = 0; i < vertical.buttonCount; ++i) {
 		MenuButton *btn = &vertical.buttons[i];
 
-		if (!vertical.activated && PointInMenuButton(btn, mx, my)) {
+		if (!vertical.activated && !btn->is_hidden() && PointInMenuButton(btn, mx, my)) {
 			vertical.activated = true; // only one button can be activated
 			btn->state |= mask;
 			vertical.selected = i;
@@ -85,7 +85,7 @@ void FullscreenMenu::mouse_up(int mx, int my) {
 	const unsigned mactive = (unsigned)MenuButtonState::active;
 
 	// special button that cannot be selected using keyboard navigation
-	if (PointInMenuButton(&quitButton, mx, my) && (quitButton.state & mactive))
+	if (PointInMenuButton(&quitButton, mx, my) && !quitButton.is_hidden() && (quitButton.state & mactive))
 		throw 0;
 
 	quitButton.state &= ~mactive;
@@ -96,7 +96,7 @@ void FullscreenMenu::mouse_up(int mx, int my) {
 	MenuButton *btn = &vertical.buttons[vertical.selected];
 	vertical.activated = false;
 
-	if (PointInMenuButton(btn, mx, my)) {
+	if (PointInMenuButton(btn, mx, my) && !btn->is_hidden()) {
 		btn->state = (btn->state | mselected) & ~mactive;
 		fnActivate(vertical.selected);
 	} else {

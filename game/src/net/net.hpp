@@ -92,7 +92,7 @@ public:
 	// server mode functions
 
 	void bind(uint16_t port) { bind("0.0.0.0", port); }
-	void bind(const char *address, uint16_t port);
+	void bind(const char *address, uint16_t port, bool reuse=false);
 	void listen(int backlog);
 	SOCKET accept();
 	SOCKET accept(sockaddr &a, int &sz);

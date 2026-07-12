@@ -10,6 +10,7 @@
 #include <SDL2/SDL_syswm.h>
 
 #include "../debug.hpp"
+#include "../ui/fullscreenmenu.hpp"
 
 namespace aoe {
 
@@ -139,9 +140,15 @@ static bool getWindowRect(SDL_Window *win, RECT &rect)
 }
 #endif
 
+static void UpdateUiFullscreen(bool v) {
+	ui::quitButton.hide(!v);
+}
+
 void Window::set_fullscreen(bool v) {
-	if (v == is_fullscreen())
+	if (v == is_fullscreen()) {
+		UpdateUiFullscreen(v);
 		return;
+	}
 
 	SDL_Window *w = win.get();
 
@@ -169,6 +176,8 @@ void Window::set_fullscreen(bool v) {
 #if _WIN32
 	reclip();
 #endif
+
+	UpdateUiFullscreen(v);
 }
 
 void Window::size(int &w, int &h) {

@@ -197,7 +197,7 @@ void Audio::load_taunt(TauntId id, const char *file) {
 	CI_fstream cf(file);
 	SDL_RWops *rw = SDL_RWFromFP(fdopen(cf.cf.fd, "rb"), SDL_TRUE);
 	if (rw)
-		cf.cf.fd = -1;
+		cf.cf.fd = -1; // FIXME hack to make sure we don't double free
 
 	std::lock_guard<std::mutex> lk(m_mix);
 
