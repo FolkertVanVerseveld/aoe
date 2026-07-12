@@ -32,6 +32,16 @@ static std::string get_username() {
 #else
 #include <unistd.h>
 
+static bool exec(const char *cmd, char *sbuf, size_t buflen) {
+	FILE* pipe = popen(cmd, "r");
+	if (!pipe)
+		return false;
+
+	bool ret = fgets(sbuf, buflen, pipe) != NULL;
+	pclose(pipe);
+	return ret;
+}
+
 static std::string get_username() {
 	std::string name(getlogin());
 	return name;
@@ -135,11 +145,13 @@ bool FontCache::try_load() {
 	copper.load(io.Fonts, FONT_DIR "Supplemental/Copperplate.ttc");
 	copper2.load(io.Fonts, FONT_DIR "Supplemental/Copperplate.ttc");
 #else
-	#define FONT_DIR "/usr/share/fonts/truetype/"
-
-	arial.load(io.Fonts, FONT_DIR "liberation/LiberationSans-Regular.ttf");
-	copper.load(io.Fonts, FONT_DIR "abyssinica/AbyssinicaSIL-Regular.ttf");
-	copper2.load(io.Fonts, FONT_DIR "ancient-scripts/Symbola_hint.ttf");
+	char sbuf[PATH_MAX];
+	if (exec("fc-match --format=%{file} LiberationSans-Regular.ttf", sbuf, sizeof(sbuf)))
+		arial.load(io.Fonts, sbuf);
+	if (exec("fc-match --format=%{file} AbyssinicaSIL-Regular.ttf", sbuf, sizeof(sbuf)))
+		copper.load(io.Fonts, sbuf);
+	if (exec("fc-match --format=%{file} Symbola_hint.ttf", sbuf, sizeof(sbuf)))
+		copper2.load(io.Fonts, sbuf);
 #endif
 	return loaded();
 }
