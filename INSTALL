@@ -33,6 +33,9 @@ them on Ubuntu using:
 
   sudo apt install clang cmake pkg-config libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev
 
+for Fedora, you can use:
+  sudo dnf install clang cmake pkgconf-pkg-config SDL2-devel SDL2_image-devel SDL2_mixer-devel
+
 for Arch, you can use:
 
   sudo pacman -S git clang cmake pkgconf sdl2 sdl2_image sdl2_mixer

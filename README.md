@@ -45,6 +45,7 @@ The following operating systems are supported:
 * macOS Sequoia 15.7.7
 
 The following Linux distributions are supported:
+* Fedora 44
 * Ubuntu 22 and above
 
 Other Linux distribution or older OS  versions just might work, but your milage
