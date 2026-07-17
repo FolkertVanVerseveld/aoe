@@ -24,6 +24,7 @@ struct BkgVertex {
 };
 
 extern BkgVertex bkg_vertices[4];
+extern unsigned bkg_indices[6];
 
 typedef std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> Surface;
 

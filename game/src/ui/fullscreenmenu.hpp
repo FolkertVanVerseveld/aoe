@@ -27,7 +27,13 @@ enum class MenuButtonState {
 enum class MenuButtonLayoutType {
 	vertical, // main, singleplayer menu, scenario menu
 	corner,   // "X", "?" buttons
+	relative, // gameplay_settings singleplayer settings
 	//custom,   // TODO multiplayer menu, etc.
+};
+
+struct MenuButtonLayoutRelative final {
+	int relX, relY; // relative position
+	int w, h;
 };
 
 struct MenuButtonLayoutCorner final {
@@ -39,10 +45,12 @@ struct MenuButtonLayoutCorner final {
 union MenuButtonLayoutData final {
 	float relY; // vertical
 	MenuButtonLayoutCorner corner;
+	MenuButtonLayoutRelative rel;
 	//SDL_Rect custom;
 
 	MenuButtonLayoutData(float y) : relY(y) {}
 	MenuButtonLayoutData(const MenuButtonLayoutCorner &c) : corner(c) {}
+	MenuButtonLayoutData(const MenuButtonLayoutRelative &r) : rel(r) {}
 	//MenuButtonLayoutData(const SDL_Rect &bnds) : custom(bnds) {}
 };
 
@@ -56,6 +64,7 @@ public:
 
 	MenuButton(float y, const char *name, const char *tooltip=NULL, unsigned state=0);
 	MenuButton(const MenuButtonLayoutCorner &c, const char *name, unsigned state=0);
+	MenuButton(MenuButtonLayoutType type, const MenuButtonLayoutData &layout, const char *name, unsigned state=0);
 
 	void reshape(ImGuiViewport *vp);
 	bool show(Frame &f, const BackgroundColors &col) const;

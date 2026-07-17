@@ -993,10 +993,14 @@ MenuButton scenarioMenuButtons[] = {
 	{512, "Cancel"},
 };
 
+const MenuButtonLayoutRelative splSettings{ 672, 80, 336, 48 };
+const MenuButtonLayoutRelative splStart{ 112, 704, 380, 48 };
+const MenuButtonLayoutRelative splCancel{ 528, 704, 380, 48 };
+
 MenuButton singleplayerHostButtons[] = {
-	{80, "Settings"},
-	{704 - 80, "Start"}, // FIXME change to 704 after superseeding verticalgroup
-	{704, "Cancel"},
+	{MenuButtonLayoutType::relative, splSettings, "Settings"},
+	{MenuButtonLayoutType::relative, splStart, "Start"},
+	{MenuButtonLayoutType::relative, splCancel, "Cancel"},
 };
 
 FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), "start", NULL, StartMenuButtonActivate);

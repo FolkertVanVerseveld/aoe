@@ -997,11 +997,6 @@ int Engine::mainloop() {
 	GLprogram prog;
 	prog.link(vs, fs);
 
-	const unsigned int indices[] = {
-		0, 1, 3, // first triangle
-		1, 2, 3  // second triangle
-	};
-
 	GLuint vao, ebo;
 	{
 		GLvertexArray vao;
@@ -1011,7 +1006,7 @@ int Engine::mainloop() {
 		vao.bind();
 
 		vbo.setData(GL_ARRAY_BUFFER, sizeof(bkg_vertices), bkg_vertices, GL_STATIC_DRAW);
-		ebo.setData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+		ebo.setData(GL_ELEMENT_ARRAY_BUFFER, sizeof(bkg_indices), bkg_indices, GL_STATIC_DRAW);
 
 		prog.setVertexArray("aPos"     , 3, GL_FLOAT, sizeof(BkgVertex), offsetof(BkgVertex, x));
 		prog.setVertexArray("aColor"   , 3, GL_FLOAT, sizeof(BkgVertex), offsetof(BkgVertex, r));
