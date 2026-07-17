@@ -15,7 +15,9 @@ public:
 
 	Font(float pt);
 
+	bool load(ImFontAtlas *fa, const std::string &path);
 	bool load(ImFontAtlas *fa, const char *path);
+
 	float size() const noexcept;
 
 	operator bool() const noexcept { return fnt != NULL; }

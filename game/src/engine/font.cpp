@@ -30,16 +30,30 @@ static std::string get_username() {
 	return name;
 }
 #else
+#include <cstdlib>
 #include <unistd.h>
 
-static bool exec(const char *cmd, char *sbuf, size_t buflen) {
-	FILE* pipe = popen(cmd, "r");
+static std::string popen_readfst(const char *cmd) {
+	FILE *pipe = popen(cmd, "r");
 	if (!pipe)
-		return false;
+		return "";
 
-	bool ret = fgets(sbuf, buflen, pipe) != NULL;
+	char *line = NULL;
+	size_t n = 0;
+
+	if (getline(&line, &n, pipe) <= 0) {
+		pclose(pipe);
+		return "";
+	}
+
 	pclose(pipe);
-	return ret;
+
+	std::string s(line);
+	if (!s.empty() && s.back() == '\n')
+		s.pop_back();
+	free(line);
+
+	return s;
 }
 
 static std::string get_username() {
@@ -99,6 +113,13 @@ fail:
 
 Font::Font(float pt) : fnt(NULL), path(), pt(pt) {}
 
+bool Font::load(ImFontAtlas *fa, const std::string &path) {
+	fnt = try_add_font(fa, path.c_str(), size());
+	if (fnt)
+		this->path = path;
+	return fnt != NULL;
+}
+
 bool Font::load(ImFontAtlas *fa, const char *path) {
 	fnt = try_add_font(fa, path, size());
 	if (fnt)
@@ -145,13 +166,14 @@ bool FontCache::try_load() {
 	copper.load(io.Fonts, FONT_DIR "Supplemental/Copperplate.ttc");
 	copper2.load(io.Fonts, FONT_DIR "Supplemental/Copperplate.ttc");
 #else
-	char sbuf[PATH_MAX];
-	if (exec("fc-match --format=%{file} LiberationSans-Regular.ttf", sbuf, sizeof(sbuf)))
-		arial.load(io.Fonts, sbuf);
-	if (exec("fc-match --format=%{file} AbyssinicaSIL-Regular.ttf", sbuf, sizeof(sbuf)))
-		copper.load(io.Fonts, sbuf);
-	if (exec("fc-match --format=%{file} Symbola_hint.ttf", sbuf, sizeof(sbuf)))
-		copper2.load(io.Fonts, sbuf);
+	std::string path;
+
+	if ((path = popen_readfst("fc-match --format=%{file} LiberationSans-Regular.ttf")) != "")
+		arial.load(io.Fonts, path.c_str());
+	if ((path = popen_readfst("fc-match --format=%{file} AbyssinicaSIL-Regular.ttf")) != "")
+		copper.load(io.Fonts, path.c_str());
+	if ((path = popen_readfst("fc-match --format=%{file} Symbola_hint.ttf")) != "")
+		copper2.load(io.Fonts, path.c_str());
 #endif
 	return loaded();
 }
