@@ -81,14 +81,14 @@ public:
 	}
 };
 
-class OrthognalGroup final {
+class OrthogonalGroup final {
 public:
 	MenuButton *buttons;
 	unsigned buttonCount;
 	bool activated;
 	unsigned selected;
 
-	OrthognalGroup(MenuButton *buttons, unsigned buttonCount, unsigned selected);
+	OrthogonalGroup(MenuButton *buttons, unsigned buttonCount, unsigned selected=0);
 
 	void reshape(ImGuiViewport *vp);
 	void show(Frame &f, BackgroundColors &col);
@@ -106,14 +106,13 @@ enum class SelectMode {
 class FullscreenMenu final {
 public:
 	MenuState menuState;
-	OrthognalGroup vertical;
+	OrthogonalGroup *orthogonal;
 	SelectMode selecting; // TODO consider moving this to Engine
 	const char *frameTitle; // for Frame
 	const char *title;
 	void (*fnActivate)(unsigned);
 
-	FullscreenMenu(MenuState menuState, MenuButton *buttons, unsigned buttonCount,
-		const char *frameTitle, const char *title, void (*fnActivate)(unsigned), unsigned selected=0);
+	FullscreenMenu(MenuState menuState, OrthogonalGroup &orthogonal, const char *frameTitle, const char *title, void (*fnActivate)(unsigned));
 
 	void reshape(ImGuiViewport *vp);
 

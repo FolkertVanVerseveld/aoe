@@ -1003,11 +1003,16 @@ MenuButton singleplayerHostButtons[] = {
 	{MenuButtonLayoutType::relative, splCancel, "Cancel"},
 };
 
-FullscreenMenu mainMenu(MenuState::start, mainMenuButtons, ARRAY_SIZE(mainMenuButtons), "start", NULL, StartMenuButtonActivate);
-FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), "singleplayer menu", "Single Player", SingleplayerMenuButtonActivate);
-FullscreenMenu scenarioMenu(MenuState::editor_menu, scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), "editor menu", "Scenario Editor", EditorMenuButtonActivate);
+OrthogonalGroup ogMain(mainMenuButtons, ARRAY_SIZE(mainMenuButtons));
+OrthogonalGroup ogSingleplayer(singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons));
+OrthogonalGroup ogScenario(scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons));
+OrthogonalGroup ogSingleplayerHost(singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), 1);
 
-FullscreenMenu singleplayerHostMenu(MenuState::singleplayer_host, singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), "singleplayer host", "Single Player Game", SingleplayerHostButtonActivate, 1);
+FullscreenMenu mainMenu(MenuState::start, ogMain, "start", NULL, StartMenuButtonActivate);
+FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, ogSingleplayer, "singleplayer menu", "Single Player", SingleplayerMenuButtonActivate);
+FullscreenMenu scenarioMenu(MenuState::editor_menu, ogScenario, "editor menu", "Scenario Editor", EditorMenuButtonActivate);
+
+FullscreenMenu singleplayerHostMenu(MenuState::singleplayer_host, ogSingleplayerHost, "singleplayer host", "Single Player Game", SingleplayerHostButtonActivate);
 
 void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass)
 {

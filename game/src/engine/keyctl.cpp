@@ -57,6 +57,7 @@ KeyboardController::KeyboardController()
 	scan_keys[SDL_SCANCODE_DOWN] = GameKey::ui_next;
 	scan_keys[SDL_SCANCODE_SPACE] = GameKey::ui_select;
 	scan_keys[SDL_SCANCODE_ESCAPE] = GameKey::ui_back;
+	scan_keys[SDL_SCANCODE_TAB] = GameKey::ui_tabulate;
 	scan_keys[SDL_SCANCODE_GRAVE] = GameKey::toggle_debug_window;
 	scan_keys[SDL_SCANCODE_F1] = GameKey::open_help;
 	scan_keys[SDL_SCANCODE_F11] = GameKey::toggle_fullscreen;

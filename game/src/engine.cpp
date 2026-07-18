@@ -632,6 +632,10 @@ void Engine::goto_menu(MenuState state) {
 	keyctl.clear(mi.keyboard_mode);
 	set_background(mi.border_col);
 
+	// just in case
+	if (mi.menu)
+		mi.menu->selecting = SelectMode::wait;
+
 	sdl->window.set_clipping(false);
 
 	switch (menu_state) {
