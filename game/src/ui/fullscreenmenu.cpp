@@ -35,14 +35,23 @@ MenuButton quitButton({ true, 6, 24, 32 }, "X", (unsigned)MenuButtonState::hidde
 void FullscreenMenu::reshape(ImGuiViewport *vp) {
 	orthogonal->reshape(vp);
 	quitButton.reshape(vp);
+
+	if (labelCount) {
+		MenuLabel *lbl = labels;
+		for (unsigned i = 0; i < labelCount; ++i, ++lbl)
+			lbl->reshape(vp);
+	}
 }
 
 FullscreenMenu::FullscreenMenu(MenuState menuState, OrthogonalGroup &orthogonal,
-	const char *frameTitle, const char *title, void (*fnActivate)(unsigned idx))
+	const char *frameTitle, const char *title, void (*fnActivate)(unsigned idx),
+	MenuLabel *labels, unsigned labelCount)
 	: menuState(menuState), orthogonal(&orthogonal), selecting(SelectMode::wait)
 	, frameTitle(frameTitle), title(title), fnActivate(fnActivate)
+	, labels(labels), labelCount(labelCount)
 {
 	assert(fnActivate);
+	assert(!labelCount || (labelCount && labels));
 }
 
 static inline bool PointInFRect(const SDL_FPoint &p, const SDL_FRect &r)
@@ -176,6 +185,12 @@ void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sf
 void FullscreenMenu::drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx) {
 	orthogonal->show(f, col);
 	quitButton.show(f, col);
+
+	if (labelCount) {
+		MenuLabel *lbl = labels;
+		for (unsigned i = 0; i < labelCount; ++i, ++lbl)
+			lbl->show(f);
+	}
 }
 
 }

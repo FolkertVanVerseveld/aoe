@@ -3,6 +3,7 @@
 
 #include "../engine/keyctl.hpp"
 #include "../engine/menu.hpp"
+#include "align.hpp"
 
 struct ImGuiViewport;
 
@@ -52,6 +53,19 @@ union MenuButtonLayoutData final {
 	MenuButtonLayoutData(const MenuButtonLayoutCorner &c) : corner(c) {}
 	MenuButtonLayoutData(const MenuButtonLayoutRelative &r) : rel(r) {}
 	//MenuButtonLayoutData(const SDL_Rect &bnds) : custom(bnds) {}
+};
+
+class MenuLabel final {
+public:
+	SDL_FRect bnds;
+	const char *name;
+	MenuButtonLayoutRelative layout;
+	TextHalign halign;
+
+	MenuLabel(const MenuButtonLayoutRelative &layout, const char *name, TextHalign halign);
+
+	void reshape(ImGuiViewport *vp);
+	void show(Frame &f) const;
 };
 
 class MenuButton final {
@@ -107,12 +121,14 @@ class FullscreenMenu final {
 public:
 	MenuState menuState;
 	OrthogonalGroup *orthogonal;
+	MenuLabel *labels;
+	unsigned labelCount;
 	SelectMode selecting; // TODO consider moving this to Engine
 	const char *frameTitle; // for Frame
 	const char *title;
 	void (*fnActivate)(unsigned);
 
-	FullscreenMenu(MenuState menuState, OrthogonalGroup &orthogonal, const char *frameTitle, const char *title, void (*fnActivate)(unsigned));
+	FullscreenMenu(MenuState menuState, OrthogonalGroup &orthogonal, const char *frameTitle, const char *title, void (*fnActivate)(unsigned), MenuLabel *labels=NULL, unsigned labelCount=0);
 
 	void reshape(ImGuiViewport *vp);
 

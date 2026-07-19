@@ -13,6 +13,7 @@
 
 #include "game.hpp"
 #include "ui/fullscreenmenu.hpp"
+#include "ui/align.hpp"
 
 #include <SDL2/SDL_rect.h>
 
@@ -45,12 +46,6 @@ namespace ui {
 
 bool chkbox(const char *s, bool &b);
 bool combo(const char *label, int &idx, const std::vector<std::string> &lst, int popup_max_height_in_items=-1);
-
-enum class TextHalign {
-	left,
-	center,
-	right,
-};
 
 // undef from Win32 GDI
 #undef DrawText

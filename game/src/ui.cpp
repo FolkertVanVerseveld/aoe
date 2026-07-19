@@ -993,14 +993,22 @@ MenuButton scenarioMenuButtons[] = {
 	{512, "Cancel"},
 };
 
-const MenuButtonLayoutRelative splSettings{ 672, 80, 336, 48 };
+const MenuButtonLayoutRelative splSettings{ 682, 96, 316, 48 };
 const MenuButtonLayoutRelative splStart{ 112, 704, 380, 48 };
 const MenuButtonLayoutRelative splCancel{ 528, 704, 380, 48 };
 
 MenuButton singleplayerHostButtons[] = {
 	{MenuButtonLayoutType::relative, splSettings, "Settings"},
-	{MenuButtonLayoutType::relative, splStart, "Start"},
+	{MenuButtonLayoutType::relative, splStart, "Start Game"},
 	{MenuButtonLayoutType::relative, splCancel, "Cancel"},
+};
+
+MenuLabel singleplayerHostLabels[] = {
+	{{46, 94, 180, 48}, "Name", TextHalign::left},
+	{{296, 94, 180, 48}, "Civilization", TextHalign::left},
+	{{536 - 120 / 2, 94, 120, 48}, "Player", TextHalign::center},
+	{{632 - 80 / 2, 94, 80, 48}, "Team", TextHalign::center},
+	{{46, 474, 180, 48}, "Number of Players", TextHalign::left}
 };
 
 OrthogonalGroup ogMain(mainMenuButtons, ARRAY_SIZE(mainMenuButtons));
@@ -1012,7 +1020,7 @@ FullscreenMenu mainMenu(MenuState::start, ogMain, "start", NULL, StartMenuButton
 FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, ogSingleplayer, "singleplayer menu", "Single Player", SingleplayerMenuButtonActivate);
 FullscreenMenu scenarioMenu(MenuState::editor_menu, ogScenario, "editor menu", "Scenario Editor", EditorMenuButtonActivate);
 
-FullscreenMenu singleplayerHostMenu(MenuState::singleplayer_host, ogSingleplayerHost, "singleplayer host", "Single Player Game", SingleplayerHostButtonActivate);
+FullscreenMenu singleplayerHostMenu(MenuState::singleplayer_host, ogSingleplayerHost, "singleplayer host", "Single Player Game", SingleplayerHostButtonActivate, singleplayerHostLabels, ARRAY_SIZE(singleplayerHostLabels));
 
 void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass)
 {
@@ -1379,8 +1387,8 @@ void DrawText(const SDL_Rect &bnds, const char *str, ImU32 col, TextHalign halig
 void DrawTextShadow(const SDL_Rect &bnds, const char *str, ImU32 col, TextHalign halign, bool vmiddle, int margin, ImU32 bgcol)
 {
 	SDL_Rect sh_bnds{ bnds.x - margin, bnds.y + margin, bnds.w, bnds.h };
-	DrawText(sh_bnds, str, bgcol, TextHalign::center, true);
-	DrawText(bnds, str, col, TextHalign::center, true);
+	DrawText(sh_bnds, str, bgcol, halign, true);
+	DrawText(bnds, str, col, halign, true);
 }
 
 }

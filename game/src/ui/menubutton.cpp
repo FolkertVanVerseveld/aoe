@@ -35,7 +35,7 @@ static void reshapeVertical(SDL_FRect &bnds, const ImVec2 &sz, float relY)
 
 static void reshapeCorner(SDL_FRect &bnds, const ImVec2 &sz, const MenuButtonLayoutCorner &c)
 {
-	float w = vp->WorkSize.x, h = vp->WorkSize.y;
+	float w = sz.x, h = sz.y;
 	float margin = c.margin;
 	float ws = w / WINDOW_WIDTH_MIN, hs = h / WINDOW_HEIGHT_MIN;
 
@@ -46,9 +46,9 @@ static void reshapeCorner(SDL_FRect &bnds, const ImVec2 &sz, const MenuButtonLay
 	bnds.y = c.topRight ? margin * hs : h - bnds.h - margin * hs;
 }
 
-static void reshapeRelative(SDL_FRect &bnds, const ImVec2 &sz, const MenuButtonLayoutRelative &r)
+void reshapeRelative(SDL_FRect &bnds, const ImVec2 &sz, const MenuButtonLayoutRelative &r)
 {
-	float w = vp->WorkSize.x, h = vp->WorkSize.y;
+	float w = sz.x, h = sz.y;
 	float ws = w / 1024, hs = h / 768;
 
 	bnds.w = (float)r.w * ws;
@@ -66,10 +66,10 @@ void MenuButton::reshape(ImGuiViewport *vp) {
 		reshapeVertical(bnds, vp->WorkSize, layout.relY);
 		break;
 	case MenuButtonLayoutType::corner:
-		reshapeCorner(bnds, vp->WorkPos, layout.corner);
+		reshapeCorner(bnds, vp->WorkSize, layout.corner);
 		break;
 	case MenuButtonLayoutType::relative:
-		reshapeRelative(bnds, vp->WorkPos, layout.rel);
+		reshapeRelative(bnds, vp->WorkSize, layout.rel);
 		break;
 	}
 }
