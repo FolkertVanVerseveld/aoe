@@ -71,7 +71,8 @@ public:
 class MenuButton final {
 public:
 	SDL_FRect bnds;
-	const char *name, *tooltip;
+	std::string name;
+	const char *tooltip;
 	unsigned state;
 	MenuButtonLayoutType type;
 	MenuButtonLayoutData layout;
@@ -101,11 +102,15 @@ public:
 	unsigned buttonCount;
 	bool activated;
 	unsigned selected;
+	void (*fnActivate)(unsigned);
 
-	OrthogonalGroup(MenuButton *buttons, unsigned buttonCount, unsigned selected=0);
+	OrthogonalGroup(MenuButton *buttons, unsigned buttonCount, void (*fnActivate)(unsigned), unsigned selected=0);
 
 	void reshape(ImGuiViewport *vp);
 	void show(Frame &f, BackgroundColors &col);
+
+	void unfocus();
+	void focus(unsigned index);
 };
 
 // TODO add custom group
@@ -121,14 +126,15 @@ class FullscreenMenu final {
 public:
 	MenuState menuState;
 	OrthogonalGroup *orthogonal;
+	unsigned ogIndex, ogCount;
 	MenuLabel *labels;
 	unsigned labelCount;
 	SelectMode selecting; // TODO consider moving this to Engine
 	const char *frameTitle; // for Frame
 	const char *title;
-	void (*fnActivate)(unsigned);
 
-	FullscreenMenu(MenuState menuState, OrthogonalGroup &orthogonal, const char *frameTitle, const char *title, void (*fnActivate)(unsigned), MenuLabel *labels=NULL, unsigned labelCount=0);
+	FullscreenMenu(MenuState menuState, OrthogonalGroup &orthogonal, const char *frameTitle, const char *title, MenuLabel *labels=NULL, unsigned labelCount=0);
+	FullscreenMenu(MenuState menuState, OrthogonalGroup *orthogonal, unsigned ogCount, const char *frameTitle, const char *title, MenuLabel *labels=NULL, unsigned labelCount=0);
 
 	void reshape(ImGuiViewport *vp);
 
@@ -136,6 +142,8 @@ public:
 	void key_tapped(GameKey key);
 	void mouse_down(int mx, int my, Audio &sfx);
 	void mouse_up(int mx, int my);
+
+	void tabulate(unsigned steps=1);
 
 	void drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx);
 };
@@ -151,7 +159,9 @@ void SingleplayerMenuButtonActivate(unsigned idx);
 void EditorMenuButtonActivate(unsigned idx);
 
 void SingleplayerHostButtonActivate(unsigned idx);
+void SingleplayerHostTeamButtonActivate(unsigned idx);
 
+extern ui::MenuButton singleplayerHostTeamButtons[8];
 extern ui::FullscreenMenu mainMenu, singleplayerMenu, scenarioMenu, singleplayerHostMenu;
 
 }

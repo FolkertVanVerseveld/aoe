@@ -33,7 +33,9 @@ static inline void inc(unsigned &v, unsigned max)
 MenuButton quitButton({ true, 6, 24, 32 }, "X", (unsigned)MenuButtonState::hidden);
 
 void FullscreenMenu::reshape(ImGuiViewport *vp) {
-	orthogonal->reshape(vp);
+	for (unsigned i = 0; i < ogCount; ++i)
+		orthogonal[i].reshape(vp);
+
 	quitButton.reshape(vp);
 
 	if (labelCount) {
@@ -44,13 +46,18 @@ void FullscreenMenu::reshape(ImGuiViewport *vp) {
 }
 
 FullscreenMenu::FullscreenMenu(MenuState menuState, OrthogonalGroup &orthogonal,
-	const char *frameTitle, const char *title, void (*fnActivate)(unsigned idx),
+	const char *frameTitle, const char *title,
 	MenuLabel *labels, unsigned labelCount)
-	: menuState(menuState), orthogonal(&orthogonal), selecting(SelectMode::wait)
-	, frameTitle(frameTitle), title(title), fnActivate(fnActivate)
+	: FullscreenMenu(menuState, &orthogonal, 1, frameTitle, title, labels, labelCount) {}
+
+FullscreenMenu::FullscreenMenu(MenuState menuState, OrthogonalGroup *orthogonal,
+	unsigned ogCount,
+	const char *frameTitle, const char *title,
+	MenuLabel *labels, unsigned labelCount)
+	: menuState(menuState), orthogonal(orthogonal), ogIndex(0), ogCount(ogCount), selecting(SelectMode::wait)
+	, frameTitle(frameTitle), title(title)
 	, labels(labels), labelCount(labelCount)
 {
-	assert(fnActivate);
 	assert(!labelCount || (labelCount && labels));
 }
 
@@ -74,7 +81,9 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 	const unsigned mactive = (unsigned)MenuButtonState::active;
 	const unsigned mselected = (unsigned)MenuButtonState::selected;
 	unsigned mask = mactive | mselected;
-	orthogonal->activated = false;
+
+	OrthogonalGroup &og = orthogonal[ogIndex];
+	og.activated = false;
 
 	// special button that cannot be selected using keyboard navigation
 	if (PointInMenuButton(&quitButton, mx, my) && !quitButton.is_hidden()) {
@@ -84,13 +93,13 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 		return;
 	}
 
-	for (unsigned i = 0; i < orthogonal->buttonCount; ++i) {
-		MenuButton *btn = &orthogonal->buttons[i];
+	for (unsigned i = 0; i < og.buttonCount; ++i) {
+		MenuButton *btn = &og.buttons[i];
 
-		if (!orthogonal->activated && !btn->is_hidden() && PointInMenuButton(btn, mx, my)) {
-			orthogonal->activated = true; // only one button can be activated
+		if (!og.activated && !btn->is_hidden() && PointInMenuButton(btn, mx, my)) {
+			og.activated = true; // only one button can be activated
 			btn->state |= mask;
-			orthogonal->selected = i;
+			og.selected = i;
 			selecting = SelectMode::mouse;
 			sfx.play_sfx(SfxId::ui_click);
 		} else {
@@ -98,8 +107,8 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 		}
 	}
 
-	if (!orthogonal->activated) {
-		orthogonal->buttons[orthogonal->selected].state |= mselected;
+	if (!og.activated) {
+		og.buttons[og.selected].state |= mselected;
 		selecting = SelectMode::mouse;
 	}
 }
@@ -112,6 +121,7 @@ void FullscreenMenu::mouse_up(int mx, int my) {
 
 	const unsigned mselected = (unsigned)MenuButtonState::selected;
 	const unsigned mactive = (unsigned)MenuButtonState::active;
+	OrthogonalGroup &og = orthogonal[ogIndex];
 
 	// special button that cannot be selected using keyboard navigation
 	if (PointInMenuButton(&quitButton, mx, my) && !quitButton.is_hidden() && (quitButton.state & mactive))
@@ -119,15 +129,15 @@ void FullscreenMenu::mouse_up(int mx, int my) {
 
 	quitButton.state &= ~mactive;
 
-	if (!orthogonal->activated || orthogonal->selected >= orthogonal->buttonCount)
+	if (!og.activated || og.selected >= og.buttonCount)
 		return;
 
-	MenuButton *btn = &orthogonal->buttons[orthogonal->selected];
-	orthogonal->activated = false;
+	MenuButton *btn = &og.buttons[og.selected];
+	og.activated = false;
 
 	if (PointInMenuButton(btn, mx, my) && !btn->is_hidden()) {
 		btn->state = (btn->state | mselected) & ~mactive;
-		fnActivate(orthogonal->selected);
+		og.fnActivate(og.selected);
 	} else {
 		btn->state &= ~mactive;
 	}
@@ -137,15 +147,17 @@ void FullscreenMenu::key_tapped(GameKey key) {
 	if (selecting != SelectMode::keyboard)
 		return;
 
+	OrthogonalGroup &og = orthogonal[ogIndex];
+
 	if (key == GameKey::ui_select || key == GameKey::ui_back) {
 		selecting = SelectMode::wait;
-		unsigned idx = orthogonal->selected;
-		orthogonal->buttons[idx].state &= ~(unsigned)MenuButtonState::active;
+		unsigned idx = og.selected;
+		og.buttons[idx].state &= ~(unsigned)MenuButtonState::active;
 
 		if (key == GameKey::ui_back)
 			idx = -1;
 
-		fnActivate(idx);
+		og.fnActivate(idx);
 	}
 }
 
@@ -153,43 +165,65 @@ void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sf
 	if (selecting != SelectMode::wait)
 		return;
 
+	OrthogonalGroup &og = orthogonal[ogIndex];
+
 	if (key == GameKey::ui_back || key == GameKey::ui_select) {
 		selecting = SelectMode::keyboard;
 		sfx.play_sfx(SfxId::ui_click);
 
 		if (key == GameKey::ui_select)
-			orthogonal->buttons[orthogonal->selected].state |= (unsigned)MenuButtonState::active;
+			og.buttons[og.selected].state |= (unsigned)MenuButtonState::active;
 
 		return;
 	}
 
-	unsigned old = orthogonal->selected;
+	unsigned old = og.selected;
 
-	// TODO add groups to tabulate through
+	if (key == GameKey::ui_tabulate) {
+		if (ogCount > 1) {
+			tabulate();
+			return;
+		}
 
-	if (key == GameKey::ui_prev)
-		dec(orthogonal->selected);
-	else if (key == GameKey::ui_next)
-		inc_to(orthogonal->selected, orthogonal->buttonCount - 1);
-	else if (key == GameKey::ui_tabulate)
-		inc(orthogonal->selected, orthogonal->buttonCount - 1);
+		inc(og.selected, og.buttonCount - 1);
+	} else if (key == GameKey::ui_prev) {
+		dec(og.selected);
+	} else if (key == GameKey::ui_next) {
+		inc_to(og.selected, og.buttonCount - 1);
+	}
 
-	if (orthogonal->selected != old) {
+	if (og.selected != old) {
 		unsigned mask = (unsigned)MenuButtonState::selected;
 
-		orthogonal->buttons[old].state &= ~mask;
-		orthogonal->buttons[orthogonal->selected].state |= mask;
+		og.buttons[old].state &= ~mask;
+		og.buttons[og.selected].state |= mask;
 	}
 }
 
+void FullscreenMenu::tabulate(unsigned steps) {
+	unsigned index = (ogIndex + steps) % ogCount;
+
+	if (index == ogIndex)
+		return;
+
+	selecting = SelectMode::wait;
+
+	OrthogonalGroup &old = orthogonal[ogIndex];
+	OrthogonalGroup &next = orthogonal[ogIndex = index];
+
+	old.unfocus();
+	next.focus(next.selected);
+}
+
 void FullscreenMenu::drawButtons(Frame &f, BackgroundColors &col, Assets &ass, Audio &sfx) {
-	orthogonal->show(f, col);
+	for (unsigned i = 0; i < ogCount; ++i)
+		orthogonal[i].show(f, col);
+
 	quitButton.show(f, col);
 
 	if (labelCount) {
-		MenuLabel *lbl = labels;
-		for (unsigned i = 0; i < labelCount; ++i, ++lbl)
-			lbl->show(f);
+		for (unsigned i = 0; i < labelCount; ++i)
+			labels[i].show(f);
 	}
 }
 

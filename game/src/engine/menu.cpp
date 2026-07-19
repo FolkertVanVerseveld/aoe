@@ -2,6 +2,7 @@
 #include "../engine.hpp"
 
 #include "../ui/fullscreenmenu.hpp"
+#include "../ui.hpp"
 
 namespace aoe {
 
@@ -100,6 +101,20 @@ void SingleplayerMenuButtonActivate(unsigned idx)
 		next_menu_state = MenuState::start;
 		break;
 	}
+}
+
+void SingleplayerHostTeamButtonActivate(unsigned idx)
+{
+	if (idx >= sp_players.size()) {
+		next_menu_state = MenuState::singleplayer_menu;
+		return;
+	}
+
+	PlayerSetting &ps = sp_players.at(idx);
+	ui::MenuButton &btn = singleplayerHostTeamButtons[idx];
+
+	ps.team = (ps.team + 1) % max_legacy_players;
+	btn.name = ps.team ? std::to_string(ps.team) : "-";
 }
 
 void SingleplayerHostButtonActivate(unsigned idx)

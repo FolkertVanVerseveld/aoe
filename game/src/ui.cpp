@@ -997,10 +997,32 @@ const MenuButtonLayoutRelative splSettings{ 682, 96, 316, 48 };
 const MenuButtonLayoutRelative splStart{ 112, 704, 380, 48 };
 const MenuButtonLayoutRelative splCancel{ 528, 704, 380, 48 };
 
+const MenuButtonLayoutRelative splTeams[] = {
+	{608, 136 + 0 * 38, 48, 32},
+	{608, 136 + 1 * 38, 48, 32},
+	{608, 136 + 2 * 38, 48, 32},
+	{608, 136 + 3 * 38, 48, 32},
+	{608, 136 + 4 * 38, 48, 32},
+	{608, 136 + 5 * 38, 48, 32},
+	{608, 136 + 6 * 38, 48, 32},
+	{608, 136 + 7 * 38, 48, 32},
+};
+
 MenuButton singleplayerHostButtons[] = {
 	{MenuButtonLayoutType::relative, splSettings, "Settings"},
 	{MenuButtonLayoutType::relative, splStart, "Start Game"},
 	{MenuButtonLayoutType::relative, splCancel, "Cancel"},
+};
+
+MenuButton singleplayerHostTeamButtons[8] = {
+	{MenuButtonLayoutType::relative, splTeams[0], "-"},
+	{MenuButtonLayoutType::relative, splTeams[1], "-"},
+	{MenuButtonLayoutType::relative, splTeams[2], "-"},
+	{MenuButtonLayoutType::relative, splTeams[3], "-"},
+	{MenuButtonLayoutType::relative, splTeams[4], "-"},
+	{MenuButtonLayoutType::relative, splTeams[5], "-"},
+	{MenuButtonLayoutType::relative, splTeams[6], "-"},
+	{MenuButtonLayoutType::relative, splTeams[7], "-"},
 };
 
 MenuLabel singleplayerHostLabels[] = {
@@ -1011,16 +1033,21 @@ MenuLabel singleplayerHostLabels[] = {
 	{{46, 474, 180, 48}, "Number of Players", TextHalign::left}
 };
 
-OrthogonalGroup ogMain(mainMenuButtons, ARRAY_SIZE(mainMenuButtons));
-OrthogonalGroup ogSingleplayer(singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons));
-OrthogonalGroup ogScenario(scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons));
-OrthogonalGroup ogSingleplayerHost(singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), 1);
+OrthogonalGroup ogMain(mainMenuButtons, ARRAY_SIZE(mainMenuButtons), StartMenuButtonActivate);
+OrthogonalGroup ogSingleplayer(singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), SingleplayerMenuButtonActivate);
+OrthogonalGroup ogScenario(scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), EditorMenuButtonActivate);
 
-FullscreenMenu mainMenu(MenuState::start, ogMain, "start", NULL, StartMenuButtonActivate);
-FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, ogSingleplayer, "singleplayer menu", "Single Player", SingleplayerMenuButtonActivate);
-FullscreenMenu scenarioMenu(MenuState::editor_menu, ogScenario, "editor menu", "Scenario Editor", EditorMenuButtonActivate);
+// TODO ctors are not called...
+OrthogonalGroup opSinglePlayerHost[] = {
+	{singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), SingleplayerHostButtonActivate},
+	{singleplayerHostTeamButtons, ARRAY_SIZE(singleplayerHostTeamButtons), SingleplayerHostTeamButtonActivate} // crashes: , (unsigned)-1
+};
 
-FullscreenMenu singleplayerHostMenu(MenuState::singleplayer_host, ogSingleplayerHost, "singleplayer host", "Single Player Game", SingleplayerHostButtonActivate, singleplayerHostLabels, ARRAY_SIZE(singleplayerHostLabels));
+FullscreenMenu mainMenu(MenuState::start, ogMain, "start", NULL);
+FullscreenMenu singleplayerMenu(MenuState::singleplayer_menu, ogSingleplayer, "singleplayer menu", "Single Player");
+FullscreenMenu scenarioMenu(MenuState::editor_menu, ogScenario, "editor menu", "Scenario Editor");
+
+FullscreenMenu singleplayerHostMenu(MenuState::singleplayer_host, opSinglePlayerHost, ARRAY_SIZE(opSinglePlayerHost), "singleplayer host", "Single Player Game", singleplayerHostLabels, ARRAY_SIZE(singleplayerHostLabels));
 
 void DrawFullscreenMenu(FullscreenMenu &mm, Audio &sfx, Assets &ass)
 {

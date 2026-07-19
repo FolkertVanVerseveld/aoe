@@ -97,7 +97,7 @@ bool MenuButton::show(Frame &f, const BackgroundColors &col) const {
 	if (state & (unsigned)MenuButtonState::disabled)
 		rgba = IM_COL32(63, 63, 63, 255);
 
-	DrawTextShadow(ibnds, name, rgba, TextHalign::center, true);
+	DrawTextShadow(ibnds, name.c_str(), rgba, TextHalign::center, true);
 	return false;
 }
 
