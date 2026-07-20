@@ -16,7 +16,7 @@ OrthogonalGroup::OrthogonalGroup(MenuButton *buttons, unsigned buttonCount, void
 	if (selected < buttonCount)
 		buttons[selected].state |= (unsigned)MenuButtonState::selected;
 	else
-		selected = 0;
+		this->selected = 0;
 }
 
 void OrthogonalGroup::reshape(ImGuiViewport *vp) {
@@ -31,6 +31,7 @@ void OrthogonalGroup::show(Frame &f, BackgroundColors &col) {
 
 void OrthogonalGroup::unfocus() {
 	buttons[selected].state &= ~((unsigned)MenuButtonState::active | (unsigned)MenuButtonState::selected);
+	activated = false;
 }
 
 void OrthogonalGroup::focus(unsigned index) {

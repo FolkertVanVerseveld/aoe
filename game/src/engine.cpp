@@ -633,8 +633,10 @@ void Engine::goto_menu(MenuState state) {
 	set_background(mi.border_col);
 
 	// just in case
-	if (mi.menu)
+	if (mi.menu) {
+		mi.menu->tabulate(0);
 		mi.menu->selecting = SelectMode::wait;
+	}
 
 	sdl->window.set_clipping(false);
 
@@ -1124,8 +1126,6 @@ void Engine::key_tapped(SDL &sdl, GameKey k) {
 		kbp_game(k);
 		break;
 	default:
-		// ` crashes
-		//assert(mi.menu);
 		if (mi.menu && mi.keyboard_mode == KeyboardMode::fullscreen_menu)
 			mi.menu->key_tapped(k);
 		break;

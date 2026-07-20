@@ -59,6 +59,13 @@ enum class SingleplayerHostButtonIdx {
 	//tooltip, // XXX do we need this?
 };
 
+enum class SingleplayerHostPlayerButtonIdx {
+	remove_player,
+	add_player,
+	randomize,
+	cancel,
+};
+
 enum class EditorMenuButtonIdx {
 	create_scenario,
 	load_scenario,
@@ -117,11 +124,46 @@ void SingleplayerHostTeamButtonActivate(unsigned idx)
 	btn.name = ps.team ? std::to_string(ps.team) : "-";
 }
 
+void SingleplayerHostPlayerButtonActivate(unsigned idx)
+{
+	ui::MenuLabel &lblPlayers = singleplayerHostLabels[4];
+
+	switch ((SingleplayerHostPlayerButtonIdx)idx) {
+	case SingleplayerHostPlayerButtonIdx::remove_player:
+		if (sp_player_ui_count > 1)
+			--sp_player_ui_count;
+		else
+			sp_player_ui_count = 1;
+
+		sp_player_count = sp_player_ui_count + 1;
+		lblPlayers.name = std::to_string(sp_player_ui_count);
+		break;
+	case SingleplayerHostPlayerButtonIdx::add_player:
+		if (sp_player_ui_count < max_legacy_players - 1)
+			++sp_player_ui_count;
+		else
+			sp_player_ui_count = max_legacy_players - 1;
+
+		sp_player_count = sp_player_ui_count + 1;
+		lblPlayers.name = std::to_string(sp_player_ui_count);
+		break;
+	case SingleplayerHostPlayerButtonIdx::randomize:
+		// TODO randomize
+		break;
+	default:
+		next_menu_state = MenuState::singleplayer_menu;
+		break;
+	}
+}
+
 void SingleplayerHostButtonActivate(unsigned idx)
 {
 	SingleplayerHostButtonIdx btn = (SingleplayerHostButtonIdx)idx;
 
 	switch (btn) {
+	case SingleplayerHostButtonIdx::settings:
+	case SingleplayerHostButtonIdx::start_game:
+		break;
 	default:
 		next_menu_state = MenuState::singleplayer_menu;
 		break;

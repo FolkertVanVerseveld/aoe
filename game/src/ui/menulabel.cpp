@@ -23,7 +23,7 @@ void MenuLabel::show(Frame &f) const {
 	SDL_Rect ibnds{ bnds.x, bnds.y, bnds.w, bnds.h };
 	ImU32 rgba = IM_COL32_WHITE;
 
-	DrawTextShadow(ibnds, name, rgba, halign, true);
+	DrawTextShadow(ibnds, name.c_str(), rgba, halign, true);
 }
 
 }

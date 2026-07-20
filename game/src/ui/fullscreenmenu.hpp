@@ -58,7 +58,7 @@ union MenuButtonLayoutData final {
 class MenuLabel final {
 public:
 	SDL_FRect bnds;
-	const char *name;
+	std::string name;
 	MenuButtonLayoutRelative layout;
 	TextHalign halign;
 
@@ -160,8 +160,11 @@ void EditorMenuButtonActivate(unsigned idx);
 
 void SingleplayerHostButtonActivate(unsigned idx);
 void SingleplayerHostTeamButtonActivate(unsigned idx);
+void SingleplayerHostPlayerButtonActivate(unsigned idx);
 
 extern ui::MenuButton singleplayerHostTeamButtons[8];
+extern ui::MenuLabel singleplayerHostLabels[5];
+
 extern ui::FullscreenMenu mainMenu, singleplayerMenu, scenarioMenu, singleplayerHostMenu;
 
 }

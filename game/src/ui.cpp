@@ -1008,6 +1008,12 @@ const MenuButtonLayoutRelative splTeams[] = {
 	{608, 136 + 7 * 38, 48, 32},
 };
 
+const MenuButtonLayoutRelative splPlayers[] = {
+	{133, 515, 32, 40},
+	{133 + 32 + 6, 515, 32, 40},
+	{133 + 2 * (32 + 6), 515, 200, 40},
+};
+
 MenuButton singleplayerHostButtons[] = {
 	{MenuButtonLayoutType::relative, splSettings, "Settings"},
 	{MenuButtonLayoutType::relative, splStart, "Start Game"},
@@ -1025,12 +1031,19 @@ MenuButton singleplayerHostTeamButtons[8] = {
 	{MenuButtonLayoutType::relative, splTeams[7], "-"},
 };
 
+MenuButton singleplayerHostPlayerButtons[3] = {
+	{MenuButtonLayoutType::relative, splPlayers[0], "-"},
+	{MenuButtonLayoutType::relative, splPlayers[1], "+"},
+	{MenuButtonLayoutType::relative, splPlayers[2], "Randomize"},
+};
+
 MenuLabel singleplayerHostLabels[] = {
 	{{46, 94, 180, 48}, "Name", TextHalign::left},
-	{{296, 94, 180, 48}, "Civilization", TextHalign::left},
-	{{536 - 120 / 2, 94, 120, 48}, "Player", TextHalign::center},
+	{{346, 94, 180, 48}, "Civilization", TextHalign::left},
+	//{{536 - 120 / 2, 94, 120, 48}, "Player", TextHalign::center},
 	{{632 - 80 / 2, 94, 80, 48}, "Team", TextHalign::center},
-	{{46, 474, 180, 48}, "Number of Players", TextHalign::left}
+	{{46, 474, 180, 48}, "Number of Players", TextHalign::left},
+	{{46, 515, 180, 48}, "4", TextHalign::left},
 };
 
 OrthogonalGroup ogMain(mainMenuButtons, ARRAY_SIZE(mainMenuButtons), StartMenuButtonActivate);
@@ -1040,7 +1053,8 @@ OrthogonalGroup ogScenario(scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons),
 // TODO ctors are not called...
 OrthogonalGroup opSinglePlayerHost[] = {
 	{singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), SingleplayerHostButtonActivate},
-	{singleplayerHostTeamButtons, ARRAY_SIZE(singleplayerHostTeamButtons), SingleplayerHostTeamButtonActivate} // crashes: , (unsigned)-1
+	{singleplayerHostTeamButtons, ARRAY_SIZE(singleplayerHostTeamButtons), SingleplayerHostTeamButtonActivate, (unsigned)-1},
+	{singleplayerHostPlayerButtons, ARRAY_SIZE(singleplayerHostPlayerButtons), SingleplayerHostPlayerButtonActivate, (unsigned)-1},
 };
 
 FullscreenMenu mainMenu(MenuState::start, ogMain, "start", NULL);

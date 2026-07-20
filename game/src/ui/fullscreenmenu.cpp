@@ -59,6 +59,9 @@ FullscreenMenu::FullscreenMenu(MenuState menuState, OrthogonalGroup *orthogonal,
 	, labels(labels), labelCount(labelCount)
 {
 	assert(!labelCount || (labelCount && labels));
+
+	for (unsigned i = 1; i < ogCount; ++i)
+		orthogonal[i].unfocus();
 }
 
 static inline bool PointInFRect(const SDL_FPoint &p, const SDL_FRect &r)
@@ -82,9 +85,6 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 	const unsigned mselected = (unsigned)MenuButtonState::selected;
 	unsigned mask = mactive | mselected;
 
-	OrthogonalGroup &og = orthogonal[ogIndex];
-	og.activated = false;
-
 	// special button that cannot be selected using keyboard navigation
 	if (PointInMenuButton(&quitButton, mx, my) && !quitButton.is_hidden()) {
 		quitButton.state |= mactive;
@@ -93,23 +93,29 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 		return;
 	}
 
-	for (unsigned i = 0; i < og.buttonCount; ++i) {
-		MenuButton *btn = &og.buttons[i];
+	for (unsigned j = 0; j < ogCount; ++j) {
+		OrthogonalGroup &og = orthogonal[j];
+		og.activated = false;
 
-		if (!og.activated && !btn->is_hidden() && PointInMenuButton(btn, mx, my)) {
-			og.activated = true; // only one button can be activated
-			btn->state |= mask;
-			og.selected = i;
-			selecting = SelectMode::mouse;
-			sfx.play_sfx(SfxId::ui_click);
-		} else {
-			btn->state &= ~mask;
+		for (unsigned i = 0; i < og.buttonCount; ++i) {
+			MenuButton *btn = &og.buttons[i];
+
+			if (!og.activated && !btn->is_hidden() && PointInMenuButton(btn, mx, my)) {
+				og.activated = true; // only one button can be activated
+				btn->state |= mask;
+				og.selected = i;
+				selecting = SelectMode::mouse;
+				sfx.play_sfx(SfxId::ui_click);
+				ogIndex = j;
+			} else {
+				btn->state &= ~mask;
+			}
 		}
-	}
 
-	if (!og.activated) {
-		og.buttons[og.selected].state |= mselected;
-		selecting = SelectMode::mouse;
+		if (!og.activated) {
+			og.buttons[og.selected].state |= mselected;
+			selecting = SelectMode::mouse;
+		}
 	}
 }
 
@@ -202,6 +208,10 @@ void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sf
 
 void FullscreenMenu::tabulate(unsigned steps) {
 	unsigned index = (ogIndex + steps) % ogCount;
+
+	// special case: reset
+	if (steps == 0)
+		index = 0;
 
 	if (index == ogIndex)
 		return;

@@ -9,7 +9,7 @@ namespace aoe {
 bool sp_randomize_teams = true;
 
 PlayerSetting::PlayerSetting()
-	: name(), color(0), civ(0), team(1), res(), active(false), type(PlayerType::human) {}
+	: name(), color(0), civ(0), team(0), res(), active(false), type(PlayerType::human) {}
 
 PlayerSetting::PlayerSetting(const std::string &name, int civ, unsigned team, Resources res)
 	: name(name), color(0), civ(civ), team(team), res(res)
