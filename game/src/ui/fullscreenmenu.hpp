@@ -4,6 +4,7 @@
 #include "../engine/keyctl.hpp"
 #include "../engine/menu.hpp"
 #include "align.hpp"
+#include "../engine/font.hpp"
 
 struct ImGuiViewport;
 
@@ -61,7 +62,9 @@ public:
 	std::string name;
 	MenuButtonLayoutRelative layout;
 	TextHalign halign;
+	Font &fnt;
 
+	MenuLabel(const MenuButtonLayoutRelative &layout, const char *name, TextHalign halign, Font &fnt);
 	MenuLabel(const MenuButtonLayoutRelative &layout, const char *name, TextHalign halign);
 
 	void reshape(ImGuiViewport *vp);

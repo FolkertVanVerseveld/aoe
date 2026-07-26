@@ -124,28 +124,35 @@ void SingleplayerHostTeamButtonActivate(unsigned idx)
 	btn.name = ps.team ? std::to_string(ps.team) : "-";
 }
 
+static void set_player_count(unsigned count)
+{
+	if (count < 1)
+		count = 1;
+	else if (count >= max_legacy_players)
+		count = max_legacy_players - 1;
+
+	sp_player_count = count + 1;
+	sp_player_ui_count = count;
+
+	ui::MenuLabel &lblPlayers = singleplayerHostLabels[4];
+	lblPlayers.name = std::to_string(count);
+
+	ui::MenuButton *teams = singleplayerHostTeamButtons;
+
+	for (unsigned i = 0; i < max_legacy_players - first_player_idx; ++i)
+		teams[i].hide(i >= count);
+}
+
 void SingleplayerHostPlayerButtonActivate(unsigned idx)
 {
 	ui::MenuLabel &lblPlayers = singleplayerHostLabels[4];
 
 	switch ((SingleplayerHostPlayerButtonIdx)idx) {
 	case SingleplayerHostPlayerButtonIdx::remove_player:
-		if (sp_player_ui_count > 1)
-			--sp_player_ui_count;
-		else
-			sp_player_ui_count = 1;
-
-		sp_player_count = sp_player_ui_count + 1;
-		lblPlayers.name = std::to_string(sp_player_ui_count);
+		set_player_count(sp_player_ui_count - 1);
 		break;
 	case SingleplayerHostPlayerButtonIdx::add_player:
-		if (sp_player_ui_count < max_legacy_players - 1)
-			++sp_player_ui_count;
-		else
-			sp_player_ui_count = max_legacy_players - 1;
-
-		sp_player_count = sp_player_ui_count + 1;
-		lblPlayers.name = std::to_string(sp_player_ui_count);
+		set_player_count(sp_player_ui_count + 1);
 		break;
 	case SingleplayerHostPlayerButtonIdx::randomize:
 		// TODO randomize

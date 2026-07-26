@@ -24,8 +24,9 @@ public:
 };
 
 class FontGuard final {
+	bool pushed;
 public:
-	FontGuard(const Font&);
+	FontGuard(const Font&, bool push=true);
 	~FontGuard();
 };
 

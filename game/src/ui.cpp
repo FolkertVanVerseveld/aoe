@@ -1020,7 +1020,7 @@ MenuButton singleplayerHostButtons[] = {
 	{MenuButtonLayoutType::relative, splCancel, "Cancel"},
 };
 
-MenuButton singleplayerHostTeamButtons[8] = {
+MenuButton singleplayerHostTeamButtons[max_legacy_players - 1] = {
 	{MenuButtonLayoutType::relative, splTeams[0], "-"},
 	{MenuButtonLayoutType::relative, splTeams[1], "-"},
 	{MenuButtonLayoutType::relative, splTeams[2], "-"},
@@ -1043,14 +1043,13 @@ MenuLabel singleplayerHostLabels[] = {
 	//{{536 - 120 / 2, 94, 120, 48}, "Player", TextHalign::center},
 	{{632 - 80 / 2, 94, 80, 48}, "Team", TextHalign::center},
 	{{46, 474, 180, 48}, "Number of Players", TextHalign::left},
-	{{46, 515, 180, 48}, "4", TextHalign::left},
+	{{46, 515, 180, 48}, "4", TextHalign::left, fnt.arial},
 };
 
 OrthogonalGroup ogMain(mainMenuButtons, ARRAY_SIZE(mainMenuButtons), StartMenuButtonActivate);
 OrthogonalGroup ogSingleplayer(singleplayerMenuButtons, ARRAY_SIZE(singleplayerMenuButtons), SingleplayerMenuButtonActivate);
 OrthogonalGroup ogScenario(scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons), EditorMenuButtonActivate);
 
-// TODO ctors are not called...
 OrthogonalGroup opSinglePlayerHost[] = {
 	{singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), SingleplayerHostButtonActivate},
 	{singleplayerHostTeamButtons, ARRAY_SIZE(singleplayerHostTeamButtons), SingleplayerHostTeamButtonActivate, (unsigned)-1},

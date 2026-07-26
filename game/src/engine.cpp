@@ -633,10 +633,8 @@ void Engine::goto_menu(MenuState state) {
 	set_background(mi.border_col);
 
 	// just in case
-	if (mi.menu) {
+	if (mi.menu)
 		mi.menu->tabulate(0);
-		mi.menu->selecting = SelectMode::wait;
-	}
 
 	sdl->window.set_clipping(false);
 

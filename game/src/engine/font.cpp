@@ -66,12 +66,14 @@ namespace aoe {
 
 FontCache fnt;
 
-FontGuard::FontGuard(const Font &fnt) {
-	ImGui::PushFont(fnt.fnt);
+FontGuard::FontGuard(const Font &fnt, bool push) : pushed(push) {
+	if (pushed)
+		ImGui::PushFont(fnt.fnt);
 }
 
 FontGuard::~FontGuard() {
-	ImGui::PopFont();
+	if (pushed)
+		ImGui::PopFont();
 }
 
 FontCache::FontCache() : arial(13.0f), copper(22.0f), copper2(36.0f) {}
