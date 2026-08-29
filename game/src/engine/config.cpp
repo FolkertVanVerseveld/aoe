@@ -72,8 +72,6 @@ ipStatus Config::load(const std::string &path) {
 
 	section = "font";
 
-	static const double pt_min = 5, pt_max = 72;
-
 #define fnt_load(key, f) do {if (ini.try_clamp(section, key, v, pt_min, pt_max) == ipStatus::ok) fnt.f.pt = v; } while(0)
 
 	double v;

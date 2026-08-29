@@ -42,7 +42,7 @@ public:
 
 class ScenarioSettings final {
 public:
-	std::vector<PlayerSetting> players;
+	std::vector<PlayerSetting> players; // TODO change to array
 	std::map<IdPoolRef, unsigned> owners; // refs to player setting
 	bool fixed_start;
 	bool explored;
@@ -68,6 +68,7 @@ public:
 	void remove(IdPoolRef);
 };
 
+// TODO merge this into ScenarioSettings: sp_settings
 extern unsigned sp_player_count, sp_player_ui_count;
 extern std::array<PlayerSetting, max_legacy_players> sp_players;
 extern bool sp_randomize_teams;

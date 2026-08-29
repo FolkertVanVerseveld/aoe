@@ -9,17 +9,17 @@ namespace aoe {
 namespace ui {
 
 MenuButton::MenuButton(float y, const char *name, const char *tooltip, unsigned state)
-	: bnds{ 0, 0, 0, 0 }
+	: MenuItem()
 	, name(name), tooltip(tooltip), state(state)
 	, type(MenuButtonLayoutType::vertical), layout(y) {}
 
 MenuButton::MenuButton(const MenuButtonLayoutCorner &c, const char *name, unsigned state)
-	: bnds{ 0, 0, 0, 0 }
+	: MenuItem()
 	, name(name), tooltip(NULL), state(state)
 	, type(MenuButtonLayoutType::corner), layout(c) {}
 
 MenuButton::MenuButton(MenuButtonLayoutType type, const MenuButtonLayoutData &layout, const char *name, unsigned state)
-	: bnds{ 0, 0, 0, 0 }
+	: MenuItem()
 	, name(name), tooltip(NULL), state(state)
 	, type(type), layout(layout) {}
 

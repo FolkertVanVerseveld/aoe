@@ -16,7 +16,7 @@ MenuLabel::MenuLabel(const MenuButtonLayoutRelative &layout, const char *name, T
 	: MenuLabel(layout, name, halign, aoe::fnt.copper) {}
 
 MenuLabel::MenuLabel(const MenuButtonLayoutRelative &layout, const char *name, TextHalign halign, Font &fnt)
-	: bnds{ 0, 0, 0, 0 }, name(name), layout(layout), halign(halign), fnt(fnt) {}
+	: MenuItem(), name(name), layout(layout), halign(halign), fnt(fnt) { }
 
 void MenuLabel::reshape(ImGuiViewport *vp) {
 	reshapeRelative(bnds, vp->WorkSize, layout);

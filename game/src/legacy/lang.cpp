@@ -63,6 +63,7 @@ void LanguageData::load(PE &dll) {
 	age_names.emplace_back(loadstr(StrId::age_bronze));
 	age_names.emplace_back(loadstr(StrId::age_iron));
 	age_names.emplace_back(loadstr(StrId::age_postiron));
+#undef loadstr
 
 	// civilizations
 	res_id tbl = (res_id)StrId::btn_civtbl;
@@ -79,7 +80,6 @@ void LanguageData::load(PE &dll) {
 	civ_add(dll, tbl, StrId::civ_shang);
 	civ_add(dll, tbl, StrId::civ_yamato);
 	civ_add(dll, tbl, StrId::civ_choson);
-#undef loadstr
 
 	collect_civs(civ_names);
 }

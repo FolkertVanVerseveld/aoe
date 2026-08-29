@@ -56,9 +56,20 @@ union MenuButtonLayoutData final {
 	//MenuButtonLayoutData(const SDL_Rect &bnds) : custom(bnds) {}
 };
 
-class MenuLabel final {
+class MenuItem {
 public:
 	SDL_FRect bnds;
+
+	MenuItem() : bnds{ 0, 0, 0, 0 } {}
+
+	virtual ~MenuItem() {}
+
+	virtual void reshape(ImGuiViewport *vp) = 0;
+	//virtual void show(Frame &f) const;
+};
+
+class MenuLabel final : public MenuItem {
+public:
 	std::string name;
 	MenuButtonLayoutRelative layout;
 	TextHalign halign;
@@ -67,13 +78,12 @@ public:
 	MenuLabel(const MenuButtonLayoutRelative &layout, const char *name, TextHalign halign, Font &fnt);
 	MenuLabel(const MenuButtonLayoutRelative &layout, const char *name, TextHalign halign);
 
-	void reshape(ImGuiViewport *vp);
+	void reshape(ImGuiViewport *vp) override;
 	void show(Frame &f) const;
 };
 
-class MenuButton final {
+class MenuButton final : public MenuItem {
 public:
-	SDL_FRect bnds;
 	std::string name;
 	const char *tooltip;
 	unsigned state;
@@ -84,7 +94,7 @@ public:
 	MenuButton(const MenuButtonLayoutCorner &c, const char *name, unsigned state=0);
 	MenuButton(MenuButtonLayoutType type, const MenuButtonLayoutData &layout, const char *name, unsigned state=0);
 
-	void reshape(ImGuiViewport *vp);
+	void reshape(ImGuiViewport *vp) override;
 	bool show(Frame &f, const BackgroundColors &col) const;
 
 	void hide(bool v) {
@@ -123,6 +133,7 @@ enum class SelectMode {
 	wait,
 	keyboard,
 	mouse,
+	combo_popup,
 };
 
 class FullscreenMenu final {

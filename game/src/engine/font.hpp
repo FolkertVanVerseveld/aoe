@@ -7,6 +7,8 @@ struct ImFontAtlas;
 
 namespace aoe {
 
+static constexpr double pt_min = 5, pt_max = 72;
+
 class Font final {
 public:
 	ImFont *fnt;
