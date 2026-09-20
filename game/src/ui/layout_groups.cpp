@@ -42,5 +42,17 @@ void OrthogonalGroup::focus(unsigned index) {
 	buttons[selected].state |= (unsigned)MenuButtonState::selected;
 }
 
+void OrthogonalGroup::key_tapped(GameKey key, unsigned index) {
+	if (index >= buttonCount)
+		return;
+
+	buttons[index].state &= ~(unsigned)MenuButtonState::active;
+
+	if (key == GameKey::ui_back)
+		index = -1;
+
+	fnActivate(index);
+}
+
 }
 }

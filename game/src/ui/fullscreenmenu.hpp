@@ -83,15 +83,12 @@ public:
 
 	void reshape(ImGuiViewport *vp);
 	bool show(Frame &f, const BackgroundColors &col) const;
+	void hide(bool v);
+	void activate();
+	void deactivate();
+	void select();
 
-	void hide(bool v) {
-		if (v)
-			state |= (unsigned)MenuButtonState::hidden;
-		else
-			state &= ~(unsigned)MenuButtonState::hidden;
-	}
-
-	bool is_hidden() const noexcept {
+	constexpr bool is_hidden() const noexcept {
 		return state & (unsigned)MenuButtonState::hidden;
 	}
 };
@@ -111,6 +108,8 @@ public:
 
 	void unfocus();
 	void focus(unsigned index);
+
+	void key_tapped(GameKey key, unsigned index);
 };
 
 // TODO add custom group
@@ -138,7 +137,7 @@ public:
 
 	void reshape(ImGuiViewport *vp);
 
-	void key_down(GameKey key, KeyboardController &keyctl, Audio &sfx);
+	void key_down(GameKey key, Audio &sfx);
 	void key_tapped(GameKey key);
 	void mouse_down(int mx, int my, Audio &sfx);
 	void mouse_up(int mx, int my);

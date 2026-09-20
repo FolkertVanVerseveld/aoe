@@ -81,13 +81,9 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 	if (selecting != SelectMode::wait)
 		return;
 
-	const unsigned mactive = (unsigned)MenuButtonState::active;
-	const unsigned mselected = (unsigned)MenuButtonState::selected;
-	unsigned mask = mactive | mselected;
-
 	// special button that cannot be selected using keyboard navigation
 	if (PointInMenuButton(&quitButton, mx, my) && !quitButton.is_hidden()) {
-		quitButton.state |= mactive;
+		quitButton.activate();
 		selecting = SelectMode::mouse;
 		sfx.play_sfx(SfxId::ui_click);
 		return;
@@ -98,22 +94,22 @@ void FullscreenMenu::mouse_down(int mx, int my, Audio &sfx) {
 		og.activated = false;
 
 		for (unsigned i = 0; i < og.buttonCount; ++i) {
-			MenuButton *btn = &og.buttons[i];
+			MenuButton &btn = og.buttons[i];
 
-			if (!og.activated && !btn->is_hidden() && PointInMenuButton(btn, mx, my)) {
+			if (!og.activated && !btn.is_hidden() && PointInMenuButton(&btn, mx, my)) {
 				og.activated = true; // only one button can be activated
-				btn->state |= mask;
+				btn.activate();
 				og.selected = i;
 				selecting = SelectMode::mouse;
 				sfx.play_sfx(SfxId::ui_click);
 				ogIndex = j;
 			} else {
-				btn->state &= ~mask;
+				btn.deactivate();
 			}
 		}
 
 		if (!og.activated) {
-			og.buttons[og.selected].state |= mselected;
+			og.buttons[og.selected].select();
 			selecting = SelectMode::mouse;
 		}
 	}
@@ -157,17 +153,11 @@ void FullscreenMenu::key_tapped(GameKey key) {
 
 	if (key == GameKey::ui_select || key == GameKey::ui_back) {
 		selecting = SelectMode::wait;
-		unsigned idx = og.selected;
-		og.buttons[idx].state &= ~(unsigned)MenuButtonState::active;
-
-		if (key == GameKey::ui_back)
-			idx = -1;
-
-		og.fnActivate(idx);
+		og.key_tapped(key, og.selected);
 	}
 }
 
-void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sfx) {
+void FullscreenMenu::key_down(GameKey key, Audio &sfx) {
 	if (selecting != SelectMode::wait)
 		return;
 
