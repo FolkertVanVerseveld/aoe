@@ -53,6 +53,14 @@ Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic)
 , music_file()
 , m_mix(), taunts(), sfx(), jukebox(), play_taunts(true)
 {
+	open(freq = SAMPLING_FREQ, format = MIX_DEFAULT_FORMAT, channels = NUM_CHANNELS, 1024);
+}
+
+Audio::~Audio() {
+	close();
+}
+
+void Audio::open(int &freq, Uint16 &format, int &channels, int chunksz) {
 	int flags = MIX_INIT_MP3;
 	int ret;
 
@@ -64,7 +72,7 @@ Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic)
 			throw std::runtime_error("Mix: Could not initialize audio: unknown error");
 	}
 
-	if (Mix_OpenAudio(SAMPLING_FREQ, MIX_DEFAULT_FORMAT, NUM_CHANNELS, 1024) == -1)
+	if (Mix_OpenAudio(freq, format, channels, chunksz) == -1)
 		throw std::runtime_error(std::string("Mix: Could not initialize audio: ") + Mix_GetError());
 
 	if (Mix_QuerySpec(&freq, &format, &channels))
@@ -79,9 +87,12 @@ Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic)
 	Mix_GroupChannels(24, 31, (int)SfxPriority::low);
 }
 
-Audio::~Audio() {
-	music.reset();
-	Mix_Quit();
+void Audio::close() {
+	if (is_open()) {
+		music.reset();
+		Mix_Quit();
+		freq = 0;
+	}
 }
 
 void Audio::load(IniParser &ini) {
