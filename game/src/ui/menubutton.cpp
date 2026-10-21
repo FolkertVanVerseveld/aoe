@@ -23,6 +23,25 @@ MenuButton::MenuButton(MenuButtonLayoutType type, const MenuButtonLayoutData &la
 	, name(name), tooltip(NULL), state(state)
 	, type(type), layout(layout) {}
 
+void MenuButton::hide(bool v) {
+	if (v)
+		state |= (unsigned)MenuButtonState::hidden;
+	else
+		state &= ~(unsigned)MenuButtonState::hidden;
+}
+
+void MenuButton::activate() {
+	state |= (unsigned)MenuButtonState::active | (unsigned)MenuButtonState::selected;
+}
+
+void MenuButton::deactivate() {
+	state &= ~((unsigned)MenuButtonState::active | (unsigned)MenuButtonState::selected);
+}
+
+void MenuButton::select() {
+	state |= (unsigned)MenuButtonState::selected;
+}
+
 static void reshapeVertical(SDL_FRect &bnds, const ImVec2 &sz, float relY)
 {
 	float w = sz.x, h = sz.y;

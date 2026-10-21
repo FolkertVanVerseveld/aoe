@@ -1141,7 +1141,7 @@ void Engine::kbp_down(GameKey k) {
 
 	assert(mi.menu);
 	if (mi.keyboard_mode == KeyboardMode::fullscreen_menu)
-		mi.menu->key_down(k, keyctl, sfx);
+		mi.menu->key_down(k, sfx);
 }
 
 void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
