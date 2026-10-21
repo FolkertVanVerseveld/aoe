@@ -1053,7 +1053,7 @@ OrthogonalGroup ogScenario(scenarioMenuButtons, ARRAY_SIZE(scenarioMenuButtons),
 OrthogonalGroup opSinglePlayerHost[] = {
 	{singleplayerHostButtons, ARRAY_SIZE(singleplayerHostButtons), SingleplayerHostButtonActivate},
 	{singleplayerHostTeamButtons, ARRAY_SIZE(singleplayerHostTeamButtons), SingleplayerHostTeamButtonActivate, (unsigned)-1},
-	{singleplayerHostPlayerButtons, ARRAY_SIZE(singleplayerHostPlayerButtons), SingleplayerHostPlayerButtonActivate, (unsigned)-1},
+	{singleplayerHostPlayerButtons, ARRAY_SIZE(singleplayerHostPlayerButtons), SingleplayerHostPlayerButtonActivate, (unsigned)-1, SingleplayerHostPlayerButtonCustom},
 };
 
 FullscreenMenu mainMenu(MenuState::start, ogMain, "start", NULL);

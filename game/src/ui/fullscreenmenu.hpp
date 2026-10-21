@@ -109,6 +109,7 @@ public:
 	}
 };
 
+
 class OrthogonalGroup final {
 public:
 	MenuButton *buttons;
@@ -116,8 +117,9 @@ public:
 	bool activated;
 	unsigned selected;
 	void (*fnActivate)(unsigned);
+	void (*fnCustom)(GameKey);
 
-	OrthogonalGroup(MenuButton *buttons, unsigned buttonCount, void (*fnActivate)(unsigned), unsigned selected=0);
+	OrthogonalGroup(MenuButton *buttons, unsigned buttonCount, void (*fnActivate)(unsigned), unsigned selected=0, void (*fnCustom)(GameKey)=NULL);
 
 	void reshape(ImGuiViewport *vp);
 	void show(Frame &f, BackgroundColors &col);
@@ -136,6 +138,7 @@ enum class SelectMode {
 	combo_popup,
 };
 
+// TODO support custom scan_keys like ui_inc_players, ui_dec_players
 class FullscreenMenu final {
 public:
 	MenuState menuState;
@@ -175,6 +178,8 @@ void EditorMenuButtonActivate(unsigned idx);
 void SingleplayerHostButtonActivate(unsigned idx);
 void SingleplayerHostTeamButtonActivate(unsigned idx);
 void SingleplayerHostPlayerButtonActivate(unsigned idx);
+
+void SingleplayerHostPlayerButtonCustom(GameKey);
 
 extern ui::MenuButton singleplayerHostTeamButtons[8];
 extern ui::MenuLabel singleplayerHostLabels[5];

@@ -5,10 +5,11 @@
 namespace aoe {
 namespace ui {
 
-OrthogonalGroup::OrthogonalGroup(MenuButton *buttons, unsigned buttonCount, void (*fnActivate)(unsigned), unsigned selected)
+OrthogonalGroup::OrthogonalGroup(MenuButton *buttons, unsigned buttonCount, void (*fnActivate)(unsigned), unsigned selected, void (*fnCustom)(GameKey))
 	: buttons(buttons), buttonCount(buttonCount)
 	, activated(false), selected(selected)
 	, fnActivate(fnActivate)
+	, fnCustom(fnCustom)
 {
 	assert(buttons && buttonCount);
 	assert(fnActivate);

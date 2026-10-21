@@ -143,6 +143,18 @@ static void set_player_count(unsigned count)
 		teams[i].hide(i >= count);
 }
 
+void SingleplayerHostPlayerButtonCustom(GameKey key)
+{
+	switch (key) {
+	case GameKey::ui_inc_players:
+		SingleplayerHostPlayerButtonActivate((unsigned)SingleplayerHostPlayerButtonIdx::add_player);
+		break;
+	case GameKey::ui_dec_players:
+		SingleplayerHostPlayerButtonActivate((unsigned)SingleplayerHostPlayerButtonIdx::remove_player);
+		break;
+	}
+}
+
 void SingleplayerHostPlayerButtonActivate(unsigned idx)
 {
 	ui::MenuLabel &lblPlayers = singleplayerHostLabels[4];

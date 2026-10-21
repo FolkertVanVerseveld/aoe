@@ -196,6 +196,8 @@ void FullscreenMenu::key_down(GameKey key, KeyboardController &keyctl, Audio &sf
 		dec(og.selected);
 	} else if (key == GameKey::ui_next) {
 		inc_to(og.selected, og.buttonCount - 1);
+	} else if (og.fnCustom) {
+		og.fnCustom(key);
 	}
 
 	if (og.selected != old) {
