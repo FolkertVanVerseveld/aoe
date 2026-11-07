@@ -128,7 +128,8 @@ public:
 
 	constexpr bool is_open() const noexcept { return freq && format; }
 
-	void open(int &freq, Uint16 &format, int &channels, int chunksz);
+	void open(int chunksz);
+	void open(int freq, Uint16 format, int channels, int chunksz);
 	void close();
 	void load(IniParser&);
 

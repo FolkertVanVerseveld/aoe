@@ -87,7 +87,7 @@ file(GLOB IMGUI_SRC ${IMGUI_DIR}/*.cpp ${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.
 
 if(BUILD_TESTS)
 set(TEST_DIR ${GAME_DIR}/tests)
-file(GLOB TEST_SRC ${TEST_DIR}/*.cpp)
+file(GLOB_RECURSE TEST_SRC ${TEST_DIR}/*.cpp)
 endif()
 
 # fake epoll support for windows

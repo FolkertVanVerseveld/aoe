@@ -48,7 +48,7 @@ The following Linux distributions are supported:
 * Fedora 44
 * Ubuntu 22 and above
 
-Other Linux distribution or older OS  versions just might work, but your milage
+Other Linux distribution or older OS versions just might work, but your milage
 may vary. The listed ones are tested and actively maintained. For more
 information how to install and run AoE, see [INSTALL](INSTALL).
 

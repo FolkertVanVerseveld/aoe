@@ -53,14 +53,17 @@ Audio::Audio() : freq(0), channels(0), format(0), music(nullptr, Mix_FreeMusic)
 , music_file()
 , m_mix(), taunts(), sfx(), jukebox(), play_taunts(true)
 {
-	open(freq = SAMPLING_FREQ, format = MIX_DEFAULT_FORMAT, channels = NUM_CHANNELS, 1024);
 }
 
 Audio::~Audio() {
 	close();
 }
 
-void Audio::open(int &freq, Uint16 &format, int &channels, int chunksz) {
+void Audio::open(int chunksz) {
+	open(SAMPLING_FREQ, MIX_DEFAULT_FORMAT, NUM_CHANNELS, chunksz);
+}
+
+void Audio::open(int freq, Uint16 format, int channels, int chunksz) {
 	int flags = MIX_INIT_MP3;
 	int ret;
 
@@ -78,13 +81,23 @@ void Audio::open(int &freq, Uint16 &format, int &channels, int chunksz) {
 	if (Mix_QuerySpec(&freq, &format, &channels))
 		printf("freq=%d, channels=%d, format=0x%X\n", freq, channels, format);
 
-	// TODO subject to change
-	Mix_AllocateChannels(32);
+	// TODO subject to change: make config setting
+	if (channels < 24)
+		channels = 24;
+
+	Mix_AllocateChannels(channels);
 
 	// NOTE 'to' channel is inclusive
-	Mix_GroupChannels(0, 5, (int)SfxPriority::high);
-	Mix_GroupChannels(6, 23, (int)SfxPriority::medium);
-	Mix_GroupChannels(24, 31, (int)SfxPriority::low);
+	int from = 0, to = (int)(channels * 0.2);
+	Mix_GroupChannels(from, to, (int)SfxPriority::high);
+	from = to; to = (int)(channels * 0.75);
+	Mix_GroupChannels(from, to, (int)SfxPriority::medium);
+	from = to; to = channels;
+	Mix_GroupChannels(from, to, (int)SfxPriority::low);
+
+	this->channels = channels;
+	this->format = format;
+	this->freq = freq;
 }
 
 void Audio::close() {

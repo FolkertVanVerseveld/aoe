@@ -85,6 +85,7 @@ Engine::Engine()
 		throw std::runtime_error("there can be only one");
 
 	eng = this;
+	sfx.open(1024);
 }
 
 Engine::~Engine() {
@@ -1187,8 +1188,11 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-			case SDL_MOUSEBUTTONUP:
-				ImGui_ImplSDL2_ProcessEvent(&event);
+			case SDL_MOUSEBUTTONUP: {
+				bool munched = ImGui_ImplSDL2_ProcessEvent(&event);
+
+				if (show_debug && munched)
+					break;
 
 				if (mi && mi->menu && event.button.button == SDL_BUTTON_LEFT) {
 					if (event.type == SDL_MOUSEBUTTONDOWN)
@@ -1197,6 +1201,7 @@ void Engine::eventloop(SDL &sdl, gfx::GLprogram &prog, GLuint vao) {
 						mi->menu->mouse_up(event.button.x, event.button.y);
 				}
 				break;
+			}
 			default:
 				ImGui_ImplSDL2_ProcessEvent(&event);
 				break;
