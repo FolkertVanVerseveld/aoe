@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.11)
 set(GAME_TARGET "empires")
 set(GAME_VERSION "0.1")
 
+set(GAME_TARGET_SDL3 "empires_sdl3")
+
 set(CMAKE_C_STANDARD		99)
 set(CMAKE_CXX_STANDARD		17)
 
@@ -47,6 +49,8 @@ else()
 endif()
 find_package(OpenGL REQUIRED)
 
+find_package(SDL3 REQUIRED)
+
 if (BUILD_PROFILER)
 add_subdirectory(tracy)
 endif()
@@ -79,7 +83,10 @@ set(PROJECT_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(GAME_DIR ${PROJECT_SRCDIR}/game)
 set(GAME_SRCDIR ${GAME_DIR}/src)
 
+set(GAME_SRCDIR_SDL3 ${GAME_DIR}/src3)
+
 file(GLOB_RECURSE GAME_SOURCES ${GAME_SRCDIR}/*.cpp ${GAME_SRCDIR}/*.c)
+file(GLOB_RECURSE GAME_SOURCES_SDL3 ${GAME_SRCDIR_SDL3}/*.cpp ${GAME_SRCDIR_SDL3}/*.c)
 
 set(IMGUI_DIR ${PROJECT_SRCDIR}/imgui)
 set(IMGUI_BACKENDS_DIR ${IMGUI_DIR}/backends)
@@ -97,6 +104,7 @@ set(WEPOLL_SRC ${WEPOLL_DIR}/wepoll.c)
 endif()
 
 set(GAME_SRC ${GAME_DIR}/main.cpp ${GAME_SOURCES} ${IMGUI_SRC} ${WEPOLL_SRC})
+set(GAME_SRC_SDL3 ${GAME_SOURCES_SDL3})
 
 set(GAME_INCLUDE_DIRS ${GAME_SRCDIR}/core ${GAME_SRCDIR}/external)
 
@@ -110,6 +118,7 @@ set(LOCAL_INCLUDE_DIRS
 # set recipes
 
 add_executable(${GAME_TARGET} ${GAME_SRC})
+add_executable(${GAME_TARGET_SDL3} ${GAME_SRC_SDL3})
 
 if(BUILD_TESTS)
 add_executable(${TEST_TARGET} ${GAME_SOURCES} ${IMGUI_SRC} ${WEPOLL_SRC} ${TEST_SRC})
@@ -126,11 +135,15 @@ target_include_directories(${GAME_TARGET} PRIVATE
 	${GAME_INCLUDE_DIRS}
 )
 
+target_include_directories(${GAME_TARGET_SDL3} PRIVATE ${SDL3_INCLUDE_DIRS})
+
 if (BUILD_PROFILER)
 target_link_libraries(${GAME_TARGET} ${GAME_LIBRARIES} TracyClient)
 else()
 target_link_libraries(${GAME_TARGET} ${GAME_LIBRARIES})
 endif()
+
+target_link_libraries(${GAME_TARGET_SDL3} PRIVATE SDL3::SDL3)
 
 if(BUILD_TESTS)
 target_include_directories(${TEST_TARGET} PRIVATE
