@@ -50,6 +50,7 @@ endif()
 find_package(OpenGL REQUIRED)
 
 find_package(SDL3 REQUIRED)
+find_package(SDL3_TTF REQUIRED SDL3_ttf)
 
 if (BUILD_PROFILER)
 add_subdirectory(tracy)
@@ -143,7 +144,7 @@ else()
 target_link_libraries(${GAME_TARGET} ${GAME_LIBRARIES})
 endif()
 
-target_link_libraries(${GAME_TARGET_SDL3} PRIVATE SDL3::SDL3)
+target_link_libraries(${GAME_TARGET_SDL3} PRIVATE SDL3_ttf::SDL3_ttf SDL3::SDL3)
 
 if(BUILD_TESTS)
 target_include_directories(${TEST_TARGET} PRIVATE
